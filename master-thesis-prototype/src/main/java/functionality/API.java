@@ -2,6 +2,7 @@ package functionality;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.Provider.Service;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -10,6 +11,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map.Entry;
 import java.util.Stack;
 
 import org.camunda.bpm.model.bpmn.builder.*;
@@ -49,15 +51,34 @@ public class API {
 	private ArrayList<BPMNElement> processElements = new ArrayList<BPMNElement>();
 	private ArrayList<BPMNTask> processTasks = new ArrayList<BPMNTask>();
 	private ArrayList<BPMNParticipant> globalSphere = new ArrayList<BPMNParticipant>();
-	private ArrayList<ArrayList<BPMNParticipant>> staticSphere = new ArrayList<ArrayList<BPMNParticipant>>();	
-	
+	private ArrayList<ArrayList<BPMNParticipant>> staticSphere = new ArrayList<ArrayList<BPMNParticipant>>();
+
 	ArrayList<Label> labelList = new ArrayList<Label>();
 
 	API(String pathToFile) {
 		process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);
 		startEvent = modelInstance.getModelElementsByType(StartEvent.class);
+		this.mapAndCompute();
 	}
+	
+	private void mapAndCompute() {
+		this.setSuccessors();
+		this.setPredecessors();
+		this.storeLanePerTask();
+		this.mapDataObjects();
+		this.createDataObjectAsssociatons();
+		this.computeGlobalSphere();
+		this.computeStaticSphere();
+		this.getAllProcessPaths();
+		for(BPMNElement element: this.processElements) {
+			if(element instanceof BPMNBusinessRuleTask) {
+				this.addVotingSystem(element);
+			}
+		}
+		
+	}
+	
 
 	public Collection<FlowNode> getSucceedingFlowNodes(FlowNode node) {
 		Collection<FlowNode> followingFlowNodes = new ArrayList<FlowNode>();
@@ -85,14 +106,15 @@ public class API {
 			}
 		}
 
-		if (node instanceof Task ||  node instanceof UserTask || node instanceof BusinessRuleTask) {
-			if(node instanceof BusinessRuleTask) {
+		if (node instanceof Task || node instanceof UserTask || node instanceof BusinessRuleTask
+				|| node instanceof SendTask) {
+			if (node instanceof BusinessRuleTask) {
 				mappedNode = new BPMNBusinessRuleTask(node.getId(), node.getName());
 			} else {
 				mappedNode = new BPMNTask(node.getId(), node.getName());
 			}
-			
-		}else if (node instanceof ParallelGateway) {
+
+		} else if (node instanceof ParallelGateway) {
 			if (node.getOutgoing().size() == 1) {
 				mappedNode = new BPMNParallelGateway(node.getId(), node.getName(), "join");
 			} else {
@@ -104,8 +126,8 @@ public class API {
 				mappedNode = new BPMNExclusiveGateway(node.getId(), node.getName(), "join");
 			} else {
 				mappedNode = new BPMNExclusiveGateway(node.getId(), node.getName(), "split");
-				//Attach the voters to the Gateway
-				this.mapSphereAnnotations((BPMNExclusiveGateway)mappedNode);
+				// Attach the voters to the Gateway
+				this.mapSphereAnnotations((BPMNExclusiveGateway) mappedNode);
 			}
 		} else if (node instanceof StartEvent) {
 			mappedNode = new BPMNStartEvent(node.getId());
@@ -138,7 +160,7 @@ public class API {
 					// directly following Elements
 					for (SequenceFlow seq : flow.getOutgoing()) {
 						if (currentNode instanceof BPMNExclusiveGateway && flow.getOutgoing().size() >= 2) {
-							Label label = new Label(((BPMNExclusiveGateway) currentNode).getName(), seq.getName());							
+							Label label = new Label(((BPMNExclusiveGateway) currentNode).getName(), seq.getName());
 							for (Label l : labelList) {
 								if (l.getLabel().equals(label.getLabel())) {
 									label = l;
@@ -225,54 +247,63 @@ public class API {
 		String dataObject = "";
 		String defaultSphere = "";
 		for (TextAnnotation text : modelInstance.getModelElementsByType(TextAnnotation.class)) {
-			//If at a writing task no corresponding sphere is annotated, take the default one
-			if(text.getTextContent().startsWith("Default:")) {
+			// If at a writing task no corresponding sphere is annotated, take the default
+			// one
+			if (text.getTextContent().startsWith("Default:")) {
 				String str = text.getTextContent();
-				dataObject  = str.substring(str.indexOf('['), str.indexOf(']')+1);
-				defaultSphere = str.substring(str.indexOf('{'), str.indexOf('}')+1);
-			}			
-			for (Association a : modelInstance.getModelElementsByType(Association.class)) {					
+				dataObject = str.substring(str.indexOf('['), str.indexOf(']') + 1);
+				defaultSphere = str.substring(str.indexOf('{'), str.indexOf('}') + 1);
+			}
+			for (Association a : modelInstance.getModelElementsByType(Association.class)) {
 				for (BPMNDataObject bpmndo : element.getDataObjects()) {
-					//attach the defaultSphere to the dataObject
-					if (bpmndo.getName().substring(0, 4).equals(dataObject)&&bpmndo.getDefaultSphere()=="") {							
-						bpmndo.setDefaultSphere(defaultSphere);
+					// Map the default Spheres for the data objects to the corresponding writing
+					// tasks
+					if (bpmndo.getName().substring(0, 4).equals(dataObject) && bpmndo.getWriters().contains(element)) {
+						// attach the defaultSphere to the dataObject
+						if (bpmndo.getDefaultSphere().isEmpty()) {
+							bpmndo.setDefaultSphere(defaultSphere);
+						}
+						if(element.getSphereAnnotation().isEmpty()) {
 						element.getSphereAnnotation().put(bpmndo, defaultSphere);
+						}
 					}
-										
-					if (a.getAttributeValue("sourceRef").equals(element.getId()) && a.getAttributeValue("targetRef").equals(text.getId())) {
+
+					if (a.getAttributeValue("sourceRef").equals(element.getId())
+							&& a.getAttributeValue("targetRef").equals(text.getId())) {
 						String str = text.getTextContent();
-						
-						//First 4 characters specify the Data object e.g. [D1]
-						String s = str.substring(str.indexOf('['), str.indexOf(']')+1);
-						//The Sphere for the data object is between {}
-						String s2 =  str.substring(str.indexOf('{'), str.indexOf('}')+1);
-						System.out.println(s+", "+s2);
-						
-						//Check if it is the right data object
-						if (bpmndo.getName().substring(0, 4).equals(s)) {							
+
+						// First 4 characters specify the Data object e.g. [D1]
+						String s = str.substring(str.indexOf('['), str.indexOf(']') + 1);
+						// The Sphere for the data object is between {}
+						String s2 = str.substring(str.indexOf('{'), str.indexOf('}') + 1);
+
+						// Check if it is the right data object
+						if (bpmndo.getName().substring(0, 4).equals(s)) {
 							element.getSphereAnnotation().put(bpmndo, s2);
 						}
-					
+
 					}
+				}
+			}
+
+		}
+
+	}
+
+	// map the annotated amount of needed voters to the BPMNExclusiveGateways
+	private void mapSphereAnnotations(BPMNExclusiveGateway gtw) {
+		for (TextAnnotation text : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+			for (Association a : modelInstance.getModelElementsByType(Association.class)) {
+				if (a.getAttributeValue("sourceRef").equals(gtw.getId())
+						&& a.getAttributeValue("targetRef").equals(text.getId())) {
+					String str = text.getTextContent();
+					// The number of voters is between []
+					String s = str.substring(str.indexOf('[') + 1, str.indexOf(']'));
+					gtw.setVoters(Integer.parseInt(s));
 				}
 			}
 		}
 
-	}
-	
-	//map the annotated amount of needed voters to the BPMNExclusiveGateways
-	private void mapSphereAnnotations(BPMNExclusiveGateway gtw) {
-		for (TextAnnotation text : modelInstance.getModelElementsByType(TextAnnotation.class)) {
-			for (Association a : modelInstance.getModelElementsByType(Association.class)) {						
-					if (a.getAttributeValue("sourceRef").equals(gtw.getId()) && a.getAttributeValue("targetRef").equals(text.getId())) {
-						String str = text.getTextContent();
-						//The number of voters is between []
-						String s = str.substring(str.indexOf('[')+1, str.indexOf(']'));										
-						gtw.setVoters(Integer.parseInt(s));											
-				}
-			}
-		}
-		
 	}
 
 	// DataObjects can be attached to Tasks, BusinessRuleTasks and UserTasks in
@@ -285,7 +316,7 @@ public class API {
 						if (doa.getTarget().getAttributeValue("dataObjectRef").equals(bpmno.getId())) {
 							if (e instanceof BPMNTask && e.getId().equals(t.getId())) {
 								bpmno.addWriterToDataObject((BPMNTask) e);
-								((BPMNTask) e).addBPMNDataObject(bpmno);								
+								((BPMNTask) e).addBPMNDataObject(bpmno);
 								this.mapSphereAnnotations(t);
 							}
 						}
@@ -371,26 +402,31 @@ public class API {
 
 	}
 
-	// Uses Breadth first search to go through the predecessors of a node to find the last Writer to that dataObject
-	public BPMNTask getLastWriterForDataObject(BPMNElement currentNode, BPMNDataObject dataObject) {
-		LinkedList<BPMNElement> queue = new LinkedList<BPMNElement>();		
-		
+	// Uses Breadth first search to go through the predecessors of a node to find
+	// the last Writer to that dataObject
+	public BPMNTask getLastWriterForDataObject(BPMNElement currentNode, BPMNDataObject dataObject,
+			BPMNElement alreadyFound) {
+		LinkedList<BPMNElement> queue = new LinkedList<BPMNElement>();
+
 		queue.addAll(currentNode.getPredecessors());
+		queue.remove(alreadyFound);
 		while (!(queue.isEmpty())) {
 			BPMNElement element = queue.poll();
-			if(element instanceof BPMNTask) {
-				//Check if the element is a Writer to the dataObject given as a parameter
-				if(((BPMNTask)element).getDataObjects().contains(dataObject)) {
-					for(BPMNDataObject data : ((BPMNTask) element).getDataObjects()) {
-					if(data.getWriters().contains(element)&&data.equals(dataObject)) {
-						return (BPMNTask)element;
-					}						
-				}
-					
+			if (element.equals(alreadyFound)) {
+				element = queue.poll();
+			}
+			if (element instanceof BPMNTask) {
+				// Check if the element is a Writer to the dataObject given as a parameter
+				if (((BPMNTask) element).getDataObjects().contains(dataObject)) {
+					for (BPMNDataObject data : ((BPMNTask) element).getDataObjects()) {
+						if (data.getWriters().contains(element) && data.equals(dataObject)) {
+							return (BPMNTask) element;
+						}
+					}
+
 				}
 			}
-			
-			
+
 			for (BPMNElement predecessor : element.getPredecessors()) {
 				queue.add(predecessor);
 			}
@@ -398,7 +434,6 @@ public class API {
 		return null;
 
 	}
-
 
 	/*
 	 * public LinkedList<LinkedList<BPMNElement>> allPathsBetweenNodes(BPMNElement
@@ -506,8 +541,8 @@ public class API {
 
 	}
 
-	//Test Method for pathing through the process
-	public void getPathBetweenNodes() {
+	// Test Method for pathing through the process
+	public void getAllProcessPaths() {
 		LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodes(this.bpmnStart, this.bpmnEnd,
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<LinkedList<BPMNElement>>());
@@ -521,9 +556,9 @@ public class API {
 			}
 			i++;
 		}
-		
-	
-		//this.getLastWriterForDataObject(this.getNodeById("Task_1imtmva"), ((BPMNTask)this.getNodeById("Task_1imtmva")).getDataObjects().iterator().next()).printElement();
+
+		// this.getLastWriterForDataObject(this.getNodeById("Task_1imtmva"),
+		// ((BPMNTask)this.getNodeById("Task_1imtmva")).getDataObjects().iterator().next()).printElement();
 
 	}
 
@@ -545,7 +580,6 @@ public class API {
 		return null;
 	}
 
-	
 	public void printElementPredecessorAndSuccessor() {
 		this.processElements.forEach(f -> {
 			f.printPredecessors();
@@ -555,144 +589,234 @@ public class API {
 		});
 
 	}
-	
-	public void addVotingTasksToProcess(BPMNBusinessRuleTask brt, ArrayList<BPMNParticipant> voters) throws IOException {
-		
-		UserTask t = (UserTask) this.getFlowNodeByBPMNNodeId(brt.getPredecessors().iterator().next().getId());
-		//UserTask t = (UserTask) modelInstance.getModelElementById("Task_13s70q3");
-		SequenceFlow outgoingSequenceFlow = t.getOutgoing().iterator().next();
-		FlowNode nextTask = outgoingSequenceFlow.getTarget();
-		BpmnEdge flowDi = outgoingSequenceFlow.getDiagramElement();
-		
-		//BPMNDi elements are need to be removed too
-		for(BpmnEdge e : modelInstance.getModelElementsByType(BpmnEdge.class)) {
-			if(e.getId().equals(flowDi.getId())) {
+
+	public void addVotingTasksToProcess(BPMNBusinessRuleTask brt, ArrayList<BPMNParticipant> voters)
+			throws IOException {
+
+		// UserTask t = (UserTask)
+		// this.getFlowNodeByBPMNNodeId(brt.getPredecessors().iterator().next().getId());
+
+		BusinessRuleTask businessRt = (BusinessRuleTask) this.getFlowNodeByBPMNNodeId(brt.getId());
+		// SequenceFlow outgoingSequenceFlow = t.getOutgoing().iterator().next();
+		SequenceFlow incomingSequenceFlow = businessRt.getIncoming().iterator().next();
+		// BpmnEdge flowDi = outgoingSequenceFlow.getDiagramElement();
+		BpmnEdge flowDi = incomingSequenceFlow.getDiagramElement();
+
+		// BPMNDi elements are need to be removed too
+		for (BpmnEdge e : modelInstance.getModelElementsByType(BpmnEdge.class)) {
+			if (e.getId().equals(flowDi.getId())) {
 				e.getParentElement().removeChildElement(e);
 			}
 		}
-		
-		//t.getOutgoing().remove(outgoingSequenceFlow);
-		modelInstance.getDefinitions().removeChildElement(outgoingSequenceFlow);	
-		
-		
-		/*
-		int i = 1;
-		//for each voter add a new user task to the BPMN using Camunda fluent builder API 
-		for(BPMNParticipant participant: voters) {			
-			//
-			
-		
-			t.builder().parallelGateway("P2split")
-			.userTask("votingTask"+i).name("VotingTask "+participant.getName())
-			.parallelGateway("P2join")
-			.moveToNode("P2split")
-			.userTask("Help").name("Voting test")
-			.connectTo("P2join")
-			.connectTo(nextTask.getId());
-			
-			
-			i++;
-			
-		}*/
-		
-		this.addTasksToVotingSystem(1, (BusinessRuleTask)this.getFlowNodeByBPMNNodeId(brt.getId()), t.builder().parallelGateway("P2split").name("P2"), "P2split", voters, "P2join");
-		
-		
-		//Add the new tasks generated via fluent builder API to the corresponding lanes in the xml model
-		//Cant be done with the fluent model builder directly!
-		for(Lane l: modelInstance.getModelElementsByType(Lane.class)) {
-			for(Task task: modelInstance.getModelElementsByType(Task.class)) {
-				if(l.getName().equals(task.getName().substring(task.getName().indexOf(" ")+1, task.getName().length()))) {
+		// modelInstance.getDefinitions().removeChildElement(outgoingSequenceFlow);
+		modelInstance.getDefinitions().removeChildElement(incomingSequenceFlow);
+
+		this.addTasksToVotingSystem(1, businessRt,
+				businessRt.builder().moveToNode(brt.getPredecessors().iterator().next().getId()), "P2split", voters,
+				"P2join");
+
+		// Add the new tasks generated via fluent builder API to the corresponding lanes
+		// in the xml model
+		// Cant be done with the fluent model builder directly!
+
+		for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
+			for (Task task : modelInstance.getModelElementsByType(Task.class)) {
+				if (l.getName()
+						.equals(task.getName().substring(task.getName().indexOf(" ") + 1, task.getName().length()))) {
 					task.getParentElement().addChildElement(task);
 				}
 			}
-			
+
 		}
-		
-		
+		/*
+		 * ServiceTask st = modelInstance.newInstance(ServiceTask.class);
+		 * st.setName("Perform decision"); st.setId(businessRt.getId());
+		 * 
+		 * 
+		 * 
+		 * 
+		 * //st.getDiagramElement().setBpmnElement(businessRt);
+		 * //st.getDataInputAssociations().addAll(businessRt.getDataInputAssociations())
+		 * ;
+		 * 
+		 * 
+		 * businessRt.getParentElement().replaceChildElement(businessRt, st);
+		 * for(BpmnEdge dia : modelInstance.getModelElementsByType(BpmnEdge.class)) {
+		 * if(dia.getId().equals("DataInputAssociation_0e8o986_di")) {
+		 * 
+		 * }
+		 * 
+		 * }
+		 */
+
 		// validate and write model to file
-		
 		Bpmn.validateModel(modelInstance);
-	File file = File.createTempFile("bpmn-model-with-voting", ".bpmn", new File("C:\\Users\\Micha\\OneDrive\\Desktop"));
-	Bpmn.writeModelToFile(file, modelInstance);
 		
+		// File file = File.createTempFile("bpmn-model-with-voting", ".bpmn", new
+		// File("C:\\Users\\Micha\\OneDrive\\Desktop")); Bpmn.writeModelToFile(file,
+		 //modelInstance);
+		 
 	}
-	
-	
-	private void addTasksToVotingSystem(int i, BusinessRuleTask brt, ParallelGatewayBuilder builder, String parallelSplit, ArrayList<BPMNParticipant> voters, String parallelJoin) {
-		boolean isSet = false;	
+
+	private void addTasksToVotingSystem(int i, BusinessRuleTask brt, AbstractFlowNodeBuilder builder,
+			String parallelSplit, ArrayList<BPMNParticipant> voters, String parallelJoin) {
+		if(voters.isEmpty()) {
+			System.err.println("No voters selected");
+			return;
+		}
+		boolean isSet = false;
+		Iterator<BPMNParticipant> iter = voters.iterator();
+
+		voters.forEach(v -> {
+			v.printParticipant();
+		});
+		if(voters.size()==1) {
+			builder.userTask("votingTask"+i).name("VotingTask "+voters.iterator().next().getName())
+			.connectTo(brt.getId());
+		} else {
 		
-		Iterator<BPMNParticipant>iter = voters.iterator();
-		while(iter.hasNext()) {			
-			builder.userTask("votingTask"+i).name("VotingTask "+iter.next().getName());
-			if(isSet == false) {
-			builder.moveToNode("votingTask"+i).parallelGateway(parallelJoin).name("P2");
-			isSet = true;
+		builder.parallelGateway(parallelSplit).name("P2");
+
+		while (iter.hasNext()) {
+			builder.moveToNode(parallelSplit).userTask("votingTask" + i).name("VotingTask " + iter.next().getName());
+			if (isSet == false) {
+				builder.moveToNode("votingTask" + i).parallelGateway(parallelJoin).name("P2");
+				isSet = true;
 			} else {
-				builder.moveToNode("votingTask"+i).connectTo(parallelJoin);
+				builder.moveToNode("votingTask" + i).connectTo(parallelJoin);
 			}
-			
-			
-			if(!iter.hasNext()) {
+
+			if (!iter.hasNext()) {
 				builder.moveToNode(parallelJoin).connectTo(brt.getId());
-			}	else {
+			} else {
 				builder.moveToNode(parallelSplit);
 			}
 			i++;
-			
-		} 
-				
+
+		}	
+		}
 	}
-	
 
 	public void addVotingSystem(BPMNElement element) {
 		// Check how many participants are needed for the voting!
 		// Check the corresponding Data Objects for the decision
-		// Get the latest Task that wrote data to these data objects
+		// Get the latest Task(s) that wrote data to these data objects
 		// Check the Spheres that Readers have to be in!
 		// Compute the spheres and propose participants for voting to the user
-		ArrayList<BPMNParticipant> weakDynamicList = new ArrayList<BPMNParticipant>();
-		ArrayList<BPMNParticipant> strongDynamicList = new ArrayList<BPMNParticipant>();
-				
-		if(this.checkProcessModel()==true) {
-			if(element instanceof BPMNBusinessRuleTask) {
-				BPMNBusinessRuleTask brt = (BPMNBusinessRuleTask)element;
-				for(BPMNDataObject data: brt.getDataObjects()) {
-					
-						BPMNTask lastWriter= this.getLastWriterForDataObject(brt, data);
-						lastWriter.printElement();
-						for (BPMNDataObject sphere: lastWriter.getSphereAnnotation().keySet()){
-				           
-				            String value = lastWriter.getSphereAnnotation().get(sphere);
-				           
-				        for(BPMNElement reader: sphere.getReaders()) {
-				        	LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodes(lastWriter, reader, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),  new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
-				        	//Check whether there is a path between the lastWriter and some Reader
-				        	//if not, then the reader is a task that comes before the lastWriter
-				        	if(!paths.isEmpty()) {
-				        		//Check the labels 
-				        		//If the label is not the same - then either the lastWriter or the reader is within an XOR-branch 
-				        		if(lastWriter.getLabels().equals(reader.getLabels())) {
-				        			strongDynamicList.add(((BPMNTask)reader).getParticipant());
-				        		} else {
-				        			weakDynamicList.add(((BPMNTask)this.getNodeById("Task_1imtmva")).getParticipant());
-				        			weakDynamicList.add(((BPMNTask)reader).getParticipant());
-				        		}
-				        	}
-				        
-				        }
-				            
-				} 
+		ArrayList<BPMNParticipant> listOfParticipants = new ArrayList<BPMNParticipant>();
+		ArrayList<BPMNTask> lastWriters = new ArrayList<BPMNTask>();
+
+		if (this.checkProcessModel() == true) {
+			if (element instanceof BPMNBusinessRuleTask) {
+				BPMNBusinessRuleTask brt = (BPMNBusinessRuleTask) element;
+				String value = "";
+				for (BPMNDataObject data : brt.getDataObjects()) {
+
+					BPMNTask lastWriter = this.getLastWriterForDataObject(brt, data, null);
+					lastWriters.add(lastWriter);
+					// if lastWriter is within an xor-branch we need to find the lastWriter for the
+					// other branch too
+					if (lastWriter.hasLabel()) {
+						BPMNTask lastWriterOtherBranch = this.getLastWriterForDataObject(brt, data, lastWriter);
+						lastWriters.add(lastWriterOtherBranch);
+					}
+
+					for (BPMNTask lWriter : lastWriters) {
+						lWriter.printElement();
+						for (BPMNDataObject sphere : lWriter.getSphereAnnotation().keySet()) {
+							value = lWriter.getSphereAnnotation().get(sphere);
+							System.out.println("Sphere" + sphere.getName() + value);
+
+							for (BPMNElement reader : sphere.getReaders()) {
+								LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodes(lWriter, reader,
+										new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+										new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+								// Check whether there is a path between the lastWriter and some Reader
+								// if not, then the reader is a task that comes before the lastWriter
+								if (!paths.isEmpty()) {
+									// When there is another writer w2 for the data object on each path
+									// between the lWriter and some reader, then the reader is in the static sphere
+									boolean anotherWriterOnPath = false;
+									int count = 0;
+									
+									for (BPMNElement otherWriter : data.getOtherWriters(lWriter)) {
+										
+										for (LinkedList<BPMNElement> path : paths) {						
+											if (path.contains(otherWriter)) {
+												count++;
+											}
+										}
+										if(count%2==1) {
+											anotherWriterOnPath = true;
+										}
+									}
+									System.out.println(anotherWriterOnPath);
+									// within an XOR-branch
+									if (anotherWriterOnPath == false) {
+										this.addReaderToSphere(sphere,lWriter, (BPMNTask)reader, paths);
+									}
+								}
+							}
+
+						}
+
+					}
 				}
+
+
+				for(BPMNTask t: lastWriters) {
+					for(Entry<BPMNDataObject, ArrayList<BPMNTask>> t2: t.getSDHashMap().entrySet()){
+						for(BPMNTask task: t2.getValue()) {
+							task.printElement();
+						if(!listOfParticipants.contains(task.getParticipant())) {							
+							listOfParticipants.add(task.getParticipant());
+						}
+					}
+					}
+				}
+				
+				
+				
 				try {
-					this.addVotingTasksToProcess(brt, weakDynamicList);
+
+					this.addVotingTasksToProcess(brt, listOfParticipants);
+
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
+
+		}
+
+	}
+	
+	private void addReaderToSphere(BPMNDataObject bpmndo, BPMNTask writer, BPMNTask reader, LinkedList<LinkedList<BPMNElement>>paths) {
+		ArrayList<Label> writerLabels = writer.getLabels();
+		ArrayList<Label> readerLabels = reader.getLabels();
+		
+		//When the labels are the same, the reader is in the SD Sphere of the writer
+		//Therefore also in the WD Sphere
+		if(writerLabels.equals(readerLabels)) {
+			writer.addTaskToSDHashMap(bpmndo, reader);
+			writer.addTaskToWDHashMap(bpmndo, reader);
+		} else if (writerLabels.size()>readerLabels.size()) {
+			if(readerLabels.size()==0) {
+				writer.addTaskToSDHashMap(bpmndo, reader);
+			} else {
+				writer.addTaskToWDHashMap(bpmndo, reader);
+			}
+			
+		} else if(writerLabels.size()<readerLabels.size()) {
+			writer.addTaskToWDHashMap(bpmndo, reader);
+			
 			
 		}
+	
+		
+			
+		
+		
 		
 		
 		
@@ -701,14 +825,13 @@ public class API {
 	
 	
 
-
 	public boolean checkProcessModel() {
 		// Check how many participants are needed for the voting!
 		// Check whether there are enough participants available in the global Sphere
-		for(BPMNElement bpmnElement: this.processElements) {
-			if(bpmnElement instanceof BPMNExclusiveGateway) {
-				if(((BPMNExclusiveGateway)bpmnElement).getType().equals("split")){
-					if(((BPMNExclusiveGateway) bpmnElement).getVoters()>this.globalSphere.size()){						
+		for (BPMNElement bpmnElement : this.processElements) {
+			if (bpmnElement instanceof BPMNExclusiveGateway) {
+				if (((BPMNExclusiveGateway) bpmnElement).getType().equals("split")) {
+					if (((BPMNExclusiveGateway) bpmnElement).getVoters() > this.globalSphere.size()) {
 						return false;
 					}
 				}
@@ -729,48 +852,5 @@ public class API {
 		}
 		return null;
 	}
-	
-	
-	public SequenceFlow createSequenceFlow(Process process, FlowNode from, FlowNode to) {
-		  String identifier = from.getId() + "-" + to.getId();
-		  SequenceFlow sequenceFlow = createElement(process, identifier, SequenceFlow.class);
-		  process.addChildElement(sequenceFlow);
-		  sequenceFlow.setSource(from);
-		  from.getOutgoing().add(sequenceFlow);
-		  sequenceFlow.setTarget(to);
-		  to.getIncoming().add(sequenceFlow);
-		  return sequenceFlow;
-		}
-	
-	/*
-	public void deleteSequenceFlow(Process process, FlowNode from, FlowNode to) {
-		SequenceFlow sequenceFlow = from.getIncoming().iterator().next();
-		process.dele
-	}
-	*/
-	
-	protected <T extends BpmnModelElementInstance> T createElement(BpmnModelElementInstance parentElement, String id, Class<T> elementClass) {
-		  T element = modelInstance.newInstance(elementClass);
-		  element.setAttributeValue("id", id, true);
-		 
-		  parentElement.addChildElement(element);
-		  if(element instanceof Task) {
-			  for(Lane l: modelInstance.getModelElementsByType(Lane.class)) {
-				  if(l.getId().equals("Lane_07qvb5b")) {
-					  System.out.println("GP");
-					  l.getFlowNodeRefs().add((FlowNode)element);
-					  //l.addChildElement(element);
-				  }
-			  }
-			  }
-		  return element;
-		}
 
-	
-	public void connect(SequenceFlow flow, FlowNode from, FlowNode to) {
-		  flow.setSource(from);
-		  from.getOutgoing().add(flow);
-		  flow.setTarget(to);
-		  to.getIncoming().add(flow);
-		}
 }

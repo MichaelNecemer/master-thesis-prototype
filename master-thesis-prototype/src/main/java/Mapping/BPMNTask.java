@@ -16,12 +16,17 @@ public class BPMNTask extends BPMNElement{
 	//Readers after that Task have to be in this sphere
 	private HashMap<BPMNDataObject, String> sphereAnnotation;
 	
+	private HashMap<BPMNDataObject, ArrayList<BPMNTask>> weakDynamicHashMap;
+	private HashMap<BPMNDataObject, ArrayList<BPMNTask>> strongDynamicHashMap;
+	
 
 	public BPMNTask (String id, String name) {
 		super(id);
 		this.name = name;
 		this.dataObjects = new ArrayList<BPMNDataObject>();
 		this.sphereAnnotation = new HashMap<BPMNDataObject, String>();
+		this.weakDynamicHashMap=new HashMap<BPMNDataObject, ArrayList<BPMNTask>>();
+		this.strongDynamicHashMap = new HashMap<BPMNDataObject, ArrayList<BPMNTask>>();
 	}
 	
 	
@@ -95,7 +100,45 @@ public class BPMNTask extends BPMNElement{
 	}
 	
 	
+	public void addTaskToWDHashMap(BPMNDataObject bpmndo, BPMNTask reader) {
+		if(this.weakDynamicHashMap.get(bpmndo)==null){
+			this.weakDynamicHashMap.put(bpmndo, new ArrayList<BPMNTask>());			
+		}
+		this.weakDynamicHashMap.get(bpmndo).add(reader);
+		
+	}
 	
-	
+	public void addTaskToSDHashMap(BPMNDataObject bpmndo, BPMNTask reader) {
+		if(this.strongDynamicHashMap.get(bpmndo)==null){
+			this.strongDynamicHashMap.put(bpmndo, new ArrayList<BPMNTask>());			
+		}
+		this.strongDynamicHashMap.get(bpmndo).add(reader);
+		
+	}
 
+
+
+	public HashMap<BPMNDataObject, ArrayList<BPMNTask>> getWDHashMap() {
+		return this.weakDynamicHashMap;
+	}
+
+
+
+	public void setWDHashMap(HashMap<BPMNDataObject, ArrayList<BPMNTask>> wdHashMap) {
+		this.weakDynamicHashMap = wdHashMap;
+	}
+
+
+
+	public HashMap<BPMNDataObject, ArrayList<BPMNTask>> getSDHashMap() {
+		return this.strongDynamicHashMap;
+	}
+
+
+
+	public void setStrongDynamicList(HashMap<BPMNDataObject, ArrayList<BPMNTask>> sdHashMap) {
+		this.strongDynamicHashMap = sdHashMap;
+	}
+	
+	
 }

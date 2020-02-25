@@ -109,7 +109,16 @@ public class BPMNDataObject {
 		this.defaultSphere = defaultSphere;
 	}
 	
-	
+	public ArrayList<BPMNElement> getOtherWriters(BPMNElement someWriter){
+		ArrayList<BPMNElement> otherWriters = new ArrayList<BPMNElement>();
+		for(BPMNElement writer: this.writers) {
+			if(!writer.equals(someWriter)) {
+				otherWriters.add(writer);
+			}
+			
+		}
+		return otherWriters;
+	}
 	
 
 	

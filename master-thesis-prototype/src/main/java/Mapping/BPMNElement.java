@@ -126,7 +126,7 @@ public class BPMNElement {
 		this.labelHasBeenSet = labelHasBeenSet;
 	}
 	
-
+	
 	
 	
 	

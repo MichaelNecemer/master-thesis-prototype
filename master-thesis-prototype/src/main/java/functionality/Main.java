@@ -54,35 +54,15 @@ public class Main {
 	                
 	        }
 		*/
-		a2 = new API("C:\\Users\\Micha\\eclipse-workspace\\master-thesis-prototype\\src\\main\\resources\\process.bpmn");
-		//a2 = new API("C:\\Users\\Micha\\eclipse-workspace\\master-thesis-prototype\\src\\main\\resources\\process1.bpmn");
-		a2.setSuccessors();
-		a2.setPredecessors();
-		a2.storeLanePerTask();
-		a2.mapDataObjects();
-		a2.createDataObjectAsssociatons();
-		//a2.printDataObjects();
-		a2.computeGlobalSphere();
-		//a2.printGlobalSphere();
+		//a2 = new API("C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process.bpmn");
+		a2 = new API("C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process1.bpmn");
 		
-		a2.computeStaticSphere();
+		
+		//a2.printDataObjects();
+		//a2.printGlobalSphere();
 		//a2.printStaticSphere();
 		//a2.printElementPredecessorAndSuccessor();
-		a2.getPathBetweenNodes();		
-		System.out.println(a2.checkProcessModel());
-		a2.addVotingSystem(a2.getNodeById("BusinessRuleTask_0dplu08"));
-		
-		/*
-		LinkedList<LinkedList<BPMNElement>> test = 	a2.allElementsWithinParallelSplit(a2.getNodeById("ParallelGateway_0bzuner"));
-		for(LinkedList<BPMNElement> l: test) {
-			for(BPMNElement p: l) {
-				p.printElement();
-			}
-		}*/
-		
-		//a2.printProcessElements();
-		//a2.printElementPredecessorAndSuccessor();
-		//a2.computeWeakDynamicSphere();
+	
 		
 		/*
 		 JFrame frame=new JFrame("GUI");
