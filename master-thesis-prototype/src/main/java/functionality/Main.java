@@ -1,10 +1,15 @@
 package functionality;
 
 import java.awt.BorderLayout;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Map.Entry;
 
+import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
+import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -17,29 +22,17 @@ import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
 
 import Mapping.BPMNBusinessRuleTask;
+import Mapping.BPMNDataObject;
 import Mapping.BPMNElement;
 import Mapping.BPMNParticipant;
+import Mapping.BPMNTask;
 
 public class Main {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		
-		//Get a JavaDomTraversal object to query the process xml file
-		//JavaDomTraversal d1 = new JavaDomTraversal("C:\\Users\\Micha\\eclipse-workspace\\master-thesis-prototype\\src\\main\\resources\\process.bpmn");
-		//BpmnAPI a1 = new BpmnAPI("C:\\Users\\Micha\\eclipse-workspace\\master-thesis-prototype\\src\\main\\resources\\process.bpmn");
-		//a1.getFlowingFlowNodes(sequenceFlow.getSource());
-		//a1.printTasks();
-		//a1.printGlobalSphere();
-		//a1.printAllElements();
-		//a1.printFlowingFlowNodes(a1.getStartEvent().iterator().next());
-		//Collection<FlowNode> f = a1.getAllFlowNodesAfterNode(a1.getStartEvent().iterator().next());
-		//a1.printAllFlowNodes();
-		
-		//a1.computeStaticSphere();
-		//a1.getDataObjectsForNode(a1.getNodeById("Task_13s70q3")).forEach(f->{a1.getNameOfDataObject(f);});
-		//a1.getDataObjectsTheTaskWritesTo(a1.getNodeById("Task_13s70q3")).forEach(f->{a1.getNameOfDataObject(f);});
-		//a1.getAllNodesConnectedToDataObject(a1.dataObjects.iterator().next()).forEach(f->{System.out.println(f.getId());});
+	
 		API a2 = null;
 		/*
 		  JFileChooser chooser = new JFileChooser();
@@ -58,30 +51,43 @@ public class Main {
 		a2 = new API("C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process1.bpmn");
 		
 		
-		//a2.printDataObjects();
-		//a2.printGlobalSphere();
-		//a2.printStaticSphere();
-		//a2.printElementPredecessorAndSuccessor();
-	
-		
-		/*
-		 JFrame frame=new JFrame("GUI");
-		 JPanel panel = new JPanel();
-		    frame.setSize(600, 500);
-		    frame.setResizable(false);
-		    frame.setLocation(50, 50);		  
-		    frame.setVisible(true);		    
-		    panel.add(new JLabel("Global Sphere contains:"));
-		    DefaultListModel<String> listModel = new DefaultListModel<String>();
-		    JList<String> myJList = new JList<String>(listModel);
-		  
-		    for(BPMNParticipant p: a2.getGlobalSphereList()) {
-		    	listModel.addElement(p.getName());
+		 JFrame frame=new JFrame("GUITest");
+		    frame.setVisible(true);		 
+		 
+		 JPanel panel = new JPanel();		   
+		    panel.add(new JLabel("Choose participants"));
+		    panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
+		    
+		    
+		    List<JCheckBox> checkboxes = new ArrayList<>();
+		    
+		    for(BPMNTask t: a2.lastWriters) {
+		    	panel.add(new JLabel("Writer: "+t.getName()));
+		    	for(Entry<BPMNDataObject, ArrayList<BPMNTask>> t2: t.getSDHashMap().entrySet()) {
+		    		panel.add(new JLabel(t2.getKey().getName()+" Strong-Dynamic:"));
+		    		for(BPMNTask task: t2.getValue()) {
+		    		JCheckBox box = new JCheckBox(task.getParticipant().getName()+ ", "+task.getName());
+		    		checkboxes.add(box);
+		    		panel.add(box);
+		    		}
+		    	}
+		    	
+		    	for(Entry<BPMNDataObject, ArrayList<BPMNTask>> t2: t.getWDHashMap().entrySet()) {
+		    		panel.add(new JLabel(t2.getKey().getName()+" Weak-Dynamic:"));
+		    		for(BPMNTask task: t2.getValue()) {
+		    		JCheckBox box = new JCheckBox(task.getParticipant().getName()+ ", "+task.getName());
+		    		checkboxes.add(box);
+		    		panel.add(box);
+		    		}
+		    	}
+		    	
 		    }
-		    JScrollPane listScrollPane = new JScrollPane(myJList);
-		    panel.add(listScrollPane);
-		   frame.add(panel);
-		  */
+		    
+		  
+		    frame.add(panel);
+		    frame.pack();
+		    
+		  
 		    /*
 		    JDialog meinJDialog = new JDialog();
 	        meinJDialog.setTitle("Model has to be repaired");

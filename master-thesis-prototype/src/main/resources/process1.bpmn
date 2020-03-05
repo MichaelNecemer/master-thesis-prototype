@@ -202,6 +202,11 @@
     <bpmn:task id="Task_1h7djbf" name="A6: Do Rehabilitation">
       <bpmn:incoming>SequenceFlow_1mjh9rl</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_03m2rsf</bpmn:outgoing>
+      <bpmn:property id="Property_0d3eief" name="__targetRef_placeholder" />
+      <bpmn:dataInputAssociation id="DataInputAssociation_1m3vkyb">
+        <bpmn:sourceRef>DataObjectReference_1pvxsvm</bpmn:sourceRef>
+        <bpmn:targetRef>Property_0d3eief</bpmn:targetRef>
+      </bpmn:dataInputAssociation>
     </bpmn:task>
     <bpmn:task id="Task_1iliz9u" name="A10: After X3">
       <bpmn:incoming>SequenceFlow_0cuf4be</bpmn:incoming>
@@ -564,13 +569,17 @@
         <di:waypoint x="826" y="392" />
         <di:waypoint x="2370" y="429" />
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DataInputAssociation_0z2sk9v_di" bpmnElement="DataInputAssociation_0z2sk9v">
+        <di:waypoint x="1308" y="246" />
+        <di:waypoint x="1713" y="722" />
+      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="DataOutputAssociation_143dadi_di" bpmnElement="DataOutputAssociation_143dadi">
         <di:waypoint x="1960" y="277" />
         <di:waypoint x="1308" y="231" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="DataInputAssociation_0z2sk9v_di" bpmnElement="DataInputAssociation_0z2sk9v">
-        <di:waypoint x="1308" y="246" />
-        <di:waypoint x="1713" y="722" />
+      <bpmndi:BPMNEdge id="DataInputAssociation_1m3vkyb_di" bpmnElement="DataInputAssociation_1m3vkyb">
+        <di:waypoint x="1308" y="242" />
+        <di:waypoint x="2013" y="538" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
