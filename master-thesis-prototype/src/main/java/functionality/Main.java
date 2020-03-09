@@ -1,14 +1,19 @@
 package functionality;
 
 import java.awt.BorderLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
@@ -33,7 +38,7 @@ public class Main {
 		// TODO Auto-generated method stub
 		
 	
-		API a2 = null;
+		//API a2 = null;
 		/*
 		  JFileChooser chooser = new JFileChooser();
 		    
@@ -48,7 +53,10 @@ public class Main {
 	        }
 		*/
 		//a2 = new API("C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process.bpmn");
-		a2 = new API("C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process1.bpmn");
+		API a2 = new API("C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process1.bpmn");
+		
+
+		HashMap<BPMNDataObject, ArrayList<BPMNTask>> participantList = new HashMap<BPMNDataObject, ArrayList<BPMNTask>>();
 		
 		
 		 JFrame frame=new JFrame("GUITest");
@@ -58,15 +66,16 @@ public class Main {
 		    panel.add(new JLabel("Choose participants"));
 		    panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
 		    
-		    
-		    List<JCheckBox> checkboxes = new ArrayList<>();
+		   
+		    ArrayList<JCheckBoxWithId> checkboxes = new ArrayList<JCheckBoxWithId>();
+		   
 		    
 		    for(BPMNTask t: a2.lastWriters) {
 		    	panel.add(new JLabel("Writer: "+t.getName()));
-		    	for(Entry<BPMNDataObject, ArrayList<BPMNTask>> t2: t.getSDHashMap().entrySet()) {
-		    		panel.add(new JLabel(t2.getKey().getName()+" Strong-Dynamic:"));
+		    	   	for(Entry<BPMNDataObject, ArrayList<BPMNTask>> t2: t.getSDHashMap().entrySet()) {
+		    	   		panel.add(new JLabel(t2.getKey().getName()+" Strong-Dynamic:"));
 		    		for(BPMNTask task: t2.getValue()) {
-		    		JCheckBox box = new JCheckBox(task.getParticipant().getName()+ ", "+task.getName());
+		    		JCheckBoxWithId box = new JCheckBoxWithId(task.getParticipant().getName()+ ", "+task.getName(),t, t.getSDHashMap(), task);
 		    		checkboxes.add(box);
 		    		panel.add(box);
 		    		}
@@ -75,7 +84,7 @@ public class Main {
 		    	for(Entry<BPMNDataObject, ArrayList<BPMNTask>> t2: t.getWDHashMap().entrySet()) {
 		    		panel.add(new JLabel(t2.getKey().getName()+" Weak-Dynamic:"));
 		    		for(BPMNTask task: t2.getValue()) {
-		    		JCheckBox box = new JCheckBox(task.getParticipant().getName()+ ", "+task.getName());
+		    		JCheckBoxWithId box = new JCheckBoxWithId(task.getParticipant().getName()+ ", "+task.getName(),t,t.getWDHashMap(),task);
 		    		checkboxes.add(box);
 		    		panel.add(box);
 		    		}
@@ -83,7 +92,43 @@ public class Main {
 		    	
 		    }
 		    
-		  
+		    
+		    
+		    
+		    JButton button = new JButton("Add marked participants to voting");
+		    button.addActionListener(new ActionListener() {		    	
+		        @Override
+		        public void actionPerformed(ActionEvent e) {
+		           for(JCheckBoxWithId checkBox: checkboxes) {
+		        	   if(checkBox.isSelected()) {
+		        		   for(BPMNDataObject dataKey: checkBox.map.keySet()) {	
+		        			   if(participantList.get(dataKey)==null) {
+			        			   ArrayList<BPMNTask> list = new ArrayList<BPMNTask>();
+			        			   list.add(checkBox.t2);
+			        			   participantList.put(dataKey, list);			        			   
+		        		   } else {
+		        			   participantList.get(dataKey).add(checkBox.t2);
+		        		   }
+		        		          			   
+		        		  
+		        		   } 
+		        		 
+		        		 
+		        	   }
+		           }
+		       
+		          try {
+					a2.addVotingTasksToProcess(((BPMNBusinessRuleTask)a2.getNodeById("BusinessRuleTask_165zomh")), participantList);
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+		        }
+		        
+		    });
+		   
+		   
+		    panel.add(button);
 		    frame.add(panel);
 		    frame.pack();
 		    
