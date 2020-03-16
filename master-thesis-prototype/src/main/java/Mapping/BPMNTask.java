@@ -13,7 +13,7 @@ public class BPMNTask extends BPMNElement{
 	private ArrayList<BPMNDataObject> dataObjects;
 	
 	//Writers can be attached the sphere for the written data object
-	//Readers after that Task have to be in this sphere
+	//Readers after that Task have to be at least in this sphere
 	private HashMap<BPMNDataObject, String> sphereAnnotation;
 	
 	private HashMap<BPMNDataObject, ArrayList<BPMNTask>> weakDynamicHashMap;

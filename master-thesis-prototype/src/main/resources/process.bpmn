@@ -194,7 +194,7 @@
     <bpmn:association id="Association_0qse3cw" associationDirection="None" sourceRef="Task_1l5z8vy" targetRef="TextAnnotation_1wbsuic" />
     <bpmn:association id="Association_17qyy32" associationDirection="None" sourceRef="Task_0ldf4hf" targetRef="TextAnnotation_08xx1jm" />
     <bpmn:textAnnotation id="TextAnnotation_07phl81">
-      <bpmn:text>[4]</bpmn:text>
+      <bpmn:text>[D2]: {2}</bpmn:text>
     </bpmn:textAnnotation>
     <bpmn:association id="Association_0m5l77e" associationDirection="None" sourceRef="ExclusiveGateway_0btyrfe" targetRef="TextAnnotation_07phl81" />
   </bpmn:process>

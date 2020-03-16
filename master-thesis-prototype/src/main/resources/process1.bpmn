@@ -34,8 +34,8 @@
         <bpmn:flowNodeRef>ExclusiveGateway_19t6vlv</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_14t3y8f</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>ExclusiveGateway_0di2olz</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Task_04190b2</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>UserTask_05nxboe</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_04190b2</bpmn:flowNodeRef>
       </bpmn:lane>
     </bpmn:laneSet>
     <bpmn:startEvent id="StartEvent_0nrqpzj">
@@ -146,10 +146,6 @@
       <bpmn:incoming>SequenceFlow_088sg77</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_0cuf4be</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:task id="Task_04190b2" name="A9: Test Task&#10;">
-      <bpmn:incoming>SequenceFlow_1ca7ao8</bpmn:incoming>
-      <bpmn:outgoing>SequenceFlow_1lu4zp5</bpmn:outgoing>
-    </bpmn:task>
     <bpmn:sequenceFlow id="SequenceFlow_1mjh9rl" name="yes" sourceRef="ExclusiveGateway_0zvdy73" targetRef="Task_1h7djbf" />
     <bpmn:sequenceFlow id="SequenceFlow_0rc0ope" name="no" sourceRef="ExclusiveGateway_0zvdy73" targetRef="Task_12qazd1" />
     <bpmn:sequenceFlow id="SequenceFlow_03m2rsf" sourceRef="Task_1h7djbf" targetRef="ExclusiveGateway_11qq17t" />
@@ -217,6 +213,10 @@
         <bpmn:targetRef>Property_1d5hhpo</bpmn:targetRef>
       </bpmn:dataInputAssociation>
     </bpmn:task>
+    <bpmn:task id="Task_04190b2" name="A9: Test Task&#10;">
+      <bpmn:incoming>SequenceFlow_1ca7ao8</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_1lu4zp5</bpmn:outgoing>
+    </bpmn:task>
     <bpmn:textAnnotation id="TextAnnotation_0y5vujg">
       <bpmn:text>[D1]: {Weak-Dynamic}</bpmn:text>
     </bpmn:textAnnotation>
@@ -227,13 +227,17 @@
       <bpmn:text>Default: [D1]: {Strong-Dynamic}</bpmn:text>
     </bpmn:textAnnotation>
     <bpmn:association id="Association_0r1w5b8" associationDirection="None" sourceRef="UserTask_0oxrmsm" targetRef="TextAnnotation_0y5vujg" />
-    <bpmn:textAnnotation id="TextAnnotation_0k86aw2">
-      <bpmn:text>[4]</bpmn:text>
-    </bpmn:textAnnotation>
     <bpmn:association id="Association_0zu68o2" associationDirection="None" sourceRef="ExclusiveGateway_0zvdy73" targetRef="TextAnnotation_0k86aw2" />
     <bpmn:association id="Association_0vsr845" sourceRef="Task_1oj77pt" targetRef="TextAnnotation_1axqqcb" />
     <bpmn:textAnnotation id="TextAnnotation_1axqqcb">
       <bpmn:text>[D2]: {Strong-Dynamic}</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_0tuxm2y" sourceRef="ExclusiveGateway_0zvdy73" targetRef="TextAnnotation_1ncagku" />
+    <bpmn:textAnnotation id="TextAnnotation_1ncagku">
+      <bpmn:text>[D2]: {2}</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="TextAnnotation_0k86aw2">
+      <bpmn:text>[D1]: {1}</bpmn:text>
     </bpmn:textAnnotation>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
@@ -328,9 +332,6 @@
           <dc:Bounds x="2375.5" y="273" width="13" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_04190b2_di" bpmnElement="Task_04190b2">
-        <dc:Bounds x="2171" y="275" width="100" height="80" />
-      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_1iliz9u_di" bpmnElement="Task_1iliz9u">
         <dc:Bounds x="2370" y="372" width="100" height="80" />
       </bpmndi:BPMNShape>
@@ -347,7 +348,7 @@
         <dc:Bounds x="768" y="930" width="284" height="30" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="TextAnnotation_0k86aw2_di" bpmnElement="TextAnnotation_0k86aw2">
-        <dc:Bounds x="1910" y="645" width="143" height="30" />
+        <dc:Bounds x="2000" y="655" width="143" height="30" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="SequenceFlow_0cuf4be_di" bpmnElement="SequenceFlow_0cuf4be">
         <di:waypoint x="2341" y="305" />
@@ -479,7 +480,8 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Association_0zu68o2_di" bpmnElement="Association_0zu68o2">
         <di:waypoint x="1933" y="587" />
-        <di:waypoint x="1982" y="630" />
+        <di:waypoint x="2030" y="660" />
+        <di:waypoint x="2041" y="655" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="ExclusiveGateway_0xo27qj_di" bpmnElement="ExclusiveGateway_0xo27qj" isMarkerVisible="true">
         <dc:Bounds x="815" y="547" width="50" height="50" />
@@ -581,6 +583,17 @@
         <di:waypoint x="1308" y="242" />
         <di:waypoint x="2013" y="538" />
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="TextAnnotation_1ncagku_di" bpmnElement="TextAnnotation_1ncagku">
+        <dc:Bounds x="1910" y="747" width="100" height="30" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_0tuxm2y_di" bpmnElement="Association_0tuxm2y">
+        <di:waypoint x="1924" y="596" />
+        <di:waypoint x="1960" y="760" />
+        <di:waypoint x="1957" y="747" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Task_0427wsr_di" bpmnElement="Task_04190b2">
+        <dc:Bounds x="2171" y="275" width="100" height="80" />
+      </bpmndi:BPMNShape>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>

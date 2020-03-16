@@ -10,15 +10,15 @@ import Mapping.BPMNTask;
 
 public class JCheckBoxWithId extends JCheckBox {
 	
-	public BPMNTask t;
+	public BPMNTask lastWriter;
 	public HashMap<BPMNDataObject, ArrayList<BPMNTask>> map;
-	public BPMNTask t2;
+	public BPMNTask oneTaskOutOfMap;
 	
-	public JCheckBoxWithId(String text, BPMNTask t, HashMap<BPMNDataObject, ArrayList<BPMNTask>> map, BPMNTask t2  ) {
+	public JCheckBoxWithId(String text, BPMNTask lastWriter, HashMap<BPMNDataObject, ArrayList<BPMNTask>> map, BPMNTask oneTaskOutOfMap  ) {
 		super(text);
-		this.t=t;
+		this.lastWriter=lastWriter;
 		this.map=map;
-		this.t2=t2;
+		this.oneTaskOutOfMap=oneTaskOutOfMap;
 	}
 	
 
