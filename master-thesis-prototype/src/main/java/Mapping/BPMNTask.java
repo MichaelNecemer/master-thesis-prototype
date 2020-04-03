@@ -7,6 +7,8 @@ import java.util.HashMap;
 //This is represented by having a predecessor and a successor 
 public class BPMNTask extends BPMNElement{
 	
+	private static int votingTaskId = 0;
+	
 	private String name;
 	private BPMNParticipant participant;
 	//List of dataObjects connected to the task (task either reads or writes)
@@ -16,8 +18,8 @@ public class BPMNTask extends BPMNElement{
 	//Readers after that Task have to be at least in this sphere
 	private HashMap<BPMNDataObject, String> sphereAnnotation;
 	
-	private HashMap<BPMNDataObject, ArrayList<BPMNTask>> weakDynamicHashMap;
-	private HashMap<BPMNDataObject, ArrayList<BPMNTask>> strongDynamicHashMap;
+	private HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> weakDynamicHashMap;
+	private HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> strongDynamicHashMap;
 	
 
 	public BPMNTask (String id, String name) {
@@ -25,8 +27,8 @@ public class BPMNTask extends BPMNElement{
 		this.name = name;
 		this.dataObjects = new ArrayList<BPMNDataObject>();
 		this.sphereAnnotation = new HashMap<BPMNDataObject, String>();
-		this.weakDynamicHashMap=new HashMap<BPMNDataObject, ArrayList<BPMNTask>>();
-		this.strongDynamicHashMap = new HashMap<BPMNDataObject, ArrayList<BPMNTask>>();
+		this.weakDynamicHashMap=new HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>>();
+		this.strongDynamicHashMap = new HashMap<BPMNBusinessRuleTask,HashMap<BPMNDataObject, ArrayList<BPMNTask>>>();
 	}
 	
 	
@@ -100,45 +102,65 @@ public class BPMNTask extends BPMNElement{
 	}
 	
 	
-	public void addTaskToWDHashMap(BPMNDataObject bpmndo, BPMNTask reader) {
-		if(this.weakDynamicHashMap.get(bpmndo)==null){
-			this.weakDynamicHashMap.put(bpmndo, new ArrayList<BPMNTask>());			
-		}
-		this.weakDynamicHashMap.get(bpmndo).add(reader);
+	public void addTaskToWDHashMap(BPMNBusinessRuleTask brt, BPMNDataObject bpmndo, BPMNTask reader) {
+		if(this.weakDynamicHashMap.get(brt)==null) {
+			this.weakDynamicHashMap.put(brt, new HashMap<BPMNDataObject, ArrayList<BPMNTask>>());
+			
+			if(this.weakDynamicHashMap.get(brt).get(bpmndo)==null) {
+				this.weakDynamicHashMap.get(brt).put(bpmndo, new ArrayList<BPMNTask>());
+			}
+			
+		}	
+		
+		this.weakDynamicHashMap.get(brt).get(bpmndo).add(reader);
+		
 		
 	}
 	
-	public void addTaskToSDHashMap(BPMNDataObject bpmndo, BPMNTask reader) {
-		if(this.strongDynamicHashMap.get(bpmndo)==null){
-			this.strongDynamicHashMap.put(bpmndo, new ArrayList<BPMNTask>());			
-		}
-		this.strongDynamicHashMap.get(bpmndo).add(reader);
+	public void addTaskToSDHashMap(BPMNBusinessRuleTask brt, BPMNDataObject bpmndo, BPMNTask reader) {
+		if(this.strongDynamicHashMap.get(brt)==null) {
+			this.strongDynamicHashMap.put(brt, new HashMap<BPMNDataObject, ArrayList<BPMNTask>>());
+					
+			if(this.strongDynamicHashMap.get(brt).get(bpmndo)==null) {
+				this.strongDynamicHashMap.get(brt).put(bpmndo, new ArrayList<BPMNTask>());
+			}
+			
+		}	
+		
+		this.strongDynamicHashMap.get(brt).get(bpmndo).add(reader);
 		
 	}
 
 
 
-	public HashMap<BPMNDataObject, ArrayList<BPMNTask>> getWDHashMap() {
+	public HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> getWDHashMap() {
 		return this.weakDynamicHashMap;
 	}
 
 
 
-	public void setWDHashMap(HashMap<BPMNDataObject, ArrayList<BPMNTask>> wdHashMap) {
+	public void setWDHashMap(HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> wdHashMap) {
 		this.weakDynamicHashMap = wdHashMap;
 	}
 
 
 
-	public HashMap<BPMNDataObject, ArrayList<BPMNTask>> getSDHashMap() {
+	public HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> getSDHashMap() {
 		return this.strongDynamicHashMap;
 	}
 
 
 
-	public void setStrongDynamicList(HashMap<BPMNDataObject, ArrayList<BPMNTask>> sdHashMap) {
+	public void setStrongDynamicList(HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> sdHashMap) {
 		this.strongDynamicHashMap = sdHashMap;
 	}
 	
+	public static int getVotingTaskId() {
+		return votingTaskId;
+	}
+	
+	public static int increaseVotingTaskId() {
+		return ++votingTaskId;
+	}
 	
 }

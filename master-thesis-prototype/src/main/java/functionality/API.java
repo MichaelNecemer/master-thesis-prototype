@@ -83,7 +83,7 @@ public class API {
 				this.addVotingSystem(element);
 			}
 		}
-
+		
 	}
 
 	public Collection<FlowNode> getSucceedingFlowNodes(FlowNode node) {
@@ -604,10 +604,14 @@ public class API {
 
 	}
 
-	public void addVotingTasksToProcess(BPMNBusinessRuleTask brt,
-			HashMap<BPMNDataObject, ArrayList<BPMNTask>> votersMap) throws IOException {
+	public void addVotingTasksToProcess(
+			HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> votersMap) throws IOException {
 
-		BusinessRuleTask businessRt = (BusinessRuleTask) this.getFlowNodeByBPMNNodeId(brt.getId());
+		for(BPMNBusinessRuleTask bpmnBrt: votersMap.keySet()) {
+		
+		BusinessRuleTask businessRt = (BusinessRuleTask) this.getFlowNodeByBPMNNodeId(bpmnBrt.getId());
+		HashMap<BPMNDataObject, ArrayList<BPMNTask>>votersMapInner = votersMap.get(bpmnBrt);
+		
 		SequenceFlow incomingSequenceFlow = businessRt.getIncoming().iterator().next();
 		BpmnEdge flowDi = incomingSequenceFlow.getDiagramElement();
 
@@ -620,8 +624,8 @@ public class API {
 		modelInstance.getDefinitions().removeChildElement(incomingSequenceFlow);
 
 		this.addTasksToVotingSystem(BPMNParallelGateway.increaseVotingTaskCount(), businessRt,
-				businessRt.builder().moveToNode(brt.getPredecessors().iterator().next().getId()),
-				"PV" + BPMNParallelGateway.getVotingTaskCount() + "split", votersMap,
+				businessRt.builder().moveToNode(bpmnBrt.getPredecessors().iterator().next().getId()),
+				"PV" + BPMNParallelGateway.getVotingTaskCount() + "split", votersMapInner,
 				"PV" + BPMNParallelGateway.getVotingTaskCount() + "join");
 
 		// Add the new tasks generated via fluent builder API to the corresponding lanes
@@ -640,12 +644,10 @@ public class API {
 
 		this.changeBusinessRuleTaskToServiceTask(businessRt);
 
-		// validate and write model to file
-		Bpmn.validateModel(modelInstance);
-
-		File file = File.createTempFile("bpmn-model-with-voting", ".bpmn",
-				new File("C:\\Users\\Micha\\OneDrive\\Desktop"));
-		Bpmn.writeModelToFile(file, modelInstance);
+		}
+		this.writeChangesToFile();
+		
+		
 
 	}
 
@@ -671,12 +673,13 @@ public class API {
 		boolean isSet = false;
 
 		if (votersMap.entrySet().size() == 1 && votersMap.entrySet().iterator().next().getValue().size() == 1) {
+			int votingTaskId = BPMNTask.increaseVotingTaskId();
 			BPMNDataObject key = iter.next().getKey();
 			ArrayList<BPMNTask> nextList = votersMap.get(key);
 			Iterator<BPMNTask> nextListIter = nextList.iterator();
 			BPMNParticipant nextParticipant = nextListIter.next().getParticipant();
-			builder.userTask("votingTask" + i).name("VotingTask " + nextParticipant.getName()).connectTo(brt.getId());
-			this.addDataInputReferencesToVotingTasks((Task) this.getFlowNodeByBPMNNodeId("votingTask" + i), key);
+			builder.userTask("votingTask" + votingTaskId).name("VotingTask " + nextParticipant.getName()).connectTo(brt.getId());
+			this.addDataInputReferencesToVotingTasks((Task) this.getFlowNodeByBPMNNodeId("votingTask" + votingTaskId), key);
 		} else {
 
 			builder.parallelGateway(parallelSplit).name(parallelSplit);
@@ -697,18 +700,18 @@ public class API {
 						}
 					}
 					if (skip == false) {
-						i++;
-						builder.moveToNode(parallelSplit).userTask("votingTask" + i)
+						int votingTaskId = BPMNTask.increaseVotingTaskId();
+						builder.moveToNode(parallelSplit).userTask("votingTask" + votingTaskId)
 								.name("VotingTask " + nextParticipant.getName());
-						alreadyModelled.add((Task) this.getFlowNodeByBPMNNodeId("votingTask" + i));
-						this.addDataInputReferencesToVotingTasks((Task) this.getFlowNodeByBPMNNodeId("votingTask" + i),
+						alreadyModelled.add((Task) this.getFlowNodeByBPMNNodeId("votingTask" + votingTaskId));
+						this.addDataInputReferencesToVotingTasks((Task) this.getFlowNodeByBPMNNodeId("votingTask" + votingTaskId),
 								key);
 
 						if (isSet == false) {
-							builder.moveToNode("votingTask" + i).parallelGateway(parallelJoin).name(parallelJoin);
+							builder.moveToNode("votingTask" + votingTaskId).parallelGateway(parallelJoin).name(parallelJoin);
 							isSet = true;
 						} else {
-							builder.moveToNode("votingTask" + i).connectTo(parallelJoin);
+							builder.moveToNode("votingTask" + votingTaskId).connectTo(parallelJoin);
 						}
 
 					}
@@ -746,16 +749,19 @@ public class API {
 					lastWriters.add(lastWriter);
 					brt.getLastWriterList().add(lastWriter);
 
-					// if lastWriter is within an xor-branch we need to find the lastWriter for the
+					// if lastWriter is within an other xor branch than the brt we need to find the lastWriter for the
 					// other branch too
-					if (lastWriter.hasLabel()) {
+					if (!lastWriter.getLabels().equals(brt.getLabels())) {
 						BPMNTask lastWriterOtherBranch = this.getLastWriterForDataObject(brt, data, lastWriter);
+						if(lastWriterOtherBranch!=null) {
 						lastWriters.add(lastWriterOtherBranch);
 						brt.getLastWriterList().add(lastWriterOtherBranch);
+						}
 					}
 
 					while (!lastWriters.isEmpty()) {
 						BPMNTask lWriter = lastWriters.pollFirst();
+						System.out.print("LASTWRITER: ");
 						lWriter.printElement();
 						for (BPMNDataObject sphere : lWriter.getSphereAnnotation().keySet()) {
 							value = lWriter.getSphereAnnotation().get(sphere);
@@ -781,7 +787,7 @@ public class API {
 											}
 										}
 									}
-									this.addReaderToSphere(sphere, count, lWriter, (BPMNTask) reader, paths);
+									this.addReaderToSphere(brt, sphere, count, lWriter, (BPMNTask) reader, paths);
 									count = 0;
 								}
 							}
@@ -807,7 +813,7 @@ public class API {
 
 	}
 
-	private void addReaderToSphere(BPMNDataObject bpmndo, int count, BPMNTask writer, BPMNTask reader,
+	private void addReaderToSphere(BPMNBusinessRuleTask brt, BPMNDataObject bpmndo, int count, BPMNTask writer, BPMNTask reader,
 			LinkedList<LinkedList<BPMNElement>> paths) {
 		ArrayList<Label> writerLabels = writer.getLabels();
 		ArrayList<Label> readerLabels = reader.getLabels();
@@ -821,47 +827,47 @@ public class API {
 
 		if (writerLabels.equals(readerLabels)) {
 			if (anotherWriterOnPath == paths.size()) {
-				writer.addTaskToSDHashMap(bpmndo, reader);
+				writer.addTaskToSDHashMap(brt, bpmndo, reader);
 			} else if (anotherWriterOnPath > 0 && anotherWriterOnPath < paths.size()) {
-				writer.addTaskToWDHashMap(bpmndo, reader);
+				writer.addTaskToWDHashMap(brt, bpmndo, reader);
 			}
 			// writer.addTaskToWDHashMap(bpmndo, reader);
 		} else if (writerLabels.size() > readerLabels.size()) {
 			if (readerLabels.size() == 0) {
 				if (anotherWriterOnPath == paths.size()) {
-					writer.addTaskToSDHashMap(bpmndo, reader);
+					writer.addTaskToSDHashMap(brt, bpmndo, reader);
 				} else if (anotherWriterOnPath > 0 && anotherWriterOnPath < paths.size()) {
-					writer.addTaskToWDHashMap(bpmndo, reader);
+					writer.addTaskToWDHashMap(brt, bpmndo, reader);
 				}
 				// writer.addTaskToWDHashMap(bpmndo, reader);
 			} else {
 				if (writerLabels.containsAll(readerLabels)) {
 					if (anotherWriterOnPath == paths.size()) {
-						writer.addTaskToSDHashMap(bpmndo, reader);
+						writer.addTaskToSDHashMap(brt, bpmndo, reader);
 					} else if (anotherWriterOnPath > 0 && anotherWriterOnPath < paths.size()) {
-						writer.addTaskToWDHashMap(bpmndo, reader);
+						writer.addTaskToWDHashMap(brt, bpmndo, reader);
 					}
 					// writer.addTaskToWDHashMap(bpmndo, reader);
 				} else {
 					if (anotherWriterOnPath == paths.size()) {
-						writer.addTaskToWDHashMap(bpmndo, reader);
+						writer.addTaskToWDHashMap(brt, bpmndo, reader);
 					} else if (anotherWriterOnPath > 0 && anotherWriterOnPath < paths.size()) {
-						writer.addTaskToWDHashMap(bpmndo, reader);
+						writer.addTaskToWDHashMap(brt, bpmndo, reader);
 					}
 				}
 			}
 
 		} else if (writerLabels.size() < readerLabels.size()) {
 			if (anotherWriterOnPath == paths.size()) {
-				writer.addTaskToWDHashMap(bpmndo, reader);
+				writer.addTaskToWDHashMap(brt, bpmndo, reader);
 			} else if (anotherWriterOnPath > 0 && anotherWriterOnPath < paths.size()) {
-				writer.addTaskToWDHashMap(bpmndo, reader);
+				writer.addTaskToWDHashMap(brt, bpmndo, reader);
 			}
 		} else if (writerLabels.size() == readerLabels.size() && !writerLabels.equals(readerLabels)) {
 			if (anotherWriterOnPath == paths.size()) {
-				writer.addTaskToWDHashMap(bpmndo, reader);
+				writer.addTaskToWDHashMap(brt, bpmndo, reader);
 			} else if (anotherWriterOnPath > 0 && anotherWriterOnPath < paths.size()) {
-				writer.addTaskToWDHashMap(bpmndo, reader);
+				writer.addTaskToWDHashMap(brt, bpmndo, reader);
 			}
 		}
 
@@ -966,5 +972,14 @@ public class API {
 
 	public ArrayList<BPMNBusinessRuleTask> getBusinessRuleTasks() {
 		return this.businessRuleTaskList;
+	}
+	
+	public void writeChangesToFile() throws IOException {
+		// validate and write model to file
+				Bpmn.validateModel(modelInstance);
+
+				File file = File.createTempFile("bpmn-model-with-voting", ".bpmn",
+						new File("C:\\Users\\Micha\\OneDrive\\Desktop"));
+				Bpmn.writeModelToFile(file, modelInstance);
 	}
 }
