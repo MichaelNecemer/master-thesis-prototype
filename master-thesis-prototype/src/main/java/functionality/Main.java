@@ -1,6 +1,7 @@
 package functionality;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -8,6 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -66,14 +68,15 @@ public class Main {
 		 LinkedHashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> participantList = new LinkedHashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>>();
 		 JFrame frame = new JFrame("GUITest");
 			frame.setVisible(true);
-			frame.setLayout(new GridLayout(0,a2.getBusinessRuleTasks().size(), 10,0));
+			frame.setLayout(new GridLayout(0,a2.getBusinessRuleTasks().size()+1, 10,0));
 			
 						
 			ArrayList<JCheckBoxWithId> checkboxes = new ArrayList<JCheckBoxWithId>();
 			
 		for (BPMNBusinessRuleTask brt : a2.getBusinessRuleTasks()) {
 			JPanel panel = new JPanel();
-			
+			ArrayList<JLabel> labelList = new ArrayList<JLabel>();
+
 			panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
 			 bpmnEx = (BPMNExclusiveGateway) brt.getSuccessors().iterator().next();
 			 panel.add(new JLabel("CHOOSE VOTERS FOR EXCLUSIVE GATEWAY "+bpmnEx.getName()));
@@ -82,13 +85,44 @@ public class Main {
 			}
 
 			for (BPMNTask t : brt.getLastWriterList()) {
+		
+				boolean help = false;
 				
 				for (Entry<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> t2 : t.getSDHashMap().entrySet()) {
+					
 					if(t2.getKey().getId().equals(brt.getId())) {
 					for(Entry<BPMNDataObject, ArrayList<BPMNTask>> entry: t2.getValue().entrySet()) {
-						panel.add(new JLabel("Writer: " + t.getName() +" to "+entry.getKey().getName()));
-						panel.add(new JLabel("Reader: "+ t2.getKey().getName() + "is in Strong-Dynamic Sphere:"));
-					
+						String writerString = "Writer: " + t.getName() +" to "+entry.getKey().getName();
+						
+							Iterator<JLabel> labelIt = labelList.listIterator();
+							JLabel current = null;
+							while(labelIt.hasNext()) {
+								current = labelIt.next();
+								System.out.println(current.getText());
+								if(current.getText().equals(writerString.toString())) {
+									System.out.println("TEST");
+									help = true;
+								}
+							}						
+							
+							if(help == false) {
+								JLabel writerLabel = new JLabel(writerString.toString());
+								panel.add(writerLabel);
+								labelList.add(writerLabel);
+							}
+							
+						
+						
+						//check the writers minimum sphere readers have to be in						
+						for(BPMNDataObject dataO: t.getSphereAnnotation().keySet()) {
+							if(dataO.getId().equals(entry.getKey().getId())) {
+								panel.add(new JLabel("Readers have to be at least "+t.getSphereAnnotation().get(dataO)));
+							}
+						}
+						
+						JLabel colorLabel = new JLabel("Strong-Dynamic Sphere");
+						colorLabel.setForeground(Color.GREEN);
+						panel.add(colorLabel);
 					for (BPMNTask task : entry.getValue()) {
 						JCheckBoxWithId box = new JCheckBoxWithId(
 								task.getParticipant().getName() + ", " + task.getName(), t, t.getSDHashMap(), task, bpmnEx);
@@ -101,9 +135,25 @@ public class Main {
 				for (Entry<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> t2 : t.getWDHashMap().entrySet()) {
 					if(t2.getKey().getId().equals(brt.getId())) {
 					for(Entry<BPMNDataObject, ArrayList<BPMNTask>> entry: t2.getValue().entrySet()) {
-						panel.add(new JLabel("Writer: " + t.getName() +" to "+entry.getKey().getName()));
-						panel.add(new JLabel("Reader: "+ t2.getKey().getName() + "is in Weak-Dynamic Sphere:"));
-					for (BPMNTask task : entry.getValue()) {
+						String writerString = "Writer: " + t.getName() +" to "+entry.getKey().getName();
+
+						for(JLabel label: labelList) {
+							if(label.getText().equals(writerString.toString())) {
+								help = true;
+							}
+						}
+						
+						if(help == false) {
+							JLabel writerLabel = new JLabel(writerString.toString());
+							panel.add(writerLabel);
+							labelList.add(writerLabel);
+						}
+						
+						
+						JLabel colorLabel = new JLabel("Weak-Dynamic Sphere");
+						colorLabel.setForeground(Color.BLUE);
+						panel.add(colorLabel);
+						for (BPMNTask task : entry.getValue()) {
 						JCheckBoxWithId box = new JCheckBoxWithId(
 								task.getParticipant().getName() + ", " + task.getName(), t, t.getWDHashMap(), task, bpmnEx);
 						checkboxes.add(box);
