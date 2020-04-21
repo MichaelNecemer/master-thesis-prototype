@@ -83,24 +83,24 @@ public class Main {
 			for(Entry<BPMNDataObject, Integer> voters: bpmnEx.getVoters().entrySet()) {
 				panel.add(new JLabel(voters.getValue()+" needed for "+voters.getKey().getName()));
 			}
+			
+			
 
-			for (BPMNTask t : brt.getLastWriterList()) {
+			for (BPMNTask lastWriterTask : brt.getLastWriterList()) {
 		
 				boolean help = false;
 				
-				for (Entry<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> t2 : t.getSDHashMap().entrySet()) {
+				for (Entry<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> t2 : lastWriterTask.getSDHashMap().entrySet()) {
 					
 					if(t2.getKey().getId().equals(brt.getId())) {
 					for(Entry<BPMNDataObject, ArrayList<BPMNTask>> entry: t2.getValue().entrySet()) {
-						String writerString = "Writer: " + t.getName() +" to "+entry.getKey().getName();
-						
+						String writerString = "Writer: " + lastWriterTask.getName() +" to "+entry.getKey().getName();
+													
 							Iterator<JLabel> labelIt = labelList.listIterator();
 							JLabel current = null;
 							while(labelIt.hasNext()) {
 								current = labelIt.next();
-								System.out.println(current.getText());
-								if(current.getText().equals(writerString.toString())) {
-									System.out.println("TEST");
+								if(current.getText().equals(writerString)) {
 									help = true;
 								}
 							}						
@@ -112,12 +112,12 @@ public class Main {
 							}
 							
 						
-						
+							
 						//check the writers minimum sphere readers have to be in						
-						for(BPMNDataObject dataO: t.getSphereAnnotation().keySet()) {
+						for(BPMNDataObject dataO: lastWriterTask.getSphereAnnotation().keySet()) {
 							if(dataO.getId().equals(entry.getKey().getId())) {
-								panel.add(new JLabel("Readers have to be at least "+t.getSphereAnnotation().get(dataO)));
-							}
+								panel.add(new JLabel("Readers have to be at least "+lastWriterTask.getSphereAnnotation().get(dataO)));
+							} 
 						}
 						
 						JLabel colorLabel = new JLabel("Strong-Dynamic Sphere");
@@ -125,17 +125,17 @@ public class Main {
 						panel.add(colorLabel);
 					for (BPMNTask task : entry.getValue()) {
 						JCheckBoxWithId box = new JCheckBoxWithId(
-								task.getParticipant().getName() + ", " + task.getName(), t, t.getSDHashMap(), task, bpmnEx);
+								task.getParticipant().getName() + ", " + task.getName(), lastWriterTask, lastWriterTask.getSDHashMap(), task, bpmnEx, entry.getKey());
 						checkboxes.add(box);
 						panel.add(box);
 					}
 					}
 				}
 				}
-				for (Entry<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> t2 : t.getWDHashMap().entrySet()) {
+				for (Entry<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> t2 : lastWriterTask.getWDHashMap().entrySet()) {
 					if(t2.getKey().getId().equals(brt.getId())) {
 					for(Entry<BPMNDataObject, ArrayList<BPMNTask>> entry: t2.getValue().entrySet()) {
-						String writerString = "Writer: " + t.getName() +" to "+entry.getKey().getName();
+						String writerString = "Writer: " + lastWriterTask.getName() +" to "+entry.getKey().getName();
 
 						for(JLabel label: labelList) {
 							if(label.getText().equals(writerString.toString())) {
@@ -149,13 +149,19 @@ public class Main {
 							labelList.add(writerLabel);
 						}
 						
+						//check the writers minimum sphere readers have to be in						
+						for(BPMNDataObject dataO: lastWriterTask.getSphereAnnotation().keySet()) {
+							if(dataO.getId().equals(entry.getKey().getId())) {
+								panel.add(new JLabel("Readers have to be at least "+lastWriterTask.getSphereAnnotation().get(dataO)));
+							} 
+						}
 						
 						JLabel colorLabel = new JLabel("Weak-Dynamic Sphere");
 						colorLabel.setForeground(Color.BLUE);
 						panel.add(colorLabel);
 						for (BPMNTask task : entry.getValue()) {
 						JCheckBoxWithId box = new JCheckBoxWithId(
-								task.getParticipant().getName() + ", " + task.getName(), t, t.getWDHashMap(), task, bpmnEx);
+								task.getParticipant().getName() + ", " + task.getName(), lastWriterTask, lastWriterTask.getWDHashMap(), task, bpmnEx, entry.getKey());
 						checkboxes.add(box);
 						panel.add(box);
 					}
