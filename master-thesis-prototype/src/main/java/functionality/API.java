@@ -47,7 +47,7 @@ import Mapping.Label;
 //Class that uses the camunda model API to interact with the process model directly without parsing the XML first to e.g. DOM Object
 //Note that only processes with exactly 1 Start Event are possible
 public class API {
-
+	
 	private Collection<StartEvent> startEvent;
 	private File process;
 	private BpmnModelInstance modelInstance;
@@ -605,8 +605,9 @@ public class API {
 	}
 
 	public void addVotingTasksToProcess(
-			HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> votersMap) throws IOException {
-
+			HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> votersMap, boolean withSubProcess) throws IOException {
+		
+		
 		for(BPMNBusinessRuleTask bpmnBrt: votersMap.keySet()) {
 		
 		BusinessRuleTask businessRt = (BusinessRuleTask) this.getFlowNodeByBPMNNodeId(bpmnBrt.getId());
@@ -622,16 +623,26 @@ public class API {
 			}
 		}
 		modelInstance.getDefinitions().removeChildElement(incomingSequenceFlow);
-
+		
+		
+		//Voting system inside of a subprocess
+		if(withSubProcess==true) {
+		this.addTasksToVotingSystem(BPMNParallelGateway.increaseVotingTaskCount(), businessRt,
+				this.getFlowNodeByBPMNNodeId(bpmnBrt.getPredecessors().iterator().next().getId()).builder().subProcess().embeddedSubProcess().startEvent(),
+				"PV" + BPMNParallelGateway.getVotingTaskCount() + "split", votersMapInner,
+				"PV" + BPMNParallelGateway.getVotingTaskCount() + "join", withSubProcess);
+		} else {
+		//Voting without having a subprocess
 		this.addTasksToVotingSystem(BPMNParallelGateway.increaseVotingTaskCount(), businessRt,
 				businessRt.builder().moveToNode(bpmnBrt.getPredecessors().iterator().next().getId()),
 				"PV" + BPMNParallelGateway.getVotingTaskCount() + "split", votersMapInner,
-				"PV" + BPMNParallelGateway.getVotingTaskCount() + "join");
-
+				"PV" + BPMNParallelGateway.getVotingTaskCount() + "join", withSubProcess);
+		}
+		
 		// Add the new tasks generated via fluent builder API to the corresponding lanes
 		// in the xml model
 		// Cant be done with the fluent model builder directly!
-
+		/*
 		for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
 			for (Task task : modelInstance.getModelElementsByType(Task.class)) {
 				if (l.getName()
@@ -641,10 +652,18 @@ public class API {
 			}
 
 		}
-
+		*/
+		if(withSubProcess==false) {
 		this.changeBusinessRuleTaskToServiceTask(businessRt);
-
 		}
+		if(withSubProcess==true) {
+			this.removeBusinessRuleTask(businessRt);
+			
+		}
+		
+		}
+		
+		
 		this.writeChangesToFile();
 		
 		
@@ -652,7 +671,7 @@ public class API {
 	}
 
 	private void addTasksToVotingSystem(int i, BusinessRuleTask brt, AbstractFlowNodeBuilder builder,
-			String parallelSplit, HashMap<BPMNDataObject, ArrayList<BPMNTask>> votersMap, String parallelJoin) {
+			String parallelSplit, HashMap<BPMNDataObject, ArrayList<BPMNTask>> votersMap, String parallelJoin, boolean withSubProcess) {
 		// Functionality to not show parallel split and join when every task that user
 		// chooses is from same participant
 		// not implemented yet
@@ -661,16 +680,13 @@ public class API {
 			System.err.println("No voters selected");
 
 		}
-		votersMap.entrySet().forEach(f -> {
-			f.getValue().forEach(c -> {
-				c.getParticipant().printParticipant();
-			});
-		});
+		
 
 		Iterator<Entry<BPMNDataObject, ArrayList<BPMNTask>>> iter = votersMap.entrySet().iterator();
 		ArrayList<Task> alreadyModelled = new ArrayList<Task>();
 
 		boolean isSet = false;
+		
 
 		if (votersMap.entrySet().size() == 1 && votersMap.entrySet().iterator().next().getValue().size() == 1) {
 			int votingTaskId = BPMNTask.increaseVotingTaskId();
@@ -683,7 +699,8 @@ public class API {
 		} else {
 
 			builder.parallelGateway(parallelSplit).name(parallelSplit);
-
+			
+			
 			while (iter.hasNext()) {
 
 				BPMNDataObject key = iter.next().getKey();
@@ -715,7 +732,7 @@ public class API {
 						}
 
 					}
-					if (!iter.hasNext() && !nextListIter.hasNext()) {
+					if (!iter.hasNext() && !nextListIter.hasNext()&&withSubProcess==false) {
 						builder.moveToNode(parallelJoin).connectTo(brt.getId());
 					} else {
 						if (nextListIter.hasNext()) {
@@ -726,8 +743,14 @@ public class API {
 					skip = false;
 				}
 			}
-
+			
 		}
+		if(withSubProcess==true) {
+			
+			builder.moveToNode(parallelJoin).serviceTask().endEvent().subProcessDone().connectTo(this.getNodeById(brt.getId()).getSuccessors().iterator().next().getId());
+		
+		}
+		
 	}
 
 	public void addVotingSystem(BPMNElement element) {
@@ -797,15 +820,6 @@ public class API {
 					}
 
 				}
-
-				/*
-				 * for(BPMNTask t: this.lastWriters) { System.out.println("LASTW");
-				 * t.printElement(); for(Entry<BPMNDataObject, ArrayList<BPMNTask>> t2:
-				 * t.getWDHashMap().entrySet()){ for(BPMNTask task: t2.getValue()) {
-				 * System.out.println("HELP"); task.printElement();
-				 * if(!listOfParticipants.contains(task.getParticipant())) {
-				 * listOfParticipants.add(task.getParticipant()); } } } }
-				 */
 
 			}
 
@@ -953,7 +967,13 @@ public class API {
 		modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(e);
 
 	}
+	private void removeBusinessRuleTask(BusinessRuleTask brt) {
+		brt.getParentElement().removeChildElement(brt);
+		//brt.replaceWithElement(null);
+	}
+	
 
+	
 	private void changeBusinessRuleTaskToServiceTask(BusinessRuleTask brt) {
 		ServiceTask serviceTask = modelInstance.newInstance(ServiceTask.class);
 		serviceTask.setId(brt.getId());
@@ -982,4 +1002,5 @@ public class API {
 						new File("C:\\Users\\Micha\\OneDrive\\Desktop"));
 				Bpmn.writeModelToFile(file, modelInstance);
 	}
+	
 }
