@@ -45,8 +45,7 @@ public class Main {
 	static API a2 = null;
 	static BPMNExclusiveGateway bpmnEx = null;
 	static int sumVotes = 0;
-	static int wdCount = 0;
-	static int sdCount = 0;
+	
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
@@ -62,7 +61,7 @@ public class Main {
 		  chooser.getSelectedFile().getAbsolutePath());
 		  
 		  }
-		 */
+		*/
 		API a2 = new API(
 				"C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn");
 		
@@ -72,6 +71,7 @@ public class Main {
 		frame.setLayout(new GridLayout(0, a2.getBusinessRuleTasks().size(), 10, 0));
 		ArrayList<JCheckBoxWithId> checkboxes= new ArrayList<JCheckBoxWithId>();
 		ArrayList<JPanel> panelList = new ArrayList<JPanel>();
+		HashMap<BPMNExclusiveGateway, Integer> countVotesMap = new HashMap<BPMNExclusiveGateway, Integer>();
 		
 		for (BPMNBusinessRuleTask brt : a2.getBusinessRuleTasks()) {
 			JPanel panel = new JPanel();
@@ -83,10 +83,9 @@ public class Main {
 
 			panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
 			bpmnEx = (BPMNExclusiveGateway) brt.getSuccessors().iterator().next();
-			panel.add(new JLabel("CHOOSE VOTERS FOR EXCLUSIVE GATEWAY " + bpmnEx.getName()));
-			for (Entry<BPMNDataObject, Integer> voters : bpmnEx.getVoters().entrySet()) {
-				panel.add(new JLabel(voters.getValue() + " needed for " + voters.getKey().getName()));
-			}
+			sumVotes = bpmnEx.getAmountVoters();
+			countVotesMap.put(bpmnEx, bpmnEx.getAmountVoters());
+			panel.add(new JLabel("CHOOSE "+bpmnEx.getAmountVoters()  +" VOTERS FOR EXCLUSIVE GATEWAY " + bpmnEx.getName()));			
 			
 
 			for (BPMNTask lastWriterTask : brt.getLastWriterList()) {				
@@ -153,12 +152,13 @@ public class Main {
 							help=true;
 							}
 							//Preselect the Strong-Dynamic checkboxes until limit annotated at the xor gateway is reached!
-							if(currentBox.bpmnEx.getVoters().get(dataObject)>boxCount) {
+							if(currentBox.bpmnEx.getAmountVoters()>boxCount) {
 								currentBox.setSelected(true);
+								currentBox.preSelected=true;
 								boxCount++;
 							}							
 							panel.add(currentBox);
-							sdCount++;
+							
 							
 						} else if (currentBox.sphere.equals("Weak-Dynamic")) {
 							if(help2==false) {	
@@ -168,7 +168,7 @@ public class Main {
 								help2=true;
 							}
 							panel.add(currentBox);
-							wdCount++;
+							
 						}
 						
 						
@@ -176,37 +176,44 @@ public class Main {
 				}
 			}
 						
-			sumVotes += bpmnEx.getCumulatedVoters();
+			
 			frame.add(panel);
 			frame.pack();
 		}
 
 		
+		JPanel panel = panelList.get(panelList.size()-1);
+		JButton button = new JButton("Add marked participants to voting");		
+		panel.add(new JLabel("Settings: "));
 		
-		JButton button = new JButton("Add marked participants to voting");
+		JRadioButton mapModelBtn = new JRadioButton("Map Model");
+		mapModelBtn.setSelected(true);
+		panel.add(mapModelBtn);
+		panel.add(button);
 		
 		button.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				int count = 0;
 				
-				int wdCount = 0;
-				int sdCount = 0;
-								
+				ArrayList<BPMNExclusiveGateway>notEnoughVotesList = new ArrayList<BPMNExclusiveGateway>();
+				boolean allSelected = true;
+				
+				for(Entry<BPMNExclusiveGateway, Integer> vote: countVotesMap.entrySet()) {
+					int count = 0;
+					BPMNExclusiveGateway exKey = vote.getKey();
+					int votes = vote.getValue();
+				
 				for (JCheckBoxWithId checkBox : checkboxes) {
-					if (checkBox.isSelected()) {
-						count++;
+					if (checkBox.isSelected()) {						
+						if(exKey.equals(checkBox.bpmnEx)) {
+							count++;
+						}
+						
 						
 						for (Entry<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> br : checkBox.map
 								.entrySet()) {
 							
 							for (Entry<BPMNDataObject, ArrayList<BPMNTask>> entry : br.getValue().entrySet()) {
-								
-								if(checkBox.sphere.equals("Strong-Dynamic")) {
-									sdCount++;
-								} else if (checkBox.sphere.equals("Weak-Dynamic")) {
-									wdCount++;
-								}
 								
 								
 								if (!participantList.containsKey(br.getKey())) {
@@ -226,44 +233,48 @@ public class Main {
 							}
 							
 						}
-						//System.out.println(wdCount);
-						//System.out.println(sdCount);
-
+						
 					}
 					
 				}
 				
+				if(count!=votes) {
+					allSelected=false;
+					notEnoughVotesList.add(exKey);
+				}
+				}
+			
 				
-				if (count == sumVotes) {
+				if (allSelected) {
 					try {
-						a2.addVotingTasksToProcess(participantList, true);
+						a2.addVotingTasksToProcess(participantList, mapModelBtn.isSelected());
+			
 					} catch (IOException e1) {
 						// TODO Auto-generated catch block
 						e1.printStackTrace();
 					}
 				} else {
 					for (JCheckBoxWithId checkBox : checkboxes) {
+						if(!checkBox.preSelected) {
 						checkBox.setSelected(false);
+						} else {
+							checkBox.setSelected(true);
+						}
 					}
 					participantList.clear();
-					JOptionPane.showMessageDialog(null, "Select at least " + sumVotes + " participants!",
+					for(BPMNExclusiveGateway exGtw: notEnoughVotesList) {
+					JOptionPane.showMessageDialog(null, "Select " +exGtw.getAmountVoters() + " participants for "+exGtw.getName() +"!",
 							"InfoBox: " + "Selection failed!", JOptionPane.INFORMATION_MESSAGE);
-
+					}
 				}
 
 			}
 
 		});
-
-		
-		JPanel panel = panelList.get(panelList.size()-1);
-		panel.add(new JRadioButton("Map Model"));
-		panel.add(button);
+	
 		frame.add(panel);
-		
-		
-
 		frame.pack();
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
 
 }

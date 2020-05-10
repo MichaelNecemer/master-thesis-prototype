@@ -5,13 +5,12 @@ import java.util.HashMap;
 //Exclusive Gateways are binary
 public class BPMNExclusiveGateway extends BPMNGateway{
 	
-	private HashMap<BPMNDataObject, Integer> voters;
-	private int cumulatedVoters;
+	
+	private int amountVoters;
 		
 	public BPMNExclusiveGateway(String id, String name, String type) {
 		super(id, name, type);
-		this.voters = new HashMap<BPMNDataObject, Integer>();
-		this.cumulatedVoters=0;		
+		this.amountVoters=0;		
 	}
 
 	
@@ -21,22 +20,14 @@ public class BPMNExclusiveGateway extends BPMNGateway{
 		this.printLabels();
 	}
 
-	public void addVoter(BPMNDataObject bpmndo, int amount) {
-		if(this.voters.get(bpmndo)==null) {
-			this.voters.put(bpmndo, amount);
-			this.cumulatedVoters+=amount;
-		} 		
-	}
 
-
-	public HashMap<BPMNDataObject, Integer> getVoters() {
-		return voters;
+	
+	public int getAmountVoters() {
+		return this.amountVoters;
 	}
 	
-	public int getCumulatedVoters() {
-		return this.cumulatedVoters;
+	public void setAmountVoters(int amountVoters) {
+		this.amountVoters=amountVoters;
 	}
-	
-	
 
 }

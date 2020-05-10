@@ -8,6 +8,7 @@ public class BPMNDataObject {
 	
 	private String id;
 	private String name;
+	private String nameId;
 	private String defaultSphere;
 	
 	private ArrayList<BPMNElement> readers;
@@ -16,6 +17,7 @@ public class BPMNDataObject {
 	public BPMNDataObject(String id, String name) {
 		this.id = id;
 		this.name = name;
+		this.nameId=name.substring(name.indexOf("["), name.indexOf("]")+1);
 		this.readers = new ArrayList<BPMNElement>();
 		this.writers = new ArrayList<BPMNElement>();
 		this.defaultSphere = "";
@@ -120,6 +122,9 @@ public class BPMNDataObject {
 		return otherWriters;
 	}
 	
+	public String getNameId() {
+		return this.nameId;
+	}
 
 	
 }

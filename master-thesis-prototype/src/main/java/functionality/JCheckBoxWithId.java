@@ -18,7 +18,7 @@ public class JCheckBoxWithId extends JCheckBox {
 	public BPMNExclusiveGateway bpmnEx;
 	public BPMNDataObject dataObject;
 	public String sphere;
-	
+	public boolean preSelected = false;
 	
 	public JCheckBoxWithId(String text, BPMNTask lastWriter, HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> map, BPMNTask oneTaskOutOfMap, BPMNExclusiveGateway bpmnEx, BPMNDataObject dataObject, String sphere ) {
 		super(text);
