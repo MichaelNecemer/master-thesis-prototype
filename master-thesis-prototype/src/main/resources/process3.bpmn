@@ -60,7 +60,14 @@
       <bpmn:incoming>SequenceFlow_1ecka5j</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_1rwbjg5</bpmn:outgoing>
     </bpmn:parallelGateway>
-    <bpmn:dataObjectReference id="DataObjectReference_0elqwv7" name="[D1] {Diagnosis}" dataObjectRef="DataObject_1iolw15" />
+    <bpmn:dataObjectReference id="DataObjectReference_0elqwv7" name="[D1] {Diagnosis}" dataObjectRef="DataObject_1iolw15">
+      <bpmn:extensionElements>
+        <camunda:properties>
+          <camunda:property name="testV" value="20" />
+          <camunda:property name="testX" value="17" />
+        </camunda:properties>
+      </bpmn:extensionElements>
+    </bpmn:dataObjectReference>
     <bpmn:dataObject id="DataObject_1iolw15" />
     <bpmn:task id="Task_0vbt22x" name="TEST">
       <bpmn:incoming>SequenceFlow_0kbaqrg</bpmn:incoming>
@@ -247,11 +254,11 @@
     <bpmn:association id="Association_1ngg88u" sourceRef="ExclusiveGateway_1aqgsoo" targetRef="TextAnnotation_15kjxch" />
     <bpmn:association id="Association_1n8fnr9" sourceRef="BusinessRuleTask_1livx3h" targetRef="TextAnnotation_1p5pbv4" />
     <bpmn:textAnnotation id="TextAnnotation_1p5pbv4">
-      <bpmn:text>[Decision] {D1.a+D2.b&gt;10}</bpmn:text>
+      <bpmn:text>[Decision] {(D1.a+D2.b)&gt;10}</bpmn:text>
     </bpmn:textAnnotation>
     <bpmn:association id="Association_1hgeevs" sourceRef="Task_0obh4kt" targetRef="TextAnnotation_1hxmeto" />
     <bpmn:textAnnotation id="TextAnnotation_1hxmeto">
-      <bpmn:text>[Decision] {D1.c==true}</bpmn:text>
+      <bpmn:text>[Decision] {(D1.c)==true}</bpmn:text>
     </bpmn:textAnnotation>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
@@ -616,11 +623,11 @@
         <di:waypoint x="2865" y="268" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="TextAnnotation_1p5pbv4_di" bpmnElement="TextAnnotation_1p5pbv4">
-        <dc:Bounds x="1984" y="820" width="100" height="39" />
+        <dc:Bounds x="1984" y="820" width="140" height="53" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Association_1n8fnr9_di" bpmnElement="Association_1n8fnr9">
-        <di:waypoint x="1884" y="803" />
-        <di:waypoint x="1984" y="828" />
+        <di:waypoint x="1884" y="805" />
+        <di:waypoint x="1984" y="832" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="TextAnnotation_1hxmeto_di" bpmnElement="TextAnnotation_1hxmeto">
         <dc:Bounds x="2720" y="140" width="100" height="39" />

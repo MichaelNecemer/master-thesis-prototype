@@ -13,12 +13,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map.Entry;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.Stack;
 
 import org.camunda.bpm.model.bpmn.builder.*;
 import org.camunda.bpm.model.bpmn.builder.ProcessBuilder;
 import org.camunda.bpm.model.bpmn.impl.instance.FlowNodeRef;
+import org.apache.ibatis.javassist.compiler.ast.Variable;
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.Query;
@@ -27,6 +29,9 @@ import org.camunda.bpm.model.bpmn.instance.Process;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnEdge;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnPlane;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnShape;
+import org.camunda.bpm.model.bpmn.instance.camunda.CamundaFormData;
+import org.camunda.bpm.model.bpmn.instance.camunda.CamundaProperties;
+import org.camunda.bpm.model.bpmn.instance.camunda.CamundaProperty;
 import org.camunda.bpm.model.bpmn.instance.dc.Bounds;
 import org.camunda.bpm.model.bpmn.instance.di.Plane;
 import org.camunda.bpm.model.bpmn.instance.di.Shape;
@@ -44,7 +49,7 @@ import Mapping.BPMNParallelGateway;
 import Mapping.BPMNParticipant;
 import Mapping.BPMNStartEvent;
 import Mapping.BPMNTask;
-import Mapping.Decision;
+import Mapping.DecisionEvaluation;
 import Mapping.Label;
 
 //Class that uses the camunda model API to interact with the process model directly without parsing the XML first to e.g. DOM Object
@@ -246,24 +251,103 @@ public class API {
 	// Map the Camunda Data Objects to BPMNDataObjects
 	public void mapDataObjects() {
 		for (DataObjectReference d : modelInstance.getModelElementsByType(DataObjectReference.class)) {
-			this.dataObjects.add(new BPMNDataObject(d.getAttributeValue("dataObjectRef"), d.getName()));
+			this.dataObjects.add(new BPMNDataObject(d.getAttributeValue("dataObjectRef"), d.getName(), d.getId()));
 		}
 	}
-	
-	
+
 	private void mapDecisions(BPMNBusinessRuleTask bpmnBrt) {
 		for (TextAnnotation text : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 			for (Association a : modelInstance.getModelElementsByType(Association.class)) {
 				if (a.getAttributeValue("sourceRef").equals(bpmnBrt.getId())
 						&& a.getAttributeValue("targetRef").equals(text.getId())) {
-					if(text.getTextContent().startsWith("[Decision]")&&bpmnBrt.getDecision()==null) {
+					if (text.getTextContent().startsWith("[Decision]") && bpmnBrt.getDecisionEvaluation() == null) {
 						String dec = text.getTextContent();
+						ArrayList<String> dataObjectVariables = new ArrayList<String>();
 						String decisionExpression = dec.substring(dec.indexOf('{'), dec.indexOf('}') + 1);
-						Decision d = new Decision(decisionExpression);
+						String term = dec.substring(dec.indexOf("(") + 1, dec.indexOf(")") + 1);
+						System.out.println("Term " + term);
+
+						StringBuilder builder = new StringBuilder();
+
+						for (char currentChar : term.toCharArray()) {
+							if (!(currentChar == '+' || currentChar == '-' || currentChar == '*' || currentChar == '/'
+									|| currentChar == ')')) {
+								builder.append(currentChar);
+							} else {
+								dataObjectVariables.add(builder.toString());
+								builder.delete(0, builder.length());
+
+							}
+						}
+
+						// DecisionEvaluation d = new DecisionEvaluation(decisionExpression);
+
+						// check if fields needed for decision making are in the element documentation
+						// of the data object!
+						// e.g. D1.someVar means that there needs to be a variable called someVar in the
+						// DataObject D1
+						// if not, than insert these fields into the DataObject
+						dataObjectVariables.forEach(f -> {
+							System.out.println("TEST " + f);
+						});
+
+						for (String variable : dataObjectVariables) {
+							StringBuilder dataObjectBuilder = new StringBuilder();
+							String dataObject = variable.substring(0, variable.indexOf("."));
+							System.out.println("Insert " + dataObject);
+							dataObjectBuilder.append("[");
+							dataObjectBuilder.append(dataObject);
+							dataObjectBuilder.append("]");
+							String var = variable.substring(variable.indexOf(".") + 1);
+							System.out.println("Variable " + var);
+
+							for (BPMNDataObject dataO : this.dataObjects) {
+								if (dataO.getNameId().equals(dataObjectBuilder.toString())) {
+									DataObject dao = modelInstance.getModelElementById(dataO.getId());
+									for (DataObjectReference daoR : modelInstance
+											.getModelElementsByType(DataObjectReference.class)) {
+										if (daoR.getDataObject().equals(dao)) {
+											ExtensionElements extensionElements = daoR.getExtensionElements();
+											if (extensionElements==null) {
+											extensionElements = modelInstance.newInstance(ExtensionElements.class);											
+											daoR.setExtensionElements(extensionElements);													
+											} 
+											CamundaProperty camundaProperty = null;
+											if(extensionElements.getElements().isEmpty()) {
+											CamundaProperties camundaProperties = extensionElements.addExtensionElement(CamundaProperties.class);											
+											camundaProperty = modelInstance.newInstance(CamundaProperty.class);
+											camundaProperty.setCamundaName(var);
+											camundaProperty.setCamundaValue("12");
+											camundaProperties.addChildElement(camundaProperty);
+											} else {
+												CamundaProperties cmd = extensionElements.getElementsQuery().filterByType(CamundaProperties.class).singleResult();
+												camundaProperty = modelInstance.newInstance(CamundaProperty.class);
+												camundaProperty.setCamundaName(var);
+												camundaProperty.setCamundaValue("12");
+												boolean insert = true;
+												for(CamundaProperty cp: cmd.getCamundaProperties()) {
+												if(camundaProperty.getCamundaName().equals(cp.getCamundaName())) {
+													insert = false;
+												}
+												}
+												if(insert==true) {
+												cmd.addChildElement(camundaProperty);
+												}
+											}
+											
+									
+										}
+									}
+
+								}
+							}
+
+						}
+
 						
-						//check if fields needed for decision making are in the element documentation of the data object!
-						bpmnBrt.setDecision(d);
+				
 					}
+
 				}
 			}
 		}
@@ -364,8 +448,8 @@ public class API {
 			for (ExclusiveGateway xor : this.modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 				this.mapSphereAnnotations((BPMNExclusiveGateway) this.getNodeById(xor.getId()));
 			}
-			for(BusinessRuleTask brt: this.modelInstance.getModelElementsByType(BusinessRuleTask.class)) {
-				this.mapDecisions((BPMNBusinessRuleTask)this.getNodeById(brt.getId()));
+			for (BusinessRuleTask brt : this.modelInstance.getModelElementsByType(BusinessRuleTask.class)) {
+				this.mapDecisions((BPMNBusinessRuleTask) this.getNodeById(brt.getId()));
 			}
 		}
 	}
@@ -652,7 +736,7 @@ public class API {
 			throws IOException {
 
 		for (BPMNBusinessRuleTask bpmnBrt : votersMap.keySet()) {
-			System.out.println("DECISION"+bpmnBrt.getDecision().getDecisionExpression());
+			//System.out.println("DECISION" + bpmnBrt.getDecisionEvaluation().getDecisionExpression());
 			BusinessRuleTask businessRt = (BusinessRuleTask) this.getFlowNodeByBPMNNodeId(bpmnBrt.getId());
 			HashMap<BPMNDataObject, ArrayList<BPMNTask>> votersMapInner = votersMap.get(bpmnBrt);
 
@@ -678,23 +762,21 @@ public class API {
 				for (Task task : modelInstance.getModelElementsByType(Task.class)) {
 					if (l.getName().equals(
 							task.getName().substring(task.getName().indexOf(" ") + 1, task.getName().length()))) {
-						//Add necessary information to the voting tasks
-						if(mapModelBtn&&task.getDocumentations().isEmpty()) {
+						// Add necessary information to the voting tasks
+						if (mapModelBtn && task.getDocumentations().isEmpty()) {
 							Documentation doc = modelInstance.newInstance(Documentation.class);
 							StringBuilder sb = new StringBuilder();
 							sb.append("{incomingData:");
-							for(BPMNDataObject dao: bpmnBrt.getDataObjects()) {
+							for (BPMNDataObject dao : bpmnBrt.getDataObjects()) {
 								sb.append(dao.getNameId() + ",");
 							}
-								sb.deleteCharAt(sb.length() - 1);
-								sb.append("}");
-								doc.setTextContent(sb.toString());
-								System.out.println(sb.toString());
+							sb.deleteCharAt(sb.length() - 1);
+							sb.append("}");
+							doc.setTextContent(sb.toString());
 							task.getDocumentations().add(doc);
 						}
-						
-						
-						//Put the voting tasks to the corresponding lanes in the xml model
+
+						// Put the voting tasks to the corresponding lanes in the xml model
 						FlowNodeRef ref = modelInstance.newInstance(FlowNodeRef.class);
 						ref.setTextContent(task.getId());
 						FlowNode n = this.getFlowNodeByBPMNNodeId(task.getId());
@@ -737,7 +819,6 @@ public class API {
 		allBPMNDataObjects.addAll(((BPMNBusinessRuleTask) this.getNodeById(brt.getId())).getDataObjects());
 		String parallelSplitId = parallelSplit + "split";
 		String parallelJoinId = parallelJoin + "join";
-
 		boolean isSet = false;
 
 		if (votersMap.entrySet().size() == 1 && votersMap.entrySet().iterator().next().getValue().size() == 1) {
@@ -748,12 +829,14 @@ public class API {
 			BPMNParticipant nextParticipant = nextListIter.next().getParticipant();
 
 			if (mapModelBtn) {
-				builder.userTask("votingTask" + votingTaskId).name("VotingTask " + nextParticipant.getName()).connectTo(brt.getId());
+				builder.userTask("votingTask" + votingTaskId).name("VotingTask " + nextParticipant.getName())
+						.connectTo(brt.getId());
 			} else {
-				builder.userTask("votingTask" + votingTaskId).name("VotingTask " + nextParticipant.getName()).endEvent().subProcessDone().connectTo(brt.getId());
+				builder.userTask("votingTask" + votingTaskId).name("VotingTask " + nextParticipant.getName()).endEvent()
+						.subProcessDone().connectTo(brt.getId());
 			}
 
-			for (BPMNDataObject dao : ((BPMNBusinessRuleTask) this.getNodeById(brt.getId())).getDataObjects()) {
+			for (BPMNDataObject dao : allBPMNDataObjects) {
 				this.addDataInputReferencesToVotingTasks(
 						(Task) this.getFlowNodeByBPMNNodeId("votingTask" + votingTaskId), dao);
 			}
@@ -782,7 +865,7 @@ public class API {
 					}
 					if (skip == false) {
 						int votingTaskId = BPMNTask.increaseVotingTaskId();
-						
+
 						builder.moveToNode(parallelSplitId).userTask("votingTask" + votingTaskId)
 								.name("VotingTask " + nextParticipant.getName());
 						alreadyModelled.add((Task) this.getFlowNodeByBPMNNodeId("votingTask" + votingTaskId));
@@ -981,57 +1064,70 @@ public class API {
 		return null;
 	}
 
+	
 	private void addDataInputReferencesToVotingTasks(Task task, BPMNDataObject dataObject) {
-		DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
-
-		Property p1 = modelInstance.newInstance(Property.class);
-		p1.setName("__targetRef_placeholder");
-
-		task.addChildElement(p1);
-		dia.setTarget(p1);
-		task.getDataInputAssociations().add(dia);
-
-		double xDataObject = 0;
-		double yDataObject = 0;
-		double xTask = 0;
-		double yTask = 0;
-		for (DataObjectReference d1 : modelInstance.getModelElementsByType(DataObjectReference.class)) {
-			if (dataObject.getId().equals(d1.getAttributeValue("dataObjectRef"))) {
-				dia.getSources().add(d1);
-
-				for (BpmnShape shape : modelInstance.getModelElementsByType(BpmnShape.class)) {
-					if (shape.getBpmnElement().getId().equals(d1.getId())) {
-						xDataObject = shape.getBounds().getX() + (shape.getBounds().getWidth() / 2);
-						yDataObject = (shape.getBounds().getY() + shape.getBounds().getHeight());
-
-					}
-					if (shape.getBpmnElement().getId().equals(task.getId())) {
-						xTask = shape.getBounds().getX();
-						yTask = shape.getBounds().getY();
-					}
-
-				}
+		boolean alreadyModelled = false;
+		//check whether there is already a DataInputAssociation between the task and the dataObject
+		for(DataInputAssociation di: task.getDataInputAssociations()) {
+			for(ItemAwareElement item : di.getSources()) {
+			  if(item.getAttributeValue("dataObjectRef").equals(dataObject.getId())){
+				   alreadyModelled = true;
+			   }
 			}
 		}
+					
+			if (task.getDataInputAssociations().isEmpty()||alreadyModelled==false) {
+				DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
 
-		BpmnEdge e = modelInstance.newInstance(BpmnEdge.class);
-		e.setBpmnElement(dia);
-		Waypoint wp = modelInstance.newInstance(Waypoint.class);
-		// Waypoints for the source -> the Data Object
-		wp.setX(xDataObject);
-		wp.setY(yDataObject);
-		e.addChildElement(wp);
+				Property p1 = modelInstance.newInstance(Property.class);
+				p1.setName("__targetRef_placeholder");
 
-		// Waypoint for the target -> the Task that has the Data Input
-		Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+				task.addChildElement(p1);
+				dia.setTarget(p1);
+				task.getDataInputAssociations().add(dia);
 
-		wp2.setX(xTask);
-		wp2.setY(yTask);
-		e.addChildElement(wp2);
+				double xDataObject = 0;
+				double yDataObject = 0;
+				double xTask = 0;
+				double yTask = 0;
+				for (DataObjectReference d1 : modelInstance.getModelElementsByType(DataObjectReference.class)) {
+					if (dataObject.getId().equals(d1.getAttributeValue("dataObjectRef"))) {
+						dia.getSources().add(d1);
 
-		// e.getParentElement().addChildElement(e);
-		modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(e);
+						for (BpmnShape shape : modelInstance.getModelElementsByType(BpmnShape.class)) {
+							if (shape.getBpmnElement().getId().equals(d1.getId())) {
+								xDataObject = shape.getBounds().getX() + (shape.getBounds().getWidth() / 2);
+								yDataObject = (shape.getBounds().getY() + shape.getBounds().getHeight());
 
+							}
+							if (shape.getBpmnElement().getId().equals(task.getId())) {
+								xTask = shape.getBounds().getX();
+								yTask = shape.getBounds().getY();
+							}
+
+						}
+					}
+				}
+
+				BpmnEdge e = modelInstance.newInstance(BpmnEdge.class);
+				e.setBpmnElement(dia);
+				Waypoint wp = modelInstance.newInstance(Waypoint.class);
+				// Waypoints for the source -> the Data Object
+				wp.setX(xDataObject);
+				wp.setY(yDataObject);
+				e.addChildElement(wp);
+
+				// Waypoint for the target -> the Task that has the Data Input
+				Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+
+				wp2.setX(xTask);
+				wp2.setY(yTask);
+				e.addChildElement(wp2);
+
+				// e.getParentElement().addChildElement(e);
+				modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(e);
+			}
+		
 	}
 
 	private void removeBusinessRuleTask(BusinessRuleTask brt) {
@@ -1128,8 +1224,6 @@ public class API {
 		Bpmn.writeModelToFile(file, modelInstance);
 	}
 
-	
-
 	public void moveNodesToCorrespondingLanesInDiagram(BPMNTask votingTask) {
 		// put the inserted voting tasks with fluent builder to the correct lane in the
 		// diagram!
@@ -1187,13 +1281,16 @@ public class API {
 		while (laneIter.hasNext()) {
 			Lane nextLane = laneIter.next();
 			for (FlowNode flowNode : nextLane.getFlowNodeRefs()) {
-					for (TextAnnotation txt : modelInstance.getModelElementsByType(TextAnnotation.class)) {						
-						for (Association a : modelInstance.getModelElementsByType(Association.class)) {
-							if (flowNode instanceof ExclusiveGateway || flowNode instanceof ServiceTask) {
-								// remove XOR-Annotations for the amount of participants needed
-								//remove Decision-Annotations for BusinessRuleTasks which have been changed to ServiceTasks!
-								
-							if ((txt.getTextContent().startsWith("[Voters]")||txt.getTextContent().startsWith("[Decision]"))&&a.getSource().equals(flowNode) && txt.getId().equals(a.getTarget().getId())) {
+				for (TextAnnotation txt : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+					for (Association a : modelInstance.getModelElementsByType(Association.class)) {
+						if (flowNode instanceof ExclusiveGateway || flowNode instanceof ServiceTask) {
+							// remove XOR-Annotations for the amount of participants needed
+							// remove Decision-Annotations for BusinessRuleTasks which have been changed to
+							// ServiceTasks!
+
+							if ((txt.getTextContent().startsWith("[Voters]")
+									|| txt.getTextContent().startsWith("[Decision]")) && a.getSource().equals(flowNode)
+									&& txt.getId().equals(a.getTarget().getId())) {
 								for (BpmnEdge edge : modelInstance.getModelElementsByType(BpmnEdge.class)) {
 									if (edge.getBpmnElement().equals(a)) {
 										edge.getParentElement().removeChildElement(edge);

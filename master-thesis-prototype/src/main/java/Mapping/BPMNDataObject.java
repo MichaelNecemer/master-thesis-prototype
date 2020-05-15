@@ -10,17 +10,19 @@ public class BPMNDataObject {
 	private String name;
 	private String nameId;
 	private String defaultSphere;
+	private String dataObjectReference;
 	
 	private ArrayList<BPMNElement> readers;
 	private ArrayList<BPMNElement> writers;
 	
-	public BPMNDataObject(String id, String name) {
+	public BPMNDataObject(String id, String name, String dataObjectReference) {
 		this.id = id;
 		this.name = name;
 		this.nameId=name.substring(name.indexOf("["), name.indexOf("]")+1);
 		this.readers = new ArrayList<BPMNElement>();
 		this.writers = new ArrayList<BPMNElement>();
 		this.defaultSphere = "";
+		this.dataObjectReference=dataObjectReference;
 	}
 
 
@@ -124,6 +126,18 @@ public class BPMNDataObject {
 	
 	public String getNameId() {
 		return this.nameId;
+	}
+
+
+
+	public String getDataObjectReference() {
+		return dataObjectReference;
+	}
+
+
+
+	public void setDataObjectReference(String dataObjectReference) {
+		this.dataObjectReference = dataObjectReference;
 	}
 
 	

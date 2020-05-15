@@ -5,7 +5,7 @@ import java.util.ArrayList;
 public class BPMNBusinessRuleTask extends BPMNTask {
 	
 	private ArrayList<BPMNTask> lastWriters;
-	private Decision decision;
+	private DecisionEvaluation decisionEvaluation;
 
 	public BPMNBusinessRuleTask(String id, String name) {
 		super(id, name);
@@ -17,11 +17,11 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 		return this.lastWriters;
 	}
 	
-	public void setDecision(Decision decision) {
-		this.decision=decision;
+	public void setDecisionEvaluation(DecisionEvaluation decision) {
+		this.decisionEvaluation=decisionEvaluation;
 	}
 	
-	public Decision getDecision() {
-		return this.decision;
+	public DecisionEvaluation getDecisionEvaluation() {
+		return this.decisionEvaluation;
 	}
 }
