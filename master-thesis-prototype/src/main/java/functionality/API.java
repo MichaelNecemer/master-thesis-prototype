@@ -762,7 +762,7 @@ public class API {
 				for (Task task : modelInstance.getModelElementsByType(Task.class)) {
 					if (l.getName().equals(
 							task.getName().substring(task.getName().indexOf(" ") + 1, task.getName().length()))) {
-						// Add necessary information to the voting tasks
+						// Add necessary information to the voting tasks 
 						if (mapModelBtn && task.getDocumentations().isEmpty()) {
 							Documentation doc = modelInstance.newInstance(Documentation.class);
 							StringBuilder sb = new StringBuilder();
