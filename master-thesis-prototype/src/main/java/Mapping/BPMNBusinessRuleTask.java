@@ -17,7 +17,7 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 		return this.lastWriters;
 	}
 	
-	public void setDecisionEvaluation(DecisionEvaluation decision) {
+	public void setDecisionEvaluation(DecisionEvaluation decisionEvaluation) {
 		this.decisionEvaluation=decisionEvaluation;
 	}
 	

@@ -9,8 +9,10 @@ public class BPMNDataObject {
 	private String id;
 	private String name;
 	private String nameId;
+	private String nameIdWithoutBrackets;
 	private String defaultSphere;
 	private String dataObjectReference;
+	
 	
 	private ArrayList<BPMNElement> readers;
 	private ArrayList<BPMNElement> writers;
@@ -19,6 +21,7 @@ public class BPMNDataObject {
 		this.id = id;
 		this.name = name;
 		this.nameId=name.substring(name.indexOf("["), name.indexOf("]")+1);
+		this.nameIdWithoutBrackets=name.substring(name.indexOf("[")+1, name.indexOf("]"));
 		this.readers = new ArrayList<BPMNElement>();
 		this.writers = new ArrayList<BPMNElement>();
 		this.defaultSphere = "";
@@ -139,6 +142,8 @@ public class BPMNDataObject {
 	public void setDataObjectReference(String dataObjectReference) {
 		this.dataObjectReference = dataObjectReference;
 	}
-
+	public String getNameIdWithoutBrackets() {
+		return this.nameIdWithoutBrackets;
+	}
 	
 }

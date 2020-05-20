@@ -13,6 +13,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.Stack;
@@ -50,6 +52,7 @@ import Mapping.BPMNParticipant;
 import Mapping.BPMNStartEvent;
 import Mapping.BPMNTask;
 import Mapping.DecisionEvaluation;
+import Mapping.InfixToPostfix;
 import Mapping.Label;
 
 //Class that uses the camunda model API to interact with the process model directly without parsing the XML first to e.g. DOM Object
@@ -255,54 +258,24 @@ public class API {
 		}
 	}
 
-	private void mapDecisions(BPMNBusinessRuleTask bpmnBrt) {
+	private void mapDecisions(BPMNBusinessRuleTask bpmnBrt) {		
 		for (TextAnnotation text : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 			for (Association a : modelInstance.getModelElementsByType(Association.class)) {
 				if (a.getAttributeValue("sourceRef").equals(bpmnBrt.getId())
 						&& a.getAttributeValue("targetRef").equals(text.getId())) {
 					if (text.getTextContent().startsWith("[Decision]") && bpmnBrt.getDecisionEvaluation() == null) {
 						String dec = text.getTextContent();
-						ArrayList<String> dataObjectVariables = new ArrayList<String>();
-						String decisionExpression = dec.substring(dec.indexOf('{'), dec.indexOf('}') + 1);
-						String term = dec.substring(dec.indexOf("(") + 1, dec.indexOf(")") + 1);
-						System.out.println("Term " + term);
-
-						StringBuilder builder = new StringBuilder();
-
-						for (char currentChar : term.toCharArray()) {
-							if (!(currentChar == '+' || currentChar == '-' || currentChar == '*' || currentChar == '/'
-									|| currentChar == ')')) {
-								builder.append(currentChar);
-							} else {
-								dataObjectVariables.add(builder.toString());
-								builder.delete(0, builder.length());
-
-							}
-						}
-
-						// DecisionEvaluation d = new DecisionEvaluation(decisionExpression);
-
+						Pattern pattern = Pattern.compile("(D\\d*)\\.(\\w*)");						
+						Matcher matcher = pattern.matcher(dec);							
 						// check if fields needed for decision making are in the element documentation
 						// of the data object!
 						// e.g. D1.someVar means that there needs to be a variable called someVar in the
 						// DataObject D1
 						// if not, than insert these fields into the DataObject
-						dataObjectVariables.forEach(f -> {
-							System.out.println("TEST " + f);
-						});
-
-						for (String variable : dataObjectVariables) {
-							StringBuilder dataObjectBuilder = new StringBuilder();
-							String dataObject = variable.substring(0, variable.indexOf("."));
-							System.out.println("Insert " + dataObject);
-							dataObjectBuilder.append("[");
-							dataObjectBuilder.append(dataObject);
-							dataObjectBuilder.append("]");
-							String var = variable.substring(variable.indexOf(".") + 1);
-							System.out.println("Variable " + var);
-
+						
+						while(matcher.find()) {		
 							for (BPMNDataObject dataO : this.dataObjects) {
-								if (dataO.getNameId().equals(dataObjectBuilder.toString())) {
+								if (dataO.getNameIdWithoutBrackets().equals(matcher.group(1))) {
 									DataObject dao = modelInstance.getModelElementById(dataO.getId());
 									for (DataObjectReference daoR : modelInstance
 											.getModelElementsByType(DataObjectReference.class)) {
@@ -316,13 +289,13 @@ public class API {
 											if(extensionElements.getElements().isEmpty()) {
 											CamundaProperties camundaProperties = extensionElements.addExtensionElement(CamundaProperties.class);											
 											camundaProperty = modelInstance.newInstance(CamundaProperty.class);
-											camundaProperty.setCamundaName(var);
+											camundaProperty.setCamundaName(matcher.group(2));
 											camundaProperty.setCamundaValue("12");
 											camundaProperties.addChildElement(camundaProperty);
 											} else {
 												CamundaProperties cmd = extensionElements.getElementsQuery().filterByType(CamundaProperties.class).singleResult();
 												camundaProperty = modelInstance.newInstance(CamundaProperty.class);
-												camundaProperty.setCamundaName(var);
+												camundaProperty.setCamundaName(matcher.group(2));
 												camundaProperty.setCamundaValue("12");
 												boolean insert = true;
 												for(CamundaProperty cp: cmd.getCamundaProperties()) {
@@ -340,12 +313,31 @@ public class API {
 									}
 
 								}
-							}
-
+							
+							
+							
+							
+							
+							
+							
+							
+							
+						}
+						
+						
 						}
 
+						//Whole decision is inside {} in the model
+						String decisionExpression = dec.substring(dec.indexOf('{')+1, dec.indexOf('}'));
 						
-				
+						DecisionEvaluation decEval = new DecisionEvaluation();
+						//We get back the mapped Expression String
+						String mappedExpression = InfixToPostfix.mapDecision(decisionExpression, decEval);
+						//Now we convert the Expression to Postfix format
+						String postfix = InfixToPostfix.convertInfixToPostfix(mappedExpression);
+						decEval.setDecisionExpressionPostfix(postfix);
+						bpmnBrt.setDecisionEvaluation(decEval);
+						
 					}
 
 				}

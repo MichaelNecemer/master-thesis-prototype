@@ -39,6 +39,7 @@ import Mapping.BPMNElement;
 import Mapping.BPMNExclusiveGateway;
 import Mapping.BPMNParticipant;
 import Mapping.BPMNTask;
+import Mapping.InfixToPostfix;
 
 public class Main {
 
@@ -62,6 +63,8 @@ public class Main {
 		  
 		  }
 		*/
+		
+		
 		API a2 = new API(
 				"C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn");
 		
