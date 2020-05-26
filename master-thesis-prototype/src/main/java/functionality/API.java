@@ -41,6 +41,9 @@ import org.camunda.bpm.model.bpmn.instance.di.Waypoint;
 import org.camunda.bpm.model.xml.instance.ModelElementInstance;
 import org.camunda.bpm.model.xml.type.ModelElementType;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import Mapping.BPMNBusinessRuleTask;
 import Mapping.BPMNDataObject;
 import Mapping.BPMNElement;
@@ -265,21 +268,34 @@ public class API {
 						&& a.getAttributeValue("targetRef").equals(text.getId())) {
 					if (text.getTextContent().startsWith("[Decision]") && bpmnBrt.getDecisionEvaluation() == null) {
 						String dec = text.getTextContent();
-						Pattern pattern = Pattern.compile("(D\\d*)\\.(\\w*)");						
-						Matcher matcher = pattern.matcher(dec);							
+						String str = dec.replaceAll("==", "=").replaceAll("&&", "&").replace("||", "|");
+						//|(?<=[\\>\\<\\=])[+-]?<=([0-9]*[.])?[0-9]+"
+						//(true|false|\\d*)
+						Pattern pattern2 = Pattern.compile("(D\\d*)\\.(\\w*)([\\+\\-\\*\\/\\=|\\>|\\<]|[\\&|\\|])(true|false|\"[a-zA-Z0-9]*\"|[0-9]*)");
+						//Pattern pattern2 = Pattern.compile("(D\\d*)\\.(\\w*)\\=\"(\\w*)\"");
+						Matcher matcher = pattern2.matcher(str);	
+						
 						// check if fields needed for decision making are in the element documentation
 						// of the data object!
 						// e.g. D1.someVar means that there needs to be a variable called someVar in the
 						// DataObject D1
 						// if not, than insert these fields into the DataObject
 						
-						while(matcher.find()) {		
+						while(matcher.find()) {	
+							int i = 0;
+							while(i<=matcher.groupCount()) {
+								System.out.print(matcher.group(i)+" ");
+								i++;
+							}
+							System.out.println();
+							
 							for (BPMNDataObject dataO : this.dataObjects) {
 								if (dataO.getNameIdWithoutBrackets().equals(matcher.group(1))) {
 									DataObject dao = modelInstance.getModelElementById(dataO.getId());
 									for (DataObjectReference daoR : modelInstance
 											.getModelElementsByType(DataObjectReference.class)) {
 										if (daoR.getDataObject().equals(dao)) {
+											System.out.println("CHEK");
 											ExtensionElements extensionElements = daoR.getExtensionElements();
 											if (extensionElements==null) {
 											extensionElements = modelInstance.newInstance(ExtensionElements.class);											
@@ -288,15 +304,45 @@ public class API {
 											CamundaProperty camundaProperty = null;
 											if(extensionElements.getElements().isEmpty()) {
 											CamundaProperties camundaProperties = extensionElements.addExtensionElement(CamundaProperties.class);											
+											
+											String match = InfixToPostfix.getLastGroupMatches(matcher);
+											if(match!=null) {
 											camundaProperty = modelInstance.newInstance(CamundaProperty.class);
 											camundaProperty.setCamundaName(matcher.group(2));
-											camundaProperty.setCamundaValue("12");
+											
+											if(match.equals("true")||match.equals("false")) {
+												camundaProperty.setCamundaValue("boolean");
+											} else if (match.matches("\\d*")) {
+												camundaProperty.setCamundaValue("double");
+											} else if(match.matches("\"[a-zA-Z0-9]*\"")) {
+												camundaProperty.setCamundaValue("String");
+											} else if(match.matches("[\\/|\\+|\\-|\\*]")){
+												camundaProperty.setCamundaValue("double");
+											} else {
+												camundaProperty.setCamundaValue("double");
+											}
 											camundaProperties.addChildElement(camundaProperty);
+											}
 											} else {
 												CamundaProperties cmd = extensionElements.getElementsQuery().filterByType(CamundaProperties.class).singleResult();
-												camundaProperty = modelInstance.newInstance(CamundaProperty.class);
-												camundaProperty.setCamundaName(matcher.group(2));
-												camundaProperty.setCamundaValue("12");
+												String match = InfixToPostfix.getLastGroupMatches(matcher);
+												if(match!=null) {
+													camundaProperty = modelInstance.newInstance(CamundaProperty.class);
+													camundaProperty.setCamundaName(matcher.group(2));
+													
+													System.out.println("MATCH: "+match);
+												
+												if(match.equals("true")||match.equals("false")) {
+													camundaProperty.setCamundaValue("boolean");
+												} else if (match.matches("\\d*")) {
+													camundaProperty.setCamundaValue("double");
+												} else if(match.matches("\"[a-zA-Z0-9]*\"")) {
+													camundaProperty.setCamundaValue("String");
+												} else if(match.matches("[\\/|\\+|\\-|\\*]")){
+													camundaProperty.setCamundaValue("double");
+												} else {
+													camundaProperty.setCamundaValue("double");
+												}
 												boolean insert = true;
 												for(CamundaProperty cp: cmd.getCamundaProperties()) {
 												if(camundaProperty.getCamundaName().equals(cp.getCamundaName())) {
@@ -307,7 +353,7 @@ public class API {
 												cmd.addChildElement(camundaProperty);
 												}
 											}
-											
+											}
 									
 										}
 									}
@@ -337,6 +383,7 @@ public class API {
 						String postfix = InfixToPostfix.convertInfixToPostfix(mappedExpression);
 						decEval.setDecisionExpressionPostfix(postfix);
 						bpmnBrt.setDecisionEvaluation(decEval);
+						
 						
 					}
 
@@ -758,14 +805,25 @@ public class API {
 						if (mapModelBtn && task.getDocumentations().isEmpty()) {
 							Documentation doc = modelInstance.newInstance(Documentation.class);
 							StringBuilder sb = new StringBuilder();
-							sb.append("{incomingData:");
 							for (BPMNDataObject dao : bpmnBrt.getDataObjects()) {
-								sb.append(dao.getNameId() + ",");
+								sb.append("{");
+								sb.append("\"name\":\""+dao.getName()+"\"");
+								sb.append("},");
 							}
 							sb.deleteCharAt(sb.length() - 1);
-							sb.append("}");
+							sb.append("],");
+							
+							//add the decision of the businessruletask to the element documentation
+							//use the Jackson converter to convert java object into json format
+							ObjectMapper mapper = new ObjectMapper();
+							//Convert object to JSON string
+							String jsonInString = mapper.writeValueAsString(bpmnBrt.getDecisionEvaluation());
+							sb.append(jsonInString);							
 							doc.setTextContent(sb.toString());
 							task.getDocumentations().add(doc);
+							
+							
+							
 						}
 
 						// Put the voting tasks to the corresponding lanes in the xml model
@@ -821,16 +879,16 @@ public class API {
 			BPMNParticipant nextParticipant = nextListIter.next().getParticipant();
 
 			if (mapModelBtn) {
-				builder.userTask("votingTask" + votingTaskId).name("VotingTask " + nextParticipant.getName())
+				builder.userTask("Task_votingTask" + votingTaskId).name("VotingTask " + nextParticipant.getName())
 						.connectTo(brt.getId());
 			} else {
-				builder.userTask("votingTask" + votingTaskId).name("VotingTask " + nextParticipant.getName()).endEvent()
+				builder.userTask("Task_votingTask" + votingTaskId).name("VotingTask " + nextParticipant.getName()).endEvent()
 						.subProcessDone().connectTo(brt.getId());
 			}
 
 			for (BPMNDataObject dao : allBPMNDataObjects) {
 				this.addDataInputReferencesToVotingTasks(
-						(Task) this.getFlowNodeByBPMNNodeId("votingTask" + votingTaskId), dao);
+						(Task) this.getFlowNodeByBPMNNodeId("Task_votingTask" + votingTaskId), dao);
 			}
 
 		} else {
@@ -858,20 +916,20 @@ public class API {
 					if (skip == false) {
 						int votingTaskId = BPMNTask.increaseVotingTaskId();
 
-						builder.moveToNode(parallelSplitId).userTask("votingTask" + votingTaskId)
+						builder.moveToNode(parallelSplitId).userTask("Task_votingTask" + votingTaskId)
 								.name("VotingTask " + nextParticipant.getName());
-						alreadyModelled.add((Task) this.getFlowNodeByBPMNNodeId("votingTask" + votingTaskId));
+						alreadyModelled.add((Task) this.getFlowNodeByBPMNNodeId("Task_votingTask" + votingTaskId));
 						for (BPMNDataObject dao : allBPMNDataObjects) {
 							this.addDataInputReferencesToVotingTasks(
-									(Task) this.getFlowNodeByBPMNNodeId("votingTask" + votingTaskId), dao);
+									(Task) this.getFlowNodeByBPMNNodeId("Task_votingTask" + votingTaskId), dao);
 						}
 
 						if (isSet == false) {
-							builder.moveToNode("votingTask" + votingTaskId).parallelGateway(parallelJoinId)
+							builder.moveToNode("Task_votingTask" + votingTaskId).parallelGateway(parallelJoinId)
 									.name(parallelJoin);
 							isSet = true;
 						} else {
-							builder.moveToNode("votingTask" + votingTaskId).connectTo(parallelJoinId);
+							builder.moveToNode("Task_votingTask" + votingTaskId).connectTo(parallelJoinId);
 						}
 
 					}
@@ -1162,6 +1220,7 @@ public class API {
 
 		SequenceFlow incomingSequenceFlow = brt.getIncoming().iterator().next();
 		BpmnEdge flowDi = incomingSequenceFlow.getDiagramElement();
+		BPMNBusinessRuleTask bpmnBrt = (BPMNBusinessRuleTask) this.getNodeById(brt.getId());
 
 		for (BpmnEdge e : modelInstance.getModelElementsByType(BpmnEdge.class)) {
 			if (e.getId().equals(flowDi.getId())) {
@@ -1181,8 +1240,9 @@ public class API {
 			serviceTask.setCamundaTopic("voting");
 			Documentation dataObjectDocu = modelInstance.newInstance(Documentation.class);
 			StringBuilder sb = new StringBuilder();
-			sb.append("{dataObjects:");
-			for (BPMNDataObject dao : ((BPMNBusinessRuleTask) this.getNodeById(brt.getId())).getDataObjects()) {
+			sb.append("{gateway: \""+((BPMNExclusiveGateway)bpmnBrt.getSuccessors().iterator().next()).getName()+"\", ");
+			sb.append("dataObjects: ");
+			for (BPMNDataObject dao : bpmnBrt.getDataObjects()) {
 				sb.append(dao.getNameId() + ",");
 			}
 			sb.deleteCharAt(sb.length() - 1);
