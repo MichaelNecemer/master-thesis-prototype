@@ -1,47 +1,72 @@
 package functionality;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.security.Provider.Service;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.Scanner;
-import java.util.Set;
-import java.util.Stack;
 
-import org.camunda.bpm.model.bpmn.builder.*;
-import org.camunda.bpm.model.bpmn.builder.ProcessBuilder;
-import org.camunda.bpm.model.bpmn.impl.instance.FlowNodeRef;
-import org.apache.ibatis.javassist.compiler.ast.Variable;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.soap.Node;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
-import org.camunda.bpm.model.bpmn.Query;
-import org.camunda.bpm.model.bpmn.instance.*;
+import org.camunda.bpm.model.bpmn.builder.AbstractFlowNodeBuilder;
+import org.camunda.bpm.model.bpmn.impl.instance.FlowNodeRef;
+import org.camunda.bpm.model.bpmn.instance.Association;
+import org.camunda.bpm.model.bpmn.instance.BusinessRuleTask;
+import org.camunda.bpm.model.bpmn.instance.Collaboration;
+import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
+import org.camunda.bpm.model.bpmn.instance.DataObject;
+import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
+import org.camunda.bpm.model.bpmn.instance.DataOutputAssociation;
+import org.camunda.bpm.model.bpmn.instance.Documentation;
+import org.camunda.bpm.model.bpmn.instance.EndEvent;
+import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
+import org.camunda.bpm.model.bpmn.instance.ExtensionElements;
+import org.camunda.bpm.model.bpmn.instance.FlowNode;
+import org.camunda.bpm.model.bpmn.instance.ItemAwareElement;
+import org.camunda.bpm.model.bpmn.instance.Lane;
+import org.camunda.bpm.model.bpmn.instance.LaneSet;
+import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
 import org.camunda.bpm.model.bpmn.instance.Process;
+import org.camunda.bpm.model.bpmn.instance.Property;
+import org.camunda.bpm.model.bpmn.instance.SendTask;
+import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
+import org.camunda.bpm.model.bpmn.instance.ServiceTask;
+import org.camunda.bpm.model.bpmn.instance.StartEvent;
+import org.camunda.bpm.model.bpmn.instance.Task;
+import org.camunda.bpm.model.bpmn.instance.TextAnnotation;
+import org.camunda.bpm.model.bpmn.instance.UserTask;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnEdge;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnPlane;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnShape;
-import org.camunda.bpm.model.bpmn.instance.camunda.CamundaFormData;
 import org.camunda.bpm.model.bpmn.instance.camunda.CamundaProperties;
 import org.camunda.bpm.model.bpmn.instance.camunda.CamundaProperty;
-import org.camunda.bpm.model.bpmn.instance.dc.Bounds;
 import org.camunda.bpm.model.bpmn.instance.di.Plane;
-import org.camunda.bpm.model.bpmn.instance.di.Shape;
 import org.camunda.bpm.model.bpmn.instance.di.Waypoint;
-import org.camunda.bpm.model.xml.instance.ModelElementInstance;
-import org.camunda.bpm.model.xml.type.ModelElementType;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import Mapping.BPMNBusinessRuleTask;
@@ -81,6 +106,9 @@ public class API {
 		modelInstance = Bpmn.readModelFromFile(process);
 		startEvent = modelInstance.getModelElementsByType(StartEvent.class);
 		this.mapAndCompute();
+		
+		System.out.println(modelInstance.getDefinitions().getTargetNamespace());
+		
 	}
 
 	private void mapAndCompute() {
@@ -91,7 +119,7 @@ public class API {
 		this.createDataObjectAsssociatons();
 		this.computeGlobalSphere();
 		this.computeStaticSphere();
-		this.getAllProcessPaths();
+		//this.getAllProcessPaths();
 		for (BPMNElement element : this.processElements) {
 			if (element instanceof BPMNBusinessRuleTask) {
 				this.addVotingSystem(element);
@@ -268,11 +296,9 @@ public class API {
 						&& a.getAttributeValue("targetRef").equals(text.getId())) {
 					if (text.getTextContent().startsWith("[Decision]") && bpmnBrt.getDecisionEvaluation() == null) {
 						String dec = text.getTextContent();
-						String str = dec.replaceAll("==", "=").replaceAll("&&", "&").replace("||", "|");
-						//|(?<=[\\>\\<\\=])[+-]?<=([0-9]*[.])?[0-9]+"
-						//(true|false|\\d*)
+						String str = dec.substring(dec.indexOf('{')+1, dec.indexOf('}')).replaceAll("==", "=").replaceAll("&&", "&").replace("||", "|");
 						Pattern pattern2 = Pattern.compile("(D\\d*)\\.(\\w*)([\\+\\-\\*\\/\\=|\\>|\\<]|[\\&|\\|])(true|false|\"[a-zA-Z0-9]*\"|[0-9]*)");
-						//Pattern pattern2 = Pattern.compile("(D\\d*)\\.(\\w*)\\=\"(\\w*)\"");
+						
 						Matcher matcher = pattern2.matcher(str);	
 						
 						// check if fields needed for decision making are in the element documentation
@@ -295,7 +321,6 @@ public class API {
 									for (DataObjectReference daoR : modelInstance
 											.getModelElementsByType(DataObjectReference.class)) {
 										if (daoR.getDataObject().equals(dao)) {
-											System.out.println("CHEK");
 											ExtensionElements extensionElements = daoR.getExtensionElements();
 											if (extensionElements==null) {
 											extensionElements = modelInstance.newInstance(ExtensionElements.class);											
@@ -373,12 +398,10 @@ public class API {
 						
 						}
 
-						//Whole decision is inside {} in the model
-						String decisionExpression = dec.substring(dec.indexOf('{')+1, dec.indexOf('}'));
-						
+					
 						DecisionEvaluation decEval = new DecisionEvaluation();
 						//We get back the mapped Expression String
-						String mappedExpression = InfixToPostfix.mapDecision(decisionExpression, decEval);
+						String mappedExpression = InfixToPostfix.mapDecision(str, decEval);
 						//Now we convert the Expression to Postfix format
 						String postfix = InfixToPostfix.convertInfixToPostfix(mappedExpression);
 						decEval.setDecisionExpressionPostfix(postfix);
@@ -487,6 +510,7 @@ public class API {
 			for (ExclusiveGateway xor : this.modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 				this.mapSphereAnnotations((BPMNExclusiveGateway) this.getNodeById(xor.getId()));
 			}
+			
 			for (BusinessRuleTask brt : this.modelInstance.getModelElementsByType(BusinessRuleTask.class)) {
 				this.mapDecisions((BPMNBusinessRuleTask) this.getNodeById(brt.getId()));
 			}
@@ -775,7 +799,6 @@ public class API {
 			throws IOException {
 
 		for (BPMNBusinessRuleTask bpmnBrt : votersMap.keySet()) {
-			//System.out.println("DECISION" + bpmnBrt.getDecisionEvaluation().getDecisionExpression());
 			BusinessRuleTask businessRt = (BusinessRuleTask) this.getFlowNodeByBPMNNodeId(bpmnBrt.getId());
 			HashMap<BPMNDataObject, ArrayList<BPMNTask>> votersMapInner = votersMap.get(bpmnBrt);
 
@@ -793,15 +816,16 @@ public class API {
 						"PV" + BPMNParallelGateway.getVotingTaskCount(), votersMapInner,
 						"PV" + BPMNParallelGateway.getVotingTaskCount(), mapModelBtn);
 			}
-
+		
 			// Add the new tasks generated via fluent builder API to the corresponding lanes
 			// in the xml model
 			// Cant be done with the fluent model builder directly!
 			for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
-				for (Task task : modelInstance.getModelElementsByType(Task.class)) {
+				for (Task task : modelInstance.getModelElementsByType(UserTask.class)) {
 					if (l.getName().equals(
 							task.getName().substring(task.getName().indexOf(" ") + 1, task.getName().length()))) {
 						// Add necessary information to the voting tasks 
+						
 						if (mapModelBtn && task.getDocumentations().isEmpty()) {
 							Documentation doc = modelInstance.newInstance(Documentation.class);
 							StringBuilder sb = new StringBuilder();
@@ -815,15 +839,14 @@ public class API {
 							
 							//add the decision of the businessruletask to the element documentation
 							//use the Jackson converter to convert java object into json format
+							
 							ObjectMapper mapper = new ObjectMapper();
 							//Convert object to JSON string
 							String jsonInString = mapper.writeValueAsString(bpmnBrt.getDecisionEvaluation());
 							sb.append(jsonInString);							
 							doc.setTextContent(sb.toString());
 							task.getDocumentations().add(doc);
-							
-							
-							
+						
 						}
 
 						// Put the voting tasks to the corresponding lanes in the xml model
@@ -846,7 +869,15 @@ public class API {
 		if (mapModelBtn) {
 			this.mapModel();
 		}
-		this.writeChangesToFile();
+		try {
+			this.writeChangesToFile();
+		} catch (ParserConfigurationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SAXException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 	}
 
@@ -865,12 +896,13 @@ public class API {
 		Iterator<Entry<BPMNDataObject, ArrayList<BPMNTask>>> iter = votersMap.entrySet().iterator();
 		ArrayList<Task> alreadyModelled = new ArrayList<Task>();
 		Set<BPMNDataObject> allBPMNDataObjects = new HashSet<BPMNDataObject>();
-
+		
 		allBPMNDataObjects.addAll(((BPMNBusinessRuleTask) this.getNodeById(brt.getId())).getDataObjects());
 		String parallelSplitId = parallelSplit + "split";
 		String parallelJoinId = parallelJoin + "join";
 		boolean isSet = false;
 
+		
 		if (votersMap.entrySet().size() == 1 && votersMap.entrySet().iterator().next().getValue().size() == 1) {
 			int votingTaskId = BPMNTask.increaseVotingTaskId();
 			BPMNDataObject key = iter.next().getKey();
@@ -964,7 +996,12 @@ public class API {
 		if (this.checkProcessModel() == true) {
 			if (element instanceof BPMNBusinessRuleTask) {
 				BPMNBusinessRuleTask brt = (BPMNBusinessRuleTask) element;
-				this.businessRuleTaskList.add(brt);
+				if(brt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
+					if(((BPMNExclusiveGateway) brt.getSuccessors().iterator().next()).getAmountVoters()>0){
+						this.businessRuleTaskList.add(brt);
+					}
+				
+				}
 				String minimumSphere = "";
 				for (BPMNDataObject data : brt.getDataObjects()) {
 					BPMNTask lastWriter = this.getLastWriterForDataObject(brt, data, null);
@@ -983,15 +1020,15 @@ public class API {
 
 					while (!lastWriters.isEmpty()) {
 						BPMNTask lWriter = lastWriters.pollFirst();
-						System.out.print("LASTWRITER: ");
-						lWriter.printElement();
+						//System.out.print("LASTWRITER: ");
+					//	lWriter.printElement();
 						for (BPMNDataObject sphere : lWriter.getSphereAnnotation().keySet()) {
 							minimumSphere = lWriter.getSphereAnnotation().get(sphere);
-							System.out.println("Sphere" + sphere.getName() + minimumSphere);
+						//	System.out.println("Sphere" + sphere.getName() + minimumSphere);
 
 							for (BPMNElement reader : sphere.getReaders()) {
-								System.out.println("READER");
-								reader.printElement();
+								//System.out.println("READER");
+								//reader.printElement();
 								LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodes(lWriter, reader,
 										new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 										new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
@@ -1240,14 +1277,7 @@ public class API {
 			serviceTask.setCamundaTopic("voting");
 			Documentation dataObjectDocu = modelInstance.newInstance(Documentation.class);
 			StringBuilder sb = new StringBuilder();
-			sb.append("{gateway: \""+((BPMNExclusiveGateway)bpmnBrt.getSuccessors().iterator().next()).getName()+"\", ");
-			sb.append("dataObjects: ");
-			for (BPMNDataObject dao : bpmnBrt.getDataObjects()) {
-				sb.append(dao.getNameId() + ",");
-			}
-			sb.deleteCharAt(sb.length() - 1);
-			sb.append("}");
-
+			sb.append("{\"gateway\": \""+((BPMNExclusiveGateway)bpmnBrt.getSuccessors().iterator().next()).getName()+"\"}");
 			dataObjectDocu.setTextContent(sb.toString());
 			serviceTask.getDocumentations().add(dataObjectDocu);
 		}
@@ -1266,15 +1296,107 @@ public class API {
 		return this.businessRuleTaskList;
 	}
 
-	public void writeChangesToFile() throws IOException {
+	public void writeChangesToFile() throws IOException, ParserConfigurationException, SAXException {
 		// validate and write model to file
 
 		Bpmn.validateModel(modelInstance);
-
 		File file = File.createTempFile("bpmn-model-with-voting", ".bpmn",
-				new File("C:\\Users\\Micha\\OneDrive\\Desktop"));
+		new File("C:\\Users\\Micha\\OneDrive\\Desktop"));		
 		Bpmn.writeModelToFile(file, modelInstance);
+		
+		
+		
+		DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory
+		        .newInstance();
+		docBuilderFactory.setNamespaceAware(true);
+		DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
+		Document document = docBuilder.parse(file);
+
+		
+		NodeList nodeList = document.getElementsByTagName("*");
+		for (int i = 0; i < nodeList.getLength(); i++) {
+		    org.w3c.dom.Node node = nodeList.item(i);
+		    if (node.getNodeType() == Node.ELEMENT_NODE&&!(node.getNamespaceURI()==null)&&!(node.getNodeName().contains(":"))) {
+		        // do something with the current element
+		    	 System.out.println(node.getNodeName() +", "+node.getNamespaceURI());
+		    	String nodeName = node.getNodeName();
+		    	if(nodeName.equals("property")) {
+		    	node.setPrefix("camunda");
+		    		
+		    	}else {
+		    		node.setPrefix("bpmn");
+		    	}
+		    	
+		    	
+		    	if(((Element)node).hasAttribute("xmlns")) {
+		    		((Element)node).removeAttribute("xmlns");
+		    	} 
+		    	
+		     }
+		    
+
+	    	
+	    	
+		}
+		
+		
+try {
+		 TransformerFactory tf = TransformerFactory.newInstance();
+	        Transformer transformer = tf.newTransformer();
+	        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
+	        transformer.setOutputProperty(OutputKeys.METHOD, "xml");
+	        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+	        transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+	        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+	 	    
+	        StreamResult result = new StreamResult(new PrintWriter(
+	                new FileOutputStream(file, false)));
+	        DOMSource source = new DOMSource(document);
+	        transformer.transform(source, result);
+	        /*
+	        DOMSource source = new DOMSource(document);
+	        StreamResult filex = new StreamResult(new File("C:\\Users\\Micha\\OneDrive\\Desktop\\test.xml"));
+
+	        transformer.transform(source, filex);
+	        */
+				
+			} catch (TransformerException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	
+
+		/*
+		//Pattern pattern = Pattern.compile("<[/|(\\w*)]>");
+		Pattern pattern = Pattern.compile("<[/|(\\w*?)]>");
+
+		StringBuffer sb = new StringBuffer();
+		Matcher matcher = pattern.matcher(model);
+		while(matcher.find()) {
+				
+			        matcher.appendReplacement(sb, "bpmn:"+matcher.group(1));
+		}
+			    matcher.appendTail(sb);
+		System.out.println(sb);
+		
+		
+		File textFile = new File("C:\\Users\\Micha\\OneDrive\\Desktop", "modelWithVoting.bpmn");
+		BufferedWriter out = new BufferedWriter(new FileWriter(textFile));
+		try {
+		   out.append(sb);
+		} finally {
+		   out.close();
+		}
+		*/
+		
+		//File file = File.createTempFile("bpmn-model-with-voting", ".bpmn",
+			//	new File("C:\\Users\\Micha\\OneDrive\\Desktop"));
+		//Bpmn.writeModelToFile(file, modelInstance);
+		
+		
 	}
+	
+	
 
 	public void moveNodesToCorrespondingLanesInDiagram(BPMNTask votingTask) {
 		// put the inserted voting tasks with fluent builder to the correct lane in the
@@ -1393,5 +1515,9 @@ public class API {
 		}
 
 	}
+	
+	
+	
+			
 
 }

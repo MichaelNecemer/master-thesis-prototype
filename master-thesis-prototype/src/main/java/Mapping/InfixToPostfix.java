@@ -26,34 +26,32 @@ public class InfixToPostfix {
 		//substitute variable names e.g. D1.someVar -> a
 		//substitute booleans and strings with variable names e.g. true -> t
 		StringBuffer sb = new StringBuffer();
-		String str = expression.replaceAll("==", "=").replaceAll("&&", "&").replace("||", "|");
-				
-		Pattern pattern2 = Pattern.compile("(D\\d*\\.\\w*)|(true|false)|(?<=[\\>\\<\\=])(\\d*)");
-		//Pattern pattern3 = Pattern.compile("\"(\\w*?)\"");
-		Matcher matcher2 = pattern2.matcher(str);
+		
+		Pattern pattern = Pattern.compile("(D\\d*\\.[a-zA-Z0-9]*|true|false|\"([a-zA-Z0-9]*)\"|(?<=[\\>|\\<|\\=])[0-9]*)");
+		Matcher matcher = pattern.matcher(expression);
 		
 		
 		Map<Character, Object> map = new HashMap<Character, Object>();		
 		
 		for(char ch = 'a'; ch<='z'; ch++) {			
-			while(matcher2.find()) {	
-				System.out.println(matcher2.group());
+			while(matcher.find()) {	
+			//	System.out.println(getLastGroupMatches(matcher));
 				boolean isInList = false;
 				for(Entry<Character, Object> entry: map.entrySet()) {
-					if(entry.getValue().equals(matcher2.group())) {
+					if(entry.getValue().equals(matcher.group())) {
 						isInList=true;
-						matcher2.appendReplacement(sb, Character.toString(entry.getKey()));
+						matcher.appendReplacement(sb, Character.toString(entry.getKey()));
 					}
 				}
 				if(isInList==false) {					
-					map.put(ch, getLastGroupMatches(matcher2));
-					matcher2.appendReplacement(sb, Character.toString(ch));
+					map.put(ch, getLastGroupMatches(matcher));
+					matcher.appendReplacement(sb, Character.toString(ch));
 					ch++;	
 					}
 			}
 			
 			}
-		matcher2.appendTail(sb);
+		matcher.appendTail(sb);
 		
 		
 		map.entrySet().forEach(e->{System.out.println(e.getKey()+" "+e.getValue());});
