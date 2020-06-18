@@ -214,7 +214,9 @@ public class Main {
 								}
 
 								else {
+									if(!participantList.get(br.getKey()).get(entry.getKey()).contains(checkBox.oneTaskOutOfMap)) {
 									participantList.get(br.getKey()).get(entry.getKey()).add(checkBox.oneTaskOutOfMap);
+									}
 								}
 							}
 							

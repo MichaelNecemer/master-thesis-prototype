@@ -218,19 +218,20 @@
     <bpmn:sequenceFlow id="SequenceFlow_0cmitlr" name="no" sourceRef="ExclusiveGateway_1aqgsoo" targetRef="Task_1mkzxpr" />
     <bpmn:sequenceFlow id="SequenceFlow_0wsziz6" sourceRef="Task_1mkzxpr" targetRef="ExclusiveGateway_10ht8im" />
     <bpmn:sequenceFlow id="SequenceFlow_0e78vkg" sourceRef="Task_172ot11" targetRef="ExclusiveGateway_10ht8im" />
-    <bpmn:userTask id="Task_0oaysi8" name="A7: Before Brt2">
+    <bpmn:task id="Task_01o8vy5" name="Test 3">
+      <bpmn:incoming>SequenceFlow_0czmwq4</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0g49pkq</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_0oaysi8" name="A7: Before Brt2">
       <bpmn:incoming>SequenceFlow_1qwisx2</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_0ermlrg</bpmn:outgoing>
       <bpmn:dataOutputAssociation id="DataOutputAssociation_0k68bng">
         <bpmn:targetRef>DataObjectReference_0elqwv7</bpmn:targetRef>
       </bpmn:dataOutputAssociation>
-    </bpmn:userTask>
-    <bpmn:businessRuleTask id="Task_01o8vy5" name="Test 3">
-      <bpmn:incoming>SequenceFlow_0czmwq4</bpmn:incoming>
-      <bpmn:outgoing>SequenceFlow_0g49pkq</bpmn:outgoing>
-    </bpmn:businessRuleTask>
+    </bpmn:task>
     <bpmn:textAnnotation id="TextAnnotation_0mof9qa">
-      <bpmn:text>[Voters] {3}</bpmn:text>
+      <bpmn:text>[Voters] {3,2,5}
+</bpmn:text>
     </bpmn:textAnnotation>
     <bpmn:textAnnotation id="TextAnnotation_0oxoj5z">
       <bpmn:text>[D1] {Weak-Dynamic}</bpmn:text>
@@ -248,7 +249,7 @@
     <bpmn:association id="Association_0ipu2pk" sourceRef="Task_0vbt22x" targetRef="TextAnnotation_07ezj7x" />
     <bpmn:association id="Association_05219hg" associationDirection="None" sourceRef="Task_0vyqde0" targetRef="TextAnnotation_0oxoj5z" />
     <bpmn:textAnnotation id="TextAnnotation_15kjxch">
-      <bpmn:text>[Voters] {2}</bpmn:text>
+      <bpmn:text>[Voters] {2,2,1}</bpmn:text>
     </bpmn:textAnnotation>
     <bpmn:association id="Association_1ngg88u" sourceRef="ExclusiveGateway_1aqgsoo" targetRef="TextAnnotation_15kjxch" />
     <bpmn:association id="Association_1n8fnr9" sourceRef="BusinessRuleTask_1livx3h" targetRef="TextAnnotation_1p5pbv4" />
@@ -392,7 +393,7 @@
         <dc:Bounds x="445" y="853" width="100" height="39" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="TextAnnotation_0mof9qa_di" bpmnElement="TextAnnotation_0mof9qa">
-        <dc:Bounds x="2114" y="683" width="143" height="30" />
+        <dc:Bounds x="2114" y="683" width="143" height="39" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="SequenceFlow_1pv2xol_di" bpmnElement="SequenceFlow_1pv2xol">
         <di:waypoint x="1185" y="610" />
@@ -581,7 +582,7 @@
       <bpmndi:BPMNEdge id="Association_1pr86kn_di" bpmnElement="Association_1pr86kn">
         <di:waypoint x="2047" y="615" />
         <di:waypoint x="2144" y="688" />
-        <di:waypoint x="2155" y="683" />
+        <di:waypoint x="2153" y="683" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Association_05219hg_di" bpmnElement="Association_05219hg">
         <di:waypoint x="628" y="386" />
@@ -629,11 +630,11 @@
         <di:waypoint x="2865" y="238" />
         <di:waypoint x="2820" y="212" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="UserTask_0z1fejs_di" bpmnElement="Task_0oaysi8">
-        <dc:Bounds x="1995" y="228" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BusinessRuleTask_1hmb1mu_di" bpmnElement="Task_01o8vy5">
+      <bpmndi:BPMNShape id="Task_1oda4am_di" bpmnElement="Task_01o8vy5">
         <dc:Bounds x="995" y="545" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_0phu2jx_di" bpmnElement="Task_0oaysi8">
+        <dc:Bounds x="1995" y="228" width="100" height="80" />
       </bpmndi:BPMNShape>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
