@@ -1,6 +1,7 @@
 
 package functionality;
 
+import java.awt.Checkbox;
 import java.awt.Color;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -13,6 +14,7 @@ import java.util.Map.Entry;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -22,6 +24,7 @@ import javax.swing.JRadioButton;
 import Mapping.BPMNBusinessRuleTask;
 import Mapping.BPMNDataObject;
 import Mapping.BPMNExclusiveGateway;
+import Mapping.BPMNParticipant;
 import Mapping.BPMNTask;
 
 public class Main {
@@ -52,10 +55,12 @@ public class Main {
 				"C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn");
 		
 		LinkedHashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> participantList = new LinkedHashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>>();
+		LinkedHashMap<BPMNBusinessRuleTask, BPMNParticipant> finalDeciderList = new LinkedHashMap<BPMNBusinessRuleTask, BPMNParticipant>();
 		JFrame frame = new JFrame("GUITest");
 		frame.setVisible(true);
 		frame.setLayout(new GridLayout(0, a2.getBusinessRuleTasks().size(), 10, 0));
 		ArrayList<JCheckBoxWithId> checkboxes= new ArrayList<JCheckBoxWithId>();
+		ArrayList<JCheckBoxFinalDecider> finalDeciderBoxes = new ArrayList<JCheckBoxFinalDecider>();
 		ArrayList<JPanel> panelList = new ArrayList<JPanel>();
 		HashMap<BPMNExclusiveGateway, Integer> countVotesMap = new HashMap<BPMNExclusiveGateway, Integer>();
 		
@@ -161,8 +166,25 @@ public class Main {
 					}
 				}
 			}
-						
 			
+			
+			JLabel colorLabelFD = new JLabel("CHOOSE 1 FINAL DECIDER");
+			colorLabelFD.setForeground(Color.MAGENTA);	
+			panel.add(colorLabelFD);
+			
+			//add the final decider checkboxes to the panel
+			//preselect the first box
+			for(int i = 0; i < a2.getGlobalSphereList().size(); i++) {
+				BPMNParticipant participant = a2.getGlobalSphereList().get(i);			
+				JCheckBoxFinalDecider box = new JCheckBoxFinalDecider(participant, bpmnEx, brt);
+				box.setText(participant.getName());
+				finalDeciderBoxes.add(box);
+				panel.add(box);
+					if(i==0) {
+						box.setSelected(true);
+					}
+			}
+				
 			frame.add(panel);
 			frame.pack();
 		}
@@ -182,12 +204,25 @@ public class Main {
 			public void actionPerformed(ActionEvent e) {
 				
 				ArrayList<BPMNExclusiveGateway>notEnoughVotesList = new ArrayList<BPMNExclusiveGateway>();
+				ArrayList<BPMNExclusiveGateway>notOneFinalDeciderList = new ArrayList<BPMNExclusiveGateway>();
+				boolean finalDeciderSelected = true;
 				boolean allSelected = true;
 				
 				for(Entry<BPMNExclusiveGateway, Integer> vote: countVotesMap.entrySet()) {
 					int count = 0;
+					int finalDeciderCount = 0;
 					BPMNExclusiveGateway exKey = vote.getKey();
 					int votes = vote.getValue();
+					
+				for(JCheckBoxFinalDecider box: finalDeciderBoxes) {
+					if(box.isSelected()) {
+						if(exKey.equals(box.bpmnEx)) {
+							finalDeciderCount++;
+						}						
+					}
+				}
+				
+				
 				
 				for (JCheckBoxWithId checkBox : checkboxes) {
 					if (checkBox.isSelected()) {						
@@ -230,12 +265,25 @@ public class Main {
 					allSelected=false;
 					notEnoughVotesList.add(exKey);
 				}
+				
+				if(finalDeciderCount!=1) {
+					finalDeciderSelected=false;
+					notOneFinalDeciderList.add(exKey);
+				} 
+				
+				
 				}
 			
 				
-				if (allSelected) {
+				if (allSelected&&finalDeciderSelected) {
 					try {
-						a2.addVotingTasksToProcess(participantList, mapModelBtn.isSelected());
+						for(JCheckBoxFinalDecider box: finalDeciderBoxes) {
+							if(box.isSelected()) {
+								finalDeciderList.put(box.bpmnBrt, box.participant);
+							}
+						}
+						
+						a2.addVotingTasksToProcess(participantList, finalDeciderList, mapModelBtn.isSelected());
 			
 					} catch (IOException e1) {
 						// TODO Auto-generated catch block
@@ -254,7 +302,12 @@ public class Main {
 					JOptionPane.showMessageDialog(null, "Select " +exGtw.getAmountVoters() + " participants for "+exGtw.getName() +"!",
 							"InfoBox: " + "Selection failed!", JOptionPane.INFORMATION_MESSAGE);
 					}
-				}
+					for(BPMNExclusiveGateway exGt: notOneFinalDeciderList) {
+						JOptionPane.showMessageDialog(null, "Select 1 Final Decider for "+exGt.getName() +"!",
+								"InfoBox: " + "Selection failed!", JOptionPane.INFORMATION_MESSAGE);
+						}
+					}
+			
 
 			}
 
