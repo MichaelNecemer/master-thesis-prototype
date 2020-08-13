@@ -30,5 +30,12 @@ public class JCheckBoxWithId extends JCheckBox {
 		this.sphere=sphere;
 	}
 	
+	//use this to create the checkboxes for the static sphere 
+	public JCheckBoxWithId(String text, BPMNExclusiveGateway bpmnEx,  BPMNDataObject dataObject,  String sphere) {
+		super(text);
+		this.bpmnEx=bpmnEx;
+		this.dataObject=dataObject;
+		this.sphere = sphere;
+	}
 
 }

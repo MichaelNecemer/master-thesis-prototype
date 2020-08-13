@@ -2,9 +2,9 @@ package Mapping;
 
 public class Label {
 	
-	private String label;
-	private String outcome;
-	private String name;
+	private String label; //e.g. x1=false
+	private String outcome; //e.g. false
+	private String name; // e.g. x1
 	
 	public Label(String name, String outcome) {
 		this.name = name;
@@ -40,6 +40,6 @@ public class Label {
 	public void setOutcome(String outcome) {
 		this.outcome = outcome;
 	}
-
-
+	
+	
 }

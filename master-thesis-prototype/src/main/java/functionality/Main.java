@@ -1,4 +1,4 @@
-
+/*
 package functionality;
 
 import java.awt.Checkbox;
@@ -37,7 +37,7 @@ public class Main {
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 
-		/*
+		
 		 JFileChooser chooser = new JFileChooser();
 		 
 		 chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
@@ -48,7 +48,7 @@ public class Main {
 		  chooser.getSelectedFile().getAbsolutePath());
 		  
 		  }
-		*/
+		
 		
 		
 		API a2 = new API(
@@ -70,6 +70,7 @@ public class Main {
 			
 			ArrayList<JCheckBoxWithId> checkBoxesStrongDynamic = new ArrayList<JCheckBoxWithId>();
 			ArrayList<JCheckBoxWithId> checkBoxesWeakDynamic = new ArrayList<JCheckBoxWithId>();
+			ArrayList<JCheckBoxWithId> checkBoxesStatic = new ArrayList<JCheckBoxWithId>();
 			ArrayList<JCheckBoxWithId> testBoxes = new ArrayList<JCheckBoxWithId>();
 
 			panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
@@ -77,10 +78,10 @@ public class Main {
 			sumVotes = bpmnEx.getAmountVoters();
 			countVotesMap.put(bpmnEx, bpmnEx.getAmountVoters());
 			panel.add(new JLabel("CHOOSE "+bpmnEx.getAmountVoters()  +" VOTERS FOR EXCLUSIVE GATEWAY " + bpmnEx.getName()));			
-			
+			ArrayList<BPMNParticipant> participantsAlreadyModelled = new ArrayList<BPMNParticipant>();
 
 			for (BPMNTask lastWriterTask : brt.getLastWriterList()) {				
-
+				
 				for (Entry<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> t2 : lastWriterTask
 						.getSDHashMap().entrySet()) {
 
@@ -93,6 +94,7 @@ public class Main {
 										task.getParticipant().getName() + ", " + task.getName()+" (Writer: "+lastWriterTask.getName()+")", lastWriterTask,
 										lastWriterTask.getSDHashMap(), task, bpmnEx, entry.getKey(), "Strong-Dynamic");
 								checkBoxesStrongDynamic.add(box);
+								participantsAlreadyModelled.add(task.getParticipant());
 								
 							}
 						}
@@ -108,20 +110,34 @@ public class Main {
 										task.getParticipant().getName() + ", " + task.getName()+" (Writer: "+lastWriterTask.getName()+")", lastWriterTask,
 										lastWriterTask.getWDHashMap(), task, bpmnEx, entry.getKey(), "Weak-Dynamic");
 								checkBoxesWeakDynamic.add(box);
-								
-							}
+								participantsAlreadyModelled.add(task.getParticipant());
+							
 						}
 					}
 				}
 				
 				
+				}
 				
+			
+			}
+			for(BPMNDataObject dataO: brt.getDataObjects()) {
+				for(BPMNParticipant pa: dataO.getStaticSphere()) {
+					if(!participantsAlreadyModelled.contains(pa)) {
+						JCheckBoxWithId box = new JCheckBoxWithId(pa.getName(), bpmnEx, dataO, "Static");
+						checkBoxesStatic.add(box);
+					}
+				}
 			}
 			
 			checkboxes.addAll(checkBoxesStrongDynamic);
 			checkboxes.addAll(checkBoxesWeakDynamic);
+			checkboxes.addAll(checkBoxesStatic);
+			
 			testBoxes.addAll(checkBoxesStrongDynamic);
 			testBoxes.addAll(checkBoxesWeakDynamic);
+			testBoxes.addAll(checkBoxesStatic);
+			
 			
 			for(BPMNDataObject dataObject: brt.getDataObjects()) {
 				JLabel colorLabelDataObject = new JLabel("Data Object: "+dataObject.getName());
@@ -130,6 +146,7 @@ public class Main {
 
 				boolean help = false;
 				boolean help2 = false;
+				boolean help3 = false;
 				int boxCount = 0;
 				
 				for(int i = 0; i < testBoxes.size(); i++) {	
@@ -160,11 +177,20 @@ public class Main {
 							}
 							panel.add(currentBox);
 							
+						} else if (currentBox.sphere.equals("Static")) {
+							if(help3==false) {
+								JLabel colorLabelStatic = new JLabel("Static Sphere");
+								colorLabelStatic.setForeground(Color.ORANGE);
+								panel.add(colorLabelStatic);
+								help3=true;
+							}
+							panel.add(currentBox);
 						}
-						
 						
 					}
 				}
+				
+				
 			}
 			
 			
@@ -319,3 +345,4 @@ public class Main {
 	}
 
 }
+*/

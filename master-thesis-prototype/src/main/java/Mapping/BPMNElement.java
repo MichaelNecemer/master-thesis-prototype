@@ -126,7 +126,39 @@ public class BPMNElement {
 		this.labelHasBeenSet = labelHasBeenSet;
 	}
 	
+	public String getLabelsWithoutOutCome() {
+		StringBuilder sb = new StringBuilder();
+		int i = 0; 
+		while (i<=this.labels.size()-1) {
+			if(i<labels.size()-1) {
+				sb.append(labels.get(i).getName()+"&");
+			} else {
+				sb.append(labels.get(i).getName());
+			}
+			
+			i++;
+		}
+		
+		System.out.println("SameDepthOtherBranch: "+sb.toString());
+		return sb.toString();
+	}
 	
+	
+	public ArrayList<BPMNElement> getPredecessorsSorted() {
+		ArrayList<BPMNElement>predecessorsSorted = new ArrayList<BPMNElement>();
+		for(BPMNElement e: this.predecessors) {
+			if(e instanceof BPMNGateway) {
+				predecessorsSorted.add(0,e);
+			} else {
+				predecessorsSorted.add(e);
+			}
+		}
+		for(BPMNElement e: predecessorsSorted) {
+			System.out.println("TEST e");
+			e.printElement();
+		}
+		return predecessorsSorted;
+	}
 	
 	
 	

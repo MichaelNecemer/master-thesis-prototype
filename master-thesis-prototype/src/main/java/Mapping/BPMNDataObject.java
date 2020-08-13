@@ -16,6 +16,7 @@ public class BPMNDataObject {
 	
 	private ArrayList<BPMNElement> readers;
 	private ArrayList<BPMNElement> writers;
+	private ArrayList<BPMNParticipant> staticSphere;
 	
 	public BPMNDataObject(String id, String name, String dataObjectReference) {
 		this.id = id;
@@ -26,6 +27,7 @@ public class BPMNDataObject {
 		this.writers = new ArrayList<BPMNElement>();
 		this.defaultSphere = "";
 		this.dataObjectReference=dataObjectReference;
+		this.staticSphere=new ArrayList<BPMNParticipant>();
 	}
 
 
@@ -65,7 +67,6 @@ public class BPMNDataObject {
 		for(BPMNElement bpmnt: this.readers) {
 			if(bpmnt instanceof BPMNTask) {
 			System.out.println("Readers of DataObject "+this.name+": "+(((BPMNTask)bpmnt).getName()+", "+((BPMNTask)bpmnt).getParticipant().getName()));
-			//bpmne.printElement();
 			}
 		}
 	
@@ -75,7 +76,6 @@ public class BPMNDataObject {
 		for(BPMNElement bpmnt: this.writers) {
 			if(bpmnt instanceof BPMNTask) {
 			System.out.println("Writers to DataObject "+this.name+": "+((BPMNTask)bpmnt).getName()+", "+((BPMNTask)bpmnt).getParticipant().getName());
-			//bpmne.printElement();
 			}
 		}
 	}
@@ -144,6 +144,18 @@ public class BPMNDataObject {
 	}
 	public String getNameIdWithoutBrackets() {
 		return this.nameIdWithoutBrackets;
+	}
+
+
+
+	public ArrayList<BPMNParticipant> getStaticSphere() {
+		return staticSphere;
+	}
+
+
+
+	public void setStaticSphere(ArrayList<BPMNParticipant> staticSphere) {
+		this.staticSphere = staticSphere;
 	}
 	
 }
