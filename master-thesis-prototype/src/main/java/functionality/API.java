@@ -88,6 +88,7 @@ import Mapping.Label;
 public class API {
 	static int value = 0;
 	private Collection<StartEvent> startEvent;
+	private Collection<EndEvent> endEvent;
 	private File process;
 	private BpmnModelInstance modelInstance;
 
@@ -104,16 +105,31 @@ public class API {
 		process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);
 		startEvent = modelInstance.getModelElementsByType(StartEvent.class);
+		endEvent = modelInstance.getModelElementsByType(EndEvent.class);
 		this.mapAndCompute();		
 	}
 
 	private void mapAndCompute() {
-		this.setSuccessors();
-		this.setPredecessors();
+		//Optimization needs to be done... route through process - set Successors and Predecessors and add Labels
+		//maps all the Camunda FlowNodes to BPMNElements
+		this.mapProcessElements();
+		//maps the successors and predecessors of the elements directly to the elements, sets the labels
+		this.mapSuccessorsAndPredecessors(startEvent.iterator().next(),endEvent.iterator().next(), new LinkedList<SequenceFlow>(), new ArrayList<Label>());
+		
+		System.out.println("___________________________");
+		for(BPMNElement e: this.processElements) {
+			System.out.println("ELEMENT:");
+			e.printElement();
+			e.printPredecessors();
+			e.printSuccessors();
+		}
+		System.out.println("___________________________");
+		
 		this.storeLanePerTask();
 		this.mapDataObjects();
 		this.createDataObjectAsssociatons();
 		this.computeGlobalSphere();
+		//this.getAllProcessPaths();
 		for(BPMNElement el: this.processElements) {
 			if(el instanceof BPMNBusinessRuleTask) {
 				this.businessRuleTaskList.add((BPMNBusinessRuleTask)el);
@@ -124,6 +140,72 @@ public class API {
 
 	}
 	
+	private void mapProcessElements() {
+		Collection<FlowNode>processNodes = modelInstance.getModelElementsByType(FlowNode.class);
+		for(FlowNode node: processNodes) {
+			this.mapCamundaFlowNodes(node);
+		}
+	}
+	
+	private void mapSuccessorsAndPredecessors(FlowNode currentNode, FlowNode endNode, LinkedList<SequenceFlow>stack, ArrayList<Label> currentLabels) {
+		//route through the process and add the successors and predecessors to the nodes
+		
+		stack.addAll(currentNode.getOutgoing());
+		boolean otherPath = false;
+		if(stack.size()>1) {
+			otherPath = true;
+		}
+				
+		while(!stack.isEmpty()) {
+			SequenceFlow currentSeqFlow = stack.pop();
+			FlowNode targetFlowNode = currentSeqFlow.getTarget();
+		
+			BPMNElement targetBPMNElement = this.getNodeById(targetFlowNode.getId());
+			BPMNElement currentBPMNElement = this.getNodeById(currentNode.getId());
+			
+			if(!(currentBPMNElement instanceof BPMNExclusiveGateway)&&(!currentLabels.isEmpty())&&currentBPMNElement.getLabelHasBeenSet()==false) {
+			currentBPMNElement.addLabels(currentLabels);
+			currentBPMNElement.setLabelHasBeenSet(true);
+			}
+						
+			//add the targetFlowNode as a successor to the currentNode 
+			if(!currentBPMNElement.getSuccessors().contains(targetBPMNElement)) {
+				currentBPMNElement.addSuccessor(targetBPMNElement);
+			}
+			
+			//add the currentNode as a predecessor to the targetFlowNode
+			if(!targetBPMNElement.getPredecessors().contains(currentBPMNElement)) {
+				targetBPMNElement.addPredecessor(currentBPMNElement);
+			}
+			
+			
+			//add the labels to the elements
+			if (currentBPMNElement instanceof BPMNExclusiveGateway) {
+				BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway)currentBPMNElement;
+				if(bpmnEx.getType().equals("split")) {
+					Label label = new Label(bpmnEx.getName(), currentSeqFlow.getName());
+					//check if label exists
+					for (Label l : labelList) {
+						if (l.getLabel().equals(label.getLabel())) {
+							label = l;
+						}
+					}
+					
+					currentLabels.add(label);
+					
+					
+				} else if (bpmnEx.getType().equals("join")&&currentLabels.size()>=1) {
+					currentLabels.remove(currentLabels.size()-1);
+				}
+				
+
+			}		
+					
+			this.mapSuccessorsAndPredecessors(targetFlowNode, endNode, new LinkedList<SequenceFlow>(), currentLabels);
+			
+		}
+		
+	}
 	
 
 	public Collection<FlowNode> getSucceedingFlowNodes(FlowNode node) {
@@ -187,74 +269,9 @@ public class API {
 
 	}
 
-	public void setSuccessors() {
-		try {
-			Collection<FlowNode> camundaFlowNodes = modelInstance.getModelElementsByType(FlowNode.class);
-
-			BPMNElement currentNode = null;
-
-			for (FlowNode flow : camundaFlowNodes) {
-				currentNode = mapCamundaFlowNodes(flow);
-				
-
-				BPMNElement everyN = null;
-				for (FlowNode everyNode : getSucceedingFlowNodes(flow)) {
-
-					everyN = mapCamundaFlowNodes(everyNode);
-
-					// Create labels for the outgoing flows of Exclusive Gateways and add them to
-					// directly following Elements
-					for (SequenceFlow seq : flow.getOutgoing()) {
-						if (currentNode instanceof BPMNExclusiveGateway && flow.getOutgoing().size() >= 2) {
-							Label label = new Label(((BPMNExclusiveGateway) currentNode).getName(), seq.getName());
-							for (Label l : labelList) {
-								if (l.getLabel().equals(label.getLabel())) {
-									label = l;
-								}
-							}
-							if (seq.getTarget().equals(everyNode)) {
-								labelList.add(label);
-
-								everyN.addLabel(label);
-
-							}
-
-						}
-					}
-
-					currentNode.setSuccessors(everyN);
-
-				}
-
-			}
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
 
 	// Query CAMUNDA FlowNodes and map them to BPMNDataElements
 	// Set the Predecessors for each BPMNDataElement
-
-	public void setPredecessors() {
-		Collection<FlowNode> camundaFlowNodes = modelInstance.getModelElementsByType(FlowNode.class);
-		BPMNElement currentNode = null;
-
-		// For each Camunda FlowNode check the type and create the matching BPMNElement
-		for (FlowNode flow : camundaFlowNodes) {
-			currentNode = mapCamundaFlowNodes(flow);
-
-			BPMNElement everyN = null;
-			// For each FlowNode get the preceeding Flow Nodes and create the matching
-			// BPMNElements
-			for (FlowNode everyNode : getPreceedingFlowNodes(flow)) {
-				everyN = this.mapCamundaFlowNodes(everyNode);
-
-				currentNode.setPredecessors(everyN);
-			}
-
-		}
-	}
 
 	public void printProcessElements() {
 		for (BPMNElement element : this.processElements) {
@@ -624,7 +641,9 @@ public class API {
 	// Uses Breadth first search to go through the predecessors of a node to find
 	// the last Writer to that dataObject
 	public ArrayList<BPMNTask> getLastWriterListForDataObject(BPMNBusinessRuleTask brt, BPMNDataObject data, ArrayList<BPMNTask>lastWriterList, LinkedList<BPMNElement>queue) {
-				
+		System.out.println("BRTL");
+		brt.printElement();
+		brt.getLabels();
 		queue.addAll(brt.getPredecessorsSorted());	
 		
 		while (!(queue.isEmpty())) {
@@ -639,10 +658,7 @@ public class API {
 			}
 			if(element instanceof BPMNStartEvent && queue.isEmpty()) {
 				return lastWriterList;
-			}
-			
-			
-			
+			}			
 			
 			if (element instanceof BPMNTask) {
 				// Check if the element is a Writer to the dataObject given as a parameter
@@ -662,11 +678,13 @@ public class API {
 									lastWriterList.add(currentLastWriterCandidate);
 									return lastWriterList;
 								}
-							}
+							} 
 							
-						lastWriterList.add(currentLastWriterCandidate);
-						
-													
+							lastWriterList.add(currentLastWriterCandidate);
+							System.out.println("TSTJKESJTKSEEJTKJ");
+							currentLastWriterCandidate.printElement();
+							currentLastWriterCandidate.printLabels();
+							
 						//when the found writers labels don't match with the labels of the brt
 						//check other paths for possible last writers too
 						if(!currentLastWriterCandidate.getLabels().equals(brt.getLabels())) {
@@ -678,6 +696,9 @@ public class API {
 						//when they match the lastWriter is on the same path as the brt and no XOR is in between
 						return lastWriterList;
 					}
+						
+						
+						
 				}
 				
 									
@@ -712,8 +733,9 @@ public class API {
 		
 		if(firstEl.getLabelsWithoutOutCome().equals(secondEl.getLabelsWithoutOutCome())) {
 			return true;
-		}
+		} else {
 		return false;
+		}
 	}
 
 	public BPMNElement getLastElementOnLaneBeforeCurrentNode(BPMNTask currentNode, BPMNParticipant participant) {
@@ -894,18 +916,7 @@ public class API {
 			}
 
 			for (BPMNElement successor : element.getSuccessors()) {
-				if (element.hasLabel() && successor.getLabelHasBeenSet() == false) {
-
-					successor.addLabelFirst(element.getLabels());
-					if (element instanceof BPMNExclusiveGateway
-							&& ((BPMNExclusiveGateway) element).getType().equals("join")) {
-
-						successor.deleteLastLabel();
-						element.deleteLastLabel();
-					}
-					successor.setLabelHasBeenSet(true);
-				}
-
+				
 				if (element instanceof BPMNExclusiveGateway
 						&& ((BPMNExclusiveGateway) element).getType().equals("split")) {
 					LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
@@ -937,7 +948,7 @@ public class API {
 			System.out.println("Liste: " + i);
 			for (BPMNElement el : pathElement) {
 				el.printElement();
-				// pathElement.printLabels();
+				el.printElement();
 			}
 			i++;
 		}

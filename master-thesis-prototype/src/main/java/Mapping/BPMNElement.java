@@ -35,8 +35,13 @@ public class BPMNElement {
 	public void setSuccessors(ArrayList<BPMNElement> successors) {
 		this.successors = successors;
 	}
+	public void addSuccessor(BPMNElement successor) {
+		this.successors.add(successor);
+	}
+	public void addPredecessor(BPMNElement predecessor) {
+		this.predecessors.add(predecessor);
+	}
 	
-
 	public void setSuccessors(BPMNElement successor) {
 		this.successors.add(successor);
 	}	
@@ -57,9 +62,9 @@ public class BPMNElement {
 
 	public void printPredecessors() {
 		if(this instanceof BPMNTask ) {
-			System.out.println("Predecessor of "+((BPMNTask)this).getName());
+			System.out.println("Predecessor of "+((BPMNTask)this).getName()+": ");
 		} else {
-			System.out.println("Predecessor of "+this.getId());
+			System.out.println("Predecessor of "+this.getId()+": ");
 		}
 		
 		for(BPMNElement b: this.predecessors) {			
@@ -69,9 +74,9 @@ public class BPMNElement {
 	
 	public void printSuccessors() {
 		if(this instanceof BPMNTask ) {
-			System.out.println("Successor of "+((BPMNTask)this).getName());
+			System.out.print("Successor of "+((BPMNTask)this).getName()+": ");
 		} else {
-			System.out.println("Successor of "+this.getId());
+			System.out.print("Successor of "+this.getId()+": ");
 		}
 		
 		for(BPMNElement b: this.successors) {	
@@ -153,12 +158,11 @@ public class BPMNElement {
 				predecessorsSorted.add(e);
 			}
 		}
-		for(BPMNElement e: predecessorsSorted) {
-			System.out.println("TEST e");
-			e.printElement();
-		}
+		
 		return predecessorsSorted;
 	}
+	
+	
 	
 	
 	
