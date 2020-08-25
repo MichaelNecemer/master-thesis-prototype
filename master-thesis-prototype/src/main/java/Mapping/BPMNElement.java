@@ -162,7 +162,13 @@ public class BPMNElement {
 		return predecessorsSorted;
 	}
 	
-	
+	public String getLabelsAsString() {
+		StringBuilder sb = new StringBuilder();
+		for(Label l: this.labels) {
+			sb.append(l.getLabel());
+		}
+		return sb.toString();
+	}
 	
 	
 	

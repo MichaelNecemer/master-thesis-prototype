@@ -151,19 +151,21 @@ public class API {
 		//route through the process and add the successors and predecessors to the nodes
 		
 		stack.addAll(currentNode.getOutgoing());
-		boolean otherPath = false;
-		if(stack.size()>1) {
-			otherPath = true;
+		
+		if(stack.isEmpty()) {		
+				return;			
 		}
-				
+	
 		while(!stack.isEmpty()) {
 			SequenceFlow currentSeqFlow = stack.pop();
+					
 			FlowNode targetFlowNode = currentSeqFlow.getTarget();
-		
+					
 			BPMNElement targetBPMNElement = this.getNodeById(targetFlowNode.getId());
 			BPMNElement currentBPMNElement = this.getNodeById(currentNode.getId());
 			
-			if(!(currentBPMNElement instanceof BPMNExclusiveGateway)&&(!currentLabels.isEmpty())&&currentBPMNElement.getLabelHasBeenSet()==false) {
+			
+			if((!currentLabels.isEmpty())&&currentBPMNElement.getLabelHasBeenSet()==false) {
 			currentBPMNElement.addLabels(currentLabels);
 			currentBPMNElement.setLabelHasBeenSet(true);
 			}
@@ -191,10 +193,13 @@ public class API {
 						}
 					}
 					
+					currentLabels = new ArrayList<Label>();
+					currentLabels.addAll(currentBPMNElement.getPredecessors().iterator().next().getLabels());
 					currentLabels.add(label);
 					
+									
+				} else if (bpmnEx.getType().equals("join")&&(!currentLabels.isEmpty())) {
 					
-				} else if (bpmnEx.getType().equals("join")&&currentLabels.size()>=1) {
 					currentLabels.remove(currentLabels.size()-1);
 				}
 				
@@ -441,14 +446,14 @@ public class API {
 			// one
 			if (text.getTextContent().startsWith("Default:")) {
 				String str = text.getTextContent();
-				dataObject = str.substring(str.indexOf('['), str.indexOf(']') + 1);
-				defaultSphere = str.substring(str.indexOf('{'), str.indexOf('}') + 1);
+				dataObject = str.substring(str.indexOf('[')+1, str.indexOf(']') );
+				defaultSphere = str.substring(str.indexOf('{')+1, str.indexOf('}') );
 			}
 			for (Association a : modelInstance.getModelElementsByType(Association.class)) {
 				for (BPMNDataObject bpmndo : element.getDataObjects()) {
 					// Map the default Spheres for the data objects to the corresponding writing
 					// tasks
-					if (bpmndo.getName().substring(0, 4).equals(dataObject) && bpmndo.getWriters().contains(element)) {
+					if (bpmndo.getName().substring(1, 3).equals(dataObject) && bpmndo.getWriters().contains(element)) {
 						// attach the defaultSphere to the dataObject
 						if (bpmndo.getDefaultSphere().isEmpty()) {
 							bpmndo.setDefaultSphere(defaultSphere);
@@ -463,12 +468,12 @@ public class API {
 						String str = text.getTextContent();
 
 						// First 4 characters specify the Data object e.g. [D1]
-						String s = str.substring(str.indexOf('['), str.indexOf(']') + 1);
+						String s = str.substring(str.indexOf('[')+1, str.indexOf(']'));
 						// The Sphere for the data object is between {}
-						String s2 = str.substring(str.indexOf('{'), str.indexOf('}') + 1);
+						String s2 = str.substring(str.indexOf('{')+1, str.indexOf('}') );
 
 						// Check if it is the right data object
-						if (bpmndo.getName().substring(0, 4).equals(s)) {
+						if (bpmndo.getName().substring(1, 3).equals(s)) {
 							element.getSphereAnnotation().put(bpmndo, s2);
 						}
 
@@ -1320,24 +1325,8 @@ public class API {
 									
 					ArrayList<BPMNTask> lastWriterList = this.getLastWriterListForDataObject(brt, data, new ArrayList<BPMNTask>(), new LinkedList<BPMNElement>());
 					brt.setLastWriterList(data, lastWriterList);
+				
 					
-					
-					/*
-					BPMNTask lastWriter = this.getLastWriterForDataObject(brt, data, alreadyFoundWriters);
-					lastWriters.add(lastWriter);
-					brt.getLastWriterList().add(lastWriter);
-					alreadyFoundWriters.add(lastWriter);
-					// if lastWriter is within another xor branch than the brt we need to find the
-					// lastWriter for the other branch too 
-					if (!lastWriter.getLabels().equals(brt.getLabels())) {
-						lastWriter = this.getLastWriterForDataObject(brt, data, alreadyFoundWriters);
-						if(lastWriter!=null) {
-							lastWriter.printElement();						
-							lastWriters.add(lastWriter);
-							brt.getLastWriterList().add(lastWriter);
-							alreadyFoundWriters.add(lastWriter);						
-						}
-					}*/
 					
 					
 					while (!lastWriters.isEmpty()) {
@@ -1834,15 +1823,42 @@ try {
 
 	}
 	
-	private BPMNElement latestPossibleElementForSearch (BPMNTask lastWriter, BPMNBusinessRuleTask bpmnBrt) {
-		//if the lastWriter writes globally, statically, or weak-dynamicly the search for readers is extended beyond the BusinessRuleTask
-			//
-		//if the lastWriter writes strong-dynamically - the search is extended beyond the BusinessRuleTask until the first xor-split is met
-		if(lastWriter.getSphereAnnotation().equals("Strong-Dynamic")) {
+	public BPMNElement searchReaderAfterBrt (BPMNTask lastWriter, BPMNDataObject dataO, BPMNBusinessRuleTask bpmnBrt) {
+		
+		//if the lastWriter writes Strong-Dynamically the search can not be extended beyond the brt, since there is a XOR-Split right after the brt
+		BPMNElement nextPossibleReader = bpmnBrt;
+	
+		for(Entry<BPMNDataObject, String> sphereEntry: lastWriter.getSphereAnnotation().entrySet()) {
+			if(sphereEntry.getKey().equals(dataO)) {
+				System.out.println("CHECKI");
+				System.out.println(sphereEntry.getValue());
+				if(sphereEntry.getValue().equals("Weak-Dynamic")||sphereEntry.getValue().equals("Static")||sphereEntry.getValue().equals("Global")||sphereEntry.getValue().equals("Public")){
+					//if the lastWriter writes globally, statically, or weak-dynamically the search for readers is extended beyond the BusinessRuleTask
+					System.out.println("KERAKAEJR");
+					LinkedList<BPMNElement>stack = new LinkedList<BPMNElement>();
+					stack.addAll(bpmnBrt.getSuccessors());
+					while(!stack.isEmpty()) {
+						nextPossibleReader = stack.poll();
+						System.out.println("READERS of "+dataO.getName());
+						dataO.printReadersOfDataObject();
+						if(dataO.getReaders().contains(nextPossibleReader)) {
+							System.out.println("NextPossibleReader");
+							nextPossibleReader.printElement();
+							return nextPossibleReader;
+						}	
+						
+						stack.addAll(nextPossibleReader.getSuccessors());
+						
+					}
+					//if no reader is found
+					nextPossibleReader = bpmnBrt;
+				}
+			}
+			
 			
 		}
 		
-		return null;
+		return nextPossibleReader;
 		
 	}
 	
