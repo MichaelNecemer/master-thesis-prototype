@@ -3,22 +3,48 @@ package Mapping;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class BPMNBusinessRuleTask extends BPMNTask {
 	
+	private HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNParticipant>>> combinations;
 	private HashMap<BPMNDataObject, ArrayList<BPMNTask>> lastWriters;
 	private DecisionEvaluation decisionEvaluation;
 	private double falseRate;
+	private LinkedList<BrtToBrtArc> outgoingArcsToSuccessorBrts;
 
 	public BPMNBusinessRuleTask(String id, String name) {
 		super(id, name);
 		// TODO Auto-generated constructor stub
 		this.lastWriters = new HashMap<BPMNDataObject, ArrayList<BPMNTask>>();
+		this.combinations=new HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNParticipant>>>();
 		//false rate is only for testing purposes 
 		//it is a pseudo random double between min and max (e.g. 0.01 and 0.1)
 		this.setRandomFalseRateBetween(0.01, 0.1);	
+		this.outgoingArcsToSuccessorBrts = new LinkedList<BrtToBrtArc>();
 	}
+	
+	
+	public LinkedList<BrtToBrtArc> getOutgoingArcsToSuccessorBrts() {
+		return outgoingArcsToSuccessorBrts;
+	}
+
+
+	public void setOutgoingArcsToSuccessorBrts(LinkedList<BrtToBrtArc> outgoingArcsToSuccessorBrts) {
+		this.outgoingArcsToSuccessorBrts = outgoingArcsToSuccessorBrts;
+	}
+
+
+	public HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNParticipant>>> getCombinations() {
+		return combinations;
+	}
+
+
+	public void setCombinations(HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNParticipant>>> combinations) {
+		this.combinations = combinations;
+	}
+
 
 	public HashMap<BPMNDataObject,ArrayList<BPMNTask>> getLastWriterList() {
 		return this.lastWriters;

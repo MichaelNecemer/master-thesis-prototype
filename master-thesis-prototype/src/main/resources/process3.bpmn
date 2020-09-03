@@ -137,6 +137,11 @@
     <bpmn:task id="Task_172ot11" name="A10: Test Task&#10;">
       <bpmn:incoming>SequenceFlow_1vs9lfv</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_0e78vkg</bpmn:outgoing>
+      <bpmn:property id="Property_1bbhym5" name="__targetRef_placeholder" />
+      <bpmn:dataInputAssociation id="DataInputAssociation_01fo4ki">
+        <bpmn:sourceRef>DataObjectReference_0elqwv7</bpmn:sourceRef>
+        <bpmn:targetRef>Property_1bbhym5</bpmn:targetRef>
+      </bpmn:dataInputAssociation>
     </bpmn:task>
     <bpmn:exclusiveGateway id="ExclusiveGateway_10ht8im" name="X3">
       <bpmn:incoming>SequenceFlow_0e78vkg</bpmn:incoming>
@@ -172,11 +177,6 @@
     <bpmn:task id="Task_06evc5h" name="A11: After X3">
       <bpmn:incoming>SequenceFlow_1bc8lb6</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_1yx6cug</bpmn:outgoing>
-      <bpmn:property id="Property_19vdern" name="__targetRef_placeholder" />
-      <bpmn:dataInputAssociation id="DataInputAssociation_0cqjrjp">
-        <bpmn:sourceRef>DataObjectReference_0elqwv7</bpmn:sourceRef>
-        <bpmn:targetRef>Property_19vdern</bpmn:targetRef>
-      </bpmn:dataInputAssociation>
     </bpmn:task>
     <bpmn:exclusiveGateway id="ExclusiveGateway_0v73qnu" name="X4">
       <bpmn:incoming>SequenceFlow_02j9t5x</bpmn:incoming>
@@ -368,10 +368,6 @@
     <bpmn:textAnnotation id="TextAnnotation_1vslacv">
       <bpmn:text>[D1]{Weak-Dynamic}</bpmn:text>
     </bpmn:textAnnotation>
-    <bpmn:textAnnotation id="TextAnnotation_1qifco3">
-      <bpmn:text>[D1]{Weak-Dynamic}</bpmn:text>
-    </bpmn:textAnnotation>
-    <bpmn:association id="Association_0fmmna9" sourceRef="Task_0oaysi8" targetRef="TextAnnotation_1qifco3" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_06ywa9j">
@@ -716,10 +712,6 @@
         <di:waypoint x="823" y="430" />
         <di:waypoint x="2916" y="640" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="DataInputAssociation_0cqjrjp_di" bpmnElement="DataInputAssociation_0cqjrjp">
-        <di:waypoint x="823" y="428" />
-        <di:waypoint x="3046" y="464" />
-      </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Task_0j73rbo_di" bpmnElement="Task_0oaysi8">
         <dc:Bounds x="1707" y="245" width="100" height="80" />
       </bpmndi:BPMNShape>
@@ -917,12 +909,9 @@
         <di:waypoint x="572" y="563" />
         <di:waypoint x="600" y="562" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="TextAnnotation_1qifco3_di" bpmnElement="TextAnnotation_1qifco3">
-        <dc:Bounds x="1810" y="160" width="100" height="39" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="Association_0fmmna9_di" bpmnElement="Association_0fmmna9">
-        <di:waypoint x="1796" y="245" />
-        <di:waypoint x="1841" y="199" />
+      <bpmndi:BPMNEdge id="DataInputAssociation_01fo4ki_di" bpmnElement="DataInputAssociation_01fo4ki">
+        <di:waypoint x="823" y="427" />
+        <di:waypoint x="2786" y="323" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
