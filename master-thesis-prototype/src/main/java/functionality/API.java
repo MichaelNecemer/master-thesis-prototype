@@ -9,7 +9,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -82,6 +84,7 @@ import Mapping.BPMNTask;
 import Mapping.BrtToBrtArc;
 import Mapping.Combination;
 import Mapping.DecisionEvaluation;
+import Mapping.Graph;
 import Mapping.InfixToPostfix;
 import Mapping.Label;
 
@@ -123,8 +126,13 @@ public class API {
 		this.mapDataObjects();
 		this.createDataObjectAsssociatons();
 		this.computeGlobalSphere();
-
-		for (BPMNBusinessRuleTask currBrt : this.businessRuleTaskList) {
+		
+		
+		
+		LinkedList<LinkedList<BrtToBrtArc>> brtCombs = new LinkedList<LinkedList<BrtToBrtArc>>();
+		
+		for (int i = 0; i < businessRuleTaskList.size(); i++) {
+			BPMNBusinessRuleTask currBrt = businessRuleTaskList.get(i);
 				if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
 					BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
 					// get all the possible combinations of participants for the brt
@@ -137,34 +145,52 @@ public class API {
 					// note it could be followers since there might be a xor split in which there
 					// are brts!
 					for (LinkedList<BPMNParticipant> partList : currBrt.getCombinations().get(currBrt)) {
-						for (int i = 0; i < businessRuleTaskList.size() - 1; i++) {
-							
-							if (currBrt.equals(businessRuleTaskList.get(i))) {
-								BrtToBrtArc arc = new BrtToBrtArc(currBrt, businessRuleTaskList.get(i + 1), partList);
-								currBrt.getOutgoingArcsToSuccessorBrts().add(arc);
+					
+							BrtToBrtArc arc = null;
+							//first arc going from startevent into brt with zero cost
+							//ignore this arc and start with the one connecting brt1 with brt2
+							if (i==businessRuleTaskList.size()-1){
+								//last arcs go from last brt to endEvent
+								arc = new BrtToBrtArc(currBrt, this.bpmnEnd, partList);
+							} else {							
+								arc = new BrtToBrtArc(currBrt, businessRuleTaskList.get(i + 1), partList);
+								
 								//now we need to calculate the cost for this arc
 								//note that we might already be on a path where some voters have been chosen
 								//e.g. we are at brt2 and want to go to brt3 -> we have to consider the cost of the arc from brt1 to brt2
 								//since we already have decided for a set of voters that influence our costs
-								arc.calculateCostForArc(this.allPathsBetweenNodes(currBrt, businessRuleTaskList.get(i+1), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>()));
-								
-								
+															}
+							currBrt.getOutgoingArcsToSuccessorBrts().add(arc);
 							}
-							
-
-						}
-
-					}
-					System.out.println("KEKWBRT");
-					currBrt.printElement();
-					for(BrtToBrtArc p: currBrt.getOutgoingArcsToSuccessorBrts()) {
-						p.printBrtToBrtArc();
+						brtCombs.add(currBrt.getOutgoingArcsToSuccessorBrts());
 					}
 					
-					
-					this.addVotingSystem(currBrt);
 				}
+			
+		int count = 0;
+		
+		Collection<List<Object>> combs = Combination.permutations(brtCombs);
+		System.out.println("COMBS "+combs.size());
+		for(List<Object>kList: combs) {
+			
+			System.out.println("List Leaf");
+			System.out.println("Cost: "+this.sumUpCostsForPath((LinkedList)kList));
+			for(Object e: kList) {
+				for(BPMNParticipant p:((BrtToBrtArc)e).getChosenCombinationOfParticipants() ) {
+					System.out.println(p.getName());
+				}
+				
 			}
+			BrtToBrtArc currArc = (BrtToBrtArc)kList.get(kList.size()-1);
+			if(currArc.getTargetBPMNElement() instanceof BPMNEndEvent) {
+				count++;
+				
+			}
+			
+		}
+		
+	System.out.println("leaf node paths "+count);
+		
 		
 	}
 
@@ -1860,4 +1886,16 @@ public class API {
 
 	}
 
+	private double sumUpCostsForPath(LinkedList<BrtToBrtArc>listOfArcs) {
+		double cost = 0;
+		for(BrtToBrtArc arc: listOfArcs) {
+		//	if(arc.isCostHasBeenSet()) {
+				cost+=arc.getCost();
+			}
+			
+		//}
+		
+		
+		return cost;
+	}
 }

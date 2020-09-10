@@ -12,7 +12,7 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 	private HashMap<BPMNDataObject, ArrayList<BPMNTask>> lastWriters;
 	private DecisionEvaluation decisionEvaluation;
 	private double falseRate;
-	private LinkedList<BrtToBrtArc> outgoingArcsToSuccessorBrts;
+	private LinkedList<BrtToBrtArc> outgoingArcsWithCost;
 
 	public BPMNBusinessRuleTask(String id, String name) {
 		super(id, name);
@@ -22,17 +22,17 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 		//false rate is only for testing purposes 
 		//it is a pseudo random double between min and max (e.g. 0.01 and 0.1)
 		this.setRandomFalseRateBetween(0.01, 0.1);	
-		this.outgoingArcsToSuccessorBrts = new LinkedList<BrtToBrtArc>();
+		this.outgoingArcsWithCost = new LinkedList<BrtToBrtArc>();
 	}
 	
 	
 	public LinkedList<BrtToBrtArc> getOutgoingArcsToSuccessorBrts() {
-		return outgoingArcsToSuccessorBrts;
+		return outgoingArcsWithCost;
 	}
 
 
 	public void setOutgoingArcsToSuccessorBrts(LinkedList<BrtToBrtArc> outgoingArcsToSuccessorBrts) {
-		this.outgoingArcsToSuccessorBrts = outgoingArcsToSuccessorBrts;
+		this.outgoingArcsWithCost = outgoingArcsToSuccessorBrts;
 	}
 
 
