@@ -105,13 +105,26 @@ public class API {
 
 	private ArrayList<BPMNBusinessRuleTask> businessRuleTaskList = new ArrayList<BPMNBusinessRuleTask>();
 	private ArrayList<Label> labelList = new ArrayList<Label>();
+	private double costForAddingToGlobalSphere;
+	private double costForLiftingFromGlobalToStatic;
+	private double costForLiftingFromStaticToWeakDynamic;
+	private double costForLiftingFromWeakDynamicToStrongDynamic;
+	
+	
 
-	API(String pathToFile) {
+	API(String pathToFile, ArrayList<Double>cost) throws Exception {
+		if(cost.size()!=4) {
+			throw new Exception("Not exactly 4 cost parameters in the list!");
+		}
 		process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);
 		startEvent = modelInstance.getModelElementsByType(StartEvent.class);
 		endEvent = modelInstance.getModelElementsByType(EndEvent.class);
 		this.mapAndCompute();
+		this.costForAddingToGlobalSphere=cost.get(0);
+		this.costForLiftingFromGlobalToStatic=cost.get(1);
+		this.costForLiftingFromStaticToWeakDynamic=cost.get(2);
+		this.costForLiftingFromWeakDynamicToStrongDynamic=cost.get(3);
 	}
 
 	private void mapAndCompute() {
@@ -164,7 +177,7 @@ public class API {
 							}
 						brtCombs.add(currBrt.getOutgoingArcsToSuccessorBrts());
 					}
-					
+				this.addCostsForSqhereRequirements(currBrt, this.globalSphere);
 				}
 			
 		int count = 0;
@@ -193,6 +206,96 @@ public class API {
 		
 		
 	}
+	
+	
+	
+	
+	
+	
+	public HashMap<Boolean, BPMNElement> readerIsOnPath (BPMNParticipant reader, BPMNTask lastWriter, BPMNDataObject dataO, LinkedList<BPMNElement>path) {
+		//check in which sphere the participant is 
+		 // if reader is on the path and no writer is in between -> return <true, null>
+		// if reader is on the path and another writer is in between -> return <true, writer>
+					// there could be multiple writers overwriting it! Add them to hashmap too
+		// else reader is not on the path -> return <false, null>
+		
+		HashMap<Boolean, BPMNElement> foundOnPath = new HashMap<Boolean, BPMNElement>();
+		ArrayList<BPMNElement>possibleWriters = dataO.getWriters();
+		ArrayList<BPMNElement>possibleReaders = dataO.getReaders();
+		
+		BPMNParticipant lastWriterParticipant = lastWriter.getParticipant();
+				
+			for(BPMNElement el: path) {				
+				for(BPMNElement possibleWriter: possibleWriters) {
+					if(el.equals(possibleWriter)&&!((BPMNTask)el).getParticipant().equals(lastWriterParticipant)) {
+						//there is another writer on the path writing to the dataobject that is not the lastWriter
+						// this means the el is in the static sphere of the lastWriter for this path
+						foundOnPath.put(true, el);						
+					}
+				}
+				if(possibleReaders.contains(el)&&((BPMNTask)el).getParticipant().equals(reader)) {
+					//the reader is found on the path
+					foundOnPath.putIfAbsent(true, null);					
+				}
+			
+		}
+		
+			if(foundOnPath.isEmpty()) {
+				foundOnPath.put(false, null);
+			}
+				
+		return foundOnPath;
+	}
+	
+	
+	public void addCostsForSqhereRequirements(BPMNBusinessRuleTask bpmnBrt, LinkedList<BPMNParticipant>participants) {
+		
+		//Search for lastWriters of the connected data objects
+		for(BPMNDataObject dataO: bpmnBrt.getDataObjects()) {
+			ArrayList<BPMNTask>lastWriterList = this.getLastWriterListForDataObject(bpmnBrt, dataO, new ArrayList<BPMNTask>(), new LinkedList<BPMNElement>());
+			System.out.println("Lastwriterlist: "+lastWriterList.size());
+			
+			
+			
+			//now check if participants are in the required sphere of the reader at the position of the brt
+			for(BPMNTask writerTask: lastWriterList) {
+				LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodes(writerTask, bpmnBrt, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+				System.out.println("Paths: "+paths.size());
+				String sphere = writerTask.getSphereAnnotation().get(dataO);
+				for(BPMNParticipant participant: participants) {		
+								
+				this.checkSphereRequirement(writerTask, dataO, sphere, participant, paths);
+						
+						/*
+						for(LinkedList<BPMNElement>path: paths) {
+							this.readerIsOnPath(reader, writerTask, dataO, path);
+							}
+						*/
+				
+			}	
+				
+			}
+			
+			
+			
+		}
+		
+		
+		
+	}
+	
+	private boolean isParticipantInList(List<BPMNElement>el, BPMNParticipant p) {
+		for(BPMNElement e: el) {
+			if(e instanceof BPMNTask) {
+				BPMNTask currentTask = (BPMNTask)e;
+				if(currentTask.getParticipant().equals(p)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
 
 	private void mapProcessElements() {
 		Collection<FlowNode> processNodes = modelInstance.getModelElementsByType(FlowNode.class);
@@ -581,6 +684,8 @@ public class API {
 						if (doa.getTarget().getAttributeValue("dataObjectRef").equals(bpmno.getId())) {
 							if (e instanceof BPMNTask && e.getId().equals(t.getId())) {
 								bpmno.addWriterToDataObject((BPMNTask) e);
+								//if a participant writes to a dataObject he is also added as a reader
+								bpmno.addReaderToDataObject((BPMNTask)e);								
 								bpmno.getStaticSphere().add(((BPMNTask) e).getParticipant());
 								((BPMNTask) e).addBPMNDataObject(bpmno);
 								this.mapSphereAnnotations(t);
@@ -1384,6 +1489,138 @@ public class API {
 			}
 		}
 	}
+	
+	private boolean checkSphereRequirement(BPMNTask lastWriterTask, BPMNDataObject dataO, String sphere, BPMNParticipant reader, LinkedList<LinkedList<BPMNElement>>pathsBetweenLastWriterAndBrt) {
+		//check if the reader is at least in the sphere of the lastWriterTask
+		String sphereOfReader = "";		
+		
+		if(pathsBetweenLastWriterAndBrt.isEmpty()) {			
+			return false;
+		}
+	
+		int count = 0; 
+		int staticCount = 0; 
+			for(LinkedList<BPMNElement> path: pathsBetweenLastWriterAndBrt) {
+				//increase if the reader is found on the path
+				int pathCountReader = 0; 
+				BPMNTask lastWriterOnPath = lastWriterTask;
+				
+				//HashMap<Boolean, BPMNElement> readerOnPath = this.readerIsOnPath(reader, lastWriterTask, dataO, path);
+				
+				/*
+				for(Entry<Boolean, BPMNElement> entry: readerOnPath.entrySet()) {
+					if(entry.getKey().equals(true)) {
+						if(entry.getValue().equals(null)) {
+							//reader is on the path and no other writer in between
+							
+						} else {
+							//another writer is on the path
+						}
+					}
+				}*/
+				
+				
+				for(BPMNElement element: path) {
+					
+					if(element instanceof BPMNTask) {
+						BPMNTask currentTask = (BPMNTask)element;	
+						
+						if(dataO.getWriters().contains(currentTask)&&(!currentTask.getParticipant().equals(lastWriterTask.getParticipant()))) {
+							//another writer to the dataObject has been found on the path
+							lastWriterOnPath = currentTask;
+						}
+					
+						if(currentTask.getParticipant().equals(reader)&&dataO.getReaders().contains(currentTask)) {
+							//the reader has been found on the path
+							if(!(lastWriterOnPath.getParticipant().equals(lastWriterTask.getParticipant()))) {
+								//if there is another writer on the path between lastWriterTask and currentTask
+								//the currentTask is in the static sphere of the lastWriterTask for this path
+								staticCount++;
+								
+							} else {
+							pathCountReader++;
+							}
+						
+					}
+						
+						
+					}
+				}
+				if(pathCountReader>0&&staticCount==0) {
+					//reader reads in at least one path without another writer in between
+					count++;
+				}
+				
+			}
+			
+			if(pathsBetweenLastWriterAndBrt.size()>count) {
+				//reader is not in every path	
+				if(count==staticCount) {
+					//another Writer writes to dataO on each path where reader reads the data after lastWriterTask!
+					sphereOfReader = "Static";					
+				} else {
+					sphereOfReader = "Weak-Dynamic";
+				}
+				
+				
+			} else if(pathsBetweenLastWriterAndBrt.size()==count) {
+				//every path contains the participant
+				if(count==staticCount) {
+					sphereOfReader = "Static";
+					
+				} else {
+					sphereOfReader = "Strong-Dynamic";
+				}
+										
+			}
+			
+			System.out.println("________________");
+			lastWriterTask.printElement();
+			reader.printParticipant();
+			System.out.println("atLeastInSphere"+this.atLeastInSphere(sphereOfReader, sphere));
+			System.out.println("++++++++++++++++");
+			return this.atLeastInSphere(sphereOfReader, sphere);	
+			
+			
+			
+		
+		
+	}
+	
+	
+	private boolean atLeastInSphere(String currentSphere, String requiredSphere) {
+		//return true if requiredSphere comprises the currentSphere
+		//if currentSphere e.g. WD and requiredSphere SD return false
+		
+		//basic comparison -> if the spheres are the same, return true
+		if(requiredSphere.contentEquals(currentSphere)) {
+			return true;
+		} else{
+			if(requiredSphere.contentEquals("Strong-Dynamic")) {	
+				return false;			
+		}
+			
+	 else if(requiredSphere.contentEquals("Weak-Dynamic")) {
+		if(currentSphere.contentEquals("Strong-Dynamic")) {
+			return true;
+		}
+	} else if(requiredSphere.contentEquals("Static")) {
+		if(currentSphere.contentEquals("Weak-Dynamic")||currentSphere.contentEquals("Strong-Dynamic")) {
+			return true;				
+		}
+		
+	} else if (requiredSphere.contentEquals("Global")) {
+		if(currentSphere.contentEquals("Static")||currentSphere.contentEquals("Weak-Dynamic")||currentSphere.contentEquals("Strong-Dynamic")) {
+			return true;
+		
+	}	
+	}
+		}
+		return false;
+
+		
+	}
+	
 
 	private void addReaderToSphere(BPMNBusinessRuleTask brt, BPMNDataObject bpmndo, int count, BPMNTask writer,
 			BPMNTask reader, LinkedList<LinkedList<BPMNElement>> paths) {
