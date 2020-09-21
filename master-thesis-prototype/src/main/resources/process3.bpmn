@@ -99,9 +99,6 @@
       <bpmn:dataOutputAssociation id="DataOutputAssociation_1uybsh7">
         <bpmn:targetRef>DataObjectReference_0s7m2xz</bpmn:targetRef>
       </bpmn:dataOutputAssociation>
-      <bpmn:dataOutputAssociation id="DataOutputAssociation_1544woh">
-        <bpmn:targetRef>DataObjectReference_0elqwv7</bpmn:targetRef>
-      </bpmn:dataOutputAssociation>
     </bpmn:task>
     <bpmn:task id="Task_1d1a9rx" name="Test 2">
       <bpmn:incoming>SequenceFlow_0az4itp</bpmn:incoming>
@@ -124,11 +121,9 @@
     <bpmn:task id="Task_0bzy4if" name="A6: Do Rehabilitation">
       <bpmn:incoming>SequenceFlow_1vx2ujs</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_1kbyvld</bpmn:outgoing>
-      <bpmn:property id="Property_1t5bce4" name="__targetRef_placeholder" />
-      <bpmn:dataInputAssociation id="DataInputAssociation_04tcent">
-        <bpmn:sourceRef>DataObjectReference_0s7m2xz</bpmn:sourceRef>
-        <bpmn:targetRef>Property_1t5bce4</bpmn:targetRef>
-      </bpmn:dataInputAssociation>
+      <bpmn:dataOutputAssociation id="DataOutputAssociation_1vdypfp">
+        <bpmn:targetRef>DataObjectReference_0s7m2xz</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
     </bpmn:task>
     <bpmn:task id="Task_0oaysi8" name="A7: Before Brt2">
       <bpmn:incoming>SequenceFlow_1qwisx2</bpmn:incoming>
@@ -180,6 +175,11 @@
     <bpmn:task id="Task_06evc5h" name="A11: After X3">
       <bpmn:incoming>SequenceFlow_1bc8lb6</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_1yx6cug</bpmn:outgoing>
+      <bpmn:property id="Property_0kpqp1e" name="__targetRef_placeholder" />
+      <bpmn:dataInputAssociation id="DataInputAssociation_0yn8cke">
+        <bpmn:sourceRef>DataObjectReference_0elqwv7</bpmn:sourceRef>
+        <bpmn:targetRef>Property_0kpqp1e</bpmn:targetRef>
+      </bpmn:dataInputAssociation>
     </bpmn:task>
     <bpmn:exclusiveGateway id="ExclusiveGateway_0v73qnu" name="X4">
       <bpmn:incoming>SequenceFlow_02j9t5x</bpmn:incoming>
@@ -199,9 +199,6 @@
         <bpmn:sourceRef>DataObjectReference_0elqwv7</bpmn:sourceRef>
         <bpmn:targetRef>Property_13z39ii</bpmn:targetRef>
       </bpmn:dataInputAssociation>
-      <bpmn:dataOutputAssociation id="DataOutputAssociation_1kp6kpk">
-        <bpmn:targetRef>DataObjectReference_0s7m2xz</bpmn:targetRef>
-      </bpmn:dataOutputAssociation>
     </bpmn:task>
     <bpmn:task id="Task_0vbt22x" name="TEST">
       <bpmn:incoming>SequenceFlow_0t5o23w</bpmn:incoming>
@@ -650,10 +647,6 @@
         <di:waypoint x="1301" y="295" />
         <di:waypoint x="1534" y="767" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="DataInputAssociation_04tcent_di" bpmnElement="DataInputAssociation_04tcent">
-        <di:waypoint x="1305" y="280" />
-        <di:waypoint x="1845" y="580" />
-      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Association_1pr86kn_di" bpmnElement="Association_1pr86kn">
         <di:waypoint x="1759" y="632" />
         <di:waypoint x="1856" y="705" />
@@ -828,10 +821,6 @@
         <di:waypoint x="1220" y="230" />
         <di:waypoint x="1269" y="260" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="DataOutputAssociation_1kp6kpk_di" bpmnElement="DataOutputAssociation_1kp6kpk">
-        <di:waypoint x="682" y="640" />
-        <di:waypoint x="1269" y="285" />
-      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="SequenceFlow_0silhit_di" bpmnElement="SequenceFlow_0silhit">
         <di:waypoint x="1807" y="285" />
         <di:waypoint x="1865" y="285" />
@@ -899,9 +888,14 @@
         <di:waypoint x="2670" y="360" />
         <di:waypoint x="2786" y="332" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="DataOutputAssociation_1544woh_di" bpmnElement="DataOutputAssociation_1544woh">
-        <di:waypoint x="987" y="327" />
-        <di:waypoint x="823" y="421" />
+      <bpmndi:BPMNEdge id="DataOutputAssociation_1vdypfp_di" bpmnElement="DataOutputAssociation_1vdypfp">
+        <di:waypoint x="1836" y="590" />
+        <di:waypoint x="1305" y="275" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DataInputAssociation_0yn8cke_di" bpmnElement="DataInputAssociation_0yn8cke">
+        <di:waypoint x="823" y="429" />
+        <di:waypoint x="2950" y="490" />
+        <di:waypoint x="3046" y="462" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

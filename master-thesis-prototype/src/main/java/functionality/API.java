@@ -96,6 +96,7 @@ public class API {
 	private Collection<EndEvent> endEvent;
 	private File process;
 	private BpmnModelInstance modelInstance;
+	private int amountPossibleCombinationsOfParticipants; 
 
 	private BPMNStartEvent bpmnStart;
 	private BPMNEndEvent bpmnEnd;
@@ -105,6 +106,7 @@ public class API {
 
 	private ArrayList<BPMNBusinessRuleTask> businessRuleTaskList = new ArrayList<BPMNBusinessRuleTask>();
 	private ArrayList<Label> labelList = new ArrayList<Label>();
+	private LinkedList<LinkedList<BPMNElement>>pathsThroughProcess = new LinkedList<LinkedList<BPMNElement>>();
 	private double costForAddingToGlobalSphere;
 	private double costForLiftingFromGlobalToStatic;
 	private double costForLiftingFromStaticToWeakDynamic;
@@ -125,6 +127,8 @@ public class API {
 		this.costForLiftingFromGlobalToStatic=cost.get(1);
 		this.costForLiftingFromStaticToWeakDynamic=cost.get(2);
 		this.costForLiftingFromWeakDynamicToStrongDynamic=cost.get(3);
+		this.pathsThroughProcess=this.allPathsBetweenNodes(this.bpmnStart, this.bpmnEnd, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+	
 	}
 
 	private void mapAndCompute() {
@@ -139,7 +143,72 @@ public class API {
 		this.mapDataObjects();
 		this.createDataObjectAsssociatons();
 		this.computeGlobalSphere();
-		
+			
+		for(BPMNDataObject dataO: this.dataObjects) {
+			for(BPMNElement writer: dataO.getWriters()) {
+				BPMNTask writerTask = (BPMNTask)writer;
+						
+				ArrayList<BPMNParticipant> wdList = new ArrayList<BPMNParticipant>();
+				ArrayList<BPMNParticipant> sdList = new ArrayList<BPMNParticipant>();
+				
+				HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>allEffectivePathsForWriter = this.allEffectivePathsForWriters(dataO, writer, writer, this.bpmnEnd, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+				writerTask.setEffectivePaths(allEffectivePathsForWriter);
+				System.out.println("ALLEFFECTIVE: "+writerTask.getName()+", "+allEffectivePathsForWriter.get(true).size());
+				
+				for(LinkedList<BPMNElement> l: writerTask.getEffectivePaths().get(true)) {
+					for(BPMNElement e: l) {
+						System.out.print("Effective: ");
+						e.printElement();
+					}
+				}
+				
+				
+				for(BPMNParticipant readerParticipant: dataO.getReaderParticipants()) {	
+					
+					/*
+					if(readerParticipant.equals(writerTask.getParticipant())) {
+						if(!sdList.contains(readerParticipant)) {
+							sdList.add(readerParticipant);
+							//the writer is added to the strong-dynamic sphere 
+						}
+					}*/
+					
+					String sphereForReader = this.getSphereForParticipantOnEffectivePaths(writerTask, dataO, readerParticipant, writerTask.getEffectivePaths());
+					
+					if(sphereForReader.contentEquals("Strong-Dynamic")) {
+						if(!sdList.contains(readerParticipant)) {
+							sdList.add(readerParticipant);
+						}
+					} else if (sphereForReader.contentEquals("Weak-Dynamic")) {
+						if(!wdList.contains(readerParticipant)) {
+							wdList.add(readerParticipant);
+						}
+					}
+			
+					System.out.println("SphereForReader: ");
+					readerParticipant.printParticipant();
+					System.out.println(":::::::"+sphereForReader);
+				
+			
+					System.out.println("_________________________");
+				
+			
+			
+			
+			}
+			
+			
+			
+				writerTask.getWeakDynamicHashMap().putIfAbsent(dataO, wdList);
+				writerTask.getStrongDynamicHashMap().putIfAbsent(dataO, sdList);
+				System.out.println("WRITERTASK");
+				writerTask.printElement();
+				System.out.println("WDLIST");
+				wdList.forEach(f->{f.printParticipant();});
+				System.out.println("SDLIST");
+				sdList.forEach(f->{f.printParticipant();});
+		}
+		}
 		
 		
 		LinkedList<LinkedList<BrtToBrtArc>> brtCombs = new LinkedList<LinkedList<BrtToBrtArc>>();
@@ -202,9 +271,8 @@ public class API {
 			
 		}
 		
-	System.out.println("leaf node paths "+count);
-		
-		
+		this.setAmountPossibleCombinationsOfParticipants(count);
+	
 	}
 	
 	
@@ -685,8 +753,9 @@ public class API {
 							if (e instanceof BPMNTask && e.getId().equals(t.getId())) {
 								bpmno.addWriterToDataObject((BPMNTask) e);
 								//if a participant writes to a dataObject he is also added as a reader
-								bpmno.addReaderToDataObject((BPMNTask)e);								
-								bpmno.getStaticSphere().add(((BPMNTask) e).getParticipant());
+								bpmno.addReaderToDataObject((BPMNTask)e);	
+								
+								bpmno.addParticipantToStaticSphere(((BPMNTask) e).getParticipant());
 								((BPMNTask) e).addBPMNDataObject(bpmno);
 								this.mapSphereAnnotations(t);
 							}
@@ -697,7 +766,7 @@ public class API {
 								.equals(bpmno.getId())) {
 							if (e instanceof BPMNTask && e.getId().equals(t.getId())) {
 								bpmno.addReaderToDataObject((BPMNTask) e);
-								bpmno.getStaticSphere().add(((BPMNTask) e).getParticipant());
+								bpmno.addParticipantToStaticSphere(((BPMNTask) e).getParticipant());
 								((BPMNTask) e).addBPMNDataObject(bpmno);
 							}
 						}
@@ -1059,6 +1128,50 @@ public class API {
 		return paths;
 
 	}
+	
+	
+	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> allEffectivePathsForWriters(BPMNDataObject dataO, BPMNElement writerTask, BPMNElement startNode, BPMNElement endNode,
+			LinkedList<BPMNElement> stack, LinkedList<BPMNElement> gtwStack, LinkedList<BPMNElement> currentPath, 
+			LinkedList<LinkedList<BPMNElement>> paths) {
+		//returns a hashmap with the keys true and false
+			//where key = true: contains all effective Paths from Writer to EndEvent
+			//where key = false: contains all paths where another Writer writes to same dataO
+		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndEndEvent = this.allPathsBetweenNodes(startNode, endNode, stack, gtwStack, currentPath, paths);
+		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> pathMap = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
+		LinkedList<LinkedList<BPMNElement>> effectivePaths = new LinkedList<LinkedList<BPMNElement>>();
+		LinkedList<LinkedList<BPMNElement>> nonEffectivePaths = new LinkedList<LinkedList<BPMNElement>>();
+		boolean effective = true;
+		
+		for(LinkedList<BPMNElement> pathInstance: allPathsBetweenWriterAndEndEvent) {
+			for(BPMNElement el: pathInstance) {
+				if(el instanceof BPMNTask) {
+					BPMNTask currentTask = (BPMNTask)el;
+					if(dataO.getWriters().contains(currentTask)&&(!(currentTask.getParticipant().equals(((BPMNTask)writerTask).getParticipant())))) {
+						//another writer has been found on the path
+						effective = false;
+					}
+					
+				}
+				
+				
+			}
+			if(effective) {
+				effectivePaths.add(pathInstance);
+			} else if(effective==false) {
+				nonEffectivePaths.add(pathInstance);
+			}
+			
+		}
+		
+		
+		pathMap.putIfAbsent(true, effectivePaths);
+		pathMap.putIfAbsent(false, nonEffectivePaths);
+		return pathMap;
+
+	}
+	
+	
+	
 
 	// Test Method for pathing through the process
 	public void getAllProcessPaths() {
@@ -1071,7 +1184,7 @@ public class API {
 			System.out.println("Liste: " + i);
 			for (BPMNElement el : pathElement) {
 				el.printElement();
-				el.printElement();
+				
 			}
 			i++;
 		}
@@ -1473,7 +1586,7 @@ public class API {
 												}
 											}
 										}
-										this.addReaderToSphere(brt, sphere, count, lWriter, (BPMNTask) reader, paths);
+										//this.addReaderToSphere(brt, sphere, count, lWriter, (BPMNTask) reader, paths);
 										// count = 0;
 									}
 								}
@@ -1621,7 +1734,7 @@ public class API {
 		
 	}
 	
-
+	/*
 	private void addReaderToSphere(BPMNBusinessRuleTask brt, BPMNDataObject bpmndo, int count, BPMNTask writer,
 			BPMNTask reader, LinkedList<LinkedList<BPMNElement>> paths) {
 		ArrayList<Label> writerLabels = writer.getLabels();
@@ -1680,7 +1793,7 @@ public class API {
 			}
 		}
 
-	}
+	}*/
 
 	public boolean checkProcessModel() {
 		// Check how many participants are needed for the voting!
@@ -2135,4 +2248,60 @@ public class API {
 		
 		return cost;
 	}
+	
+	private String getSphereForParticipantOnEffectivePaths(BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader, HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>effectivePaths) {
+		int strongDynamicCountEffectivePaths = 0; 
+		int strongDynamicCountNonEffectivePaths = 0; 
+		
+		for(Entry<Boolean, LinkedList<LinkedList<BPMNElement>>> entry: effectivePaths.entrySet()) {
+		for(LinkedList<BPMNElement>path: entry.getValue()) {
+		
+			boolean readerFound = false;
+			for(BPMNElement pathEl: path) {
+				pathEl.printElement();
+				
+				if(pathEl instanceof BPMNTask) {
+					BPMNTask task = (BPMNTask)pathEl; 
+					if(dataO.getReaders().contains(task)&&(task.getParticipant().equals(reader)&&this.isParticipantInList(dataO.getReaders(), reader))) {
+						//reader found on the path
+						System.out.println("READER FOUND");
+						task.printElement();
+						readerFound = true;						
+					}
+				}
+				
+			}
+			if(readerFound) {
+				if(entry.getKey()==true) {
+				strongDynamicCountEffectivePaths++;
+				} 
+			} 
+			
+		}
+		}
+		
+		if(effectivePaths.get(false)==null&&strongDynamicCountEffectivePaths==effectivePaths.get(true).size()) {
+			//if reader is on each effective path and there are no "non-effective" paths
+			return "Strong-Dynamic";
+		} else if (effectivePaths.get(false)!=null) {
+			return "Weak-Dynamic";
+		} else return "";
+	}
+
+	public int getAmountPossibleCombinationsOfParticipants() {
+		return amountPossibleCombinationsOfParticipants;
+	}
+
+	public void setAmountPossibleCombinationsOfParticipants(int amountPossibleCombinationsOfParticipants) {
+		this.amountPossibleCombinationsOfParticipants = amountPossibleCombinationsOfParticipants;
+	}
+	
+	public LinkedList<LinkedList<BPMNElement>> getAllPathsThroughProcess(){
+		return this.pathsThroughProcess;
+	}
+	
+	public ArrayList<BPMNDataObject> getDataObjects(){
+		return this.dataObjects;
+	}
+	
 }

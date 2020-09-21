@@ -17,6 +17,8 @@ public class BPMNDataObject {
 	private ArrayList<BPMNElement> readers;
 	private ArrayList<BPMNElement> writers;
 	private ArrayList<BPMNParticipant> staticSphere;
+	private ArrayList<BPMNParticipant> readerParticipants;
+	private ArrayList<BPMNParticipant> writerParticipants;
 	
 	public BPMNDataObject(String id, String name, String dataObjectReference) {
 		this.id = id;
@@ -28,6 +30,32 @@ public class BPMNDataObject {
 		this.defaultSphere = "";
 		this.dataObjectReference=dataObjectReference;
 		this.staticSphere=new ArrayList<BPMNParticipant>();
+		this.readerParticipants=new ArrayList<BPMNParticipant>();
+		this.writerParticipants=new ArrayList<BPMNParticipant>();
+	}
+
+
+
+	public ArrayList<BPMNParticipant> getReaderParticipants() {
+		return readerParticipants;
+	}
+
+
+
+	public void setReaderParticipants(ArrayList<BPMNParticipant> readerParticipants) {
+		this.readerParticipants = readerParticipants;
+	}
+
+
+
+	public ArrayList<BPMNParticipant> getWriterParticipants() {
+		return writerParticipants;
+	}
+
+
+
+	public void setWriterParticipants(ArrayList<BPMNParticipant> writerParticipants) {
+		this.writerParticipants = writerParticipants;
 	}
 
 
@@ -56,11 +84,22 @@ public class BPMNDataObject {
 	
 	
 	public void addReaderToDataObject(BPMNTask e) {
-		this.readers.add(e);
+		if(!this.readers.contains(e)) {
+			this.readers.add(e);
+			if(!this.readerParticipants.contains(e.getParticipant())) {
+				this.readerParticipants.add(e.getParticipant());
+			}
+		}
+		
 	}
 	
 	public void addWriterToDataObject(BPMNTask e) {
+		if(!this.writers.contains(e)) {
 		this.writers.add(e);
+		if(!this.writerParticipants.contains(e.getParticipant())) {
+			this.writerParticipants.add(e.getParticipant());
+		}
+		}
 	}
 	
 	public void printReadersOfDataObject() {
@@ -157,5 +196,12 @@ public class BPMNDataObject {
 	public void setStaticSphere(ArrayList<BPMNParticipant> staticSphere) {
 		this.staticSphere = staticSphere;
 	}
+	
+	public void addParticipantToStaticSphere(BPMNParticipant participant) {
+		if(!this.staticSphere.contains(participant)) {
+			this.staticSphere.add(participant);
+		}
+	}
+	
 	
 }

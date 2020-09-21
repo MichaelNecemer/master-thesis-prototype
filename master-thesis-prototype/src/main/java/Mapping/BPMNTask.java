@@ -2,6 +2,7 @@ package Mapping;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 //A task has exactly one input sequence flow and one output sequence flow
 //This is represented by having a predecessor and a successor 
@@ -18,8 +19,10 @@ public class BPMNTask extends BPMNElement{
 	//Readers after that Task have to be at least in this sphere
 	private HashMap<BPMNDataObject, String> sphereAnnotation;
 	
-	private HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> weakDynamicHashMap;
-	private HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> strongDynamicHashMap;
+	private HashMap<BPMNDataObject, ArrayList<BPMNParticipant>> weakDynamicHashMap;
+	private HashMap<BPMNDataObject, ArrayList<BPMNParticipant>> strongDynamicHashMap;
+	
+	private HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths;
 	
 
 	public BPMNTask (String id, String name) {
@@ -27,12 +30,62 @@ public class BPMNTask extends BPMNElement{
 		this.name = name;
 		this.dataObjects = new ArrayList<BPMNDataObject>();
 		this.sphereAnnotation = new HashMap<BPMNDataObject, String>();
-		this.weakDynamicHashMap=new HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>>();
-		this.strongDynamicHashMap = new HashMap<BPMNBusinessRuleTask,HashMap<BPMNDataObject, ArrayList<BPMNTask>>>();
+		this.weakDynamicHashMap= new HashMap<BPMNDataObject, ArrayList<BPMNParticipant>>();
+		this.strongDynamicHashMap = new HashMap<BPMNDataObject, ArrayList<BPMNParticipant>>();
+		this.effectivePaths = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
+		}
+		
+	
+	
+	public HashMap<BPMNDataObject, ArrayList<BPMNParticipant>> getWeakDynamicHashMap() {
+		return weakDynamicHashMap;
 	}
 	
 	
-	
+
+
+	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> getEffectivePaths() {
+		return effectivePaths;
+	}
+
+
+
+	public void setEffectivePaths(HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths) {
+		this.effectivePaths = effectivePaths;
+	}
+
+
+
+	public void setWeakDynamicHashMap(HashMap<BPMNDataObject, ArrayList<BPMNParticipant>> weakDynamicHashMap) {
+		this.weakDynamicHashMap = weakDynamicHashMap;
+	}
+
+
+
+
+
+
+
+	public HashMap<BPMNDataObject, ArrayList<BPMNParticipant>> getStrongDynamicHashMap() {
+		return strongDynamicHashMap;
+	}
+
+
+
+
+
+
+
+	public void setStrongDynamicHashMap(HashMap<BPMNDataObject, ArrayList<BPMNParticipant>> strongDynamicHashMap) {
+		this.strongDynamicHashMap = strongDynamicHashMap;
+	}
+
+
+
+
+
+
+
 	public String getName() {
 		return this.name;
 	}
@@ -101,59 +154,8 @@ public class BPMNTask extends BPMNElement{
 		this.sphereAnnotation = sphereAnnotation;
 	}
 	
-	
-	public void addTaskToWDHashMap(BPMNBusinessRuleTask brt, BPMNDataObject bpmndo, BPMNTask reader) {
-		if(this.weakDynamicHashMap.get(brt)==null) {
-			this.weakDynamicHashMap.put(brt, new HashMap<BPMNDataObject, ArrayList<BPMNTask>>());
-			
-			if(this.weakDynamicHashMap.get(brt).get(bpmndo)==null) {
-				this.weakDynamicHashMap.get(brt).put(bpmndo, new ArrayList<BPMNTask>());
-			}
-			
-		}	
-		
-		this.weakDynamicHashMap.get(brt).get(bpmndo).add(reader);
-		
-		
-	}
-	
-	public void addTaskToSDHashMap(BPMNBusinessRuleTask brt, BPMNDataObject bpmndo, BPMNTask reader) {
-		if(this.strongDynamicHashMap.get(brt)==null) {
-			this.strongDynamicHashMap.put(brt, new HashMap<BPMNDataObject, ArrayList<BPMNTask>>());
-					
-			if(this.strongDynamicHashMap.get(brt).get(bpmndo)==null) {
-				this.strongDynamicHashMap.get(brt).put(bpmndo, new ArrayList<BPMNTask>());
-			}
-			
-		}	
-		
-		this.strongDynamicHashMap.get(brt).get(bpmndo).add(reader);
-		
-	}
 
 
-
-	public HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> getWDHashMap() {
-		return this.weakDynamicHashMap;
-	}
-
-
-
-	public void setWDHashMap(HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> wdHashMap) {
-		this.weakDynamicHashMap = wdHashMap;
-	}
-
-
-
-	public HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> getSDHashMap() {
-		return this.strongDynamicHashMap;
-	}
-
-
-
-	public void setStrongDynamicList(HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> sdHashMap) {
-		this.strongDynamicHashMap = sdHashMap;
-	}
 	
 	public static int getVotingTaskId() {
 		return votingTaskId;
