@@ -8,11 +8,13 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class BPMNBusinessRuleTask extends BPMNTask {
 	
+	//the combinations are all possible combinations of participant that will vote for this businessRuleTask
 	private HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNParticipant>>> combinations;
 	private HashMap<BPMNDataObject, ArrayList<BPMNTask>> lastWriters;
 	private DecisionEvaluation decisionEvaluation;
 	private double falseRate;
-	private LinkedList<BrtToBrtArc> outgoingArcsWithCost;
+	private LinkedList<ArcWithCost> incomingArcsWithCost;
+	
 
 	public BPMNBusinessRuleTask(String id, String name) {
 		super(id, name);
@@ -22,17 +24,17 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 		//false rate is only for testing purposes 
 		//it is a pseudo random double between min and max (e.g. 0.01 and 0.1)
 		this.setRandomFalseRateBetween(0.01, 0.1);	
-		this.outgoingArcsWithCost = new LinkedList<BrtToBrtArc>();
+		this.incomingArcsWithCost = new LinkedList<ArcWithCost>();
 	}
 	
 	
-	public LinkedList<BrtToBrtArc> getOutgoingArcsToSuccessorBrts() {
-		return outgoingArcsWithCost;
+	public LinkedList<ArcWithCost> getIncomingArcsWithCost() {
+		return incomingArcsWithCost;
 	}
 
 
-	public void setOutgoingArcsToSuccessorBrts(LinkedList<BrtToBrtArc> outgoingArcsToSuccessorBrts) {
-		this.outgoingArcsWithCost = outgoingArcsToSuccessorBrts;
+	public void setOutgoingArcsToSuccessorBrts(LinkedList<ArcWithCost> incomingArcsWithCost) {
+		this.incomingArcsWithCost = incomingArcsWithCost;
 	}
 
 

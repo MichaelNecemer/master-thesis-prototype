@@ -45,7 +45,7 @@ public class Combination {
 	 * @param brtCombs Original list of collections which elements have to be combined.
 	 * @return Resultant collection of lists with all permutations of original list.
 	 */
-	public static <T> Collection<List<T>> permutations(List<LinkedList<BrtToBrtArc>> brtCombs) {
+	public static <T> Collection<List<T>> permutations(List<LinkedList<ArcWithCost>> brtCombs) {
 	  if (brtCombs == null || brtCombs.isEmpty()) {
 	    return Collections.emptyList();
 	  } else {
@@ -56,7 +56,7 @@ public class Combination {
 	}
 
 	
-	private static <T> void permutationsImpl(List<LinkedList<BrtToBrtArc>> brtCombs, Collection<List<T>> res, int d, List<T> copy2) {
+	private static <T> void permutationsImpl(List<LinkedList<ArcWithCost>> brtCombs, Collection<List<T>> res, int d, List<T> copy2) {
 	  // if depth equals number of original collections, final reached, add and return
 	  if (d == brtCombs.size()) {
 	    res.add(copy2);
