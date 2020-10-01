@@ -9,6 +9,8 @@ public class ArcWithCost{
 	//The current Arc object holds list to all preceeding arcs -> uniquely identifiable	
 	//what does it cost when chosenCombinationOfParticipants are added as voters?
 	
+	public static int id;
+	public int idOfArc;
 	private LinkedList<ArcWithCost>preceedingArcs;
 	//first arc goes into the first bpmnBrt 
 	private BPMNElement preceedingBpmnBrt;
@@ -34,9 +36,11 @@ public class ArcWithCost{
 		this.currentBpmnBrt = targetBPMNElement;
 		this.chosenCombinationOfParticipants=chosenCombinationOfParticipants;	
 		this.cost=1;
+		this.cumulatedCost=1;
 		this.costHasBeenSet=false;
 		this.preceedingArcs=preceedingArcs;
 		this.isLeaf=false;
+		this.idOfArc=++id;
 	}
 	
 	
@@ -96,20 +100,7 @@ public class ArcWithCost{
 		this.chosenCombinationOfParticipants = chosenCombinationOfParticipants;
 	}
 
-	public void calculateCumulatedCostForArcAndPreceedingArcs() {
-		//first calculate the cost for this arc
-		
-		
-		
-		//next we need to consider all preceeding arcs that might be influenced by the participants chosen for this arc
-		
-		for(ArcWithCost arc: this.preceedingArcs) {
-			
-		}
-		
-	}
 	
-
 
 	
 
