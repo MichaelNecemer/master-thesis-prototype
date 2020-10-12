@@ -29,7 +29,7 @@ public class JCheckBoxPossiblePath extends JCheckBox{
 		this.dataO = dataO; 
 		this.pathList = new LinkedList<JCheckBox>();
 		this.pathsAsString=new LinkedList<String>();
-		pathsBetweenLastWriterAndReader = api.allPathsBetweenNodes(lastWriter, reader, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+		//pathsBetweenLastWriterAndReader = api.allPathsBetweenNodes(lastWriter, reader, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 		this.createPathList();
 	}
 	

@@ -14,6 +14,8 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 	private DecisionEvaluation decisionEvaluation;
 	private double falseRate;
 	private LinkedList<ArcWithCost> incomingArcsWithCost;
+	private LinkedList<BPMNBusinessRuleTask>directSuccessors;
+	private LinkedList<BPMNBusinessRuleTask>potentiallyDependentBrts;
 	
 
 	public BPMNBusinessRuleTask(String id, String name) {
@@ -25,9 +27,32 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 		//it is a pseudo random double between min and max (e.g. 0.01 and 0.1)
 		this.setRandomFalseRateBetween(0.01, 0.1);	
 		this.incomingArcsWithCost = new LinkedList<ArcWithCost>();
+		this.directSuccessors=new LinkedList<BPMNBusinessRuleTask>();
+		this.potentiallyDependentBrts=new LinkedList<BPMNBusinessRuleTask>();
+	}
+	
+	public LinkedList<BPMNBusinessRuleTask> getPotentiallyDependentBrts(){
+		return this.potentiallyDependentBrts;
 	}
 	
 	
+	
+	public LinkedList<BPMNBusinessRuleTask> getDirectSuccessors() {
+		return directSuccessors;
+	}
+
+
+
+
+
+	public void setDirectSuccessors(LinkedList<BPMNBusinessRuleTask> directSuccessors) {
+		this.directSuccessors = directSuccessors;
+	}
+
+
+
+
+
 	public LinkedList<ArcWithCost> getIncomingArcsWithCost() {
 		return incomingArcsWithCost;
 	}

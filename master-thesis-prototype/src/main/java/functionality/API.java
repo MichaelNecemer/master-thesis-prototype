@@ -87,6 +87,7 @@ import Mapping.Combination;
 import Mapping.DecisionEvaluation;
 import Mapping.InfixToPostfix;
 import Mapping.Label;
+import Mapping.RequiredUpdate;
 
 //Class that uses the camunda model API to interact with the process model directly without parsing the XML first to e.g. DOM Object
 //Note that only processes with exactly 1 Start Event are possible
@@ -104,7 +105,6 @@ public class API {
 	private ArrayList<BPMNElement> processElements = new ArrayList<BPMNElement>();
 	private LinkedList<BPMNParticipant> globalSphere = new LinkedList<BPMNParticipant>();
 
-	private LinkedList<LinkedList<ArcWithCost>> leafNodeCombs = new LinkedList<LinkedList<ArcWithCost>>();
 	private ArrayList<BPMNBusinessRuleTask> businessRuleTaskList = new ArrayList<BPMNBusinessRuleTask>();
 	private ArrayList<Label> labelList = new ArrayList<Label>();
 	private LinkedList<LinkedList<BPMNElement>> pathsThroughProcess = new LinkedList<LinkedList<BPMNElement>>();
@@ -130,7 +130,7 @@ public class API {
 		
 		this.mapAndCompute();
 		
-		this.pathsThroughProcess = this.allPathsBetweenNodes(this.bpmnStart, this.bpmnEnd,
+		this.pathsThroughProcess = this.allPathsBetweenNodesDFS(this.bpmnStart, this.bpmnEnd,
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<LinkedList<BPMNElement>>());
 		this.possibleBrtCombinationsTillEnd = new LinkedList<LinkedList<BPMNBusinessRuleTask>>();
@@ -141,6 +141,12 @@ public class API {
 					brtCombToEndEvent.add((BPMNBusinessRuleTask)el);
 				}
 			}
+			for(int i = 0; i < brtCombToEndEvent.size()-1; i++) {
+				if(!brtCombToEndEvent.get(i).getDirectSuccessors().contains((brtCombToEndEvent.get(i+1)))){
+				brtCombToEndEvent.get(i).getDirectSuccessors().add(brtCombToEndEvent.get(i+1));
+			}
+			}
+			
 			if(!this.possibleBrtCombinationsTillEnd.contains(brtCombToEndEvent)) {
 			this.possibleBrtCombinationsTillEnd.add(brtCombToEndEvent);
 			}
@@ -149,11 +155,6 @@ public class API {
 		
 		this.generateBrtDependenciesAndArcWithCosts();
 		
-		for(BPMNBusinessRuleTask b: this.businessRuleTaskList) {
-			System.out.println("KEKW");
-			b.printElement();
-			System.out.println(b.getIncomingArcsWithCost().size());
-		}
 
 	}
 
@@ -164,12 +165,72 @@ public class API {
 		// elements, sets the labels
 		this.mapSuccessorsAndPredecessors(startEvent.iterator().next(), endEvent.iterator().next(),
 				new LinkedList<SequenceFlow>(), new ArrayList<Label>());
-
+			
 		this.storeLanePerTask();
 		this.mapDataObjects();
 		this.createDataObjectAsssociatons();
 		this.computeGlobalSphere();
+		
+		
 		this.setAllEffectivePathsForWriters();
+		
+		//set last writer lists for the brts
+		for(BPMNBusinessRuleTask brt: this.businessRuleTaskList) {
+			for(BPMNDataObject dataO: brt.getDataObjects()) {				
+				ArrayList<BPMNTask>lastWritersForDataO = this.getLastWriterListForDataObject(brt, dataO, new ArrayList<BPMNTask>(), new LinkedList<BPMNElement>());
+				brt.getLastWriterList().putIfAbsent(dataO, lastWritersForDataO);
+			}
+		}
+		//set the dependent brts 
+		this.setDependentBrts();
+		
+		for(BPMNBusinessRuleTask brt: this.businessRuleTaskList) {
+			for(BPMNBusinessRuleTask brt2: brt.getPotentiallyDependentBrts()) {
+				System.out.println(brt.getName()+" potentially dependent to "+brt2.getName());
+			}
+		}
+		
+		
+		
+		
+	}
+	
+	
+	
+	private void setDependentBrts() {
+		for(int i = 0; i < this.businessRuleTaskList.size(); i++) {
+			int j = businessRuleTaskList.size()-1;
+			BPMNBusinessRuleTask brt = this.businessRuleTaskList.get(i);
+			while(i<j) {
+			BPMNBusinessRuleTask brt2 = this.businessRuleTaskList.get(j);
+			for(Entry<BPMNDataObject, ArrayList<BPMNTask>> entry: brt.getLastWriterList().entrySet()) {
+				for(BPMNTask lastWriter: entry.getValue()) {
+					for(Entry<BPMNDataObject, ArrayList<BPMNTask>> entry2: brt2.getLastWriterList().entrySet()) {
+						//for(BPMNTask lastWriter2: entry2.getValue()) {
+						if(entry2.getValue().contains(lastWriter)) {
+							
+							for(LinkedList<BPMNElement>l: lastWriter.getEffectivePaths().get(true)) {
+								for(BPMNElement el: l) {
+									if(el.equals(lastWriter)) {
+										if((!brt.getPotentiallyDependentBrts().contains(brt2))&&(!brt2.getPotentiallyDependentBrts().contains(brt))) {
+										brt.getPotentiallyDependentBrts().add(brt2);
+										brt2.getPotentiallyDependentBrts().add(brt);
+									}
+									}
+								}
+							}
+							
+							
+							}
+					}
+					}
+				}
+			j--;
+			}
+			
+		}
+		
+		
 	}
 	
 	private void setAllEffectivePathsForWriters() {
@@ -186,77 +247,29 @@ public class API {
 		
 	}
 	
-	private void setWDandSDListForWriterWithAlreadyChosenVoters(BPMNTask writerTask, BPMNDataObject dataO, HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>alreadyChosenVoters) {
-	
-			ArrayList<BPMNParticipant> wdList = new ArrayList<BPMNParticipant>();
-			ArrayList<BPMNParticipant> sdList = new ArrayList<BPMNParticipant>();
-			
-			//for each writer set the spheres for the readers 
-			//consider already chosen participants!!!
-			for (BPMNParticipant readerParticipant : this.globalSphere) {
-
-				//this method takes takes the already chosen voters into account for building the spheres for the writerTask
-				String sphereForReader = this.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-						readerParticipant, writerTask.getEffectivePaths(), alreadyChosenVoters);
-				System.out.println("Writer: "+writerTask.getName()+", ReaderPart: "+readerParticipant.getName()+", sphereForReader "+sphereForReader);
-				
-				if (sphereForReader.contentEquals("Strong-Dynamic")) {
-					if (!sdList.contains(readerParticipant)) {
-						sdList.add(readerParticipant);
-					}
-				} else if (sphereForReader.contentEquals("Weak-Dynamic")) {
-					if (!wdList.contains(readerParticipant)) {
-						wdList.add(readerParticipant);
-					}
-				}
-
-			}
-
-			
-			if(writerTask.getWeakDynamicHashMap().get(dataO)==null) {
-				writerTask.getWeakDynamicHashMap().put(dataO, wdList);
-			} else {
-				writerTask.getWeakDynamicHashMap().remove(dataO);
-				writerTask.getWeakDynamicHashMap().put(dataO, wdList);
-			}
-
-			if(writerTask.getStrongDynamicHashMap().get(dataO)==null) {
-				writerTask.getStrongDynamicHashMap().put(dataO, sdList);
-			} else {
-				writerTask.getStrongDynamicHashMap().remove(dataO);
-				writerTask.getStrongDynamicHashMap().put(dataO, sdList);
-			}
-			
-			
-			
-			System.out.println("WRITERTASK");
-			writerTask.printElement();
-			System.out.println("WDLIST");
-			wdList.forEach(f -> {
-				f.printParticipant();
-			});
-			System.out.println("SDLIST");
-			sdList.forEach(f -> {
-				f.printParticipant();
-			});
-		
-	
-	}
 	
 	private void generateBrtDependenciesAndArcWithCosts() {		
 		
-		LinkedList<LinkedList<ArcWithCost>> brtCombs = new LinkedList<LinkedList<ArcWithCost>>();
+		LinkedList<LinkedList<ArcWithCost>>brtCombs=this.goBFSthroughProcessAndGenerateArcs(this.bpmnStart, this.bpmnEnd,new LinkedList<LinkedList<ArcWithCost>>(), new LinkedList<BPMNBusinessRuleTask>(), new LinkedList<BPMNElement>(),  new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+
+		
+		//this.allPathsBetweenNodesBFS(this.bpmnStart, this.bpmnEnd, new LinkedList<BPMNElement>(),  new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+
 		/*
 		for(LinkedList<BPMNBusinessRuleTask> brtList: this.possibleBrtCombinationsTillEnd) {
 			LinkedList<LinkedList<ArcWithCost>> arcList = this.generateArcsWithCost(brtList);
 			brtCombs.addAll(arcList);
-		}*/
-		brtCombs.addAll(this.generateArcsWithCost(this.possibleBrtCombinationsTillEnd.get(0)));
-					
+		}
+		*/
+		//brtCombs.addAll(this.generateArcsWithCost(this.possibleBrtCombinationsTillEnd.get(0)));
+		
 		int countLeafs = 0; 
 		
 		for(LinkedList<ArcWithCost>a : brtCombs) {
 			for(ArcWithCost e: a) {
+				for(RequiredUpdate update: e.getRequiredUpdates()) {
+					update.printUpdate();
+				}
 				if(e.isLeaf()){
 					countLeafs++;
 				}
@@ -264,78 +277,47 @@ public class API {
 			}
 		}
 		this.setAmountPossibleCombinationsOfParticipants(countLeafs);
-		this.setLeafNodes(brtCombs);
 		
-		System.out.println("Leaf Nodes: "+this.leafNodeCombs.size());
-		LinkedList<ArcWithCost>cheapestCombs = new LinkedList<ArcWithCost>();
-		
+		LinkedList<ArcWithCost>cheapestCombs = new LinkedList<ArcWithCost>();	
 		
 		for(LinkedList<ArcWithCost>arc :brtCombs) {
-			
-			System.out.println("LEAF ARC:");
-			for(ArcWithCost a: arc) {
-				
-				
-					if(cheapestCombs.isEmpty()) {
+			for(ArcWithCost a: arc) {				
+					if(cheapestCombs.isEmpty()&&a.isLeaf()) {
 						cheapestCombs.add(a);
-					} else {
-						if(cheapestCombs.getFirst().getCumulatedCost()>=a.getCumulatedCost()) {
-							cheapestCombs.removeFirst();
-							cheapestCombs.addFirst(a);
-						}
+					}
+					else if(!cheapestCombs.isEmpty()&&a.isLeaf()){
+						if(cheapestCombs.getFirst().getCumulatedCost()>a.getCumulatedCost()) {
+							cheapestCombs.clear();
+							cheapestCombs.addFirst(a);							
+						} else if (cheapestCombs.getFirst().getCumulatedCost()==a.getCumulatedCost()) {
+							cheapestCombs.add(a);
+						} 
 					}
 				
-				
-				System.out.println("ID OF ARC: "+a.idOfArc);
-				System.out.println("COST "+a.getCumulatedCost());
-				for(BPMNParticipant p: a.getChosenCombinationOfParticipants()) {
-					p.printParticipant();
-				}
-				
-				for(ArcWithCost pre: a.getPreceedingArcs()) {
-					System.out.println("Preced: "+pre.idOfArc);
-					pre.getChosenCombinationOfParticipants().forEach(f->{f.printParticipant();});
-				}
+					a.printArc();
 				
 			}
-			
+		}
 			for(ArcWithCost a: cheapestCombs) {
 				System.out.println("Cheapest Arcs: ");
 				a.printArc();
+				a.getRequiredUpdates().forEach(f->{f.printUpdate();});
 				System.out.println("Cumulated Cost: " +a.getCumulatedCost());
+				System.out.println("####################");				
 			}
-			System.out.println("####################");
-		
-		//arc.forEach(f->{f.printArc();});
 			
 		
-		}
-
-
-	
-
-	}
-	
-	
-	
-	
-	private void setLeafNodes(LinkedList<LinkedList<ArcWithCost>>leafNodeCombs) {
-		for(LinkedList<ArcWithCost>a : leafNodeCombs) {
-			for(ArcWithCost e: a) {
-				if(e.isLeaf()&&(!this.leafNodeCombs.contains(a))){
-					this.leafNodeCombs.add(a);
-				}
-			
-			}
-		}
+		
+		
+		
 	}
 	
 	
 	
 	
 	
-	private LinkedList<LinkedList<ArcWithCost>> generateArcsWithCost(List<BPMNBusinessRuleTask>brtTaskList) {
-		LinkedList<LinkedList<ArcWithCost>> brtCombs = new LinkedList<LinkedList<ArcWithCost>>();
+	private LinkedList<LinkedList<ArcWithCost>> generateArcs(List<BPMNBusinessRuleTask>brtTaskList) {
+		LinkedList<LinkedList<ArcWithCost>> brtCombs = new LinkedList<LinkedList<ArcWithCost>>();		
 		
 		for (int i = 0; i < brtTaskList.size(); i++) {
 			BPMNBusinessRuleTask currBrt = brtTaskList.get(i);
@@ -343,38 +325,49 @@ public class API {
 			if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
 				BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
 				// get all the possible combinations of participants for the brt
+				if(currBrt.getCombinations().isEmpty()) {
 				LinkedList<LinkedList<BPMNParticipant>> list = Combination.getPermutations(this.globalSphere,
 						bpmnEx.getAmountVoters());
 				currBrt.getCombinations().putIfAbsent(currBrt, list);
+				}
 
 				// for each combination create a new ArcWithCost				
 				for (LinkedList<BPMNParticipant> partList : currBrt.getCombinations().get(currBrt)) {
-						
-					if(i==0) {
+					
+					if(i==0) {						
 						//first arc has no predecessors 
+						//also there cant be any xor-branches without having a brt-voting first
 						ArcWithCost arc = new ArcWithCost(null,currBrt, new LinkedList<ArcWithCost>(), partList);
 						//calculate cost when choosing the partList for this brt 
-						//has no preceeding arcs						
-						currBrt.getIncomingArcsWithCost().add(arc);	
-						this.calculateCostForArc(arc);
+						//has no preceeding arcs	
+						
+							if(this.arcAlreadyGenerated(currBrt, arc)==false) {
+								currBrt.getIncomingArcsWithCost().add(arc);	
+							}							
+							this.setRequiredUpdatesForArc(arc);
 						
 					} else {
 						BPMNBusinessRuleTask previousBrt = brtTaskList.get(i-1);
+						
 						for(ArcWithCost a: previousBrt.getIncomingArcsWithCost()) {
 							LinkedList<ArcWithCost>arcs = new LinkedList<ArcWithCost>();
 							arcs.add(a);
 							
+							
 							ArcWithCost arc = new ArcWithCost(previousBrt, currBrt, arcs, partList);
-							
-							currBrt.getIncomingArcsWithCost().add(arc);	
-							this.calculateCostForArc(arc);
-							
+												
+							if(!this.arcAlreadyGenerated(currBrt, arc)) {
+								currBrt.getIncomingArcsWithCost().add(arc);	
+								}
+						
 							if(i==brtTaskList.size()-1) {
 								arc.setLeaf(true);
 							}
-							
+							this.setRequiredUpdatesForArc(arc);
 						}
 					}
+					
+					
 						
 				}
 				brtCombs.add(currBrt.getIncomingArcsWithCost());
@@ -384,6 +377,162 @@ public class API {
 		return brtCombs;
 	}
 	
+	
+	
+	
+	
+	
+
+	
+	private void setRequiredUpdatesForArc(ArcWithCost arc) {	
+		HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>alreadyChosenVoters = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
+		
+		//get all the participants of the preceeding arcs that were chosen before the current arc
+		for(ArcWithCost a: arc.getPreceedingArcs()) {
+			alreadyChosenVoters.putIfAbsent((BPMNBusinessRuleTask)a.getCurrentBpmnBrt(), a.getChosenCombinationOfParticipants());
+		}
+				
+		if(arc.getCurrentBpmnBrt() instanceof BPMNBusinessRuleTask) {
+			BPMNBusinessRuleTask currentBrt = (BPMNBusinessRuleTask)arc.getCurrentBpmnBrt();
+							
+				HashMap<BPMNDataObject, ArrayList<BPMNTask>> lastWriters = currentBrt.getLastWriterList();
+				for(Entry<BPMNDataObject, ArrayList<BPMNTask>>entry: lastWriters.entrySet()) {
+				for(BPMNTask lastWriter: entry.getValue()) {
+					BPMNDataObject dataO = entry.getKey();
+					String requiredSphere = lastWriter.getSphereAnnotation().get(dataO);
+					
+					//get all the effective paths from lastWriter to the end of the process
+					HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>effectivePathsFromWriterToProcessEnd = this.allEffectivePathsForWriters(dataO, lastWriter, lastWriter, this.bpmnEnd, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+					
+					//set the WD and SD sphere and consider the preceeding already chosen voters
+					//substitute the respective brts participant with the voters						
+					ArrayList<BPMNParticipant>wdList = new ArrayList<BPMNParticipant>();
+					ArrayList<BPMNParticipant>sdList = new ArrayList<BPMNParticipant>();
+					
+					
+					for(BPMNParticipant readerParticipant: this.globalSphere) {
+						String sphereForReader = this.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(lastWriter, dataO, readerParticipant, lastWriter.getEffectivePaths(), alreadyChosenVoters);
+						readerParticipant.printParticipant();
+						System.out.println("sphereforReader: "+sphereForReader);
+						if (sphereForReader.contentEquals("Strong-Dynamic")) {
+							if (!sdList.contains(readerParticipant)) {
+								sdList.add(readerParticipant);
+							}
+						} else if (sphereForReader.contentEquals("Weak-Dynamic")) {
+							if (!wdList.contains(readerParticipant)) {
+								wdList.add(readerParticipant);
+							}
+						}
+					
+					}
+					
+					if(lastWriter.getWeakDynamicHashMap().get(dataO)==null) {
+						lastWriter.getWeakDynamicHashMap().put(dataO, wdList);
+					} else {
+						lastWriter.getWeakDynamicHashMap().remove(dataO);
+						lastWriter.getWeakDynamicHashMap().put(dataO, wdList);
+					}
+
+					if(lastWriter.getStrongDynamicHashMap().get(dataO)==null) {
+						lastWriter.getStrongDynamicHashMap().put(dataO, sdList);
+					} else {
+						lastWriter.getStrongDynamicHashMap().remove(dataO);
+						lastWriter.getStrongDynamicHashMap().put(dataO, sdList);
+					}
+					
+							
+					//get all effective paths from lastWriter to the brt
+					HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>effectivePathsFromWriterToBrt = this.allEffectivePathsForWriters(dataO, lastWriter, lastWriter, currentBrt, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+					
+					LinkedList<BPMNParticipant> chosenPartForArc = arc.getChosenCombinationOfParticipants();
+					
+						
+					
+					for(BPMNParticipant reader: chosenPartForArc) {
+					
+					System.out.println(lastWriter.getStrongDynamicHashMap().size());
+					
+					String update = "";
+					double weight = 1;
+					//to calculate the weight we have to check on how many paths the lastWriter writes data that is read by the brt
+										
+					
+					if(requiredSphere.contentEquals("Strong-Dynamic")) {						
+						
+						if(lastWriter.getStrongDynamicHashMap().containsKey(dataO)) {
+						if(lastWriter.getStrongDynamicHashMap().get(dataO).contains(reader)) {
+						//reader is on each effective path from lastwriter to brt and also in sd sphere of the process at the point of the lastwriter
+						//no update needed		
+							
+						} else if (lastWriter.getWeakDynamicHashMap().get(dataO).contains(reader)) {
+							//update from WD to SD 
+							update = "wdToSD";
+							
+						} else if(dataO.getStaticSphere().contains(reader)) {
+							//update from static to SD
+							update = "staticToSD";
+							
+						} else if(this.globalSphere.contains(reader)) {
+							//update from global to SD
+							update = "globalToSD";
+						}
+					
+						
+						
+					}} else if(requiredSphere.contentEquals("Weak-Dynamic")) {
+						if(lastWriter.getWeakDynamicHashMap().containsKey(dataO)) {
+							
+						if(lastWriter.getStrongDynamicHashMap().get(dataO).contains(reader)||lastWriter.getWeakDynamicHashMap().get(dataO).contains(reader)) {
+							//no update needed
+							
+						} else if(dataO.getStaticSphere().contains(reader)) {
+							//update from static to WD
+							update = "staticToWD";
+							
+						} else if(this.globalSphere.contains(reader)) {
+							update = "globalToWD";
+						}
+						
+						
+						}} else if(requiredSphere.contentEquals("Static")) {
+						if(lastWriter.getStrongDynamicHashMap().get(dataO).contains(reader)||lastWriter.getWeakDynamicHashMap().get(dataO).contains(reader)||dataO.getStaticSphere().contains(reader)) {
+							//no update needed
+							
+						} else if(this.globalSphere.contains(reader)) {
+							update = "globalToStatic";
+							
+						}
+						
+					} else if(requiredSphere.contentEquals("Global")) {
+						if(lastWriter.getStrongDynamicHashMap().get(dataO).contains(reader)||lastWriter.getWeakDynamicHashMap().get(dataO).contains(reader)||dataO.getStaticSphere().contains(reader)||this.globalSphere.contains(reader)) {
+							//no update needed
+						} 
+						
+						//update from public to global!
+					}
+					
+					if(update!="") {
+					RequiredUpdate reqUpdate = new RequiredUpdate(lastWriter, dataO, currentBrt, alreadyChosenVoters, reader, update, weight);
+					arc.getRequiredUpdates().add(reqUpdate);
+					}
+				}
+				
+				
+			}
+			
+		
+				}
+			}	
+		
+
+		
+		
+	}
+	
+	
+	
+	
+	/*
 	private void calculateCostForArc(ArcWithCost arc) {
 		double cost = 0; 
 		HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>alreadyChosenVoters = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
@@ -412,6 +561,7 @@ public class API {
 					
 					//set the WD and SD sphere and consider the preceeding already chosen voters
 					//substitute the respective brt participant with the voters
+									
 					this.setWDandSDListForWriterWithAlreadyChosenVoters(lastWriter, dataO, alreadyChosenVoters);
 					
 					
@@ -432,7 +582,7 @@ public class API {
 						readerOnEachEffectivePath = false;
 						}
 						
-					*/	
+					
 				
 					System.out.println(lastWriter.getStrongDynamicHashMap().size());
 					
@@ -493,10 +643,25 @@ public class API {
 			arc.setCumulatedCost(cost);
 		
 		
+	}*/
+	
+	
+	private boolean arcAlreadyGenerated(BPMNBusinessRuleTask brt, ArcWithCost arc) {
+		for(ArcWithCost a: brt.getIncomingArcsWithCost()) {
+			if((a.getPreceedingBpmnBrt()==null&&arc.getPreceedingBpmnBrt()==null)||a.getPreceedingBpmnBrt()==arc.getPreceedingBpmnBrt()) {
+				if(a.getCurrentBpmnBrt().equals(arc.getCurrentBpmnBrt())) {
+					if(a.getPreceedingArcs().equals(arc.getPreceedingArcs())) {
+						if(a.getChosenCombinationOfParticipants().equals(arc.getChosenCombinationOfParticipants())) {
+							return true;
+						}
+					}
+				}
+			}
+			
+		}
+		return false;
 	}
 	
-	
-		
 	
 	
 
@@ -525,7 +690,7 @@ public class API {
 			// now check if participants are in the required sphere of the reader at the
 			// position of the brt
 			for (BPMNTask writerTask : lastWriterList) {
-				LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodes(writerTask, bpmnBrt,
+				LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodesDFS(writerTask, bpmnBrt,
 						new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 						new LinkedList<LinkedList<BPMNElement>>());
 				System.out.println("Paths: " + paths.size());
@@ -568,7 +733,7 @@ public class API {
 
 	private void mapSuccessorsAndPredecessors(FlowNode currentNode, FlowNode endNode, LinkedList<SequenceFlow> stack,
 			ArrayList<Label> currentLabels) {
-		// route through the process and add the successors and predecessors to the
+		// route depth first through the process and add the successors and predecessors to the
 		// nodes
 
 		stack.addAll(currentNode.getOutgoing());
@@ -584,7 +749,8 @@ public class API {
 
 			BPMNElement targetBPMNElement = this.getNodeById(targetFlowNode.getId());
 			BPMNElement currentBPMNElement = this.getNodeById(currentNode.getId());
-
+		
+			
 			if ((!currentLabels.isEmpty()) && currentBPMNElement.getLabelHasBeenSet() == false) {
 				currentBPMNElement.addLabels(currentLabels);
 				currentBPMNElement.setLabelHasBeenSet(true);
@@ -660,6 +826,8 @@ public class API {
 			if (node instanceof BusinessRuleTask) {
 				mappedNode = new BPMNBusinessRuleTask(node.getId(), node.getName());
 				this.businessRuleTaskList.add((BPMNBusinessRuleTask) mappedNode);
+				
+				
 			} else {
 				mappedNode = new BPMNTask(node.getId(), node.getName());
 			}
@@ -1166,103 +1334,160 @@ public class API {
 
 	}
 
-	/*
-	 * public LinkedList<LinkedList<BPMNElement>> allPathsBetweenNodes(BPMNElement
-	 * startNode, BPMNElement endNode) { LinkedList<BPMNElement> stack = new
-	 * LinkedList<BPMNElement>(); LinkedList<BPMNElement> gtwStack = new
-	 * LinkedList<BPMNElement>(); LinkedList<BPMNElement> path = new
-	 * LinkedList<BPMNElement>(); LinkedList<LinkedList<BPMNElement>>paths = new
-	 * LinkedList<LinkedList<BPMNElement>>();
-	 * 
-	 * stack.add(startNode); boolean reachedEndGateway=false;
-	 * 
-	 * while(!(stack.isEmpty())) { BPMNElement element = stack.pollLast();
-	 * path.add(element);
-	 * 
-	 * 
-	 * if(element.getId().equals(endNode.getId())) { paths.add(path); element =
-	 * stack.pollLast(); if(element == null) { return paths; } }
-	 * 
-	 * 
-	 * if(element instanceof BPMNParallelGateway &&
-	 * ((BPMNParallelGateway)element).getType().equals("split")) { for(BPMNElement
-	 * successor: element.getSuccessors()) { gtwStack.add(successor); } }
-	 * 
-	 * if(element instanceof BPMNParallelGateway &&
-	 * ((BPMNParallelGateway)element).getType().equals("join")) {
-	 * gtwStack.pollLast(); if(!gtwStack.isEmpty()) { reachedEndGateway=true; } }
-	 * 
-	 * 
-	 * for(BPMNElement successor: element.getSuccessors()) {
-	 * 
-	 * if(reachedEndGateway==false) { stack.add(successor); }
-	 * 
-	 * 
-	 * if(successor.equals(endNode)) { //one path has been found paths.add(path); }
-	 * 
-	 * } reachedEndGateway = false; }
-	 * 
-	 * 
-	 * return paths;
-	 * 
-	 * }
-	 */
 
-	/*
-	 * public LinkedList<LinkedList<BPMNElement>>
-	 * initializeSequenceBrtAndLabels(BPMNStartEvent startNode, BPMNEndEvent
-	 * endNode, LinkedList<BPMNElement> stack, LinkedList<BPMNElement> gtwStack,
-	 * LinkedList<BPMNElement> currentPath, LinkedList<LinkedList<BPMNElement>>
-	 * paths) {
-	 * 
-	 * stack.add(startNode); boolean reachedEndGateway = false;
-	 * 
-	 * while (!(stack.isEmpty())) { BPMNElement element = stack.pollLast();
-	 * currentPath.add(element);
-	 * 
-	 * if(element instanceof BPMNBusinessRuleTask) {
-	 * System.out.println("JUAEHFEIJFAIEJFAPOEJFAPOF");
-	 * this.businessRuleTaskList.add((BPMNBusinessRuleTask)element); }
-	 * 
-	 * if (element.getId().equals(endNode.getId())) { paths.add(currentPath);
-	 * element = stack.pollLast(); if (element == null) { return paths; } }
-	 * 
-	 * 
-	 * 
-	 * if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway)
-	 * element).getType().equals("split")) { for (BPMNElement successor :
-	 * element.getSuccessors()) { gtwStack.add(successor); } }
-	 * 
-	 * if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway)
-	 * element).getType().equals("join")) { gtwStack.pollLast(); if
-	 * (!gtwStack.isEmpty()) { reachedEndGateway = true; } }
-	 * 
-	 * 
-	 * for (BPMNElement successor : element.getSuccessors()) { if
-	 * (element.hasLabel() && successor.getLabelHasBeenSet() == false) {
-	 * 
-	 * successor.addLabelFirst(element.getLabels()); if (element instanceof
-	 * BPMNExclusiveGateway && ((BPMNExclusiveGateway)
-	 * element).getType().equals("join")) {
-	 * 
-	 * successor.deleteLastLabel(); element.deleteLastLabel(); }
-	 * successor.setLabelHasBeenSet(true); }
-	 * 
-	 * if (element instanceof BPMNExclusiveGateway && ((BPMNExclusiveGateway)
-	 * element).getType().equals("split")) { LinkedList<BPMNElement> newPath = new
-	 * LinkedList<BPMNElement>(); newPath.addAll(currentPath);
-	 * 
-	 * this.allPathsBetweenNodes(successor, endNode, stack, gtwStack, newPath,
-	 * paths); } else { if (reachedEndGateway == false) { stack.add(successor); } }
-	 * 
-	 * } reachedEndGateway = false; }
-	 * 
-	 * return paths;
-	 * 
-	 * }
-	 */
 
-	public LinkedList<LinkedList<BPMNElement>> allPathsBetweenNodes(BPMNElement startNode, BPMNElement endNode,
+
+	
+	public LinkedList<LinkedList<BPMNElement>> allPathsBetweenNodesBFS(BPMNElement startNode, BPMNElement endNode,
+			LinkedList<BPMNElement> queue, LinkedList<BPMNElement> gtwQueue, LinkedList<BPMNElement> currentPath,
+			LinkedList<LinkedList<BPMNElement>> paths) {
+
+		queue.add(startNode);
+		boolean reachedEndGateway = false;
+
+		while (!(queue.isEmpty())) {
+			BPMNElement element = queue.poll();
+			currentPath.add(element);
+
+			if (element.getId().equals(endNode.getId())) {
+				paths.add(currentPath);
+				element = queue.poll();
+				if (element == null) {
+					return paths;
+				}
+			}
+
+			if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway) element).getType().equals("split")) {
+				for (BPMNElement successor : element.getSuccessors()) {
+					gtwQueue.add(successor);
+				}
+			}
+
+			if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway) element).getType().equals("join")) {
+				gtwQueue.poll();
+				if (!gtwQueue.isEmpty()) {
+					reachedEndGateway = true;
+				}
+			}
+
+			for (BPMNElement successor : element.getSuccessors()) {
+
+				if (element instanceof BPMNExclusiveGateway
+						&& ((BPMNExclusiveGateway) element).getType().equals("split")) {
+					LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
+					newPath.addAll(currentPath);
+
+					this.allPathsBetweenNodesDFS(successor, endNode, queue, gtwQueue, newPath, paths);
+				} else {
+					if (reachedEndGateway == false) {
+						queue.add(successor);
+					}
+				}
+
+			}
+			reachedEndGateway = false;
+		}
+
+		return paths;
+
+	}
+	
+	
+	
+	public LinkedList<LinkedList<ArcWithCost>> goBFSthroughProcessAndGenerateArcs(BPMNElement startNode, BPMNElement endNode,LinkedList<LinkedList<ArcWithCost>>generatedArcs, List<BPMNBusinessRuleTask>alreadyVisitedBrts, 
+			LinkedList<BPMNElement> queue, LinkedList<BPMNElement> gtwQueue, LinkedList<BPMNElement> currentPath,
+			LinkedList<LinkedList<BPMNElement>> paths) {
+
+		queue.add(startNode);
+		boolean reachedEndGateway = false;
+
+		while (!(queue.isEmpty())) {
+			BPMNElement element = queue.poll();
+			currentPath.add(element);
+
+			if (element.getId().equals(endNode.getId())) {
+				paths.add(currentPath);
+				element = queue.poll();
+				if (element == null) {
+					return generatedArcs;
+				}
+			}
+			
+			//when a brt is found - generate arcs between previous brts and the current brt
+			if(element instanceof BPMNBusinessRuleTask) {
+				BPMNBusinessRuleTask currBrt = (BPMNBusinessRuleTask)element;
+				alreadyVisitedBrts.add(currBrt);
+				generatedArcs.addAll(this.generateArcs(alreadyVisitedBrts));			
+			}
+			
+			if (element instanceof BPMNExclusiveGateway && ((BPMNExclusiveGateway) element).getType().equals("split")) {
+				for (BPMNElement successor : element.getSuccessors()) {
+					gtwQueue.add(successor);
+				}
+			}
+			
+			if (element instanceof BPMNExclusiveGateway && ((BPMNExclusiveGateway) element).getType().equals("join")) {
+				gtwQueue.poll();
+				if (!gtwQueue.isEmpty()) {
+					reachedEndGateway = true;
+				}
+			}
+			
+			
+
+			if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway) element).getType().equals("split")) {
+				for (BPMNElement successor : element.getSuccessors()) {
+					gtwQueue.add(successor);
+				}
+			}
+
+			if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway) element).getType().equals("join")) {
+				gtwQueue.poll();
+				if (!gtwQueue.isEmpty()) {
+					reachedEndGateway = true;
+				}
+			}
+
+			for (BPMNElement successor : element.getSuccessors()) {
+
+				if (element instanceof BPMNExclusiveGateway
+						&& ((BPMNExclusiveGateway) element).getType().equals("split")) {
+					LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
+					newPath.addAll(currentPath);
+					alreadyVisitedBrts.clear();
+					for(BPMNElement el: currentPath) {
+						if(el instanceof BPMNBusinessRuleTask) {
+							BPMNBusinessRuleTask brt = (BPMNBusinessRuleTask) el;
+							alreadyVisitedBrts.add(brt);
+						}
+					}
+					
+
+					this.goBFSthroughProcessAndGenerateArcs(successor, endNode, generatedArcs,alreadyVisitedBrts, queue, gtwQueue, newPath, paths);
+				} else {
+					if (reachedEndGateway == false) {
+						queue.add(successor);
+					}
+				}
+
+			}
+			reachedEndGateway = false;
+		}
+
+		return generatedArcs;
+
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	public LinkedList<LinkedList<BPMNElement>> allPathsBetweenNodesDFS(BPMNElement startNode, BPMNElement endNode,
 			LinkedList<BPMNElement> stack, LinkedList<BPMNElement> gtwStack, LinkedList<BPMNElement> currentPath,
 			LinkedList<LinkedList<BPMNElement>> paths) {
 
@@ -1301,7 +1526,7 @@ public class API {
 					LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
 					newPath.addAll(currentPath);
 
-					this.allPathsBetweenNodes(successor, endNode, stack, gtwStack, newPath, paths);
+					this.allPathsBetweenNodesDFS(successor, endNode, stack, gtwStack, newPath, paths);
 				} else {
 					if (reachedEndGateway == false) {
 						stack.add(successor);
@@ -1325,7 +1550,7 @@ public class API {
 		// where key = false: contains all paths where another writer writes to same
 		// dataO
 		// the participants on the path are set to be equal to the chosencombination given as parameter
-		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndEndEvent = this.allPathsBetweenNodes(startNode,
+		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndEndEvent = this.allPathsBetweenNodesDFS(startNode,
 				endNode, stack, gtwStack, currentPath, paths);
 		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> pathMap = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
 		LinkedList<LinkedList<BPMNElement>> effectivePaths = new LinkedList<LinkedList<BPMNElement>>();
@@ -1362,7 +1587,7 @@ public class API {
 
 	// Test Method for pathing through the process
 	public void getAllProcessPaths() {
-		LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodes(this.bpmnStart, this.bpmnEnd,
+		LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodesDFS(this.bpmnStart, this.bpmnEnd,
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<LinkedList<BPMNElement>>());
 		int i = 1;
@@ -1756,7 +1981,7 @@ public class API {
 								System.out.println(lWriter.getName() + " mininum Sphere " + minimumSphere);
 
 								for (BPMNElement reader : sphere.getReaders()) {
-									LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodes(lWriter,
+									LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodesDFS(lWriter,
 											reader, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 											new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 									// Check whether there is a path between the lastWriter and some Reader
@@ -2404,8 +2629,12 @@ public class API {
 	private String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(BPMNElement writerTask, BPMNDataObject dataO,
 			BPMNParticipant reader, HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths, HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>alreadyChosenVoters) {
 		int strongDynamicCountEffectivePaths = 0;
+		int countReaderOnNonEffectivePath = 0; 
+	
+	
+		System.out.println("EFFECT: "+effectivePaths.get(true).size()+", "+effectivePaths.get(false).size());
+		reader.printParticipant();
 		
-			
 		//the participant of the writerTask is always in SD looking from writerTask onwards
 		if(((BPMNTask) writerTask).getParticipant().equals(reader)) {
 			return "Strong-Dynamic";
@@ -2429,10 +2658,18 @@ public class API {
 									System.out.println("SUBSTITUTION");
 								}
 								
+							} else {
+								if (dataO.getReaders().contains(currentBrt) && task.getParticipant().equals(reader)
+										&& this.isParticipantInList(dataO.getReaders(), reader)) {
+									// reader found on the path
+									readerFound = true;
+								} 
+								
+								
 							}
 							} else {
-							if (dataO.getReaders().contains(task) && (task.getParticipant().equals(reader)
-									&& this.isParticipantInList(dataO.getReaders(), reader))) {
+							if (dataO.getReaders().contains(task) && task.getParticipant().equals(reader)
+									&& this.isParticipantInList(dataO.getReaders(), reader)) {
 								// reader found on the path
 								readerFound = true;
 							} 
@@ -2447,37 +2684,49 @@ public class API {
 					if (entry.getKey() == true) {
 						//reader has been found on an effective path
 						strongDynamicCountEffectivePaths++;
+					} else if(entry.getKey()==false) {
+						countReaderOnNonEffectivePath++;
 					}
 				}
 
 			}
-		}
-		System.out.println("WRiterTAsk "+strongDynamicCountEffectivePaths +", "+effectivePaths.get(true).size());
-		System.out.println(effectivePaths.get(false).size());
-		writerTask.printElement();
-		
-		
-		
-		if (effectivePaths.get(false).isEmpty() && strongDynamicCountEffectivePaths == effectivePaths.get(true).size()) {
-			// if reader is on each effective path and there are no "non-effective" paths
-			return "Strong-Dynamic";
-		} else if(effectivePaths.get(false).isEmpty()&& strongDynamicCountEffectivePaths>0 && strongDynamicCountEffectivePaths<effectivePaths.get(true).size()) {
-			//if a reader is on some effective path and there are no "non-effective" paths
-			return "Weak-Dynamic";
+						
 		}
 		
-		else if (!effectivePaths.get(false).isEmpty()) {			
-			//there is a non-effective path -> there is another writer writing to dataO
-			//the reader does not read the data written by writerTask on each path!!!
-			return "Weak-Dynamic";
-		} else {
+		//when there are effective paths
+		
+		System.out.println(reader.getName()+", "+strongDynamicCountEffectivePaths+" ,"+countReaderOnNonEffectivePath);
+		
+		
+		if(!effectivePaths.get(true).isEmpty()) {			
+			if(strongDynamicCountEffectivePaths==effectivePaths.get(true).size()&&effectivePaths.get(false).isEmpty()) {
+				return "Strong-Dynamic";
+			} else if(strongDynamicCountEffectivePaths==effectivePaths.get(true).size()&&!effectivePaths.get(false).isEmpty()) {
+				//reader reads data on each effective path, but there are also non effective ones
+				return "Weak-Dynamic";
+			}	else if(strongDynamicCountEffectivePaths==0) {
+				if(dataO.getStaticSphere().contains(reader)) {
+					return "Static";
+				} else if (this.globalSphere.contains(reader)) {
+					return "Global";
+				}
+				
+				
+			} else if (strongDynamicCountEffectivePaths>0&&strongDynamicCountEffectivePaths<effectivePaths.get(true).size()) {
+				return "Weak-Dynamic";				
+			}		
 			
+		} else {
+			//there are no effective paths 
 			if(dataO.getStaticSphere().contains(reader)) {
 				return "Static";
-			} else if(this.globalSphere.contains(reader)){
+			} else if (this.globalSphere.contains(reader)) {
 				return "Global";
 			}
-		}
+			
+			
+		}		
+		
 		return "";
 	}
 

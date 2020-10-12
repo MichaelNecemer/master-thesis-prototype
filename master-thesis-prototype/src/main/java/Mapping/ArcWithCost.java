@@ -26,9 +26,13 @@ public class ArcWithCost{
 	//the cost for adding the chosenCombinationOfParticipants for this arc
 	private double cost;
 	
+	
 	//the cumulated costs for adding the chosenCombinationOfParticipants for this arc and looping through preceeding Arcs and calculating the costs
 	private double cumulatedCost;
 	private boolean costHasBeenSet;
+	
+	//
+	private LinkedList<RequiredUpdate> requiredUpdates;
 
 	
 	public ArcWithCost(BPMNElement preceedingBpmnBrt, BPMNElement targetBPMNElement, LinkedList<ArcWithCost>preceedingArcs, LinkedList<BPMNParticipant>chosenCombinationOfParticipants) {
@@ -41,9 +45,29 @@ public class ArcWithCost{
 		this.preceedingArcs=preceedingArcs;
 		this.isLeaf=false;
 		this.idOfArc=++id;
+		this.requiredUpdates=new LinkedList<RequiredUpdate>();
 	}
 	
 	
+	
+
+
+
+	public LinkedList<RequiredUpdate> getRequiredUpdates() {
+		return requiredUpdates;
+	}
+
+
+
+
+
+
+	public void setRequiredUpdates(LinkedList<RequiredUpdate> requiredUpdates) {
+		this.requiredUpdates = requiredUpdates;
+	}
+
+
+
 
 
 
@@ -162,7 +186,7 @@ public class ArcWithCost{
 	}
 	
 	public void printArc() {
-		System.out.println("Following participants chosen for " +((BPMNTask)this.getCurrentBpmnBrt()).getName());
+		System.out.println("Following participants chosen for " +((BPMNTask)this.getCurrentBpmnBrt()).getName()+" (ID: "+this.idOfArc+")");
 		this.getChosenCombinationOfParticipants().forEach(f -> {
 			f.printParticipant();
 		});
