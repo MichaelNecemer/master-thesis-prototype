@@ -1,6 +1,8 @@
 package Mapping;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 //In the xml file the data object are mapped via a dataObject Reference and dataInputAssociation or dataOutpuAssociation to the corresponding tasks
 
@@ -14,47 +16,47 @@ public class BPMNDataObject {
 	private String dataObjectReference;
 	
 	
-	private ArrayList<BPMNElement> readers;
-	private ArrayList<BPMNElement> writers;
-	private ArrayList<BPMNParticipant> staticSphere;
-	private ArrayList<BPMNParticipant> readerParticipants;
-	private ArrayList<BPMNParticipant> writerParticipants;
+	private List<BPMNElement> readers;
+	private List<BPMNElement> writers;
+	private List<BPMNParticipant> staticSphere;
+	private List<BPMNParticipant> readerParticipants;
+	private List<BPMNParticipant> writerParticipants;
 	
 	public BPMNDataObject(String id, String name, String dataObjectReference) {
 		this.id = id;
 		this.name = name;
 		this.nameId=name.substring(name.indexOf("["), name.indexOf("]")+1);
 		this.nameIdWithoutBrackets=name.substring(name.indexOf("[")+1, name.indexOf("]"));
-		this.readers = new ArrayList<BPMNElement>();
-		this.writers = new ArrayList<BPMNElement>();
+		this.readers = new LinkedList<BPMNElement>();
+		this.writers = new LinkedList<BPMNElement>();
 		this.defaultSphere = "";
 		this.dataObjectReference=dataObjectReference;
-		this.staticSphere=new ArrayList<BPMNParticipant>();
-		this.readerParticipants=new ArrayList<BPMNParticipant>();
-		this.writerParticipants=new ArrayList<BPMNParticipant>();
+		this.staticSphere=new LinkedList<BPMNParticipant>();
+		this.readerParticipants=new LinkedList<BPMNParticipant>();
+		this.writerParticipants=new LinkedList<BPMNParticipant>();
 	}
 
 
 
-	public ArrayList<BPMNParticipant> getReaderParticipants() {
+	public List<BPMNParticipant> getReaderParticipants() {
 		return readerParticipants;
 	}
 
 
 
-	public void setReaderParticipants(ArrayList<BPMNParticipant> readerParticipants) {
+	public void setReaderParticipants(List<BPMNParticipant> readerParticipants) {
 		this.readerParticipants = readerParticipants;
 	}
 
 
 
-	public ArrayList<BPMNParticipant> getWriterParticipants() {
+	public List<BPMNParticipant> getWriterParticipants() {
 		return writerParticipants;
 	}
 
 
 
-	public void setWriterParticipants(ArrayList<BPMNParticipant> writerParticipants) {
+	public void setWriterParticipants(List<BPMNParticipant> writerParticipants) {
 		this.writerParticipants = writerParticipants;
 	}
 
@@ -121,25 +123,25 @@ public class BPMNDataObject {
 
 
 
-	public ArrayList<BPMNElement> getReaders() {
+	public List<BPMNElement> getReaders() {
 		return readers;
 	}
 
 
 
-	public void setReaders(ArrayList<BPMNElement> readers) {
+	public void setReaders(List<BPMNElement> readers) {
 		this.readers = readers;
 	}
 
 
 
-	public ArrayList<BPMNElement> getWriters() {
+	public List<BPMNElement> getWriters() {
 		return writers;
 	}
 
 
 
-	public void setWriters(ArrayList<BPMNElement> writers) {
+	public void setWriters(List<BPMNElement> writers) {
 		this.writers = writers;
 	}
 
@@ -187,7 +189,7 @@ public class BPMNDataObject {
 
 
 
-	public ArrayList<BPMNParticipant> getStaticSphere() {
+	public List<BPMNParticipant> getStaticSphere() {
 		return staticSphere;
 	}
 

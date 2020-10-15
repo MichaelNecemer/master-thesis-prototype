@@ -114,7 +114,7 @@ public class API {
 	private double costForLiftingFromWeakDynamicToStrongDynamic;
 	private LinkedList<LinkedList<BPMNBusinessRuleTask>> possibleBrtCombinationsTillEnd;
 
-	API(String pathToFile, ArrayList<Double> cost) throws Exception {
+	public API(String pathToFile, ArrayList<Double> cost) throws Exception {
 		if (cost.size() != 4) {
 			throw new Exception("Not exactly 4 cost parameters in the list!");
 		}
@@ -298,15 +298,15 @@ public class API {
 				
 			}
 		}
+		/*
 			for(ArcWithCost a: cheapestCombs) {
 				System.out.println("Cheapest Arcs: ");
 				a.printArc();
-				a.getRequiredUpdates().forEach(f->{f.printUpdate();});
 				System.out.println("Cumulated Cost: " +a.getCumulatedCost());
 				System.out.println("####################");				
 			}
 			
-		
+		*/
 		
 		
 		
@@ -343,8 +343,11 @@ public class API {
 						
 							if(this.arcAlreadyGenerated(currBrt, arc)==false) {
 								currBrt.getIncomingArcsWithCost().add(arc);	
-							}							
-							this.setRequiredUpdatesForArc(arc);
+								this.setRequiredUpdatesForArc(arc);
+							} else {
+								ArcWithCost.id--;
+							}
+							
 						
 					} else {
 						BPMNBusinessRuleTask previousBrt = brtTaskList.get(i-1);
@@ -358,12 +361,15 @@ public class API {
 												
 							if(!this.arcAlreadyGenerated(currBrt, arc)) {
 								currBrt.getIncomingArcsWithCost().add(arc);	
+								this.setRequiredUpdatesForArc(arc);
+								} else {
+									ArcWithCost.id--;
 								}
 						
 							if(i==brtTaskList.size()-1) {
 								arc.setLeaf(true);
 							}
-							this.setRequiredUpdatesForArc(arc);
+							
 						}
 					}
 					
@@ -401,8 +407,6 @@ public class API {
 					BPMNDataObject dataO = entry.getKey();
 					String requiredSphere = lastWriter.getSphereAnnotation().get(dataO);
 					
-					//get all the effective paths from lastWriter to the end of the process
-					HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>effectivePathsFromWriterToProcessEnd = this.allEffectivePathsForWriters(dataO, lastWriter, lastWriter, this.bpmnEnd, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 					
 					//set the WD and SD sphere and consider the preceeding already chosen voters
 					//substitute the respective brts participant with the voters						
@@ -441,12 +445,11 @@ public class API {
 					}
 					
 							
-					//get all effective paths from lastWriter to the brt
-					HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>effectivePathsFromWriterToBrt = this.allEffectivePathsForWriters(dataO, lastWriter, lastWriter, currentBrt, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+					
 					
 					LinkedList<BPMNParticipant> chosenPartForArc = arc.getChosenCombinationOfParticipants();
 					
-						
+					
 					
 					for(BPMNParticipant reader: chosenPartForArc) {
 					
@@ -513,7 +516,9 @@ public class API {
 					
 					if(update!="") {
 					RequiredUpdate reqUpdate = new RequiredUpdate(lastWriter, dataO, currentBrt, alreadyChosenVoters, reader, update, weight);
+					reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(this.calculateWeightingForLastWriter(lastWriter, this.bpmnStart, dataO, currentBrt));
 					arc.getRequiredUpdates().add(reqUpdate);
+					
 					}
 				}
 				
@@ -530,6 +535,32 @@ public class API {
 	}
 	
 	
+	
+	private double calculateWeightingForLastWriter(BPMNTask currentLastWriter, BPMNElement start, BPMNDataObject dataO, BPMNBusinessRuleTask brt) {
+		
+		double foundCurrentLastWriterCount = 0; 
+		LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodesDFS(start, brt, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+		
+		
+		for(LinkedList<BPMNElement>pathList: paths){
+			
+			for(int i = pathList.size()-1; i>0; i--) {
+				if(pathList.get(i).equals(currentLastWriter)) {
+					//go backwards through the list of paths between start and brt
+					//if lastWriter is found in the list increase the count
+					foundCurrentLastWriterCount++;
+					i=0;
+				}
+				
+			}
+		
+		}
+		
+		
+		return (foundCurrentLastWriterCount/paths.size());
+		
+		
+	}
 	
 	
 	/*
@@ -1536,10 +1567,11 @@ public class API {
 			}
 			reachedEndGateway = false;
 		}
-
 		return paths;
 
 	}
+	
+	
 
 	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> allEffectivePathsForWriters(BPMNDataObject dataO,
 			BPMNElement writerTask, BPMNElement startNode, BPMNElement endNode, LinkedList<BPMNElement> stack,
@@ -1555,15 +1587,15 @@ public class API {
 		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> pathMap = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
 		LinkedList<LinkedList<BPMNElement>> effectivePaths = new LinkedList<LinkedList<BPMNElement>>();
 		LinkedList<LinkedList<BPMNElement>> nonEffectivePaths = new LinkedList<LinkedList<BPMNElement>>();
-		boolean effective = true;
-
+		
 		for (LinkedList<BPMNElement> pathInstance : allPathsBetweenWriterAndEndEvent) {
+			boolean effective = true;
 			for (BPMNElement el : pathInstance) {
 				if (el instanceof BPMNTask) {
 					BPMNTask currentTask = (BPMNTask) el;
-					if (dataO.getWriters().contains(currentTask)
+					if (dataO.getWriters().contains(currentTask) 
 							&& (!(currentTask.getParticipant().equals(((BPMNTask) writerTask).getParticipant())))) {
-						// another writer has been found on the path
+						// another writer for dataO has been found on the path
 						effective = false;
 					}
 
@@ -2626,8 +2658,12 @@ public class API {
 
 	
 
-	private String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(BPMNElement writerTask, BPMNDataObject dataO,
+	public String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(BPMNElement writerTask, BPMNDataObject dataO,
 			BPMNParticipant reader, HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths, HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>alreadyChosenVoters) {
+		
+		if(alreadyChosenVoters==null) {
+			return "";
+		}
 		int strongDynamicCountEffectivePaths = 0;
 		int countReaderOnNonEffectivePath = 0; 
 	
@@ -2693,7 +2729,6 @@ public class API {
 						
 		}
 		
-		//when there are effective paths
 		
 		System.out.println(reader.getName()+", "+strongDynamicCountEffectivePaths+" ,"+countReaderOnNonEffectivePath);
 		
@@ -2745,5 +2780,16 @@ public class API {
 	public ArrayList<BPMNDataObject> getDataObjects() {
 		return this.dataObjects;
 	}
+
+	public BPMNEndEvent getBpmnEnd() {
+		return bpmnEnd;
+	}
+
+	public void setBpmnEnd(BPMNEndEvent bpmnEnd) {
+		this.bpmnEnd = bpmnEnd;
+	}
+	
+	
+	
 
 }

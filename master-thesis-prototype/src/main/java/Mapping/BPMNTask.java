@@ -165,4 +165,6 @@ public class BPMNTask extends BPMNElement{
 		return ++votingTaskId;
 	}
 	
+	
+	
 }

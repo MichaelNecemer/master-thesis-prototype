@@ -29,9 +29,9 @@ public class ArcWithCost{
 	
 	//the cumulated costs for adding the chosenCombinationOfParticipants for this arc and looping through preceeding Arcs and calculating the costs
 	private double cumulatedCost;
-	private boolean costHasBeenSet;
 	
-	//
+	
+	
 	private LinkedList<RequiredUpdate> requiredUpdates;
 
 	
@@ -41,7 +41,6 @@ public class ArcWithCost{
 		this.chosenCombinationOfParticipants=chosenCombinationOfParticipants;	
 		this.cost=1;
 		this.cumulatedCost=1;
-		this.costHasBeenSet=false;
 		this.preceedingArcs=preceedingArcs;
 		this.isLeaf=false;
 		this.idOfArc=++id;
@@ -98,20 +97,7 @@ public class ArcWithCost{
 	}
 
 
-	public boolean isCostHasBeenSet() {
-		return costHasBeenSet;
-	}
-
-
-
-
-
-	public void setCostHasBeenSet(boolean costHasBeenSet) {
-		this.costHasBeenSet = costHasBeenSet;
-	}
-
-
-
+	
 
 
 	public LinkedList<BPMNParticipant> getChosenCombinationOfParticipants() {
@@ -190,6 +176,7 @@ public class ArcWithCost{
 		this.getChosenCombinationOfParticipants().forEach(f -> {
 			f.printParticipant();
 		});
+		this.requiredUpdates.forEach(reqUpdate->{reqUpdate.printUpdate();});
 		
 		if(!this.preceedingArcs.isEmpty()) {
 			System.out.println("Preceedings Arcs:");

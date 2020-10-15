@@ -175,11 +175,6 @@
     <bpmn:task id="Task_06evc5h" name="A11: After X3">
       <bpmn:incoming>SequenceFlow_1bc8lb6</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_1yx6cug</bpmn:outgoing>
-      <bpmn:property id="Property_0kpqp1e" name="__targetRef_placeholder" />
-      <bpmn:dataInputAssociation id="DataInputAssociation_0yn8cke">
-        <bpmn:sourceRef>DataObjectReference_0elqwv7</bpmn:sourceRef>
-        <bpmn:targetRef>Property_0kpqp1e</bpmn:targetRef>
-      </bpmn:dataInputAssociation>
     </bpmn:task>
     <bpmn:exclusiveGateway id="ExclusiveGateway_0v73qnu" name="X4">
       <bpmn:incoming>SequenceFlow_02j9t5x</bpmn:incoming>
@@ -887,11 +882,6 @@
         <di:waypoint x="823" y="387" />
         <di:waypoint x="2670" y="320" />
         <di:waypoint x="2786" y="292" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="DataInputAssociation_0yn8cke_di" bpmnElement="DataInputAssociation_0yn8cke">
-        <di:waypoint x="823" y="389" />
-        <di:waypoint x="2950" y="450" />
-        <di:waypoint x="3046" y="422" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="DataOutputAssociation_1lm8b7d_di" bpmnElement="DataOutputAssociation_1lm8b7d">
         <di:waypoint x="1836" y="550" />
