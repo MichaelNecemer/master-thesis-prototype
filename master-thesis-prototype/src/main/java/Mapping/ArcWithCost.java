@@ -12,10 +12,10 @@ public class ArcWithCost{
 	public static int id;
 	public int idOfArc;
 	private LinkedList<ArcWithCost>preceedingArcs;
-	//first arc goes into the first bpmnBrt 
-	private BPMNElement preceedingBpmnBrt;
+	//first arc goes from first brt into first XOR-Split
+	private BPMNBusinessRuleTask brt;
 	
-	private BPMNElement currentBpmnBrt;
+	private BPMNExclusiveGateway xorSplit;
 	private boolean isLeaf;
 	
 	
@@ -35,9 +35,9 @@ public class ArcWithCost{
 	private LinkedList<RequiredUpdate> requiredUpdates;
 
 	
-	public ArcWithCost(BPMNElement preceedingBpmnBrt, BPMNElement targetBPMNElement, LinkedList<ArcWithCost>preceedingArcs, LinkedList<BPMNParticipant>chosenCombinationOfParticipants) {
-		this.preceedingBpmnBrt = preceedingBpmnBrt;
-		this.currentBpmnBrt = targetBPMNElement;
+	public ArcWithCost(BPMNBusinessRuleTask brt, BPMNExclusiveGateway xorSplit, LinkedList<ArcWithCost>preceedingArcs, LinkedList<BPMNParticipant>chosenCombinationOfParticipants) {
+		this.brt=brt;
+		this.xorSplit=xorSplit;
 		this.chosenCombinationOfParticipants=chosenCombinationOfParticipants;	
 		this.cost=1;
 		this.cumulatedCost=1;
@@ -68,11 +68,37 @@ public class ArcWithCost{
 
 
 
-
-
-	public LinkedList<ArcWithCost> getPreceedingBrtToBrtArcs() {
-		return preceedingArcs;
+	public BPMNBusinessRuleTask getBrt() {
+		return brt;
 	}
+
+
+
+
+
+
+	public void setBrt(BPMNBusinessRuleTask brt) {
+		this.brt = brt;
+	}
+
+
+
+
+
+
+	public BPMNExclusiveGateway getXorSplit() {
+		return xorSplit;
+	}
+
+
+
+
+
+
+	public void setXorSplit(BPMNExclusiveGateway xorSplit) {
+		this.xorSplit = xorSplit;
+	}
+
 
 
 
@@ -126,35 +152,13 @@ public class ArcWithCost{
 
 
 
-	public BPMNElement getPreceedingBpmnBrt() {
-		return preceedingBpmnBrt;
-	}
-
-
-
-	public void setPreceedingBpmnBrt(BPMNElement preceedingBpmnBrt) {
-		this.preceedingBpmnBrt = preceedingBpmnBrt;
-	}
-
-
-
 	public double getCumulatedCost() {
 		return cumulatedCost;
 	}
 
 
 
-	public BPMNElement getCurrentBpmnBrt() {
-		return currentBpmnBrt;
-	}
-
-
-
-	public void setCurrentBpmnBrt(BPMNElement currentBpmnBrt) {
-		this.currentBpmnBrt = currentBpmnBrt;
-	}
-
-
+	
 
 	public void setCumulatedCost(double cumulatedCost) {
 		this.cumulatedCost = cumulatedCost;
@@ -172,7 +176,7 @@ public class ArcWithCost{
 	}
 	
 	public void printArc() {
-		System.out.println("Following participants chosen for " +((BPMNTask)this.getCurrentBpmnBrt()).getName()+" (ID: "+this.idOfArc+")");
+		System.out.println("Following participants chosen for " +this.brt.getName()+" (ID: "+this.idOfArc+")");
 		this.getChosenCombinationOfParticipants().forEach(f -> {
 			f.printParticipant();
 		});
