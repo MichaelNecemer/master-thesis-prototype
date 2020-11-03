@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -410,8 +411,8 @@ public class API {
 					ArrayList<BPMNParticipant> sdList = new ArrayList<BPMNParticipant>();
 
 					for (BPMNParticipant readerParticipant : this.globalSphere) {
-						String sphereForReader = this.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(
-								lastWriter, dataO, readerParticipant, lastWriter.getEffectivePaths(),
+						String sphereForReader = this.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(currentBrt,
+								lastWriter, dataO, readerParticipant,
 								alreadyChosenVoters);
 						readerParticipant.printParticipant();
 						System.out.println("sphereforReader: " + sphereForReader);
@@ -1584,6 +1585,56 @@ public class API {
 
 	}
 
+	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> getEffectivePathsBetweenWriterAndTargetElement(BPMNDataObject dataO,
+			BPMNElement writerTask, BPMNElement targetElement,  LinkedList<BPMNElement> stack,
+			LinkedList<BPMNElement> gtwStack, LinkedList<BPMNElement> currentPath,
+			LinkedList<LinkedList<BPMNElement>> paths) {
+		// returns a hashmap with the keys true and false
+		// where key = true: contains all effective Paths from writerTask to currentBrt
+		// where key = false: contains all paths where another writer writes to same
+		// dataO between the writerTask and the currentBrt
+		
+	
+		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndTargetElement = this.allPathsBetweenNodesDFS(writerTask,
+				targetElement, stack, gtwStack, currentPath, paths);
+		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> pathMap = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
+		LinkedList<LinkedList<BPMNElement>> effectivePaths = new LinkedList<LinkedList<BPMNElement>>();
+		LinkedList<LinkedList<BPMNElement>> nonEffectivePaths = new LinkedList<LinkedList<BPMNElement>>();
+
+		for (LinkedList<BPMNElement> pathInstance : allPathsBetweenWriterAndTargetElement) {
+			boolean effective = true;
+			for (BPMNElement el : pathInstance) {
+				if (el instanceof BPMNTask) {
+					BPMNTask currentTask = (BPMNTask) el;
+					if (dataO.getWriters().contains(currentTask)
+							&& (!(currentTask.getParticipant().equals(((BPMNTask) writerTask).getParticipant())))) {
+						// another writer for dataO has been found on the path
+						effective = false;
+					}
+
+				}
+
+			}
+			if (effective) {
+				effectivePaths.add(pathInstance);
+			} else if (effective == false) {
+				nonEffectivePaths.add(pathInstance);
+			}
+
+		}
+
+		pathMap.putIfAbsent(true, effectivePaths);
+		pathMap.putIfAbsent(false, nonEffectivePaths);
+		return pathMap;
+
+	}
+	
+	
+	
+	
+	
+	
+	
 	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> allEffectivePathsForWriters(BPMNDataObject dataO,
 			BPMNElement writerTask, BPMNElement startNode, BPMNElement endNode, LinkedList<BPMNElement> stack,
 			LinkedList<BPMNElement> gtwStack, LinkedList<BPMNElement> currentPath,
@@ -2672,19 +2723,53 @@ public class API {
 
 	}
 
-	public String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(BPMNElement writerTask,
+	public String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(BPMNBusinessRuleTask currentBrt, BPMNElement writerTask,
+			BPMNDataObject dataO, BPMNParticipant reader,
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
+
+		//calculate sphere for the reader at the position of the currentBrt, therefore:
+				//first check if the reader is on each effective path going from writerTask to currentBrt
+						// -> reader is in SD at the position of the currentBrt
+						// if there is a non-effective path going from writerTask to currentBrt 
+							// -> reader is in WD if he is on effective paths but there exist non-effective ones
+				
+		// if the first check doesnt evaluate to WD or SD and the lastWriter demands it
+		// we can extend the search by checking the sphere for the reader from currentBrt to processEnd
+			//this means we possibly suggest participants for voting at the position of the currentBrt even if they will be upgraded 
+			//to the required sphere of the lastWriter after the currentBrt
+			//in other words: they will eventually get the data in the process after the currentBrt
+		
+		//first step - get the effective paths between writerTask and currentBrt
+		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePathsBetweenWriterTaskAndCurrentBrt = this.getEffectivePathsBetweenWriterAndTargetElement(dataO, writerTask, currentBrt, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+		String sphereForReader = this.getSphereOnPathBeforeCurrentBrt(currentBrt, writerTask, dataO, reader, effectivePathsBetweenWriterTaskAndCurrentBrt, alreadyChosenVoters);
+		
+		//if writer demands WD or SD and the sphereForReader is static or global the search can be extended 
+		String requiredSphereOfWriter = ((BPMNTask)writerTask).getSphereAnnotation().get(dataO);
+
+		
+		if(this.atLeastInSphere(sphereForReader, requiredSphereOfWriter)==false) {
+			//second step - search from currentBrt to ProcessEnd 
+			// if the data that was written by the writerTask will be read by some task after the currentBrt
+			// WE ARE STILL AT THE POSITION OF THE CURRENTBRT!!!
+		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePathsBetweenCurrentBrtAndProcessEnd = this.getEffectivePathsBetweenWriterAndTargetElement(dataO, currentBrt, this.bpmnEnd, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+
+		String sphereForReaderAfterCurrentBrt = this.getSphereOnPathAfterCurrentBrt(currentBrt, writerTask, dataO, reader, effectivePathsBetweenCurrentBrtAndProcessEnd, alreadyChosenVoters);
+		return sphereForReaderAfterCurrentBrt;	
+		} 
+		
+		
+		return sphereForReader;
+		
+		
+	}
+	
+	
+	private String getSphereOnPathBeforeCurrentBrt(BPMNBusinessRuleTask currentBrt, BPMNElement writerTask,
 			BPMNDataObject dataO, BPMNParticipant reader,
 			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths,
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
-
-		if (alreadyChosenVoters == null) {
-			return "";
-		}
 		int strongDynamicCountEffectivePaths = 0;
 		int countReaderOnNonEffectivePath = 0;
-
-		System.out.println("EFFECT: " + effectivePaths.get(true).size() + ", " + effectivePaths.get(false).size());
-		reader.printParticipant();
 
 		// the participant of the writerTask is always in SD looking from writerTask
 		// onwards
@@ -2703,19 +2788,18 @@ public class API {
 						if (task instanceof BPMNBusinessRuleTask) {
 							// the participant of the brt gets substituted with the already chosen voters
 							// for it
-							BPMNBusinessRuleTask currentBrt = (BPMNBusinessRuleTask) task;
-							if (alreadyChosenVoters.get(currentBrt) != null) {
+							BPMNBusinessRuleTask currentBrtOnPath = (BPMNBusinessRuleTask) task;
+							if (alreadyChosenVoters.get(currentBrtOnPath) != null) {
 								// check if the reader given as an argument is one of the already chosen voters
 								// for the brt
-								if (alreadyChosenVoters.get(currentBrt).contains(reader)
+								if (alreadyChosenVoters.get(currentBrtOnPath).contains(reader)
 										&& this.isParticipantInList(dataO.getReaders(), reader)
-										&& dataO.getReaders().contains(currentBrt)) {
+										&& dataO.getReaders().contains(currentBrtOnPath)) {
 									readerFound = true;
-									System.out.println("SUBSTITUTION");
 								}
 
 							} else {
-								if (dataO.getReaders().contains(currentBrt) && task.getParticipant().equals(reader)
+								if (dataO.getReaders().contains(currentBrtOnPath) && task.getParticipant().equals(reader)
 										&& this.isParticipantInList(dataO.getReaders(), reader)) {
 									// reader found on the path
 									readerFound = true;
@@ -2781,7 +2865,120 @@ public class API {
 		}
 
 		return "";
+		
+		
+		
+		
+		
 	}
+	
+	
+	
+	private String getSphereOnPathAfterCurrentBrt(BPMNBusinessRuleTask currentBrt, BPMNElement writerTask,
+			BPMNDataObject dataO, BPMNParticipant reader,
+			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths,
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
+		int strongDynamicCountEffectivePaths = 0;
+		int countReaderOnNonEffectivePath = 0;
+
+	
+		for (Entry<Boolean, LinkedList<LinkedList<BPMNElement>>> entry : effectivePaths.entrySet()) {
+			for (LinkedList<BPMNElement> path : entry.getValue()) {
+
+				boolean readerFound = false;
+				for (BPMNElement pathEl : path) {
+
+					if (pathEl instanceof BPMNTask) {
+						BPMNTask task = (BPMNTask) pathEl;
+						if (task instanceof BPMNBusinessRuleTask) {
+							// the participant of the brt gets substituted with the already chosen voters
+							// for it
+							BPMNBusinessRuleTask currentBrtOnPath = (BPMNBusinessRuleTask) task;
+							if (alreadyChosenVoters.get(currentBrtOnPath) != null) {
+								// check if the reader given as an argument is one of the already chosen voters
+								// for the brt
+								if (alreadyChosenVoters.get(currentBrtOnPath).contains(reader)
+										&& this.isParticipantInList(dataO.getReaders(), reader)
+										&& dataO.getReaders().contains(currentBrtOnPath)) {
+									readerFound = true;
+								}
+
+							} else {
+								if (dataO.getReaders().contains(currentBrtOnPath) && task.getParticipant().equals(reader)
+										&& this.isParticipantInList(dataO.getReaders(), reader)) {
+									// reader found on the path
+									readerFound = true;
+								}
+
+							}
+						} else {
+							if (dataO.getReaders().contains(task) && task.getParticipant().equals(reader)
+									&& this.isParticipantInList(dataO.getReaders(), reader)) {
+								// reader found on the path
+								readerFound = true;
+							}
+
+						}
+					}
+
+				}
+				if (readerFound) {
+					if (entry.getKey() == true) {
+						// reader has been found on an effective path
+						strongDynamicCountEffectivePaths++;
+					} else if (entry.getKey() == false) {
+						countReaderOnNonEffectivePath++;
+					}
+				}
+
+			}
+
+		}
+
+		System.out.println("Reader "+reader.getName()+" found after "+currentBrt.getName()+" ,"
+				+ strongDynamicCountEffectivePaths + " ," + countReaderOnNonEffectivePath);
+
+		if (!effectivePaths.get(true).isEmpty()) {
+			if (strongDynamicCountEffectivePaths == effectivePaths.get(true).size()
+					&& effectivePaths.get(false).isEmpty()) {
+				return "Strong-Dynamic";
+			} else if (strongDynamicCountEffectivePaths == effectivePaths.get(true).size()
+					&& !effectivePaths.get(false).isEmpty()) {
+				// reader reads data on each effective path, but there are also non effective
+				// ones
+				return "Weak-Dynamic";
+			} else if (strongDynamicCountEffectivePaths == 0) {
+				if (dataO.getStaticSphere().contains(reader)) {
+					return "Static";
+				} else if (this.globalSphere.contains(reader)) {
+					return "Global";
+				}
+
+			} else if (strongDynamicCountEffectivePaths > 0
+					&& strongDynamicCountEffectivePaths < effectivePaths.get(true).size()) {
+				return "Weak-Dynamic";
+			}
+
+		} else {
+			// there are no effective paths
+			if (dataO.getStaticSphere().contains(reader)) {
+				return "Static";
+			} else if (this.globalSphere.contains(reader)) {
+				return "Global";
+			}
+
+		}
+
+		return "";
+		
+		
+		
+		
+		
+	}
+	
+	
+	
 
 	public int getAmountPossibleCombinationsOfParticipants() {
 		return amountPossibleCombinationsOfParticipants;
@@ -2804,7 +3001,9 @@ public class API {
 	}
 
 	public void setBpmnEnd(BPMNEndEvent bpmnEnd) {
-		this.bpmnEnd = bpmnEnd;
+		this.bpmnEnd = bpmnEnd;		
 	}
 
+	
+	
 }

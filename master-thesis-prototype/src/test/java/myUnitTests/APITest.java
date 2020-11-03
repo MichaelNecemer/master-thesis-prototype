@@ -198,28 +198,25 @@ public class APITest {
 			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
 
 			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_00qdu1v");
+			BPMNBusinessRuleTask brt1 = (BPMNBusinessRuleTask) a2.getNodeById("BusinessRuleTask_1qnt4kf");
 			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
 			BPMNParticipant readerDI = new BPMNParticipant("Lane_190r1hy", "DI");
 			BPMNParticipant readerGP = new BPMNParticipant("Lane_155vkn8", "GP");
 			BPMNParticipant readerRS = new BPMNParticipant("Lane_07pzlbb", "RS");
 			BPMNParticipant readerIC = new BPMNParticipant("Lane_0m888yn", "IC");
 
-			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths = a2.allEffectivePathsForWriters(dataO,
-					writerTask, writerTask, a2.getBpmnEnd(), new LinkedList<BPMNElement>(),
-					new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-					new LinkedList<LinkedList<BPMNElement>>());
-
-			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-					readerDI, effectivePaths, new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
+		
+			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt1, writerTask, dataO,
+					readerDI, new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
 			Assert.assertEquals("Static", sphereForDI);
-			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-					readerGP, effectivePaths, new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
+			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt1, writerTask, dataO,
+					readerGP, new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
 			Assert.assertEquals("Static", sphereForGP);
-			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-					readerRS, effectivePaths, new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
+			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt1,writerTask, dataO,
+					readerRS,  new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
 			Assert.assertEquals("Strong-Dynamic", sphereForRS);
-			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-					readerIC, effectivePaths, new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
+			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt1,writerTask, dataO,
+					readerIC,  new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
 			Assert.assertEquals("Weak-Dynamic", sphereForIC);
 
 		} catch (Exception e) {
@@ -231,199 +228,367 @@ public class APITest {
 	
 	
 	@Test
-	public void testSphereOfReaderParticipantsForWriter2ForBrt2() {
+	public void testSphereOfParticipantsForBrt3WhenGPChosenForBrt1() {
 		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 
 		try {
 			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
 
-			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_0zvbv9t");
+			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_00qdu1v");
+			BPMNBusinessRuleTask brt3 = (BPMNBusinessRuleTask) a2.getNodeById("Task_0hy8xp7");
 			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
-			BPMNParticipant readerDI = new BPMNParticipant("Lane_190r1hy", "DI");
+
 			BPMNParticipant readerGP = new BPMNParticipant("Lane_155vkn8", "GP");
+			BPMNParticipant readerDI = new BPMNParticipant("Lane_190r1hy", "DI");
 			BPMNParticipant readerRS = new BPMNParticipant("Lane_07pzlbb", "RS");
 			BPMNParticipant readerIC = new BPMNParticipant("Lane_0m888yn", "IC");
-
-			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths = a2.allEffectivePathsForWriters(dataO,
-					writerTask, writerTask, a2.getBpmnEnd(), new LinkedList<BPMNElement>(),
-					new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-					new LinkedList<LinkedList<BPMNElement>>());
 			
-			//this testcase only checks for spheres without considering already chosen participants for brt1
-			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-					readerDI, effectivePaths, new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
-			Assert.assertEquals("Weak-Dynamic", sphereForDI);
-			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-					readerGP, effectivePaths, new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
-			Assert.assertEquals("Strong-Dynamic", sphereForGP);
-			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-					readerRS, effectivePaths, new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
-			Assert.assertEquals("Static", sphereForRS);
-			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-					readerIC, effectivePaths, new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
-			Assert.assertEquals("Static", sphereForIC);
-
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-	}
-
-	
-	
-	
-	
-	
-
-	@Test
-	public void testSphereOfGPForBrt3WhenGPChosenForBrt1() {
-		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
-
-		try {
-			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
-
-			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_00qdu1v");
-			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
-
-			BPMNParticipant readerGP = new BPMNParticipant("Lane_155vkn8", "GP");
-
-			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths = a2.allEffectivePathsForWriters(dataO,
-					writerTask, writerTask, a2.getBpmnEnd(), new LinkedList<BPMNElement>(),
-					new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-					new LinkedList<LinkedList<BPMNElement>>());
-			// consider there is already a voter for brt1!!!
+		
+			// consider the GP has already been chosen as the voter for brt1!!!
 
 			// Let the voter for Brt1 be the GP
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoterGP = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
 			LinkedList<BPMNParticipant> voterForBrt1GP = new LinkedList<BPMNParticipant>();
 			voterForBrt1GP.add(readerGP);
 			alreadyChosenVoterGP.put((BPMNBusinessRuleTask) a2.getNodeById("BusinessRuleTask_1qnt4kf"), voterForBrt1GP);
-			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-					readerGP, effectivePaths, alreadyChosenVoterGP);
+			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerGP, alreadyChosenVoterGP);
 			Assert.assertEquals("Strong-Dynamic", sphereForGP);
-
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-	}
-
-	@Test
-	public void testSphereOfDIForBrt3WhenGPChosenForBrt1() {
-		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
-
-		try {
-			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
-
-			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_00qdu1v");
-			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
-
-			BPMNParticipant readerGP = new BPMNParticipant("Lane_155vkn8", "GP");
-			BPMNParticipant readerDI = new BPMNParticipant("Lane_190r1hy", "DI");
-
-			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths = a2.allEffectivePathsForWriters(dataO,
-					writerTask, writerTask, a2.getBpmnEnd(), new LinkedList<BPMNElement>(),
-					new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-					new LinkedList<LinkedList<BPMNElement>>());
-			// consider there is already a voter for brt1!!!
-
-			// Let the voter for Brt1 be the GP
-			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoterGP = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
-			LinkedList<BPMNParticipant> voterForBrt1GP = new LinkedList<BPMNParticipant>();
-			voterForBrt1GP.add(readerGP);
-			alreadyChosenVoterGP.put((BPMNBusinessRuleTask) a2.getNodeById("BusinessRuleTask_1qnt4kf"), voterForBrt1GP);
-			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-					readerDI, effectivePaths, alreadyChosenVoterGP);
+			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerDI, alreadyChosenVoterGP);
 			Assert.assertEquals("Static", sphereForDI);
-
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-	}
-	
-	
-	@Test
-	public void testSphereOfRSForBrt3WhenGPChosenForBrt1() {
-		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
-
-		try {
-			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
-
-			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_00qdu1v");
-			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
-
-			BPMNParticipant readerGP = new BPMNParticipant("Lane_155vkn8", "GP");
-			BPMNParticipant readerRS = new BPMNParticipant("Lane_07pzlbb", "RS");
-
-			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths = a2.allEffectivePathsForWriters(dataO,
-					writerTask, writerTask, a2.getBpmnEnd(), new LinkedList<BPMNElement>(),
-					new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-					new LinkedList<LinkedList<BPMNElement>>());
-			// consider there is already a voter for brt1!!!
-
-			// Let the voter for Brt1 be the GP
-			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoterGP = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
-			LinkedList<BPMNParticipant> voterForBrt1GP = new LinkedList<BPMNParticipant>();
-			voterForBrt1GP.add(readerGP);
-			alreadyChosenVoterGP.put((BPMNBusinessRuleTask) a2.getNodeById("BusinessRuleTask_1qnt4kf"), voterForBrt1GP);
-			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-					readerRS, effectivePaths, alreadyChosenVoterGP);
+			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerRS, alreadyChosenVoterGP);
 			Assert.assertEquals("Strong-Dynamic", sphereForRS);
+			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerIC, alreadyChosenVoterGP);
+			Assert.assertEquals("Strong-Dynamic", sphereForIC);
+			
 
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		
-		
-		
 
 	}
 	
+	
 	@Test
-	public void testSphereOfICForBrt3WhenGPChosenForBrt1() {
+	public void testSphereOfParticipantsForBrt3WhenICChosenForBrt1() {
 		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 
 		try {
 			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
 
 			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_00qdu1v");
+			BPMNBusinessRuleTask brt3 = (BPMNBusinessRuleTask) a2.getNodeById("Task_0hy8xp7");
 			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
 
 			BPMNParticipant readerGP = new BPMNParticipant("Lane_155vkn8", "GP");
+			BPMNParticipant readerDI = new BPMNParticipant("Lane_190r1hy", "DI");
+			BPMNParticipant readerRS = new BPMNParticipant("Lane_07pzlbb", "RS");
 			BPMNParticipant readerIC = new BPMNParticipant("Lane_0m888yn", "IC");
 			
-			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths = a2.allEffectivePathsForWriters(dataO,
-					writerTask, writerTask, a2.getBpmnEnd(), new LinkedList<BPMNElement>(),
-					new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-					new LinkedList<LinkedList<BPMNElement>>());
-			// consider there is already a voter for brt1!!!
+
+			// Let the voter for Brt1 be the IC
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoterIC = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
+			LinkedList<BPMNParticipant> voterForBrt1IC = new LinkedList<BPMNParticipant>();
+			voterForBrt1IC.add(readerIC);
+			alreadyChosenVoterIC.put((BPMNBusinessRuleTask) a2.getNodeById("BusinessRuleTask_1qnt4kf"), voterForBrt1IC);
+			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerGP, alreadyChosenVoterIC);
+			Assert.assertEquals("Static", sphereForGP);
+			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerDI, alreadyChosenVoterIC);
+			Assert.assertEquals("Static", sphereForDI);
+			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerRS, alreadyChosenVoterIC);
+			Assert.assertEquals("Strong-Dynamic", sphereForRS);
+			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerIC, alreadyChosenVoterIC);
+			Assert.assertEquals("Strong-Dynamic", sphereForIC);
+			
+
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+	
+	
+	
+	@Test
+	public void testSphereOfParticipantsForBrt3WhenDIChosenForBrt1() {
+		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
+
+		try {
+			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
+
+			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_00qdu1v");
+			BPMNBusinessRuleTask brt3 = (BPMNBusinessRuleTask) a2.getNodeById("Task_0hy8xp7");
+			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
+
+			BPMNParticipant readerGP = new BPMNParticipant("Lane_155vkn8", "GP");
+			BPMNParticipant readerDI = new BPMNParticipant("Lane_190r1hy", "DI");
+			BPMNParticipant readerRS = new BPMNParticipant("Lane_07pzlbb", "RS");
+			BPMNParticipant readerIC = new BPMNParticipant("Lane_0m888yn", "IC");
+			
+
+			// Let the voter for Brt1 be the DI
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoterDI = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
+			LinkedList<BPMNParticipant> voterForBrt1DI = new LinkedList<BPMNParticipant>();
+			voterForBrt1DI.add(readerDI);
+			alreadyChosenVoterDI.put((BPMNBusinessRuleTask) a2.getNodeById("BusinessRuleTask_1qnt4kf"), voterForBrt1DI);
+			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerGP, alreadyChosenVoterDI);
+			Assert.assertEquals("Static", sphereForGP);
+			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerDI, alreadyChosenVoterDI);
+			Assert.assertEquals("Strong-Dynamic", sphereForDI);
+			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerRS, alreadyChosenVoterDI);
+			Assert.assertEquals("Strong-Dynamic", sphereForRS);
+			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerIC, alreadyChosenVoterDI);
+			Assert.assertEquals("Strong-Dynamic", sphereForIC);
+			
+
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+	
+	@Test
+	public void testSphereOfParticipantsForBrt3WhenRSChosenForBrt1() {
+		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
+
+		try {
+			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
+
+			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_00qdu1v");
+			BPMNBusinessRuleTask brt3 = (BPMNBusinessRuleTask) a2.getNodeById("Task_0hy8xp7");
+			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
+
+			BPMNParticipant readerGP = new BPMNParticipant("Lane_155vkn8", "GP");
+			BPMNParticipant readerDI = new BPMNParticipant("Lane_190r1hy", "DI");
+			BPMNParticipant readerRS = new BPMNParticipant("Lane_07pzlbb", "RS");
+			BPMNParticipant readerIC = new BPMNParticipant("Lane_0m888yn", "IC");
+			
+
+			// Let the voter for Brt1 be the RS
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoterRS = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
+			LinkedList<BPMNParticipant> voterForBrt1RS = new LinkedList<BPMNParticipant>();
+			voterForBrt1RS.add(readerRS);
+			alreadyChosenVoterRS.put((BPMNBusinessRuleTask) a2.getNodeById("BusinessRuleTask_1qnt4kf"), voterForBrt1RS);
+			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerGP, alreadyChosenVoterRS);
+			Assert.assertEquals("Static", sphereForGP);
+			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerDI, alreadyChosenVoterRS);
+			Assert.assertEquals("Static", sphereForDI);
+			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerRS, alreadyChosenVoterRS);
+			Assert.assertEquals("Strong-Dynamic", sphereForRS);
+			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask, dataO,
+					readerIC, alreadyChosenVoterRS);
+			Assert.assertEquals("Strong-Dynamic", sphereForIC);
+			
+
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+	
+	
+	@Test
+	public void testSphereOfParticipantsForBrt2WhenGPChosenForBrt1() {
+		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
+
+		try {
+			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
+
+			//for brt2 the lastWriter is the writer 2!!!
+			//therefore the chosen voter for brt1 should not have an impact on the spheres for the participants for brt2!!!
+			
+			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_0zvbv9t");
+			BPMNBusinessRuleTask brt2 = (BPMNBusinessRuleTask) a2.getNodeById("Task_02f5d5q");
+			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
+
+			BPMNParticipant readerGP = new BPMNParticipant("Lane_155vkn8", "GP");
+			BPMNParticipant readerDI = new BPMNParticipant("Lane_190r1hy", "DI");
+			BPMNParticipant readerRS = new BPMNParticipant("Lane_07pzlbb", "RS");
+			BPMNParticipant readerIC = new BPMNParticipant("Lane_0m888yn", "IC");
+			
 
 			// Let the voter for Brt1 be the GP
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoterGP = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
 			LinkedList<BPMNParticipant> voterForBrt1GP = new LinkedList<BPMNParticipant>();
 			voterForBrt1GP.add(readerGP);
 			alreadyChosenVoterGP.put((BPMNBusinessRuleTask) a2.getNodeById("BusinessRuleTask_1qnt4kf"), voterForBrt1GP);
-			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(writerTask, dataO,
-					readerIC, effectivePaths, alreadyChosenVoterGP);
-			Assert.assertEquals("Weak-Dynamic", sphereForIC);
+			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerGP, alreadyChosenVoterGP);
+			Assert.assertEquals("Strong-Dynamic", sphereForGP);
+			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerDI, alreadyChosenVoterGP);
+			Assert.assertEquals("Weak-Dynamic", sphereForDI);
+			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerRS, alreadyChosenVoterGP);
+			Assert.assertEquals("Static", sphereForRS);
+			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerIC, alreadyChosenVoterGP);
+			Assert.assertEquals("Static", sphereForIC);
+			
 
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		
-		
-		
+
+	}
+	
+	@Test
+	public void testSphereOfParticipantsForBrt2WhenDIChosenForBrt1() {
+		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
+
+		try {
+			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
+
+			//for brt2 the lastWriter is the writer 2!!!
+			
+			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_0zvbv9t");
+			BPMNBusinessRuleTask brt2 = (BPMNBusinessRuleTask) a2.getNodeById("Task_02f5d5q");
+			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
+
+			BPMNParticipant readerGP = new BPMNParticipant("Lane_155vkn8", "GP");
+			BPMNParticipant readerDI = new BPMNParticipant("Lane_190r1hy", "DI");
+			BPMNParticipant readerRS = new BPMNParticipant("Lane_07pzlbb", "RS");
+			BPMNParticipant readerIC = new BPMNParticipant("Lane_0m888yn", "IC");
+			
+
+			// Let the voter for Brt1 be the DI
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoterDI = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
+			LinkedList<BPMNParticipant> voterForBrt1DI = new LinkedList<BPMNParticipant>();
+			voterForBrt1DI.add(readerDI);
+			alreadyChosenVoterDI.put((BPMNBusinessRuleTask) a2.getNodeById("BusinessRuleTask_1qnt4kf"), voterForBrt1DI);
+			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerGP, alreadyChosenVoterDI);
+			Assert.assertEquals("Strong-Dynamic", sphereForGP);
+			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerDI, alreadyChosenVoterDI);
+			Assert.assertEquals("Weak-Dynamic", sphereForDI);
+			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerRS, alreadyChosenVoterDI);
+			Assert.assertEquals("Static", sphereForRS);
+			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerIC, alreadyChosenVoterDI);
+			Assert.assertEquals("Static", sphereForIC);
+			
+
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 	}
 	
 	
+	@Test
+	public void testSphereOfParticipantsForBrt2WhenRSChosenForBrt1() {
+		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 
+		try {
+			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
+
+			//for brt2 the lastWriter is the writer 2!!!
+			
+			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_0zvbv9t");
+			BPMNBusinessRuleTask brt2 = (BPMNBusinessRuleTask) a2.getNodeById("Task_02f5d5q");
+			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
+
+			BPMNParticipant readerGP = new BPMNParticipant("Lane_155vkn8", "GP");
+			BPMNParticipant readerDI = new BPMNParticipant("Lane_190r1hy", "DI");
+			BPMNParticipant readerRS = new BPMNParticipant("Lane_07pzlbb", "RS");
+			BPMNParticipant readerIC = new BPMNParticipant("Lane_0m888yn", "IC");
+			
+
+			// Let the voter for Brt1 be the RS
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoterRS = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
+			LinkedList<BPMNParticipant> voterForBrt1RS = new LinkedList<BPMNParticipant>();
+			voterForBrt1RS.add(readerRS);
+			alreadyChosenVoterRS.put((BPMNBusinessRuleTask) a2.getNodeById("BusinessRuleTask_1qnt4kf"), voterForBrt1RS);
+			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerGP, alreadyChosenVoterRS);
+			Assert.assertEquals("Strong-Dynamic", sphereForGP);
+			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerDI, alreadyChosenVoterRS);
+			Assert.assertEquals("Weak-Dynamic", sphereForDI);
+			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerRS, alreadyChosenVoterRS);
+			Assert.assertEquals("Static", sphereForRS);
+			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerIC, alreadyChosenVoterRS);
+			Assert.assertEquals("Static", sphereForIC);
+			
+
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+	
+	@Test
+	public void testSphereOfParticipantsForBrt2WhenICChosenForBrt1() {
+		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
+
+		try {
+			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
+
+			//for brt2 the lastWriter is the writer 2!!!
+			
+			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_0zvbv9t");
+			BPMNBusinessRuleTask brt2 = (BPMNBusinessRuleTask) a2.getNodeById("Task_02f5d5q");
+			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
+
+			BPMNParticipant readerGP = new BPMNParticipant("Lane_155vkn8", "GP");
+			BPMNParticipant readerDI = new BPMNParticipant("Lane_190r1hy", "DI");
+			BPMNParticipant readerRS = new BPMNParticipant("Lane_07pzlbb", "RS");
+			BPMNParticipant readerIC = new BPMNParticipant("Lane_0m888yn", "IC");
+			
+
+			// Let the voter for Brt1 be the IC
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoterIC = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
+			LinkedList<BPMNParticipant> voterForBrt1IC = new LinkedList<BPMNParticipant>();
+			voterForBrt1IC.add(readerIC);
+			alreadyChosenVoterIC.put((BPMNBusinessRuleTask) a2.getNodeById("BusinessRuleTask_1qnt4kf"), voterForBrt1IC);
+			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerGP, alreadyChosenVoterIC);
+			Assert.assertEquals("Strong-Dynamic", sphereForGP);
+			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerDI, alreadyChosenVoterIC);
+			Assert.assertEquals("Weak-Dynamic", sphereForDI);
+			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerRS, alreadyChosenVoterIC);
+			Assert.assertEquals("Static", sphereForRS);
+			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask, dataO,
+					readerIC, alreadyChosenVoterIC);
+			Assert.assertEquals("Static", sphereForIC);
+			
+
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+	
+	
+	
+	
+	
 }
