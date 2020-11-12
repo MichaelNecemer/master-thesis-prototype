@@ -412,19 +412,20 @@ public class API {
 
 					for (BPMNParticipant readerParticipant : this.globalSphere) {
 						String sphereForReader = this.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(currentBrt,
-								lastWriter, dataO, readerParticipant,
-								alreadyChosenVoters);
-						readerParticipant.printParticipant();
-						System.out.println("sphereforReader: " + sphereForReader);
-						if (sphereForReader.contentEquals("Strong-Dynamic")) {
-							if (!sdList.contains(readerParticipant)) {
-								sdList.add(readerParticipant);
+									lastWriter, dataO, readerParticipant,
+									alreadyChosenVoters);
+							readerParticipant.printParticipant();
+							System.out.println("sphereforReader: " + sphereForReader);
+							if (sphereForReader.contentEquals("Strong-Dynamic")) {
+								if (!sdList.contains(readerParticipant)) {
+									sdList.add(readerParticipant);
+								}
+							} else if (sphereForReader.contentEquals("Weak-Dynamic")) {
+								if (!wdList.contains(readerParticipant)) {
+									wdList.add(readerParticipant);
+								}
 							}
-						} else if (sphereForReader.contentEquals("Weak-Dynamic")) {
-							if (!wdList.contains(readerParticipant)) {
-								wdList.add(readerParticipant);
-							}
-						}
+						
 
 					}
 
@@ -2725,8 +2726,12 @@ public class API {
 
 	public String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(BPMNBusinessRuleTask currentBrt, BPMNElement writerTask,
 			BPMNDataObject dataO, BPMNParticipant reader,
-			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
-
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters)  {
+		
+		
+		if(writerTask==null||currentBrt==null||dataO==null) {
+			return "not existent";
+		} 
 		//calculate sphere for the reader at the position of the currentBrt, therefore:
 				//first check if the reader is on each effective path going from writerTask to currentBrt
 						// -> reader is in SD at the position of the currentBrt
@@ -2746,6 +2751,7 @@ public class API {
 		//if writer demands WD or SD and the sphereForReader is static or global the search can be extended 
 		String requiredSphereOfWriter = ((BPMNTask)writerTask).getSphereAnnotation().get(dataO);
 
+	
 		
 		if(this.atLeastInSphere(sphereForReader, requiredSphereOfWriter)==false) {
 			//second step - search from currentBrt to ProcessEnd 
@@ -2770,7 +2776,9 @@ public class API {
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
 		int strongDynamicCountEffectivePaths = 0;
 		int countReaderOnNonEffectivePath = 0;
-
+		if(writerTask==null||currentBrt==null) {
+			return "not existent";
+		} 
 		// the participant of the writerTask is always in SD looking from writerTask
 		// onwards
 		if (((BPMNTask) writerTask).getParticipant().equals(reader)) {
@@ -2793,8 +2801,7 @@ public class API {
 								// check if the reader given as an argument is one of the already chosen voters
 								// for the brt
 								if (alreadyChosenVoters.get(currentBrtOnPath).contains(reader)
-										&& this.isParticipantInList(dataO.getReaders(), reader)
-										&& dataO.getReaders().contains(currentBrtOnPath)) {
+									) {
 									readerFound = true;
 								}
 

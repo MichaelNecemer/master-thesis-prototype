@@ -22,7 +22,7 @@ import functionality.API;
 
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class APITest {
+public class APITest1 {
 
 	@Test
 	public void testAllLanesAsParticipantsInGlobalSphere() {
