@@ -7,13 +7,17 @@ import functionality.API;
 //Class holding all necessary Information regarding costs and dependencies between BusinessRuleTasks in the process
 public class ArcWithCost{
 	//The current Arc object holds list to all preceeding arcs -> uniquely identifiable	
-	//what does it cost when chosenCombinationOfParticipants are added as voters?
+	//what does it cost when chosenCombinationOfParticipants are added as voters for the xorSplit
 	
 	public static int id;
 	public int idOfArc;
 	private LinkedList<ArcWithCost>preceedingArcs;
 	//first arc goes from first brt into first XOR-Split
 	private BPMNBusinessRuleTask brt;
+	
+	//the xorSplit should hold all ArcWithCost from all branches going into it
+	//since the arcs already contain the cumulated necessary updates, just get the last one from all branches 
+	//and cumulate costs
 	
 	private BPMNExclusiveGateway xorSplit;
 	private boolean isLeaf;

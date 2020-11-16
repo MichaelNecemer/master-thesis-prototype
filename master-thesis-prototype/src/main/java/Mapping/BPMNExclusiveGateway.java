@@ -2,6 +2,7 @@ package Mapping;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 //Exclusive Gateways are binary
 public class BPMNExclusiveGateway extends BPMNGateway{
@@ -13,6 +14,8 @@ public class BPMNExclusiveGateway extends BPMNGateway{
 	private String sphere;
 	private static int exclusiveGtwCount = 0;
 	private String[] constraints; 
+	//contains all incoming ArcWithCost from all branches into the xor-split
+	private LinkedList<LinkedList<ArcWithCost>> incomingArcsWithCostAllBranches;
 		
 	public BPMNExclusiveGateway(String id, String name, String type) {
 		super(id, name, type);
@@ -23,11 +26,33 @@ public class BPMNExclusiveGateway extends BPMNGateway{
 		//by default the sphere is global
 		this.sphere="Global";
 		//by default there are no constraints 
+		this.incomingArcsWithCostAllBranches=new LinkedList<LinkedList<ArcWithCost>>();
 		
 	}
 
 	
 	
+	
+
+
+	public LinkedList<LinkedList<ArcWithCost>> getIncomingArcsWithCostAllBranches() {
+		return incomingArcsWithCostAllBranches;
+	}
+
+
+
+
+
+
+	public void setIncomingArcsWithCostAllBranches(LinkedList<LinkedList<ArcWithCost>> incomingArcsWithCostAllBranches) {
+		this.incomingArcsWithCostAllBranches = incomingArcsWithCostAllBranches;
+	}
+
+
+
+
+
+
 	public void printElement() {
 		super.printElement();
 		System.out.println(", "+this.getType());

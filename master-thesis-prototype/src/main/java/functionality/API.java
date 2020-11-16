@@ -255,6 +255,20 @@ public class API {
 		 */
 		// brtCombs.addAll(this.generateArcsWithCost(this.possibleBrtCombinationsTillEnd.get(0)));
 
+	BPMNExclusiveGateway gtwjoin = (BPMNExclusiveGateway)this.getNodeById("ExclusiveGateway_07eqasm");
+	int i = 1;
+	int count = 0; 
+	for(LinkedList<ArcWithCost>branchList: gtwjoin.getIncomingArcsWithCostAllBranches()) {
+		System.out.println("Branch "+i);
+		for(ArcWithCost arc: branchList) {
+			System.out.println("ArcID: "+arc.idOfArc);
+			count++;
+		}
+		System.out.println("Amount arcs: "+count);
+		i++;
+	}
+	
+		
 		int countLeafs = 0;
 
 		for (LinkedList<ArcWithCost> a : brtCombs) {
@@ -269,26 +283,6 @@ public class API {
 		}
 		this.setAmountPossibleCombinationsOfParticipants(countLeafs);
 
-		LinkedList<ArcWithCost> cheapestCombs = new LinkedList<ArcWithCost>();
-
-		for (LinkedList<ArcWithCost> arc : brtCombs) {
-			for (ArcWithCost a : arc) {
-				if (cheapestCombs.isEmpty() && a.isLeaf()) {
-					cheapestCombs.add(a);
-				} else if (!cheapestCombs.isEmpty() && a.isLeaf()) {
-					if (cheapestCombs.getFirst().getCumulatedCost() > a.getCumulatedCost()) {
-						cheapestCombs.clear();
-						cheapestCombs.addFirst(a);
-					} else if (cheapestCombs.getFirst().getCumulatedCost() == a.getCumulatedCost()) {
-						cheapestCombs.add(a);
-					}
-				}
-			}
-		}
-		
-		 for(ArcWithCost a: cheapestCombs) { System.out.println("Cheapest Arcs: ");
-		 a.printArc(); System.out.println("Cumulated Cost: " +a.getCumulatedCost());
-		 System.out.println("####################"); }
 		 
 		 
 
@@ -320,8 +314,7 @@ public class API {
 	}
 
 	private LinkedList<LinkedList<ArcWithCost>> generateArcs(BPMNElement previousElement, BPMNBusinessRuleTask currBrt) {
-		// Draw arcs between two nodes containing information about participants and
-		// cost
+		// Draw arcs between currBrt and following xor-split considering arcs of previousElement
 		LinkedList<LinkedList<ArcWithCost>> brtCombs = new LinkedList<LinkedList<ArcWithCost>>();
 		
 			if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
@@ -354,10 +347,11 @@ public class API {
 								
 								
 							}
-
-						
 							
 						}
+					
+					
+					
 				} else if (previousElement instanceof BPMNStartEvent) {
 					for (LinkedList<BPMNParticipant> partList : currBrt.getCombinations().get(currBrt)) {
 											
@@ -375,7 +369,7 @@ public class API {
 				}
 			
 				brtCombs.add(currBrt.getIncomingArcsWithCost());
-			
+				
 			
 			}
 
@@ -1416,6 +1410,7 @@ public class API {
 			LinkedList<LinkedList<BPMNElement>> paths) {
 		// go DFS inside the XOR till corresponding join is found
 
+
 		queue.add(startNode);
 	
 
@@ -1423,8 +1418,6 @@ public class API {
 
 		while (!(queue.isEmpty())) {
 			BPMNElement element = queue.poll();
-			System.out.println("Element: ");
-			element.printElement();
 			currentPath.add(element);
 
 			if (element.getId().equals(endNode.getId())) {
@@ -1432,27 +1425,34 @@ public class API {
 				paths.add(currentPath);	
 
 				if(endNode instanceof BPMNExclusiveGateway && ((BPMNExclusiveGateway) element).getType().equals("join")) {
-					//poll the last added gateway
+					//when a join node is found 
+					//add the list of ArcWithCost for the last BPMNBusinessRuleTask of the branch to it
+					BPMNBusinessRuleTask lastBrtOfBranch = (BPMNBusinessRuleTask)lastVisitedBrt;
+					
+					BPMNExclusiveGateway joinGtw = (BPMNExclusiveGateway)element;
+					if(!joinGtw.getIncomingArcsWithCostAllBranches().contains(lastBrtOfBranch.getIncomingArcsWithCost())) {
+					joinGtw.getIncomingArcsWithCostAllBranches().add(lastBrtOfBranch.getIncomingArcsWithCost());
+					}
+					
+					
+					//when a xor-join is found - poll the last opened xor gateway from the stack
 					BPMNExclusiveGateway lastOpenedXor = (BPMNExclusiveGateway)openXorStack.pollLast();					
 								
 						if(!openXorStack.isEmpty()) {
 							if(!openXorStack.contains(lastOpenedXor)) {	
-								//go from lastOpenedXor Join to the Join of the last open Xor-Split in the stack
-						this.goDFSthroughProcessAndGenerateArcs( this.getCorrespondingGtw(lastOpenedXor), this.getCorrespondingGtw((BPMNGateway) openXorStack.getLast()), generatedArcs, lastVisitedBrt, queue,
+								//when the openXorStack does not contain the lastOpenedXor anymore, all branches to the joinGtw have been visited 
+								//go from joinGtw to the Join of the last opened xor-split in the stack
+						this.goDFSthroughProcessAndGenerateArcs(joinGtw, this.getCorrespondingGtw((BPMNGateway) openXorStack.getLast()), generatedArcs, lastVisitedBrt, queue,
 								parallelGtwQueue, openXorStack, currentPath, paths);
 						
 							}} else {
-								//when there are no open Xor gtws - go from currentElement to bpmnEnd
+								//when there are no open Xor gtws - try going from currentElement to bpmnEnd
 							this.goDFSthroughProcessAndGenerateArcs(element, this.bpmnEnd, generatedArcs, lastVisitedBrt, queue,
 									parallelGtwQueue, openXorStack, currentPath, paths);
 						}
 					
 				}
-				
-				
-					
-				
-				
+								
 				element = queue.poll();				
 				if (element == null) {
 					int id = 1;
@@ -1470,7 +1470,7 @@ public class API {
 				
 			}
 
-			// when a brt is found - generate arcs between previous brt and the current brt
+			// when a brt is found - generate arcs between brt and the xor-split 
 			if (element instanceof BPMNBusinessRuleTask) {
 				BPMNBusinessRuleTask currBrt = (BPMNBusinessRuleTask) element;
 				generatedArcs.addAll(this.generateArcs(lastVisitedBrt, currBrt));
@@ -1479,7 +1479,7 @@ public class API {
 			
 
 			if (element instanceof BPMNExclusiveGateway && ((BPMNExclusiveGateway) element).getType().equals("split")) {
-				//add the xor split 1 times for each outgoing paths
+				//add the xor split to the openXorStack 1 times for each outgoing paths
 				int amountOfOutgoingPaths = element.getSuccessors().size();
 				int i = 0;
 				while(i<amountOfOutgoingPaths) {
