@@ -16,6 +16,7 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 	private LinkedList<ArcWithCost> incomingArcsWithCost;
 	private LinkedList<BPMNBusinessRuleTask>directSuccessors;
 	private LinkedList<BPMNBusinessRuleTask>potentiallyDependentBrts;
+	private LinkedList<VoterForXorArc> voterArcs;
 	
 
 	public BPMNBusinessRuleTask(String id, String name) {
@@ -29,6 +30,7 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 		this.incomingArcsWithCost = new LinkedList<ArcWithCost>();
 		this.directSuccessors=new LinkedList<BPMNBusinessRuleTask>();
 		this.potentiallyDependentBrts=new LinkedList<BPMNBusinessRuleTask>();
+		this.voterArcs= new LinkedList<VoterForXorArc>();
 	}
 	
 	public LinkedList<BPMNBusinessRuleTask> getPotentiallyDependentBrts(){
@@ -99,4 +101,14 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 	public double getFalseRate() {
 		return this.falseRate;
 	}
+
+	public LinkedList<VoterForXorArc> getVoterArcs() {
+		return voterArcs;
+	}
+
+	public void setVoterArcs(LinkedList<VoterForXorArc> voterArcs) {
+		this.voterArcs = voterArcs;
+	}
+	
+	
 }

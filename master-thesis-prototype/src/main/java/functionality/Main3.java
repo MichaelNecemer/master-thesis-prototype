@@ -39,9 +39,9 @@ public class Main3 {
 	ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	
 	try {
-		a2 = new API("C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn", cost);
+		//a2 = new API("C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn", cost);
 		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn", cost);
-		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
+		a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
 		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches2.bpmn", cost);
 		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\algorithmTest.bpmn", cost);
 

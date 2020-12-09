@@ -88,7 +88,9 @@ import Mapping.Combination;
 import Mapping.DecisionEvaluation;
 import Mapping.InfixToPostfix;
 import Mapping.Label;
+import Mapping.ProcessInstanceWithVoters;
 import Mapping.RequiredUpdate;
+import Mapping.VoterForXorArc;
 
 //Class that uses the camunda model API to interact with the process model directly without parsing the XML first to e.g. DOM Object
 //Note that only processes with exactly 1 Start Event are possible
@@ -243,142 +245,156 @@ public class API {
 
 	private void generateBrtDependenciesAndArcWithCosts() {
 
+		/*
 		LinkedList<LinkedList<ArcWithCost>> brtCombs = this.goDFSthroughProcessAndGenerateArcs(this.bpmnStart,
 				this.bpmnEnd, new LinkedList<LinkedList<ArcWithCost>>(), this.bpmnStart, new LinkedList<BPMNElement>(),
-				new LinkedList<BPMNElement>(),new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<LinkedList<BPMNElement>>());
-
-		/*
-		 * for(LinkedList<BPMNBusinessRuleTask> brtList:
-		 * this.possibleBrtCombinationsTillEnd) { LinkedList<LinkedList<ArcWithCost>>
-		 * arcList = this.generateArcsWithCost(brtList); brtCombs.addAll(arcList); }
 		 */
-		// brtCombs.addAll(this.generateArcsWithCost(this.possibleBrtCombinationsTillEnd.get(0)));
-
-	BPMNExclusiveGateway gtwjoin = (BPMNExclusiveGateway)this.getNodeById("ExclusiveGateway_07eqasm");
-	int i = 1;
-	int count = 0; 
-	for(LinkedList<ArcWithCost>branchList: gtwjoin.getIncomingArcsWithCostAllBranches()) {
-		System.out.println("Branch "+i);
-		for(ArcWithCost arc: branchList) {
-			System.out.println("ArcID: "+arc.idOfArc);
-			count++;
-		}
-		System.out.println("Amount arcs: "+count);
-		i++;
-	}
-	
 		
-		int countLeafs = 0;
-
-		for (LinkedList<ArcWithCost> a : brtCombs) {
-			for (ArcWithCost e : a) {
-				//e.printArc();
-				
-				if (e.isLeaf()) {
-					countLeafs++;
-				}
-
-			}
-		}
-		this.setAmountPossibleCombinationsOfParticipants(countLeafs);
-
-		 
-		 
+		LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters = this.goDFSthroughProcessBuildArcsAndGetVoters(this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(), new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(), new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>(), new LinkedList<VoterForXorArc>(),new LinkedList<BPMNElement>(),
+				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+				new LinkedList<LinkedList<BPMNElement>>());
+		
+	for(ProcessInstanceWithVoters processInstance: processInstancesWithVoters) {
+		processInstance.printInfo();		
+	}
+		
+		
+		this.setAmountPossibleCombinationsOfParticipants(processInstancesWithVoters.size());
 
 	}
-	
-	
-	public BPMNExclusiveGateway findLastXorJoinInProcess() {
-		
-		LinkedList<BPMNElement>stack = new LinkedList<BPMNElement>();
+
+	public BPMNExclusiveGateway getLastXorJoinInProcess() {
+
+		LinkedList<BPMNElement> stack = new LinkedList<BPMNElement>();
 		stack.add(this.bpmnEnd);
-		
-		while(!stack.isEmpty()) {
+
+		while (!stack.isEmpty()) {
 			BPMNElement currentElement = stack.poll();
-			if(currentElement instanceof BPMNExclusiveGateway) {
-				BPMNExclusiveGateway lastXor = (BPMNExclusiveGateway)currentElement;
-				if(lastXor.getType().contentEquals("join")) {
+			if (currentElement instanceof BPMNExclusiveGateway) {
+				BPMNExclusiveGateway lastXor = (BPMNExclusiveGateway) currentElement;
+				if (lastXor.getType().contentEquals("join")) {
 					return lastXor;
 				}
 			}
-			
-			for(BPMNElement predecessor: currentElement.getPredecessors()) {
+
+			for (BPMNElement predecessor : currentElement.getPredecessors()) {
 				stack.push(predecessor);
 			}
-			
+
 		}
-		
+
 		return null;
-		
+
 	}
 
-	private LinkedList<LinkedList<ArcWithCost>> generateArcs(BPMNElement previousElement, BPMNBusinessRuleTask currBrt) {
-		// Draw arcs between currBrt and following xor-split considering arcs of previousElement
+	private LinkedList<LinkedList<ArcWithCost>> generateArcs(BPMNElement previousElement,
+			BPMNBusinessRuleTask currBrt) {
+		// Draw arcs between currBrt and following xor-split considering arcs of
+		// previousElement
 		LinkedList<LinkedList<ArcWithCost>> brtCombs = new LinkedList<LinkedList<ArcWithCost>>();
-		
-			if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
-				BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
-				// get all the possible combinations of participants for the brt
-				if (currBrt.getCombinations().isEmpty()) {
-					LinkedList<LinkedList<BPMNParticipant>> list = Combination.getPermutations(this.globalSphere,
-							bpmnEx.getAmountVoters());
-					currBrt.getCombinations().putIfAbsent(currBrt, list);
-				}
-				
-				if(previousElement instanceof BPMNBusinessRuleTask) {
-					// for each combination create a new ArcWithCost
-					BPMNBusinessRuleTask previousBrt = (BPMNBusinessRuleTask)previousElement;
-					for (LinkedList<BPMNParticipant> partList : currBrt.getCombinations().get(currBrt)) {
-						
-							for (ArcWithCost a : previousBrt.getIncomingArcsWithCost()) {
-								LinkedList<ArcWithCost> arcs = new LinkedList<ArcWithCost>();
-								arcs.add(a);
 
-								ArcWithCost arc = new ArcWithCost(currBrt, bpmnEx, arcs, partList);
-
-								if (!this.arcAlreadyGenerated(currBrt, arc)) {
-									currBrt.getIncomingArcsWithCost().add(arc);
-									this.setRequiredUpdatesForArc(arc);
-								} else {
-									ArcWithCost.id--;
-								}
-								arc.setLeaf(true);
-								
-								
-							}
-							
-						}
-					
-					
-					
-				} else if (previousElement instanceof BPMNStartEvent) {
-					for (LinkedList<BPMNParticipant> partList : currBrt.getCombinations().get(currBrt)) {
-											
-							ArcWithCost arc = new ArcWithCost(currBrt, bpmnEx, new LinkedList<ArcWithCost>(), partList);
-
-							if (!this.arcAlreadyGenerated(currBrt, arc)) {
-								currBrt.getIncomingArcsWithCost().add(arc);
-								this.setRequiredUpdatesForArc(arc);
-							} else {
-								ArcWithCost.id--;
-							}
-					
-				}
-				
-				}
-			
-				brtCombs.add(currBrt.getIncomingArcsWithCost());
-				
-			
+		if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
+			BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
+			// get all the possible combinations of participants for the brt
+			if (currBrt.getCombinations().isEmpty()) {
+				LinkedList<LinkedList<BPMNParticipant>> list = Combination.getPermutations(this.globalSphere,
+						bpmnEx.getAmountVoters());
+				currBrt.getCombinations().putIfAbsent(currBrt, list);
 			}
 
-		
+			if (previousElement instanceof BPMNBusinessRuleTask) {
+				// for each combination create a new ArcWithCost
+				BPMNBusinessRuleTask previousBrt = (BPMNBusinessRuleTask) previousElement;
+				for (LinkedList<BPMNParticipant> partList : currBrt.getCombinations().get(currBrt)) {
+
+					for (ArcWithCost a : previousBrt.getIncomingArcsWithCost()) {
+						LinkedList<ArcWithCost> arcs = new LinkedList<ArcWithCost>();
+						arcs.add(a);
+
+						ArcWithCost arc = new ArcWithCost(currBrt, bpmnEx, arcs, partList);
+
+						if (!this.arcAlreadyGenerated(currBrt, arc)) {
+							currBrt.getIncomingArcsWithCost().add(arc);
+							this.setRequiredUpdatesForArc(arc);
+						} else {
+							ArcWithCost.id--;
+						}
+						arc.setLeaf(true);
+
+					}
+
+				}
+
+			} else if (previousElement instanceof BPMNStartEvent) {
+				for (LinkedList<BPMNParticipant> partList : currBrt.getCombinations().get(currBrt)) {
+
+					ArcWithCost arc = new ArcWithCost(currBrt, bpmnEx, new LinkedList<ArcWithCost>(), partList);
+
+					if (!this.arcAlreadyGenerated(currBrt, arc)) {
+						currBrt.getIncomingArcsWithCost().add(arc);
+						this.setRequiredUpdatesForArc(arc);
+					} else {
+						ArcWithCost.id--;
+					}
+
+				}
+
+			}
+
+			brtCombs.add(currBrt.getIncomingArcsWithCost());
+
+		}
+
 		return brtCombs;
-	
+
 	}
 
-	
+	private LinkedList<LinkedList<ArcWithCost>> generateArcsWithPreviousXorJoin(BPMNExclusiveGateway previousXorJoin,
+			BPMNBusinessRuleTask currBrt) {
+		// Draw arcs between currBrt and following xor-split considering arcs of
+		// previousElement
+		LinkedList<LinkedList<ArcWithCost>> brtCombs = new LinkedList<LinkedList<ArcWithCost>>();
+
+		if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
+			BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
+			// get all the possible combinations of participants for the brt
+			if (currBrt.getCombinations().isEmpty()) {
+				LinkedList<LinkedList<BPMNParticipant>> list = Combination.getPermutations(this.globalSphere,
+						bpmnEx.getAmountVoters());
+				currBrt.getCombinations().putIfAbsent(currBrt, list);
+			}
+
+			// for each combination of the xorJoin
+
+			for (LinkedList<BPMNParticipant> partList : currBrt.getCombinations().get(currBrt)) {
+				for (LinkedList<ArcWithCost> arcList : previousXorJoin.getIncomingArcsWithCostAllBranches()) {
+					for (ArcWithCost a : arcList) {
+						LinkedList<ArcWithCost> arcs = new LinkedList<ArcWithCost>();
+						arcs.add(a);
+
+						ArcWithCost arc = new ArcWithCost(currBrt, bpmnEx, arcs, partList);
+
+						if (!this.arcAlreadyGenerated(currBrt, arc)) {
+							currBrt.getIncomingArcsWithCost().add(arc);
+							this.setRequiredUpdatesForArc(arc);
+						} else {
+							ArcWithCost.id--;
+						}
+						arc.setLeaf(true);
+
+					}
+				}
+			}
+
+			brtCombs.add(currBrt.getIncomingArcsWithCost());
+
+		}
+
+		return brtCombs;
+
+	}
 
 	private void setRequiredUpdatesForArc(ArcWithCost arc) {
 		HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
@@ -386,8 +402,7 @@ public class API {
 		// get all the participants of the preceeding arcs that were chosen before the
 		// current arc
 		for (ArcWithCost a : arc.getPreceedingArcs()) {
-			alreadyChosenVoters.putIfAbsent((BPMNBusinessRuleTask) a.getBrt(),
-					a.getChosenCombinationOfParticipants());
+			alreadyChosenVoters.putIfAbsent((BPMNBusinessRuleTask) a.getBrt(), a.getChosenCombinationOfParticipants());
 		}
 
 		if (arc.getBrt() instanceof BPMNBusinessRuleTask) {
@@ -405,21 +420,19 @@ public class API {
 					ArrayList<BPMNParticipant> sdList = new ArrayList<BPMNParticipant>();
 
 					for (BPMNParticipant readerParticipant : this.globalSphere) {
-						String sphereForReader = this.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(currentBrt,
-									lastWriter, dataO, readerParticipant,
-									alreadyChosenVoters);
-							readerParticipant.printParticipant();
-							System.out.println("sphereforReader: " + sphereForReader);
-							if (sphereForReader.contentEquals("Strong-Dynamic")) {
-								if (!sdList.contains(readerParticipant)) {
-									sdList.add(readerParticipant);
-								}
-							} else if (sphereForReader.contentEquals("Weak-Dynamic")) {
-								if (!wdList.contains(readerParticipant)) {
-									wdList.add(readerParticipant);
-								}
+						String sphereForReader = this.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(
+								currentBrt, lastWriter, dataO, readerParticipant, alreadyChosenVoters);
+						readerParticipant.printParticipant();
+						System.out.println("sphereforReader: " + sphereForReader);
+						if (sphereForReader.contentEquals("Strong-Dynamic")) {
+							if (!sdList.contains(readerParticipant)) {
+								sdList.add(readerParticipant);
 							}
-						
+						} else if (sphereForReader.contentEquals("Weak-Dynamic")) {
+							if (!wdList.contains(readerParticipant)) {
+								wdList.add(readerParticipant);
+							}
+						}
 
 					}
 
@@ -683,6 +696,23 @@ public class API {
 						if (a.getChosenCombinationOfParticipants().equals(arc.getChosenCombinationOfParticipants())) {
 							return true;
 						}
+					}
+				}
+			}
+
+		}
+		return false;
+	}
+	
+	
+	private boolean arcAlreadyGenerated(BPMNBusinessRuleTask brt, VoterForXorArc arc) {
+		for (VoterForXorArc a : brt.getVoterArcs()) {
+			if (a.getBrt().equals(arc.getBrt())) {
+				if (a.getXorSplit().equals(arc.getXorSplit())) {
+					
+						if (a.getChosenCombinationOfParticipants().equals(arc.getChosenCombinationOfParticipants())) {
+							return true;
+						
 					}
 				}
 			}
@@ -1307,7 +1337,7 @@ public class API {
 
 			for (BPMNElement predecessor : element.getPredecessorsSorted()) {
 				queue.add(predecessor);
-				
+
 			}
 		}
 		return lastWriterList;
@@ -1403,16 +1433,48 @@ public class API {
 		return paths;
 
 	}
+	
+	public LinkedList<VoterForXorArc> generateArcsForXorSplit(BPMNBusinessRuleTask currBrt){
+				LinkedList<VoterForXorArc> brtCombs = new LinkedList<VoterForXorArc>();
 
-	public LinkedList<LinkedList<ArcWithCost>> goDFSthroughProcessAndGenerateArcs(BPMNElement startNode,
-			BPMNElement endNode, LinkedList<LinkedList<ArcWithCost>> generatedArcs, BPMNElement lastVisitedBrt,
-			LinkedList<BPMNElement> queue, LinkedList<BPMNElement> parallelGtwQueue, LinkedList<BPMNElement> openXorStack, LinkedList<BPMNElement> currentPath,
+				if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
+					BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
+					// get all the possible combinations of participants for the brt
+					if (currBrt.getCombinations().isEmpty()) {
+						LinkedList<LinkedList<BPMNParticipant>> list = Combination.getPermutations(this.globalSphere,
+								bpmnEx.getAmountVoters());
+						currBrt.getCombinations().putIfAbsent(currBrt, list);
+					}
+	
+						
+						for (LinkedList<BPMNParticipant> partList : currBrt.getCombinations().get(currBrt)) {
+						
+								VoterForXorArc arc = new VoterForXorArc(currBrt, bpmnEx, partList);
+								
+								//check if arc already exists
+								if (!this.arcAlreadyGenerated(currBrt, arc)) {
+									brtCombs.add(arc);
+								} else {
+									ArcWithCost.id--;
+								}
+								
+							}
+						
+				}			
+
+				return brtCombs;		
+		
+	}
+	
+	
+
+	public LinkedList<ProcessInstanceWithVoters> goDFSthroughProcessBuildArcsAndGetVoters(BPMNElement startNode,
+			BPMNElement endNode, BPMNBusinessRuleTask lastFoundBrt, LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters, HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>votersMap, HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>requiredUpdates,
+			LinkedList<VoterForXorArc>alreadyTakenVoters, LinkedList<BPMNElement> queue, LinkedList<BPMNElement> parallelGtwQueue,
+			LinkedList<BPMNElement> openXorStack, LinkedList<BPMNElement> currentPath,
 			LinkedList<LinkedList<BPMNElement>> paths) {
 		// go DFS inside the XOR till corresponding join is found
-
-
 		queue.add(startNode);
-	
 
 		boolean reachedParallelEndGateway = false;
 
@@ -1421,76 +1483,151 @@ public class API {
 			currentPath.add(element);
 
 			if (element.getId().equals(endNode.getId())) {
-				
-				paths.add(currentPath);	
 
-				if(endNode instanceof BPMNExclusiveGateway && ((BPMNExclusiveGateway) element).getType().equals("join")) {
-					//when a join node is found 
-					//add the list of ArcWithCost for the last BPMNBusinessRuleTask of the branch to it
-					BPMNBusinessRuleTask lastBrtOfBranch = (BPMNBusinessRuleTask)lastVisitedBrt;
+				paths.add(currentPath);
+
+				if (endNode instanceof BPMNExclusiveGateway
+						&& ((BPMNExclusiveGateway) element).getType().equals("join")) {
 					
-					BPMNExclusiveGateway joinGtw = (BPMNExclusiveGateway)element;
-					if(!joinGtw.getIncomingArcsWithCostAllBranches().contains(lastBrtOfBranch.getIncomingArcsWithCost())) {
-					joinGtw.getIncomingArcsWithCostAllBranches().add(lastBrtOfBranch.getIncomingArcsWithCost());
-					}
+					BPMNExclusiveGateway joinGtw = (BPMNExclusiveGateway) element;
 					
-					
-					//when a xor-join is found - poll the last opened xor gateway from the stack
-					BPMNExclusiveGateway lastOpenedXor = (BPMNExclusiveGateway)openXorStack.pollLast();					
-								
-						if(!openXorStack.isEmpty()) {
-							if(!openXorStack.contains(lastOpenedXor)) {	
-								//when the openXorStack does not contain the lastOpenedXor anymore, all branches to the joinGtw have been visited 
-								//go from joinGtw to the Join of the last opened xor-split in the stack
-						this.goDFSthroughProcessAndGenerateArcs(joinGtw, this.getCorrespondingGtw((BPMNGateway) openXorStack.getLast()), generatedArcs, lastVisitedBrt, queue,
-								parallelGtwQueue, openXorStack, currentPath, paths);
-						
-							}} else {
-								//when there are no open Xor gtws - try going from currentElement to bpmnEnd
-							this.goDFSthroughProcessAndGenerateArcs(element, this.bpmnEnd, generatedArcs, lastVisitedBrt, queue,
-									parallelGtwQueue, openXorStack, currentPath, paths);
+					// when a xor-join is found - poll the last opened xor gateway from the stack
+					BPMNExclusiveGateway lastOpenedXor = (BPMNExclusiveGateway) openXorStack.pollLast();
+
+					if (!openXorStack.isEmpty()) {
+						if (!openXorStack.contains(lastOpenedXor)) {
+							// when the openXorStack does not contain the lastOpenedXor anymore, all
+							// branches to the joinGtw have been visited
+							// go from joinGtw to the Join of the last opened xor-split in the stack							
+							this.goDFSthroughProcessBuildArcsAndGetVoters(joinGtw,
+									this.getCorrespondingGtw((BPMNGateway) openXorStack.getLast()), lastFoundBrt,processInstancesWithVoters, votersMap, requiredUpdates,
+									alreadyTakenVoters,queue, parallelGtwQueue, openXorStack, currentPath, paths);
+
 						}
-					
+					} else if(openXorStack.isEmpty()) {
+						// when there are no open Xor gtws 
+						// go from the successor of the element to bpmnEnd since the currentElement has already been added to the path
+						LinkedList<LinkedList<BPMNElement>>newPaths = new LinkedList<LinkedList<BPMNElement>>();
+						
+						for(LinkedList<BPMNElement>path: paths) {
+							if(path.getLast().equals(element)) {
+								LinkedList<BPMNElement>newPathAfterXorJoin = new LinkedList<BPMNElement>();
+								newPathAfterXorJoin.addAll(path);
+								newPaths.add(newPathAfterXorJoin);
+							}
+						}
+						
+						for(LinkedList<BPMNElement>newPath: newPaths) {		
+						this.goDFSthroughProcessBuildArcsAndGetVoters(element.getSuccessors().iterator().next(), this.bpmnEnd, lastFoundBrt, processInstancesWithVoters,
+									votersMap, requiredUpdates, alreadyTakenVoters,queue, parallelGtwQueue, openXorStack, newPath, paths);
+						}							
+						
+					}
+
+				} else if (endNode instanceof BPMNEndEvent) {
+					//when the endnode of the process is found
+					//generate a new ProcessInstanceWithVoters
+					double cost = 9;
+					//ProcessInstanceWithVoters currentInstance = new ProcessInstanceWithVoters(votersMap, requiredUpdates, cost);
+					//processInstancesWithVoters.add(currentInstance);
 				}
-								
-				element = queue.poll();				
-				if (element == null) {
+
+				element = queue.poll();
+				if (element == null&&queue.isEmpty()) {
 					int id = 1;
-					for(LinkedList<BPMNElement>path: paths) {
-						System.out.println("Path with ID "+id);
-						for(BPMNElement el: path) {
+					for (LinkedList<BPMNElement> path : paths) {
+						System.out.println("Path with ID " + id);
+						for (BPMNElement el : path) {
 							el.printElement();
 						}
 						id++;
 					}
-					
-					
-					return generatedArcs;
+
+					return processInstancesWithVoters;
 				}
-				
+
 			}
 
-			// when a brt is found - generate arcs between brt and the xor-split 
+			
 			if (element instanceof BPMNBusinessRuleTask) {
 				BPMNBusinessRuleTask currBrt = (BPMNBusinessRuleTask) element;
-				generatedArcs.addAll(this.generateArcs(lastVisitedBrt, currBrt));
-				lastVisitedBrt = currBrt;
-			}
-			
-
-			if (element instanceof BPMNExclusiveGateway && ((BPMNExclusiveGateway) element).getType().equals("split")) {
-				//add the xor split to the openXorStack 1 times for each outgoing paths
-				int amountOfOutgoingPaths = element.getSuccessors().size();
-				int i = 0;
-				while(i<amountOfOutgoingPaths) {
-				openXorStack.add((BPMNExclusiveGateway)element);
-				i++;
-				}
+				LinkedList<VoterForXorArc> arcsForCurrBrt = null;
+				 
+				
+				if(currBrt.getVoterArcs().isEmpty()) {	
+					//when brt is found and arcs havent been generated
+					arcsForCurrBrt = generateArcsForXorSplit(currBrt);
+					currBrt.setVoterArcs(arcsForCurrBrt);
+					
+					//check if there has been already a brt before
+					if(lastFoundBrt==null) {
+						for(VoterForXorArc voters: arcsForCurrBrt) {
+							//generate a new possible processInstance
+							ProcessInstanceWithVoters pInstance = new ProcessInstanceWithVoters();
+							pInstance.addVoterArc(voters);
+							processInstancesWithVoters.add(pInstance);
+						}
+						
+					} else {
+						//if there has already been a brt before the currBrt
+						LinkedList<LinkedList<Object>>toCombine = new LinkedList<LinkedList<Object>>();
+						LinkedList<ProcessInstanceWithVoters>newInstances = new LinkedList<ProcessInstanceWithVoters>();
+						
+						//need to combine currBrtArcs with each existing possible process instance
+						LinkedList<Object> aK = new LinkedList<Object>();
+						for(ProcessInstanceWithVoters existingInstance: processInstancesWithVoters) {
+							aK.add(existingInstance);
+						}
+						
+						toCombine.add(aK);
+						
+						LinkedList<Object> aL = new LinkedList<Object>();
+						for(VoterForXorArc ar: arcsForCurrBrt) {
+							aL.add(ar);
+						}
+						toCombine.add(aL);
+					
+						//list of all possible combinations of Voters for currBrt combined with all existing process instances
+						Collection<List<Object>> combs = Combination.permutations(toCombine);
+					
+						
+						ProcessInstanceWithVoters.setProcessID(0);
+						for(List list: combs) {							
+							ProcessInstanceWithVoters newInstance = new ProcessInstanceWithVoters();
+							ProcessInstanceWithVoters currInst = (ProcessInstanceWithVoters)list.get(0);
+							VoterForXorArc currBrtCombArc = (VoterForXorArc)list.get(1);
+							//calculate cumulated cost when having currInst and adding currBrtCombArc
+							
+							
+							newInstance.addVoterArcList(currInst.getListOfArcs());
+							newInstance.addVoterArc(currBrtCombArc);
+							newInstances.add(newInstance);
+						}
+						
+						
+						
+						processInstancesWithVoters.clear();
+						processInstancesWithVoters.addAll(newInstances);
+					
+					}
+					
+					lastFoundBrt = currBrt;
+				} 
+				
 				
 			}
 
-			
-		
+			if (element instanceof BPMNExclusiveGateway && ((BPMNExclusiveGateway) element).getType().equals("split")) {
+				// add the xor split to the openXorStack 1 times for each outgoing paths
+				int amountOfOutgoingPaths = element.getSuccessors().size();
+				int i = 0;
+				while (i < amountOfOutgoingPaths) {
+					openXorStack.add((BPMNExclusiveGateway) element);
+					i++;
+				}
+
+			}
+
 			if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway) element).getType().equals("split")) {
 				for (BPMNElement successor : element.getSuccessors()) {
 					parallelGtwQueue.add(successor);
@@ -1509,14 +1646,166 @@ public class API {
 				if (element instanceof BPMNExclusiveGateway
 						&& ((BPMNExclusiveGateway) element).getType().equals("split")) {
 					// when a xor-split is found - go dfs till the corresponding join is found
-					
-					BPMNGateway correspondingGtw = this.getCorrespondingGtw((BPMNGateway)element);
-					
+
+					BPMNGateway correspondingJoinGtw = this.getCorrespondingGtw((BPMNGateway) element);
+
 					LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
 					newPath.addAll(currentPath);
 
-					this.goDFSthroughProcessAndGenerateArcs(successor, correspondingGtw, generatedArcs, lastVisitedBrt, queue,
-							parallelGtwQueue, openXorStack, newPath, paths);
+					this.goDFSthroughProcessBuildArcsAndGetVoters(successor, correspondingJoinGtw,lastFoundBrt, processInstancesWithVoters,
+							votersMap, requiredUpdates,alreadyTakenVoters, queue, parallelGtwQueue, openXorStack, newPath, paths);
+				} else {
+
+					if (reachedParallelEndGateway == false) {
+						queue.add(successor);
+					}
+
+				}
+
+			}
+			reachedParallelEndGateway = false;
+		}
+
+		return processInstancesWithVoters;
+
+	}
+
+	
+	
+	
+	
+	
+	public LinkedList<LinkedList<ArcWithCost>> goDFSthroughProcessAndGenerateArcs(BPMNElement startNode,
+			BPMNElement endNode, LinkedList<LinkedList<ArcWithCost>> generatedArcs, BPMNElement lastVisitedBrtOrJoin,
+			LinkedList<BPMNElement> queue, LinkedList<BPMNElement> parallelGtwQueue,
+			LinkedList<BPMNElement> openXorStack, LinkedList<BPMNElement> currentPath,
+			LinkedList<LinkedList<BPMNElement>> paths) {
+		// go DFS inside the XOR till corresponding join is found
+		queue.add(startNode);
+
+		boolean reachedParallelEndGateway = false;
+
+		while (!(queue.isEmpty())) {
+			BPMNElement element = queue.poll();
+			currentPath.add(element);
+
+			if (element.getId().equals(endNode.getId())) {
+
+				paths.add(currentPath);
+
+				if (endNode instanceof BPMNExclusiveGateway
+						&& ((BPMNExclusiveGateway) element).getType().equals("join")) {
+					// when a join node is found
+					// add the list of ArcWithCost for the last BPMNBusinessRuleTask of the branch
+					// to it and set the join node to be the lastFoundJoin
+					BPMNExclusiveGateway joinGtw = (BPMNExclusiveGateway) element;
+					if (lastVisitedBrtOrJoin instanceof BPMNBusinessRuleTask) {
+						//when the lastVisitedBrtOrJoin was a BPMNBusinessRuleTask
+						//there will be 2 paths that need to be visited
+						
+						BPMNBusinessRuleTask lastBrtOfBranch = (BPMNBusinessRuleTask) lastVisitedBrtOrJoin;
+						if (!joinGtw.getIncomingArcsWithCostAllBranches()
+								.contains(lastBrtOfBranch.getIncomingArcsWithCost())) {
+							joinGtw.getIncomingArcsWithCostAllBranches().add(lastBrtOfBranch.getIncomingArcsWithCost());
+						}
+					} else if (lastVisitedBrtOrJoin instanceof BPMNExclusiveGateway) {
+						joinGtw.getIncomingArcsWithCostAllBranches().addAll(
+								((BPMNExclusiveGateway) lastVisitedBrtOrJoin).getIncomingArcsWithCostAllBranches());
+
+					}
+
+					// when a xor-join is found - poll the last opened xor gateway from the stack
+					BPMNExclusiveGateway lastOpenedXor = (BPMNExclusiveGateway) openXorStack.pollLast();
+
+					if (!openXorStack.isEmpty()) {
+						if (!openXorStack.contains(lastOpenedXor)) {
+							// when the openXorStack does not contain the lastOpenedXor anymore, all
+							// branches to the joinGtw have been visited
+							// go from joinGtw to the Join of the last opened xor-split in the stack
+							lastVisitedBrtOrJoin = joinGtw;
+							this.goDFSthroughProcessAndGenerateArcs(joinGtw,
+									this.getCorrespondingGtw((BPMNGateway) openXorStack.getLast()), generatedArcs,
+									lastVisitedBrtOrJoin, queue, parallelGtwQueue, openXorStack, currentPath, paths);
+
+						}
+					} else {
+						// when there are no open Xor gtws - try going from currentElement to bpmnEnd
+						this.goDFSthroughProcessAndGenerateArcs(element, this.bpmnEnd, generatedArcs,
+								lastVisitedBrtOrJoin, queue, parallelGtwQueue, openXorStack, currentPath, paths);
+					}
+
+				}
+
+				element = queue.poll();
+				if (element == null) {
+					int id = 1;
+					for (LinkedList<BPMNElement> path : paths) {
+						System.out.println("Path with ID " + id);
+						for (BPMNElement el : path) {
+							el.printElement();
+						}
+						id++;
+					}
+
+					return generatedArcs;
+				}
+
+			}
+
+			// when a brt is found - generate arcs between brt and the succeeding xor-split
+			if (element instanceof BPMNBusinessRuleTask) {
+				BPMNBusinessRuleTask currBrt = (BPMNBusinessRuleTask) element;
+				if (lastVisitedBrtOrJoin instanceof BPMNBusinessRuleTask
+						|| lastVisitedBrtOrJoin instanceof BPMNStartEvent) {
+					generatedArcs.addAll(this.generateArcs(lastVisitedBrtOrJoin, currBrt));
+					lastVisitedBrtOrJoin = currBrt;
+				} else if (lastVisitedBrtOrJoin instanceof BPMNExclusiveGateway) {
+					if (((BPMNExclusiveGateway) lastVisitedBrtOrJoin).getType().contentEquals("join")) {
+						// if there was a xor-join before: generate arcs for both branches
+						generatedArcs.addAll(this
+								.generateArcsWithPreviousXorJoin((BPMNExclusiveGateway) lastVisitedBrtOrJoin, currBrt));
+					}
+
+				}
+			}
+
+			if (element instanceof BPMNExclusiveGateway && ((BPMNExclusiveGateway) element).getType().equals("split")) {
+				// add the xor split to the openXorStack 1 times for each outgoing paths
+				int amountOfOutgoingPaths = element.getSuccessors().size();
+				int i = 0;
+				while (i < amountOfOutgoingPaths) {
+					openXorStack.add((BPMNExclusiveGateway) element);
+					i++;
+				}
+
+			}
+
+			if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway) element).getType().equals("split")) {
+				for (BPMNElement successor : element.getSuccessors()) {
+					parallelGtwQueue.add(successor);
+				}
+			}
+
+			if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway) element).getType().equals("join")) {
+				parallelGtwQueue.poll();
+				if (!parallelGtwQueue.isEmpty()) {
+					reachedParallelEndGateway = true;
+				}
+			}
+
+			for (BPMNElement successor : element.getSuccessors()) {
+
+				if (element instanceof BPMNExclusiveGateway
+						&& ((BPMNExclusiveGateway) element).getType().equals("split")) {
+					// when a xor-split is found - go dfs till the corresponding join is found
+
+					BPMNGateway correspondingGtw = this.getCorrespondingGtw((BPMNGateway) element);
+
+					LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
+					newPath.addAll(currentPath);
+
+					this.goDFSthroughProcessAndGenerateArcs(successor, correspondingGtw, generatedArcs,
+							lastVisitedBrtOrJoin, queue, parallelGtwQueue, openXorStack, newPath, paths);
 				} else {
 
 					if (reachedParallelEndGateway == false) {
@@ -1586,18 +1875,17 @@ public class API {
 
 	}
 
-	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> getEffectivePathsBetweenWriterAndTargetElement(BPMNDataObject dataO,
-			BPMNElement writerTask, BPMNElement targetElement,  LinkedList<BPMNElement> stack,
+	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> getEffectivePathsBetweenWriterAndTargetElement(
+			BPMNDataObject dataO, BPMNElement writerTask, BPMNElement targetElement, LinkedList<BPMNElement> stack,
 			LinkedList<BPMNElement> gtwStack, LinkedList<BPMNElement> currentPath,
 			LinkedList<LinkedList<BPMNElement>> paths) {
 		// returns a hashmap with the keys true and false
 		// where key = true: contains all effective Paths from writerTask to currentBrt
 		// where key = false: contains all paths where another writer writes to same
 		// dataO between the writerTask and the currentBrt
-		
-	
-		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndTargetElement = this.allPathsBetweenNodesDFS(writerTask,
-				targetElement, stack, gtwStack, currentPath, paths);
+
+		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndTargetElement = this
+				.allPathsBetweenNodesDFS(writerTask, targetElement, stack, gtwStack, currentPath, paths);
 		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> pathMap = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
 		LinkedList<LinkedList<BPMNElement>> effectivePaths = new LinkedList<LinkedList<BPMNElement>>();
 		LinkedList<LinkedList<BPMNElement>> nonEffectivePaths = new LinkedList<LinkedList<BPMNElement>>();
@@ -1629,13 +1917,7 @@ public class API {
 		return pathMap;
 
 	}
-	
-	
-	
-	
-	
-	
-	
+
 	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> allEffectivePathsForWriters(BPMNDataObject dataO,
 			BPMNElement writerTask, BPMNElement startNode, BPMNElement endNode, LinkedList<BPMNElement> stack,
 			LinkedList<BPMNElement> gtwStack, LinkedList<BPMNElement> currentPath,
@@ -2724,61 +3006,70 @@ public class API {
 
 	}
 
-	public String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(BPMNBusinessRuleTask currentBrt, BPMNElement writerTask,
-			BPMNDataObject dataO, BPMNParticipant reader,
-			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters)  {
-		
-		
-		if(writerTask==null||currentBrt==null||dataO==null) {
+	public String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(BPMNBusinessRuleTask currentBrt,
+			BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
+
+		if (writerTask == null || currentBrt == null || dataO == null) {
 			return "not existent";
-		} 
-		//calculate sphere for the reader at the position of the currentBrt, therefore:
-				//first check if the reader is on each effective path going from writerTask to currentBrt
-						// -> reader is in SD at the position of the currentBrt
-						// if there is a non-effective path going from writerTask to currentBrt 
-							// -> reader is in WD if he is on effective paths but there exist non-effective ones
-				
+		}
+		// calculate sphere for the reader at the position of the currentBrt, therefore:
+		// first check if the reader is on each effective path going from writerTask to
+		// currentBrt
+		// -> reader is in SD at the position of the currentBrt
+		// if there is a non-effective path going from writerTask to currentBrt
+		// -> reader is in WD if he is on effective paths but there exist non-effective
+		// ones
+
 		// if the first check doesnt evaluate to WD or SD and the lastWriter demands it
-		// we can extend the search by checking the sphere for the reader from currentBrt to processEnd
-			//this means we possibly suggest participants for voting at the position of the currentBrt even if they will be upgraded 
-			//to the required sphere of the lastWriter after the currentBrt
-			//in other words: they will eventually get the data in the process after the currentBrt
-		
-		//first step - get the effective paths between writerTask and currentBrt
-		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePathsBetweenWriterTaskAndCurrentBrt = this.getEffectivePathsBetweenWriterAndTargetElement(dataO, writerTask, currentBrt, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
-		String sphereForReader = this.getSphereOnPathBeforeCurrentBrt(currentBrt, writerTask, dataO, reader, effectivePathsBetweenWriterTaskAndCurrentBrt, alreadyChosenVoters);
-		
-		//if writer demands WD or SD and the sphereForReader is static or global the search can be extended 
-		String requiredSphereOfWriter = ((BPMNTask)writerTask).getSphereAnnotation().get(dataO);
+		// we can extend the search by checking the sphere for the reader from
+		// currentBrt to processEnd
+		// this means we possibly suggest participants for voting at the position of the
+		// currentBrt even if they will be upgraded
+		// to the required sphere of the lastWriter after the currentBrt
+		// in other words: they will eventually get the data in the process after the
+		// currentBrt
 
-	
-		
-		if(this.atLeastInSphere(sphereForReader, requiredSphereOfWriter)==false) {
-			//second step - search from currentBrt to ProcessEnd 
-			// if the data that was written by the writerTask will be read by some task after the currentBrt
+		// first step - get the effective paths between writerTask and currentBrt
+		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePathsBetweenWriterTaskAndCurrentBrt = this
+				.getEffectivePathsBetweenWriterAndTargetElement(dataO, writerTask, currentBrt,
+						new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+						new LinkedList<LinkedList<BPMNElement>>());
+		String sphereForReader = this.getSphereOnPathBeforeCurrentBrt(currentBrt, writerTask, dataO, reader,
+				effectivePathsBetweenWriterTaskAndCurrentBrt, alreadyChosenVoters);
+
+		// if writer demands WD or SD and the sphereForReader is static or global the
+		// search can be extended
+		String requiredSphereOfWriter = ((BPMNTask) writerTask).getSphereAnnotation().get(dataO);
+
+		if (this.atLeastInSphere(sphereForReader, requiredSphereOfWriter) == false) {
+			// second step - search from currentBrt to ProcessEnd
+			// if the data that was written by the writerTask will be read by some task
+			// after the currentBrt
 			// WE ARE STILL AT THE POSITION OF THE CURRENTBRT!!!
-		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePathsBetweenCurrentBrtAndProcessEnd = this.getEffectivePathsBetweenWriterAndTargetElement(dataO, currentBrt, this.bpmnEnd, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePathsBetweenCurrentBrtAndProcessEnd = this
+					.getEffectivePathsBetweenWriterAndTargetElement(dataO, currentBrt, this.bpmnEnd,
+							new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+							new LinkedList<LinkedList<BPMNElement>>());
 
-		String sphereForReaderAfterCurrentBrt = this.getSphereOnPathAfterCurrentBrt(currentBrt, writerTask, dataO, reader, effectivePathsBetweenCurrentBrtAndProcessEnd, alreadyChosenVoters);
-		return sphereForReaderAfterCurrentBrt;	
-		} 
-		
-		
+			String sphereForReaderAfterCurrentBrt = this.getSphereOnPathAfterCurrentBrt(currentBrt, writerTask, dataO,
+					reader, effectivePathsBetweenCurrentBrtAndProcessEnd, alreadyChosenVoters);
+			return sphereForReaderAfterCurrentBrt;
+		}
+
 		return sphereForReader;
-		
-		
+
 	}
-	
-	
+
 	private String getSphereOnPathBeforeCurrentBrt(BPMNBusinessRuleTask currentBrt, BPMNElement writerTask,
 			BPMNDataObject dataO, BPMNParticipant reader,
 			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths,
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
 		int strongDynamicCountEffectivePaths = 0;
 		int countReaderOnNonEffectivePath = 0;
-		if(writerTask==null||currentBrt==null) {
+		if (writerTask == null || currentBrt == null) {
 			return "not existent";
-		} 
+		}
 		// the participant of the writerTask is always in SD looking from writerTask
 		// onwards
 		if (((BPMNTask) writerTask).getParticipant().equals(reader)) {
@@ -2800,13 +3091,13 @@ public class API {
 							if (alreadyChosenVoters.get(currentBrtOnPath) != null) {
 								// check if the reader given as an argument is one of the already chosen voters
 								// for the brt
-								if (alreadyChosenVoters.get(currentBrtOnPath).contains(reader)
-									) {
+								if (alreadyChosenVoters.get(currentBrtOnPath).contains(reader)) {
 									readerFound = true;
 								}
 
 							} else {
-								if (dataO.getReaders().contains(currentBrtOnPath) && task.getParticipant().equals(reader)
+								if (dataO.getReaders().contains(currentBrtOnPath)
+										&& task.getParticipant().equals(reader)
 										&& this.isParticipantInList(dataO.getReaders(), reader)) {
 									// reader found on the path
 									readerFound = true;
@@ -2872,15 +3163,9 @@ public class API {
 		}
 
 		return "";
-		
-		
-		
-		
-		
+
 	}
-	
-	
-	
+
 	private String getSphereOnPathAfterCurrentBrt(BPMNBusinessRuleTask currentBrt, BPMNElement writerTask,
 			BPMNDataObject dataO, BPMNParticipant reader,
 			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths,
@@ -2888,7 +3173,6 @@ public class API {
 		int strongDynamicCountEffectivePaths = 0;
 		int countReaderOnNonEffectivePath = 0;
 
-	
 		for (Entry<Boolean, LinkedList<LinkedList<BPMNElement>>> entry : effectivePaths.entrySet()) {
 			for (LinkedList<BPMNElement> path : entry.getValue()) {
 
@@ -2911,7 +3195,8 @@ public class API {
 								}
 
 							} else {
-								if (dataO.getReaders().contains(currentBrtOnPath) && task.getParticipant().equals(reader)
+								if (dataO.getReaders().contains(currentBrtOnPath)
+										&& task.getParticipant().equals(reader)
 										&& this.isParticipantInList(dataO.getReaders(), reader)) {
 									// reader found on the path
 									readerFound = true;
@@ -2942,7 +3227,7 @@ public class API {
 
 		}
 
-		System.out.println("Reader "+reader.getName()+" found after "+currentBrt.getName()+" ,"
+		System.out.println("Reader " + reader.getName() + " found after " + currentBrt.getName() + " ,"
 				+ strongDynamicCountEffectivePaths + " ," + countReaderOnNonEffectivePath);
 
 		if (!effectivePaths.get(true).isEmpty()) {
@@ -2977,15 +3262,8 @@ public class API {
 		}
 
 		return "";
-		
-		
-		
-		
-		
+
 	}
-	
-	
-	
 
 	public int getAmountPossibleCombinationsOfParticipants() {
 		return amountPossibleCombinationsOfParticipants;
@@ -3008,9 +3286,7 @@ public class API {
 	}
 
 	public void setBpmnEnd(BPMNEndEvent bpmnEnd) {
-		this.bpmnEnd = bpmnEnd;		
+		this.bpmnEnd = bpmnEnd;
 	}
 
-	
-	
 }

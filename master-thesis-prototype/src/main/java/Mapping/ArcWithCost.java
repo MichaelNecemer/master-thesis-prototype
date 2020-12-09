@@ -184,7 +184,7 @@ public class ArcWithCost{
 		this.getChosenCombinationOfParticipants().forEach(f -> {
 			f.printParticipant();
 		});
-		this.requiredUpdates.forEach(reqUpdate->{reqUpdate.printUpdate();});
+		//this.requiredUpdates.forEach(reqUpdate->{reqUpdate.printUpdate();});
 		
 		if(!this.preceedingArcs.isEmpty()) {
 			System.out.println("Preceedings Arcs:");

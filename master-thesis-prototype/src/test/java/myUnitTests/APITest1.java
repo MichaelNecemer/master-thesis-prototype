@@ -16,13 +16,43 @@ import org.junit.runners.MethodSorters;
 import Mapping.BPMNBusinessRuleTask;
 import Mapping.BPMNDataObject;
 import Mapping.BPMNElement;
+import Mapping.BPMNExclusiveGateway;
 import Mapping.BPMNParticipant;
 import Mapping.BPMNTask;
+import Mapping.Combination;
 import functionality.API;
 
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class APITest1 {
+	
+	@Test
+	public void testAmountPossibleProcessInstances() {
+		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
+
+		try {
+			API a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
+			//4 voters for Brt1
+			//6 voters for Brt2
+			//6 voters for Brt3
+			//a processInstance contains a certain assignment of possible voters for each brt
+			//4*6*6 possible combinations = 144 possible combinations
+			 
+			
+			int expectedAmountPossibleCombinations = 144;
+		
+			Assert.assertEquals(expectedAmountPossibleCombinations,a2.getAmountPossibleCombinationsOfParticipants(), 0);
+
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+
+	
+	
+	
 
 	@Test
 	public void testAllLanesAsParticipantsInGlobalSphere() {
