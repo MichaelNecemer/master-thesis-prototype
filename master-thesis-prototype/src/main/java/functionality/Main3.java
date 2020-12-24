@@ -13,6 +13,8 @@ import javax.swing.JPanel;
 import Mapping.BPMNDataObject;
 import Mapping.BPMNExclusiveGateway;
 import Mapping.BPMNParticipant;
+import Mapping.ProcessInstanceWithVoters;
+import Mapping.VoterForXorArc;
 
 public class Main3 {
 	
@@ -40,8 +42,8 @@ public class Main3 {
 	
 	try {
 		//a2 = new API("C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn", cost);
-		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn", cost);
-		a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
+		a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn", cost);
+		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
 		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches2.bpmn", cost);
 		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\algorithmTest.bpmn", cost);
 
@@ -57,7 +59,6 @@ public class Main3 {
 	JPanel panel = new JPanel();
 	panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
 	panel.add(new JLabel("Amount of possible combinations of participants: "+a2.getAmountPossibleCombinationsOfParticipants()));
-	panel.add(new JLabel("Amount of possible combinations with constraints: "));
 	panel.add(new JLabel("Amount of possible paths from StartEvent to EndEvent: "+a2.getAllPathsThroughProcess().size()));
 	frame.add(panel);
 
@@ -76,6 +77,27 @@ public class Main3 {
 		
 	}
 	
+	
+	for(ProcessInstanceWithVoters pInstance: a2.getProcessInstancesWithVoters()) {
+		JPanel dataPanel = new JPanel();
+		frame.add(dataPanel);
+		dataPanel.setLayout(new BoxLayout(dataPanel, BoxLayout.PAGE_AXIS));
+		JLabel pInstLabel = new JLabel("ProcessInstance "+pInstance.getProcessInstanceID() +" with cost: "+pInstance.getCostForModelInstance());
+		pInstLabel.setForeground(Color.blue);
+		dataPanel.add(pInstLabel);
+		StringBuilder sb = new StringBuilder();
+		for(VoterForXorArc a: pInstance.getListOfArcs()) {
+			
+			sb.append(a.getBrt().getName()+": ");
+			for(BPMNParticipant part: a.getChosenCombinationOfParticipants()) {
+				sb.append(part.getName()+", ");
+			}
+		}
+		
+		sb.deleteCharAt(sb.length()-2);
+		dataPanel.add(new JLabel(sb.toString()));
+		
+	}
 	
 	frame.pack();
 	frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

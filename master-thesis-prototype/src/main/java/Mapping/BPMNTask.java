@@ -22,7 +22,9 @@ public class BPMNTask extends BPMNElement{
 	private HashMap<BPMNDataObject, ArrayList<BPMNParticipant>> weakDynamicHashMap;
 	private HashMap<BPMNDataObject, ArrayList<BPMNParticipant>> strongDynamicHashMap;
 	
+	
 	private HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths;
+	private LinkedList<BPMNElement> effectiveReaders; 
 	
 
 	public BPMNTask (String id, String name) {
@@ -33,10 +35,23 @@ public class BPMNTask extends BPMNElement{
 		this.weakDynamicHashMap= new HashMap<BPMNDataObject, ArrayList<BPMNParticipant>>();
 		this.strongDynamicHashMap = new HashMap<BPMNDataObject, ArrayList<BPMNParticipant>>();
 		this.effectivePaths = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
+		this.effectiveReaders=new LinkedList<BPMNElement>();
 		}
 		
 	
 	
+	public LinkedList<BPMNElement> getEffectiveReaders() {
+		return effectiveReaders;
+	}
+
+
+
+	public void setEffectiveReaders(LinkedList<BPMNElement> effectiveReaders) {
+		this.effectiveReaders = effectiveReaders;
+	}
+
+
+
 	public HashMap<BPMNDataObject, ArrayList<BPMNParticipant>> getWeakDynamicHashMap() {
 		return weakDynamicHashMap;
 	}
