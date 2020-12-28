@@ -4,6 +4,8 @@ import java.awt.Color;
 import java.awt.GridLayout;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
@@ -15,6 +17,7 @@ import Mapping.BPMNExclusiveGateway;
 import Mapping.BPMNParticipant;
 import Mapping.ProcessInstanceWithVoters;
 import Mapping.VoterForXorArc;
+import ProcessModelAnnotaterAlgorithm.ProcessModelAnnotater;
 
 public class Main3 {
 	
@@ -42,6 +45,7 @@ public class Main3 {
 	
 	try {
 		//a2 = new API("C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn", cost);
+		ProcessModelAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\testAnnotatingAlgorithm.bpmn", new LinkedList<Integer>(Arrays.asList(1,3)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50, 30);
 		a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn", cost);
 		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", cost);
 		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches2.bpmn", cost);
@@ -77,8 +81,9 @@ public class Main3 {
 		
 	}
 	
-	
-	for(ProcessInstanceWithVoters pInstance: a2.getProcessInstancesWithVoters()) {
+	//Brute Force Attempt
+	//print out all cheapest solutions
+	for(ProcessInstanceWithVoters pInstance: a2.getCheapestProcessInstancesWithVoters()) {
 		JPanel dataPanel = new JPanel();
 		frame.add(dataPanel);
 		dataPanel.setLayout(new BoxLayout(dataPanel, BoxLayout.PAGE_AXIS));

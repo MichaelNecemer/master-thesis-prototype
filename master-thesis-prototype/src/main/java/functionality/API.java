@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -17,6 +18,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -2083,7 +2085,7 @@ public class API {
 						String serviceTaskId = "serviceTask_CollectVotes" + i;
 						builder.moveToNode(parallelJoinId).serviceTask(serviceTaskId).name("Collect Votes")
 								.exclusiveGateway(exclusiveGatewaySplitId).name(exclusiveGatewayName);
-
+						
 						builder.moveToNode(exclusiveGatewaySplitId).connectTo(exclusiveGatewayJoinId);
 
 						FlowNode flowN = modelInstance.getModelElementById(exclusiveGatewaySplitId);
@@ -3162,6 +3164,22 @@ public class API {
 		this.processInstancesWithVoters = processInstancesWithVoters;
 	}
 	
+	public LinkedList<ProcessInstanceWithVoters> getCheapestProcessInstancesWithVoters() {
+		List<ProcessInstanceWithVoters> allInstSortedByCheapest = this.processInstancesWithVoters.parallelStream().sorted((Comparator.comparingDouble(ProcessInstanceWithVoters::getCostForModelInstance))).collect(Collectors.toList());
+		LinkedList<ProcessInstanceWithVoters> allCheapestInst = new LinkedList<ProcessInstanceWithVoters>();
+		allCheapestInst.add(allInstSortedByCheapest.get(0));
+		
+		for(int i = 1; i < allInstSortedByCheapest.size(); i++) {
+			ProcessInstanceWithVoters currInst = allInstSortedByCheapest.get(i);
+			if(allCheapestInst.getFirst().getCostForModelInstance()>=currInst.getCostForModelInstance()) {
+				allCheapestInst.add(currInst);
+			} else {
+				break;
+			}
+		}
+		
+		return allCheapestInst;
+	} 
 	
 
 }
