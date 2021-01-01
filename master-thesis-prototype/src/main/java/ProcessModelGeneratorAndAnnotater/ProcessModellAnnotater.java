@@ -1,25 +1,13 @@
-package ProcessModelAnnotaterAlgorithm;
+package ProcessModelGeneratorAndAnnotater;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -32,62 +20,43 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
-import org.camunda.bpm.model.bpmn.builder.AbstractFlowNodeBuilder;
-import org.camunda.bpm.model.bpmn.impl.instance.FlowNodeRef;
 import org.camunda.bpm.model.bpmn.instance.Association;
 import org.camunda.bpm.model.bpmn.instance.BusinessRuleTask;
-import org.camunda.bpm.model.bpmn.instance.Collaboration;
 import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
 import org.camunda.bpm.model.bpmn.instance.DataObject;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.DataOutputAssociation;
-import org.camunda.bpm.model.bpmn.instance.Documentation;
-import org.camunda.bpm.model.bpmn.instance.EndEvent;
 import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
-import org.camunda.bpm.model.bpmn.instance.ExtensionElements;
-import org.camunda.bpm.model.bpmn.instance.FlowElement;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
-import org.camunda.bpm.model.bpmn.instance.ItemAwareElement;
-import org.camunda.bpm.model.bpmn.instance.Lane;
-import org.camunda.bpm.model.bpmn.instance.LaneSet;
-import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
-import org.camunda.bpm.model.bpmn.instance.Process;
 import org.camunda.bpm.model.bpmn.instance.Property;
-import org.camunda.bpm.model.bpmn.instance.SendTask;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
-import org.camunda.bpm.model.bpmn.instance.ServiceTask;
-import org.camunda.bpm.model.bpmn.instance.StartEvent;
 import org.camunda.bpm.model.bpmn.instance.Task;
 import org.camunda.bpm.model.bpmn.instance.Text;
 import org.camunda.bpm.model.bpmn.instance.TextAnnotation;
-import org.camunda.bpm.model.bpmn.instance.UserTask;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnEdge;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnLabel;
-import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnPlane;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnShape;
-import org.camunda.bpm.model.bpmn.instance.camunda.CamundaProperties;
-import org.camunda.bpm.model.bpmn.instance.camunda.CamundaProperty;
 import org.camunda.bpm.model.bpmn.instance.dc.Bounds;
 import org.camunda.bpm.model.bpmn.instance.di.Plane;
 import org.camunda.bpm.model.bpmn.instance.di.Waypoint;
+import org.camunda.bpm.model.bpmn.instance.Lane;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-import com.fasterxml.jackson.annotation.JsonFormat.Shape;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-public class ProcessModelAnnotater {
+public class ProcessModellAnnotater {
 	// class takes a process model and annotates it with dataObjects, readers,
 	// writers, etc.
 	private static BpmnModelInstance modelInstance;
 	private static Collection<FlowNode> flowNodes;
+	private static LinkedList<DataObjectReference> dataObjects = new LinkedList<DataObjectReference>();
 	
-	public static void annotateModel(String pathToFile, List<Integer> countDataObjects, List<String>defaultSpheres, int readerProbRange,
-			int writerProbRange) {
+	public static void annotateModel(String pathToFile, List<Integer> countDataObjects, List<String> defaultSpheres,
+			int sphereProb, int readerProb, int writerProb) {
 		File process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);
 		
@@ -147,15 +116,15 @@ public class ProcessModelAnnotater {
 			dataORef.setDataObject(currDataObject);
 			dataORef.setName("[D" + (i + 1) + "]{someDataObject" + (i + 1) + "}");
 			currDataObject.getParentElement().addChildElement(dataORef);
-			
-			
-			//add the default sphere to the xml file
-			//randomly choose one of the given ones
+			dataObjects.add(dataORef);
+
+			// add the default sphere to the xml file
+			// randomly choose one of the given ones
 			TextAnnotation defaultSphere = modelInstance.newInstance(TextAnnotation.class);
 			int randomSphereCount = ThreadLocalRandom.current().nextInt(0, defaultSpheres.size());
-			String textContent = "Default: [D" + (i + 1) + "]{"+defaultSpheres.get(randomSphereCount)+"}";
-	
-			defaultSphere.setId("TextAnnotation_defaultSphereForD"+(i+1));
+			String textContent = "Default: [D" + (i + 1) + "]{" + defaultSpheres.get(randomSphereCount) + "}";
+
+			defaultSphere.setId("TextAnnotation_defaultSphereForD" + (i + 1));
 			defaultSphere.setTextFormat("text/plain");
 			Text text = modelInstance.newInstance(Text.class);
 			text.setTextContent(textContent);
@@ -165,23 +134,33 @@ public class ProcessModelAnnotater {
 			// add the shape of the dataObject to the xml file
 			generateDIElementsForDataObject(dataORef, someNode);
 
-			
-			//add the shape of the text annotation to the xml file
+			// add the shape of the text annotation to the xml file
 			generateShapeForTextAnnotation(defaultSphere, dataORef);
-			
+
 			// iterate through all tasks of the process and assign readers and writers
+			//if task is a writer - add the sphere 
 			for (FlowNode node : flowNodes) {
 				if (node instanceof Task) {
-					Task task = (Task) node;				
-					
-					if (taskIsReaderOrWriter(writerProbRange)) {
+					Task task = (Task) node;
+
+					if (taskIsReaderOrWriter(writerProb)) {
+						//task is a writer
 						DataOutputAssociation dao = modelInstance.newInstance(DataOutputAssociation.class);
 						dao.setTarget(dataORef);
 						task.addChildElement(dao);
-
+						
 						generateDIElementForWriter(dao, getShape(dataORef.getId()), getShape(task.getId()));
+						//add sphere annotation for writer 
+						int randomCountSphere = ThreadLocalRandom.current().nextInt(0,
+								100+1);
+						if(randomCountSphere<=sphereProb) {
+							generateDIElementForSphereAnnotation(task, dataORef, defaultSpheres);
+							
+						}
+						
 					}
-					if (taskIsReaderOrWriter(readerProbRange)) {
+					if (taskIsReaderOrWriter(readerProb)) {
+						//task is a reader
 						DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
 						Property p1 = modelInstance.newInstance(Property.class);
 						p1.setName("__targetRef_placeholder");
@@ -193,23 +172,107 @@ public class ProcessModelAnnotater {
 						generateDIElementForReader(dia, getShape(dataORef.getId()), getShape(task.getId()));
 
 					}
-					
-					
-					
 
 				}
 
 			}
 
 		}
+
+		// check again if a brt followed by a xor-split has at least one data object
+		// connected!!!
+		// insert tuples for xor-gateways if not already done
 		
-		//check again if a brt followed by a xor-split has at least one data object connected!!!
-		//insert tuples for xor-gateways if not already done
+		for (FlowNode f : modelInstance.getModelElementsByType(FlowNode.class)) {
+			if(f instanceof BusinessRuleTask) {
+				BusinessRuleTask brt = (BusinessRuleTask)f;
+				if(brt.getOutgoing().iterator().next().getTarget() instanceof ExclusiveGateway) {
+					ExclusiveGateway gtw = (ExclusiveGateway)brt.getOutgoing().iterator().next().getTarget();
+					if(gtw.getOutgoing().size()>=2) {
+						//brt is followed by a xor-split
+						if(brt.getDataInputAssociations().isEmpty()) {
+							//when brt doesnt have a dataObject connected -> randomly connect one
+							int randomCount = ThreadLocalRandom.current().nextInt(0, dataObjects.size());
+														
+							DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
+							Property p1 = modelInstance.newInstance(Property.class);
+							p1.setName("__targetRef_placeholder");
+							brt.addChildElement(p1);
+							dia.setTarget(p1);
+							brt.getDataInputAssociations().add(dia);
+							dia.getSources().add(dataObjects.get(randomCount));
+							generateDIElementForReader(dia, getShape(dataObjects.get(randomCount).getId()), getShape(brt.getId()));
+							
+						}		
+						
+						//insert tuples for xor-gateways if there are non already
+						//tuples are e.g. (3,2,5) -> 3 Voters needed, 2 have to decide the same, loop goes 5 times until the final decider will take decision
+						boolean insert = true;
+						for(TextAnnotation tx: modelInstance.getModelElementsByType(TextAnnotation.class)) {
+							for(Association assoc: modelInstance.getModelElementsByType(Association.class)) {
+								if(assoc.getSource().equals(gtw)&&assoc.getTarget().equals(tx)) {
+									if(tx.getTextContent().startsWith("[Voters]")) {
+										insert = false;
+									}
+								}
+								
+								
+							}
+						}
+						
+						if(insert) {
+							Collection<Lane>lanes = modelInstance.getModelElementsByType(Lane.class);
+							int randomCountVotersNeeded = ThreadLocalRandom.current().nextInt(0,lanes.size());
+							int randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(0,randomCountVotersNeeded+1);
+							int randomCountIterations= ThreadLocalRandom.current().nextInt(0,10+1);
+
+							//generate TextAnnotations for xor-splits
+							TextAnnotation votersAnnotation = modelInstance.newInstance(TextAnnotation.class);
+							String textContent = "[Voters]{" +randomCountVotersNeeded+","+randomCountVotersSameDecision+","+randomCountIterations + "}";
+						
+							votersAnnotation.setTextFormat("text/plain");
+							Text text = modelInstance.newInstance(Text.class);
+							text.setTextContent(textContent);
+							votersAnnotation.setText(text);
+							gtw.getParentElement().addChildElement(votersAnnotation);
+							
+							generateShapeForTextAnnotation(votersAnnotation, gtw);
+							
+							
+							Association assoc = modelInstance.newInstance(Association.class);
+							assoc.setSource(gtw);
+							assoc.setTarget(votersAnnotation);
+							gtw.getParentElement().addChildElement(assoc);
+							//DI element for the edge
+							BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
+							edge.setBpmnElement(assoc);
+							Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
+							wp1.setX(gtw.getDiagramElement().getBounds().getX()+50);
+							wp1.setY(gtw.getDiagramElement().getBounds().getY());
+							Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+							wp2.setX(gtw.getDiagramElement().getBounds().getX()+50);
+							wp2.setY(gtw.getDiagramElement().getBounds().getY()-50);
+							
+							
+							edge.getWaypoints().add(wp1);
+							edge.getWaypoints().add(wp2);
+							modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
+							
+						}
+						
+						
+					}
+					
+				}
+				
+			}
+			
+		
+		}
 		
 		
 		
-		
-		
+
 		try {
 			writeChangesToFile();
 		} catch (IOException | ParserConfigurationException | SAXException e) {
@@ -218,13 +281,60 @@ public class ProcessModelAnnotater {
 		}
 
 	}
+	private static void generateDIElementForSphereAnnotation(Task writerTask, DataObjectReference daoR, List<String>defaultSpheres) {
+		TextAnnotation writerSphere = modelInstance.newInstance(TextAnnotation.class);
+		int randomSphereCount = ThreadLocalRandom.current().nextInt(0, defaultSpheres.size());
+		String newSphere = defaultSpheres.get(randomSphereCount);
+		
+		String textContent = daoR.getName().replaceAll("\\{.*?\\}",newSphere);
+	
+		writerSphere.setTextFormat("text/plain");
+		Text text = modelInstance.newInstance(Text.class);
+		text.setTextContent(textContent);
+		writerSphere.setText(text);
+		writerTask.getParentElement().addChildElement(writerSphere);	
+		
+		Association assoc = modelInstance.newInstance(Association.class);
+		assoc.setSource(writerTask);
+		assoc.setTarget(writerSphere);
+		writerTask.getParentElement().addChildElement(assoc);
+		
+		//add the DI Element
+		BpmnShape shape = modelInstance.newInstance(BpmnShape.class);
+		shape.setBpmnElement(writerSphere);
+		Bounds bounds = modelInstance.newInstance(Bounds.class);
+		bounds.setX(writerTask.getDiagramElement().getBounds().getX()+50);
+		bounds.setY(writerTask.getDiagramElement().getBounds().getY()-50);
+		bounds.setWidth(103);
+		bounds.setHeight(43);
+		shape.setBounds(bounds);
+		modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(shape);
 
+		
+		//DI element for the edge
+		BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
+		edge.setBpmnElement(assoc);
+		Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
+		wp1.setX(writerTask.getDiagramElement().getBounds().getX()+50);
+		wp1.setY(writerTask.getDiagramElement().getBounds().getY());
+		Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+		wp2.setX(writerTask.getDiagramElement().getBounds().getX()+50);
+		wp2.setY(writerTask.getDiagramElement().getBounds().getY()-50);
+		
+		
+		edge.getWaypoints().add(wp1);
+		edge.getWaypoints().add(wp2);
+		modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
+
+	}
+	
+	
 	private static void generateShapeForTextAnnotation(TextAnnotation txt, DataObjectReference ref) {
 		BpmnShape shapeForAnnotation = modelInstance.newInstance(BpmnShape.class);
 		shapeForAnnotation.setBpmnElement(txt);
 		Bounds bounds = modelInstance.newInstance(Bounds.class);
-		bounds.setX(getShape(ref.getId()).getBounds().getX()-200);
-		bounds.setY(getShape(ref.getId()).getBounds().getY()-40);
+		bounds.setX(getShape(ref.getId()).getBounds().getX() - 200);
+		bounds.setY(getShape(ref.getId()).getBounds().getY() - 40);
 		bounds.setWidth(284);
 		bounds.setHeight(30);
 		shapeForAnnotation.setBounds(bounds);
@@ -232,6 +342,22 @@ public class ProcessModelAnnotater {
 
 	}
 	
+	private static void generateShapeForTextAnnotation(TextAnnotation txt, FlowNode ref) {
+		BpmnShape shapeForAnnotation = modelInstance.newInstance(BpmnShape.class);
+		shapeForAnnotation.setBpmnElement(txt);
+		Bounds bounds = modelInstance.newInstance(Bounds.class);
+		bounds.setX(getShape(ref.getId()).getBounds().getX() - 200);
+		bounds.setY(getShape(ref.getId()).getBounds().getY() - 40);
+		bounds.setWidth(284);
+		bounds.setHeight(30);
+		shapeForAnnotation.setBounds(bounds);
+		modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(shapeForAnnotation);
+
+	}
+
+	
+	
+
 	private static BpmnShape getShape(String id) {
 
 		for (BpmnShape shape : modelInstance.getModelElementsByType(BpmnShape.class)) {
@@ -294,7 +420,7 @@ public class ProcessModelAnnotater {
 	}
 
 	private static boolean taskIsReaderOrWriter(int probRange) {
-		
+
 		int randomCountDataObjects = ThreadLocalRandom.current().nextInt(0, 101);
 		if (probRange >= randomCountDataObjects) {
 			return true;
