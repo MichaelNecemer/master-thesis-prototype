@@ -8,6 +8,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import javax.swing.BoxLayout;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -28,46 +29,55 @@ public class Main3 {
 	static int sumVotes = 0;
 	
 	public static void main(String[] args) {
-	/*
-	 JFileChooser chooser = new JFileChooser();
+	
+	/*String pathToFile = "";
+	JFileChooser chooser = new JFileChooser();
 	 
 	 chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 	 chooser.showOpenDialog(null);
 	 
 	 int rueckgabeWert = chooser.showOpenDialog(null); if(rueckgabeWert ==
-	 JFileChooser.APPROVE_OPTION) { a2 = new API(
-	  chooser.getSelectedFile().getAbsolutePath());
-	  
-	  }
-	*/
+	 JFileChooser.APPROVE_OPTION) {pathToFile=
+	  chooser.getSelectedFile().getAbsolutePath();	  
+	  }*/
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches2.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\algorithmTest.bpmn";
+
+	JFrame frame = new JFrame(pathToFile);
+	frame.setVisible(true);
 	
+	JPanel panel = new JPanel();
+	panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
+	panel.add(new JLabel("Algorithms: "));
+	panel.add(new JLabel("Final Decider: "));
+	frame.add(panel);
 	
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	double costForAddingReaderAfterBrt = 1.0;
 	
+	//ProcessGenerator g= new ProcessGenerator(10);
 	
 	try {
-		//a2 = new API("C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn", costForUpgradingSpheres, costForAddingReaderAfterBrt);
-		ProcessModelAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\testAnnotatingAlgorithm.bpmn", new LinkedList<Integer>(Arrays.asList(1,3)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,50, 30);
-		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn", costForUpgradingSpheres, costForAddingReaderAfterBrt);
-		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn", costForUpgradingSpheres, costForAddingReaderAfterBrt);
-		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches2.bpmn", costForUpgradingSpheres, costForAddingReaderAfterBrt);
-		//a2 = new API("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\algorithmTest.bpmn", costForUpgradingSpheres, costForAddingReaderAfterBrt);
+		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\testAnnotatingAlgorithm.bpmn", new LinkedList<Integer>(Arrays.asList(1,3)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,50, 30);
+		a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
+		
 
 	} catch (Exception e2) {
 		// TODO Auto-generated catch block
 		e2.printStackTrace();
 	}
 	
-	JFrame frame = new JFrame("GUI");
-	frame.setVisible(true);
+
 	frame.setLayout(new GridLayout(0, a2.getDataObjects().size()+1, 10, 0));
 	
-	JPanel panel = new JPanel();
-	panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
-	panel.add(new JLabel("Amount of possible combinations of participants: "+a2.getAmountPossibleCombinationsOfParticipants()));
-	panel.add(new JLabel("Amount of possible paths from StartEvent to EndEvent: "+a2.getAllPathsThroughProcess().size()));
-	frame.add(panel);
+	//JPanel panel2 = new JPanel();
+	//panel2.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
+	//panel2.add(new JLabel("Amount of possible combinations of participants: "+a2.getAmountPossibleCombinationsOfParticipants()));
+	//panel2.add(new JLabel("Amount of possible paths from StartEvent to EndEvent: "+a2.getAllPathsThroughProcess().size()));
+	//frame.add(panel2);
 
 	
 	for(BPMNDataObject dataO: a2.getDataObjects()) {
@@ -86,7 +96,7 @@ public class Main3 {
 	
 	//Brute Force Attempt
 	//print out all cheapest solutions
-	for(ProcessInstanceWithVoters pInstance: a2.getCheapestProcessInstancesWithVoters()) {
+	for(ProcessInstanceWithVoters pInstance: a2.bruteForce()) {
 		JPanel dataPanel = new JPanel();
 		frame.add(dataPanel);
 		dataPanel.setLayout(new BoxLayout(dataPanel, BoxLayout.PAGE_AXIS));
