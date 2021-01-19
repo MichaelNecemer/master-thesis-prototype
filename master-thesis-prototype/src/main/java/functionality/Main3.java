@@ -58,10 +58,15 @@ public class Main3 {
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	double costForAddingReaderAfterBrt = 1.0;
 	
-	ProcessGenerator g= new ProcessGenerator(4, 2, 1,60,30,10,0);
+	try {
+		ProcessGenerator g= new ProcessGenerator(2, 8, 2, 0,60,30,10,0);
+	} catch (Exception e1) {
+		System.out.println("Random process could not be generated");
+		e1.printStackTrace();
+	}
 	
 	try {
-		ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\testAnnotatingAlgorithm.bpmn", new LinkedList<Integer>(Arrays.asList(1,3)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,50, 30);
+		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\testAnnotatingAlgorithm.bpmn", new LinkedList<Integer>(Arrays.asList(1,3)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,50, 30);
 		//a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
 		
 
@@ -69,7 +74,7 @@ public class Main3 {
 		// TODO Auto-generated catch block
 		e2.printStackTrace();
 	}
-	
+	/*
 
 	frame.setLayout(new GridLayout(0, a2.getDataObjects().size()+1, 10, 0));
 	
@@ -116,7 +121,7 @@ public class Main3 {
 		dataPanel.add(new JLabel(sb.toString()));
 		
 	}
-	
+	*/
 	frame.pack();
 	frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
