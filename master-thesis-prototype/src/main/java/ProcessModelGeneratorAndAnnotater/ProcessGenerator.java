@@ -136,7 +136,7 @@ public class ProcessGenerator {
 	}
 	
 	
-	private void goDfs(FlowNode startNode, FlowNode endNode, int amountTasksLeft, int amountXorsLeft, int amountParallelsLeft, LinkedList<String> possibleNodeTypesToBeInserted, LinkedList<FlowNode>queue, LinkedList<FlowNode>openXorStack, int branchingFactor){
+	private void goDfs(FlowNode startNode, FlowNode endNode, int amountTasksLeft, int amountXorsLeft, int amountParallelsLeft, LinkedList<String> possibleNodeTypesToBeInserted, LinkedList<FlowNode>queue, LinkedList<FlowNode>openGatewayStack, int branchingFactor){
 		
 		queue.add(startNode);
 		while (!(queue.isEmpty())) {
@@ -144,27 +144,16 @@ public class ProcessGenerator {
 		
 		
 		LinkedList<String> nodeTypesToBeInserted = this.computeNodesToBeInserted(possibleNodeTypesToBeInserted, amountTasksLeft, amountXorsLeft, amountParallelsLeft);
-		if(nodeTypesToBeInserted.isEmpty()&&queue.isEmpty()) {		
-			//no constructs can be inserted anymore
-			
-			//append the endEvent
-				currentNode.builder().endEvent().id("endEvent_1").name("endEvent_1");
-				System.out.println("RUN"+run++);
-				for(SequenceFlow f: modelInstance.getModelElementsByType(SequenceFlow.class)) {
-					System.out.println("Sflow: "+f.getDiagramElement().getId()+", "+f.getSource().getId()+", "+f.getTarget().getId());
-					
-				}
-				return;
-			
-		}
 		
-		InsertionConstruct nextConstructToBeAdded = this.getNextNodeToAdd(currentNode, nodeTypesToBeInserted,amountTasksLeft, amountXorsLeft, amountParallelsLeft, branchingFactor, openXorStack, queue);	
+		
+		
+		InsertionConstruct nextConstructToBeAdded = this.getNextNodeToAdd(currentNode, nodeTypesToBeInserted,amountTasksLeft, amountXorsLeft, amountParallelsLeft, branchingFactor, openGatewayStack, queue);	
 		
 		FlowNode addedNode = null;
 		//append the nextNodeToBeAdded to the currentNode	
 		if(nextConstructToBeAdded!=null) {		
 			
-			if(nextConstructToBeAdded.getType().contentEquals("Task")) {
+			if(nextConstructToBeAdded.getType().contentEquals("Task")) {	
 				currentNode.builder().manualTask(nextConstructToBeAdded.getId()).name(nextConstructToBeAdded.getName());
 				amountTasksLeft--;
 			} else if(nextConstructToBeAdded.getType().contentEquals("ExclusiveGateway")) {
@@ -195,7 +184,30 @@ public class ProcessGenerator {
 					amountParallelsLeft--;
 				}
 				} else {
+					//check if the currentNode has already been connected to the nextNode
+					boolean alreadyConnected = false;
+					for(SequenceFlow seq: currentNode.getOutgoing()) {
+						if(seq.getTarget().equals(modelInstance.getModelElementById(nextConstructToBeAdded.getId()))) {
+							alreadyConnected = true;
+						}
+					}
+					if(alreadyConnected == false) {
+					if(currentNode instanceof ParallelGateway) {
+						//if the currentNode is a parallelsplit - append a task between it and the join
+						Random rand = new Random();
+						String uniqueTaskId = "task_" + taskId;
+						String participantName = this.participantNames.get(rand.nextInt(participantNames.size()));
+						String taskName = uniqueTaskId + " [" + participantName + "]";
+						InsertionConstruct ic = new InsertionConstruct(uniqueTaskId, taskName, "Task");
+						this.insertionConstructs.add(ic);
+						taskId++;
+						amountTasksLeft--;
+						currentNode.builder().manualTask(ic.getId()).name(ic.getName()).connectTo(nextConstructToBeAdded.getId());
+						
+					} else {
 					currentNode.builder().connectTo(nextConstructToBeAdded.getId());
+					}
+					}
 				}
 			}
 			addedNode = modelInstance.getModelElementById(nextConstructToBeAdded.getId());
@@ -209,39 +221,52 @@ public class ProcessGenerator {
 		}
 		
 		
-		if(addedNode instanceof ExclusiveGateway && addedNode.getId().contains("_split")) {
+		if(addedNode instanceof Gateway && addedNode.getId().contains("_split")) {
 			queue.add(addedNode);
-			openXorStack.add(addedNode);
-			openXorStack.add(addedNode);
+			openGatewayStack.add(addedNode);
+			openGatewayStack.add(addedNode);
 		}
 		
 		
 		
-		if (addedNode instanceof ExclusiveGateway
+		if (addedNode instanceof Gateway
 				&& addedNode.getId().contains("_join")) {
 			
 			
-			// when a xor-join is found - poll the last opened xor gateway from the stack
-			ExclusiveGateway lastOpenedXor = (ExclusiveGateway) openXorStack.pollLast();
+			// when a join is found - poll the last opened Gateway from the stack
+			Gateway lastOpenedSplit = (Gateway) openGatewayStack.pollLast();
 
-			if (!openXorStack.isEmpty()) {
-				if (!openXorStack.contains(lastOpenedXor)) {
-					// when the openXorStack does not contain the lastOpenedXor anymore, all
+			
+				if (!openGatewayStack.contains(lastOpenedSplit)) {
+					// when the openGatewayStack does not contain the lastOpenedSplit anymore, all
 					// branches to the joinGtw have been visited
 					//add the join gtw to the queue
 					
-					String id = lastOpenedXor.getName();
+					String id = lastOpenedSplit.getName();
 					id+="_join";
 					queue.add(modelInstance.getModelElementById(id));
 				}
-			} 
+			
 
 		} else {
 
 		//add the nextNode on the stack
 		queue.add(addedNode);
 		}	
-		}		
+		}	else {
+			//return of nextNode function is null
+			//append endEvent	
+				currentNode.builder().endEvent().id("endEvent_1").name("endEvent_1");
+				System.out.println("RUN"+run++);
+				for(SequenceFlow f: modelInstance.getModelElementsByType(SequenceFlow.class)) {
+					System.out.println("Sflow: "+f.getDiagramElement().getId()+", "+f.getSource().getId()+", "+f.getTarget().getId());
+					
+				}
+				return;
+			
+		
+			
+		}
 		
 		
 		
@@ -274,53 +299,67 @@ public class ProcessGenerator {
 		
 	}
 	
-	private InsertionConstruct getNextNodeToAdd(FlowNode currentNode, LinkedList<String>possibleNodeTypesToBeInserted,int amountTasksLeft,int amountXorsLeft, int amountParallelsLeft, int branchingFactor, LinkedList<FlowNode>openXorStack, LinkedList<FlowNode>queue) {
+	private InsertionConstruct getNextNodeToAdd(FlowNode currentNode, LinkedList<String>possibleNodeTypesToBeInserted,int amountTasksLeft,int amountXorsLeft, int amountParallelsLeft, int branchingFactor, LinkedList<FlowNode>openSplitStack, LinkedList<FlowNode>queue) {
 		// randomly choose next flowNode to be inserted into process out of the possible nodeTypes
 		// branchingFactor may lead to adding a join node - and closing the currentBranch
 		
-		if(possibleNodeTypesToBeInserted.isEmpty()) {			
-			if(queue.isEmpty()) {
+		if(openSplitStack.isEmpty()&&queue.isEmpty()&&possibleNodeTypesToBeInserted.isEmpty()) {
 			return null;
-			} 
 		}
 		
-		
 		InsertionConstruct nextNode = null;
-
+		
+		
+		//if we are inside a parallel branch
+		//both branches should have a node before adding them to the join node		
 		//if we are inside a xor branch
-		//check if at least in one branch is a task before adding the join node		
-		if(!openXorStack.isEmpty()) {
+		//check if at least in one branch is a node before adding the join node		
+		if(!openSplitStack.isEmpty()) {
 		
 			boolean callFinishCurrentBranch = false;
+			FlowNode lastOpenedSplit = openSplitStack.getLast();
 		
-			if(openXorStack.getLast().getOutgoing().size()>=1) {
-				//when there is an open branch already 
+			if(lastOpenedSplit instanceof ExclusiveGateway&&lastOpenedSplit.getId().contains("_split") && lastOpenedSplit.getOutgoing().size()>=1) {
+				//when there is an open branch already after a xor-split
+				//call the function to choose whether to close it or not
 					callFinishCurrentBranch = true;
-			}	
+			} else if(lastOpenedSplit instanceof ParallelGateway && lastOpenedSplit.getId().contains("_split")) {
+					//both branches inside a parallel split contain elements
+					//call the function to choose whether to append the join or not
+				if(lastOpenedSplit.getOutgoing().size()>=1) {
+				callFinishCurrentBranch = true;
+				}
+			}
+			
+			
+			
 			if (possibleNodeTypesToBeInserted.isEmpty()) {
-				//openXorStack is not empty && there are no NodeTypes left to be inserted
-				//-> xor split needs to be closed
+				//openSplitStack is not empty && there are no NodeTypes left to be inserted
+				//-> open split needs to be closed
 				callFinishCurrentBranch = true;
 			}
 			
 		
 		
 		if(callFinishCurrentBranch) {
-			boolean addJoin = finishCurrentBranch(possibleNodeTypesToBeInserted, branchingFactor, openXorStack);
+			boolean addJoin = finishCurrentBranch(possibleNodeTypesToBeInserted, branchingFactor, openSplitStack);
 		
 		
 		if(addJoin) {
-			//add a xor-join to the last opened xor-split
-			System.out.println("Add join to currentBranch");
-			FlowNode lastOpenedXor = openXorStack.getLast();
-			String joinName = lastOpenedXor.getName();
+			//add a join to the last opened split
+			System.out.println("Add join to currentBranch");			
+			String joinName = lastOpenedSplit.getName();
 			String joinId = joinName+"_join";
-			if(modelInstance.getModelElementById(joinId)==null) {			
+			if(modelInstance.getModelElementById(joinId)==null) {
+				if(lastOpenedSplit instanceof ExclusiveGateway) {
 			nextNode = new InsertionConstruct(joinId, joinName, "ExclusiveGateway");
+				} else if(lastOpenedSplit instanceof ParallelGateway){
+					nextNode = new InsertionConstruct(joinId, joinName, "ParallelGateway");
+				}
 			this.insertionConstructs.add(nextNode);
 		
 			} else {
-				//if the xor-join has already been added to the model
+				//if the join has already been added to the model
 				nextNode = this.getInsertionConstruct(joinId);
 				
 			}
@@ -341,7 +380,7 @@ public class ProcessGenerator {
 				insert = true;
 			} else if(randomInt >= xorProbArray[0] && randomInt <= xorProbArray[1]&&possibleNodeTypesToBeInserted.contains("ExclusiveGateway")) {
 				insert = true;
-			} else if(amountParallelsLeft >0 && amountTasksLeft >= 2 &&possibleNodeTypesToBeInserted.contains("ParallelGateway")) {
+			} else if(randomInt >= parallelProbArray[0] && randomInt <= parallelProbArray[1] &&possibleNodeTypesToBeInserted.contains("ParallelGateway")) {
 				insert = true;
 			}
 			
@@ -371,19 +410,7 @@ public class ProcessGenerator {
 				nextNode = new InsertionConstruct(uniqueXorGtwIdSplit, name, "ExclusiveGateway");
 				this.insertionConstructs.add(nextNode);
 				xorGtwId++;
-			}  else {
-				//create a new join if no task is left to be inserted
-				FlowNode lastOpenedXor = openXorStack.getLast();
-				String joinName = lastOpenedXor.getName();
-				String joinId = joinName+"_join";
-				if(modelInstance.getModelElementById(joinId)==null) {			
-				nextNode = new InsertionConstruct(joinId, joinName, "ExclusiveGateway");
-				this.insertionConstructs.add(nextNode);
-				} else {
-					nextNode = this.getInsertionConstruct(joinId);
-				}
-				
-			}
+			}  
 		} else if (randomInt >= parallelProbArray[0] && randomInt <= parallelProbArray[1]) {
 			// create new parallel-split
 			if (amountParallelsLeft > 0 && amountTasksLeft >= 2 &&possibleNodeTypesToBeInserted.contains("ParallelGateway")) {
