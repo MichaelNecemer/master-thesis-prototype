@@ -59,7 +59,7 @@ public class Main3 {
 	double costForAddingReaderAfterBrt = 1.0;
 	
 	try {
-		ProcessGenerator g= new ProcessGenerator(2, 8, 2, 0,60,30,10,0);
+		ProcessGenerator g= new ProcessGenerator(2, 6, 2, 0,60,30,10,0);
 	} catch (Exception e1) {
 		System.out.println("Random process could not be generated");
 		e1.printStackTrace();
