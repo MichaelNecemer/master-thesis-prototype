@@ -1359,7 +1359,7 @@ public class API {
 		return brtCombs;		
 
 }
-	
+
 	
 
 	public LinkedList<ProcessInstanceWithVoters> goDFSthroughProcessBuildArcsAndGetVoters(BPMNElement startNode,

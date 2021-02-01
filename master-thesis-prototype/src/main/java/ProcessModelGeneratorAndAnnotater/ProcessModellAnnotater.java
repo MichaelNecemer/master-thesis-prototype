@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -20,7 +21,6 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.Association;
@@ -29,10 +29,13 @@ import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
 import org.camunda.bpm.model.bpmn.instance.DataObject;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.DataOutputAssociation;
+import org.camunda.bpm.model.bpmn.instance.EndEvent;
 import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
+import org.camunda.bpm.model.bpmn.instance.ItemAwareElement;
 import org.camunda.bpm.model.bpmn.instance.Property;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
+import org.camunda.bpm.model.bpmn.instance.StartEvent;
 import org.camunda.bpm.model.bpmn.instance.Task;
 import org.camunda.bpm.model.bpmn.instance.Text;
 import org.camunda.bpm.model.bpmn.instance.TextAnnotation;
@@ -43,10 +46,23 @@ import org.camunda.bpm.model.bpmn.instance.dc.Bounds;
 import org.camunda.bpm.model.bpmn.instance.di.Plane;
 import org.camunda.bpm.model.bpmn.instance.di.Waypoint;
 import org.camunda.bpm.model.bpmn.instance.Lane;
+import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+
+import Mapping.BPMNBusinessRuleTask;
+import Mapping.BPMNElement;
+import Mapping.BPMNEndEvent;
+import Mapping.BPMNExclusiveGateway;
+import Mapping.BPMNGateway;
+import Mapping.BPMNParallelGateway;
+import Mapping.BPMNParticipant;
+import Mapping.Combination;
+import Mapping.ProcessInstanceWithVoters;
+import Mapping.RequiredUpdate;
+import Mapping.VoterForXorArc;
 
 public class ProcessModellAnnotater {
 	// class takes a process model and annotates it with dataObjects, readers,
@@ -54,12 +70,11 @@ public class ProcessModellAnnotater {
 	private static BpmnModelInstance modelInstance;
 	private static Collection<FlowNode> flowNodes;
 	private static LinkedList<DataObjectReference> dataObjects = new LinkedList<DataObjectReference>();
-	
+
 	public static void annotateModel(String pathToFile, List<Integer> countDataObjects, List<String> defaultSpheres,
 			int sphereProb, int readerProb, int writerProb) {
 		File process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);
-		
 
 		// convert tasks that are right before XOR-Splits to be BusinessRuleTask
 		// if there is no task right before xor-split -> insert one
@@ -138,39 +153,69 @@ public class ProcessModellAnnotater {
 			generateShapeForTextAnnotation(defaultSphere, dataORef);
 
 			// iterate through all tasks of the process and assign readers and writers
-			//if task is a writer - add the sphere 
+			// if task is a writer - add the sphere
+			// task can only be either reader or writer to a specific dataObject
 			for (FlowNode node : flowNodes) {
 				if (node instanceof Task) {
 					Task task = (Task) node;
 
 					if (taskIsReaderOrWriter(writerProb)) {
-						//task is a writer
-						DataOutputAssociation dao = modelInstance.newInstance(DataOutputAssociation.class);
-						dao.setTarget(dataORef);
-						task.addChildElement(dao);
-						
-						generateDIElementForWriter(dao, getShape(dataORef.getId()), getShape(task.getId()));
-						//add sphere annotation for writer 
-						int randomCountSphere = ThreadLocalRandom.current().nextInt(0,
-								100+1);
-						if(randomCountSphere<=sphereProb) {
-							generateDIElementForSphereAnnotation(task, dataORef, defaultSpheres);
-							
+						// task is a writer
+						boolean toBeInserted = true;
+						for(DataOutputAssociation dao: task.getDataOutputAssociations()) {
+							if(dao.getTarget().getId().contentEquals(dataORef.getId())) {
+								toBeInserted = false;
+							}
 						}
-						
+						for(DataInputAssociation dia: task.getDataInputAssociations()) {							
+							for(ItemAwareElement iae: dia.getSources()) {
+							if(iae.getId().contentEquals(dataORef.getId())) {
+								toBeInserted = false;
+							}
+							}
+						}
+						if (toBeInserted) {
+							DataOutputAssociation dao = modelInstance.newInstance(DataOutputAssociation.class);
+
+							dao.setTarget(dataORef);
+							task.addChildElement(dao);
+
+							generateDIElementForWriter(dao, getShape(dataORef.getId()), getShape(task.getId()));
+							// add sphere annotation for writer
+							int randomCountSphere = ThreadLocalRandom.current().nextInt(0, 100 + 1);
+							if (randomCountSphere <= sphereProb) {
+								generateDIElementForSphereAnnotation(task, dataORef, defaultSpheres);
+
+							}
+						}
 					}
 					if (taskIsReaderOrWriter(readerProb)) {
-						//task is a reader
-						DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
-						Property p1 = modelInstance.newInstance(Property.class);
-						p1.setName("__targetRef_placeholder");
-						task.addChildElement(p1);
-						dia.setTarget(p1);
-						task.getDataInputAssociations().add(dia);
-						dia.getSources().add(dataORef);
+						// task is a reader
+						boolean toBeInserted = true;
+						for(DataOutputAssociation dao: task.getDataOutputAssociations()) {
+							if(dao.getTarget().getId().contentEquals(dataORef.getId())) {
+								toBeInserted = false;
+							}
+						}
+						for(DataInputAssociation dia: task.getDataInputAssociations()) {							
+							for(ItemAwareElement iae: dia.getSources()) {
+							if(iae.getId().contentEquals(dataORef.getId())) {
+								toBeInserted = false;
+							}
+							}
+						}
+						
+						if (toBeInserted) {
+							DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
+							Property p1 = modelInstance.newInstance(Property.class);
+							p1.setName("__targetRef_placeholder");
+							task.addChildElement(p1);
+							dia.setTarget(p1);
+							task.getDataInputAssociations().add(dia);
+							dia.getSources().add(dataORef);
 
-						generateDIElementForReader(dia, getShape(dataORef.getId()), getShape(task.getId()));
-
+							generateDIElementForReader(dia, getShape(dataORef.getId()), getShape(task.getId()));
+						}
 					}
 
 				}
@@ -179,21 +224,34 @@ public class ProcessModellAnnotater {
 
 		}
 
+		// query again
+		// go dfs through process until all branches inside split have been visited
+		// if reader is found go backwards and check if on each path there is a writer
+		// for the dataObject!
+		// in a parallel split there must only be writers/readers in one branch for a
+		// specific dataObject!
+
+		StartEvent st = modelInstance.getModelElementsByType(StartEvent.class).iterator().next();
+		EndEvent end = modelInstance.getModelElementsByType(EndEvent.class).iterator().next();
+
+		goDFSAndRepairModel(st, end, new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(),
+				new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>());
+
 		// check again if a brt followed by a xor-split has at least one data object
 		// connected!!!
 		// insert tuples for xor-gateways if not already done
-		
+
 		for (FlowNode f : modelInstance.getModelElementsByType(FlowNode.class)) {
-			if(f instanceof BusinessRuleTask) {
-				BusinessRuleTask brt = (BusinessRuleTask)f;
-				if(brt.getOutgoing().iterator().next().getTarget() instanceof ExclusiveGateway) {
-					ExclusiveGateway gtw = (ExclusiveGateway)brt.getOutgoing().iterator().next().getTarget();
-					if(gtw.getOutgoing().size()>=2) {
-						//brt is followed by a xor-split
-						if(brt.getDataInputAssociations().isEmpty()) {
-							//when brt doesnt have a dataObject connected -> randomly connect one
+			if (f instanceof BusinessRuleTask) {
+				BusinessRuleTask brt = (BusinessRuleTask) f;
+				if (brt.getOutgoing().iterator().next().getTarget() instanceof ExclusiveGateway) {
+					ExclusiveGateway gtw = (ExclusiveGateway) brt.getOutgoing().iterator().next().getTarget();
+					if (gtw.getOutgoing().size() >= 2) {
+						// brt is followed by a xor-split
+						if (brt.getDataInputAssociations().isEmpty()) {
+							// when brt doesnt have a dataObject connected -> randomly connect one
 							int randomCount = ThreadLocalRandom.current().nextInt(0, dataObjects.size());
-														
+
 							DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
 							Property p1 = modelInstance.newInstance(Property.class);
 							p1.setName("__targetRef_placeholder");
@@ -201,77 +259,73 @@ public class ProcessModellAnnotater {
 							dia.setTarget(p1);
 							brt.getDataInputAssociations().add(dia);
 							dia.getSources().add(dataObjects.get(randomCount));
-							generateDIElementForReader(dia, getShape(dataObjects.get(randomCount).getId()), getShape(brt.getId()));
-							
-						}		
-						
-						//insert tuples for xor-gateways if there are non already
-						//tuples are e.g. (3,2,5) -> 3 Voters needed, 2 have to decide the same, loop goes 5 times until the final decider will take decision
+							generateDIElementForReader(dia, getShape(dataObjects.get(randomCount).getId()),
+									getShape(brt.getId()));
+
+						}
+
+						// insert tuples for xor-gateways if there are non already
+						// tuples are e.g. (3,2,5) -> 3 Voters needed, 2 have to decide the same, loop
+						// goes 5 times until the final decider will take decision
 						boolean insert = true;
-						for(TextAnnotation tx: modelInstance.getModelElementsByType(TextAnnotation.class)) {
-							for(Association assoc: modelInstance.getModelElementsByType(Association.class)) {
-								if(assoc.getSource().equals(gtw)&&assoc.getTarget().equals(tx)) {
-									if(tx.getTextContent().startsWith("[Voters]")) {
+						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+							for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+								if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+									if (tx.getTextContent().startsWith("[Voters]")) {
 										insert = false;
 									}
 								}
-								
-								
+
 							}
 						}
-						
-						if(insert) {
-							Collection<Lane>lanes = modelInstance.getModelElementsByType(Lane.class);
-							int randomCountVotersNeeded = ThreadLocalRandom.current().nextInt(0,lanes.size());
-							int randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(0,randomCountVotersNeeded+1);
-							int randomCountIterations= ThreadLocalRandom.current().nextInt(0,10+1);
 
-							//generate TextAnnotations for xor-splits
+						if (insert) {
+							Collection<Lane> lanes = modelInstance.getModelElementsByType(Lane.class);
+							int randomCountVotersNeeded = ThreadLocalRandom.current().nextInt(0, lanes.size());
+							int randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(0,
+									randomCountVotersNeeded + 1);
+							int randomCountIterations = ThreadLocalRandom.current().nextInt(0, 10 + 1);
+
+							// generate TextAnnotations for xor-splits
 							TextAnnotation votersAnnotation = modelInstance.newInstance(TextAnnotation.class);
-							String textContent = "[Voters]{" +randomCountVotersNeeded+","+randomCountVotersSameDecision+","+randomCountIterations + "}";
-						
+							String textContent = "[Voters]{" + randomCountVotersNeeded + ","
+									+ randomCountVotersSameDecision + "," + randomCountIterations + "}";
+
 							votersAnnotation.setTextFormat("text/plain");
 							Text text = modelInstance.newInstance(Text.class);
 							text.setTextContent(textContent);
 							votersAnnotation.setText(text);
 							gtw.getParentElement().addChildElement(votersAnnotation);
-							
+
 							generateShapeForTextAnnotation(votersAnnotation, gtw);
-							
-							
+
 							Association assoc = modelInstance.newInstance(Association.class);
 							assoc.setSource(gtw);
 							assoc.setTarget(votersAnnotation);
 							gtw.getParentElement().addChildElement(assoc);
-							//DI element for the edge
+							// DI element for the edge
 							BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
 							edge.setBpmnElement(assoc);
 							Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
-							wp1.setX(gtw.getDiagramElement().getBounds().getX()+50);
+							wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
 							wp1.setY(gtw.getDiagramElement().getBounds().getY());
 							Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
-							wp2.setX(gtw.getDiagramElement().getBounds().getX()+50);
-							wp2.setY(gtw.getDiagramElement().getBounds().getY()-50);
-							
-							
+							wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+							wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
+
 							edge.getWaypoints().add(wp1);
 							edge.getWaypoints().add(wp2);
 							modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
-							
+
 						}
-						
-						
+
 					}
-					
+
 				}
-				
+
 			}
-			
-		
+
 		}
-		
-		
-		
 
 		try {
 			writeChangesToFile();
@@ -281,54 +335,53 @@ public class ProcessModellAnnotater {
 		}
 
 	}
-	private static void generateDIElementForSphereAnnotation(Task writerTask, DataObjectReference daoR, List<String>defaultSpheres) {
+
+	private static void generateDIElementForSphereAnnotation(Task writerTask, DataObjectReference daoR,
+			List<String> defaultSpheres) {
 		TextAnnotation writerSphere = modelInstance.newInstance(TextAnnotation.class);
 		int randomSphereCount = ThreadLocalRandom.current().nextInt(0, defaultSpheres.size());
 		String newSphere = defaultSpheres.get(randomSphereCount);
-		
-		String textContent = daoR.getName().replaceAll("\\{.*?\\}",newSphere);
-	
+
+		String textContent = daoR.getName().replaceAll("\\{.*?\\}", newSphere);
+
 		writerSphere.setTextFormat("text/plain");
 		Text text = modelInstance.newInstance(Text.class);
 		text.setTextContent(textContent);
 		writerSphere.setText(text);
-		writerTask.getParentElement().addChildElement(writerSphere);	
-		
+		writerTask.getParentElement().addChildElement(writerSphere);
+
 		Association assoc = modelInstance.newInstance(Association.class);
 		assoc.setSource(writerTask);
 		assoc.setTarget(writerSphere);
 		writerTask.getParentElement().addChildElement(assoc);
-		
-		//add the DI Element
+
+		// add the DI Element
 		BpmnShape shape = modelInstance.newInstance(BpmnShape.class);
 		shape.setBpmnElement(writerSphere);
 		Bounds bounds = modelInstance.newInstance(Bounds.class);
-		bounds.setX(writerTask.getDiagramElement().getBounds().getX()+50);
-		bounds.setY(writerTask.getDiagramElement().getBounds().getY()-50);
+		bounds.setX(writerTask.getDiagramElement().getBounds().getX() + 50);
+		bounds.setY(writerTask.getDiagramElement().getBounds().getY() - 50);
 		bounds.setWidth(103);
 		bounds.setHeight(43);
 		shape.setBounds(bounds);
 		modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(shape);
 
-		
-		//DI element for the edge
+		// DI element for the edge
 		BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
 		edge.setBpmnElement(assoc);
 		Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
-		wp1.setX(writerTask.getDiagramElement().getBounds().getX()+50);
+		wp1.setX(writerTask.getDiagramElement().getBounds().getX() + 50);
 		wp1.setY(writerTask.getDiagramElement().getBounds().getY());
 		Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
-		wp2.setX(writerTask.getDiagramElement().getBounds().getX()+50);
-		wp2.setY(writerTask.getDiagramElement().getBounds().getY()-50);
-		
-		
+		wp2.setX(writerTask.getDiagramElement().getBounds().getX() + 50);
+		wp2.setY(writerTask.getDiagramElement().getBounds().getY() - 50);
+
 		edge.getWaypoints().add(wp1);
 		edge.getWaypoints().add(wp2);
 		modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
 
 	}
-	
-	
+
 	private static void generateShapeForTextAnnotation(TextAnnotation txt, DataObjectReference ref) {
 		BpmnShape shapeForAnnotation = modelInstance.newInstance(BpmnShape.class);
 		shapeForAnnotation.setBpmnElement(txt);
@@ -341,7 +394,7 @@ public class ProcessModellAnnotater {
 		modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(shapeForAnnotation);
 
 	}
-	
+
 	private static void generateShapeForTextAnnotation(TextAnnotation txt, FlowNode ref) {
 		BpmnShape shapeForAnnotation = modelInstance.newInstance(BpmnShape.class);
 		shapeForAnnotation.setBpmnElement(txt);
@@ -354,9 +407,6 @@ public class ProcessModellAnnotater {
 		modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(shapeForAnnotation);
 
 	}
-
-	
-	
 
 	private static BpmnShape getShape(String id) {
 
@@ -507,6 +557,190 @@ public class ProcessModellAnnotater {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+
+	public static LinkedList<LinkedList<FlowNode>> goDFSAndRepairModel(FlowNode startNode, FlowNode endNode,
+			LinkedList<FlowNode> queue, LinkedList<FlowNode> parallelGtwQueue, LinkedList<FlowNode> openXorStack,
+			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths) {
+		// go DFS inside the XOR till corresponding join is found
+		queue.add(startNode);
+
+		boolean reachedParallelEndGateway = false;
+
+		while (!(queue.isEmpty())) {
+			FlowNode element = queue.poll();
+
+			// when a reader is found -> check if on each possible path to the reader there
+			// is a writer to the dataObject
+			if (element instanceof Task) {
+				Task currTask = (Task) element;
+				if (!currTask.getDataInputAssociations().isEmpty()) {
+					for (DataInputAssociation dia : currTask.getDataInputAssociations()) {
+						for (ItemAwareElement iae : dia.getSources()) {
+							//reader has been found
+							System.out.println("Reader: " + element.getName() + ", " + iae.getId());
+							//check if there is a writer on currentPath to the reader
+							//randomly change one task on the currentPath to a writer if there is no writer
+							boolean writerOnTaskForDataO = false;
+							for(FlowNode currentPathEl: currentPath) {
+								if(currentPathEl instanceof Task) {
+									Task currentPathTask = (Task)currentPathEl;
+									for(DataOutputAssociation dao: currentPathTask.getDataOutputAssociations()) {
+										if(dao.getTarget().equals(iae)) {
+											writerOnTaskForDataO=true;
+											break;
+										}
+												
+									}
+								}
+							}
+							
+							
+							if(writerOnTaskForDataO==false) {
+								if(currentPath.size()==1&&currentPath.get(0)instanceof StartEvent) {
+									//if the path only contains the startEvent - change the currTask from reader to writer for that dataO
+
+								} else {
+									//randomly select a Task on the path and make it a writer 
+										
+									
+									
+								}
+							}
+							
+						}
+					}
+
+				}
+
+				if (!currTask.getDataOutputAssociations().isEmpty()) {
+					for (DataOutputAssociation dao : currTask.getDataOutputAssociations()) {
+						ItemAwareElement iae = dao.getTarget();
+						System.out.println("Writer: " + element.getName() + ", " + iae.getId());
+					}
+				}
+			}
+
+			currentPath.add(element);
+
+			if (element.getId().equals(endNode.getId())) {
+
+				paths.add(currentPath);
+
+				if (endNode instanceof ExclusiveGateway && endNode.getId().contains("_join")) {
+
+					ExclusiveGateway joinGtw = (ExclusiveGateway) element;
+
+					// when a xor-join is found - poll the last opened xor gateway from the stack
+					ExclusiveGateway lastOpenedXor = (ExclusiveGateway) openXorStack.pollLast();
+
+					if (!openXorStack.isEmpty()) {
+						if (!openXorStack.contains(lastOpenedXor)) {
+							// when the openXorStack does not contain the lastOpenedXor anymore, all
+							// branches to the joinGtw have been visited
+							// go from joinGtw to the Join of the last opened xor-split in the stack
+							FlowNode lastOpenedSplit = openXorStack.getLast();
+							String correspondingJoinId = lastOpenedSplit.getName() + "_join";
+							FlowNode correspondingJoin = modelInstance.getModelElementById(correspondingJoinId);
+
+							goDFSAndRepairModel(joinGtw, correspondingJoin, queue, parallelGtwQueue, openXorStack,
+									currentPath, paths);
+
+						}
+					} else if (openXorStack.isEmpty()) {
+						// when there are no open Xor gtws
+						// go from the successor of the element to bpmnEnd since the currentElement has
+						// already been added to the path
+						LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
+
+						for (LinkedList<FlowNode> path : paths) {
+							if (path.getLast().equals(element)) {
+								LinkedList<FlowNode> newPathAfterXorJoin = new LinkedList<FlowNode>();
+								newPathAfterXorJoin.addAll(path);
+								newPaths.add(newPathAfterXorJoin);
+							}
+						}
+
+						for (LinkedList<FlowNode> newPath : newPaths) {
+							goDFSAndRepairModel(element.getOutgoing().iterator().next().getTarget(),
+									modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), queue,
+									parallelGtwQueue, openXorStack, newPath, paths);
+						}
+
+					}
+
+				} else if (endNode instanceof BPMNEndEvent) {
+					// when the endnode of the process is found
+
+				}
+
+				element = queue.poll();
+				if (element == null && queue.isEmpty()) {
+					int id = 1;
+					for (LinkedList<FlowNode> path : paths) {
+						System.out.println("Path with ID " + id);
+						for (FlowNode el : path) {
+							System.out.println(el.getId());
+						}
+						id++;
+					}
+
+					return paths;
+				}
+
+			}
+
+			if (element instanceof ExclusiveGateway && element.getId().contains("_split")) {
+				// add the xor split to the openXorStack 1 times for each outgoing paths
+				int amountOfOutgoingPaths = element.getOutgoing().size();
+				int i = 0;
+				while (i < amountOfOutgoingPaths) {
+					openXorStack.add((ExclusiveGateway) element);
+					i++;
+				}
+
+			}
+
+			if (element instanceof ParallelGateway && element.getId().contains("_split")) {
+				for (SequenceFlow outgoingFlow : element.getOutgoing()) {
+					parallelGtwQueue.add(outgoingFlow.getTarget());
+				}
+			}
+
+			if (element instanceof ParallelGateway && element.getId().contains("_join")) {
+				parallelGtwQueue.poll();
+				if (!parallelGtwQueue.isEmpty()) {
+					reachedParallelEndGateway = true;
+				}
+			}
+
+			for (SequenceFlow outgoingFlow : element.getOutgoing()) {
+				FlowNode successor = outgoingFlow.getTarget();
+				if (element instanceof ExclusiveGateway && element.getId().equals("_split")) {
+					// when a xor-split is found - go dfs till the corresponding join is found
+
+					String correspondingJoinId = element.getName() + "_join";
+					FlowNode correspondingJoinGtw = modelInstance.getModelElementById(correspondingJoinId);
+
+					LinkedList<FlowNode> newPath = new LinkedList<FlowNode>();
+					newPath.addAll(currentPath);
+
+					goDFSAndRepairModel(successor, correspondingJoinGtw, queue, parallelGtwQueue, openXorStack, newPath,
+							paths);
+				} else {
+
+					if (reachedParallelEndGateway == false) {
+						queue.add(successor);
+					}
+
+				}
+
+			}
+			reachedParallelEndGateway = false;
+		}
+
+		return paths;
+
 	}
 
 }

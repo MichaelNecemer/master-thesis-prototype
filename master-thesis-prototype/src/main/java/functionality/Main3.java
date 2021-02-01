@@ -59,14 +59,14 @@ public class Main3 {
 	double costForAddingReaderAfterBrt = 1.0;
 	
 	try {
-		ProcessGenerator g= new ProcessGenerator(2, 8, 2, 1,50,30,20,0);
+		//ProcessGenerator g= new ProcessGenerator(4, 8, 2, 1,50,30,20,50,10);
 	} catch (Exception e1) {
 		System.out.println("Random process could not be generated");
 		e1.printStackTrace();
 	}
 	
 	try {
-		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\testAnnotatingAlgorithm.bpmn", new LinkedList<Integer>(Arrays.asList(1,3)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,50, 30);
+		ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\testAnnotatingAlgorithm.bpmn", new LinkedList<Integer>(Arrays.asList(1,1)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20);
 		//a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
 		
 

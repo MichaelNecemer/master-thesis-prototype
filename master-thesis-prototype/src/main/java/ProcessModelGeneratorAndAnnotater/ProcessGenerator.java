@@ -74,9 +74,10 @@ public class ProcessGenerator {
 	private LinkedList<Gateway> openSplits;
 	private LinkedList<String>possibleNodeTypes;
 	private LinkedList<InsertionConstruct>insertionConstructs;
+	private int probJoinGtw;
 
 	public ProcessGenerator(int amountParticipants, int amountTasksLeft, int amountXorsLeft,
-			int amountParallelsLeft, int probTask, int probXorGtw, int probParallelGtw, int nestingDepthFactor) {
+			int amountParallelsLeft, int probTask, int probXorGtw, int probParallelGtw, int probJoinGtw, int nestingDepthFactor) {
 		// process model will have 1 StartEvent and 1 EndEvent
 		this.participantNames = new LinkedList<String>();
 		for (int i = 0; i < amountParticipants; i++) {
@@ -86,7 +87,7 @@ public class ProcessGenerator {
 		this.amountTasksLeft=amountTasksLeft;
 		this.amountXorsLeft=amountXorsLeft;
 		this.amountParallelsLeft=amountParallelsLeft;
-		
+		this.probJoinGtw=probJoinGtw;
 		this.probTask = probTask;
 		this.probXorGtw = probXorGtw;
 		this.probParallelGtw = probParallelGtw;
@@ -123,7 +124,7 @@ public class ProcessGenerator {
 		this.possibleNodeTypes.add("ParallelGateway");
 		
 		// go dfs
-		this.goDfs(startEvent, null, amountTasksLeft, amountXorsLeft, amountParallelsLeft, this.possibleNodeTypes, new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), this.nestingDepthFactor);
+		this.goDfs(startEvent, null, amountTasksLeft, amountXorsLeft, amountParallelsLeft, this.possibleNodeTypes, new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), nestingDepthFactor);
 		
 		
 	
@@ -443,8 +444,12 @@ public class ProcessGenerator {
 		}
 		
 		List<FlowNode> listDistinct = openXorStack.stream().distinct().collect(Collectors.toList());
+		
+		int depthFactor = this.probJoinGtw + (listDistinct.size()*branchingFactor);
+		
 		int randomInt = this.getRandomInt(0, 100);
-		if(randomInt<50) {
+		
+		if(depthFactor>=randomInt) {
 			return true;
 		}
 		
