@@ -66,7 +66,7 @@ public class Main3 {
 	}
 	
 	try {
-		ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\testAnnotatingAlgorithm.bpmn", new LinkedList<Integer>(Arrays.asList(1,1)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20);
+		ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\testAnnotatingAlgorithm2.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20);
 		//a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
 		
 
