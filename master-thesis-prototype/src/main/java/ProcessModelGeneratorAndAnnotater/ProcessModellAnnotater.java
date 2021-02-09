@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -32,6 +33,7 @@ import org.camunda.bpm.model.bpmn.instance.DataOutputAssociation;
 import org.camunda.bpm.model.bpmn.instance.EndEvent;
 import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
+import org.camunda.bpm.model.bpmn.instance.Gateway;
 import org.camunda.bpm.model.bpmn.instance.ItemAwareElement;
 import org.camunda.bpm.model.bpmn.instance.Property;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
@@ -71,23 +73,44 @@ public class ProcessModellAnnotater {
 	private static BpmnModelInstance modelInstance;
 	private static Collection<FlowNode> flowNodes;
 	private static LinkedList<DataObjectReference> dataObjects = new LinkedList<DataObjectReference>();
+	private static boolean modelWithLanes;
+	private static LinkedList<String> differentParticipants = new LinkedList<String>();
 
 	public static void annotateModel(String pathToFile, List<Integer> countDataObjects, List<String> defaultSpheres,
 			int sphereProb, int readerProb, int writerProb) {
 		File process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);
-		
-		//sphereProb is the probability to annotate a random required sphere for a writer
 
-		
-		
+		// sphereProb is the probability to annotate a random required sphere for a
+		// writer
+
+		if (modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
+			modelWithLanes = false;
+			for (FlowNode task : modelInstance.getModelElementsByType(Task.class)) {
+				String taskName = task.getName();
+				String participantName = taskName.substring(taskName.indexOf('['), taskName.indexOf(']') + 1);
+				if (!differentParticipants.contains(participantName)) {
+					differentParticipants.add(participantName);
+				}
+			}
+		} else {
+			modelWithLanes = true;
+			for (Lane lane : modelInstance.getModelElementsByType(Lane.class)) {
+				String laneName = "[" + lane.getName() + "]";
+				if (!differentParticipants.contains(laneName)) {
+					differentParticipants.add(laneName);
+				}
+			}
+
+		}
+
 		int idForBrt = 1;
 		int idForTask = 1;
 		for (FlowNode f : modelInstance.getModelElementsByType(FlowNode.class)) {
-			
-			if(f instanceof StartEvent) {
+
+			if (f instanceof StartEvent) {
 				FlowNode successor = f.getOutgoing().iterator().next().getTarget();
-				if(successor instanceof BusinessRuleTask) {
+				if (successor instanceof BusinessRuleTask) {
 					System.out.println("First node after StartEvent can not be a brt - insert a task in between!");
 					SequenceFlow toBeDeleted = f.getOutgoing().iterator().next();
 					String idOfSFlow = toBeDeleted.getId();
@@ -97,17 +120,22 @@ public class ProcessModellAnnotater {
 					edgeToBeDeleted.getParentElement().removeChildElement(edgeToBeDeleted);
 					f.getParentElement().removeChildElement(toBeDeleted);
 
-					f.builder().manualTask().name("InsertedTask" + idForTask).connectTo(successor.getId());
+					String taskName = "InsertedTask" + idForTask;
+					if (!modelWithLanes) {
+						taskName += " " + getRandomItem(differentParticipants);
+					}
+
+					f.builder().manualTask().name(taskName).connectTo(successor.getId());
 					idForTask++;
 					FlowNode insertedTask = f.getOutgoing().iterator().next().getTarget();
-					
+
 					Task changeBackToTask = modelInstance.newInstance(Task.class);
 					changeBackToTask.setName(insertedTask.getName());
 					changeBackToTask.setId(insertedTask.getId());
 					changeBackToTask.getIncoming().addAll(insertedTask.getIncoming());
 					changeBackToTask.getOutgoing().addAll(insertedTask.getOutgoing());
 					insertedTask.replaceWithElement(changeBackToTask);
-					
+
 				}
 			}
 			// if there is no brt right before xor-split -> insert one
@@ -116,13 +144,14 @@ public class ProcessModellAnnotater {
 				if (xor.getOutgoing().size() >= 2) {
 					FlowNode nodeBeforeXorSplit = xor.getIncoming().iterator().next().getSource();
 
-					if (!(nodeBeforeXorSplit instanceof BusinessRuleTask)) {					
+					if (!(nodeBeforeXorSplit instanceof BusinessRuleTask)) {
 						// new businessRuletask needs to be inserted
 						// delete old sequence flow
-						System.out.println("Add new Brt before "+xor.getId());
-						if(nodeBeforeXorSplit instanceof Task) {
-							//the fluent builder doesn't work on tasks
-							//change the task to a manual task and after using the fluent api change it back
+						System.out.println("Add new Brt before " + xor.getId());
+						if (nodeBeforeXorSplit instanceof Task) {
+							// the fluent builder doesn't work on tasks
+							// change the task to a manual task and after using the fluent api change it
+							// back
 							ManualTask mt = modelInstance.newInstance(ManualTask.class);
 							mt.setName(nodeBeforeXorSplit.getName());
 							mt.setId(nodeBeforeXorSplit.getId());
@@ -134,11 +163,18 @@ public class ProcessModellAnnotater {
 							BpmnEdge edgeToBeDeleted = getEdge(idOfSFlow);
 
 							edgeToBeDeleted.getParentElement().removeChildElement(edgeToBeDeleted);
+
 							nodeBeforeXorSplit.replaceWithElement(mt);
 							mt.getParentElement().removeChildElement(toBeDeleted);
 
-							
-							mt.builder().businessRuleTask().name("InsertedBrt"+idForBrt).connectTo(xor.getId());
+							String nameForBrt = "InsertedBrt" + idForBrt;
+							if (!modelWithLanes) {
+								// add a random participantName to the nameForBr
+								nameForBrt += " " + getRandomItem(differentParticipants);
+							}
+
+							mt.builder().businessRuleTask().name(nameForBrt).connectTo(xor.getId());
+
 							Task changeBackToTask = modelInstance.newInstance(Task.class);
 							changeBackToTask.setName(mt.getName());
 							changeBackToTask.setId(mt.getId());
@@ -146,24 +182,30 @@ public class ProcessModellAnnotater {
 							changeBackToTask.getOutgoing().addAll(mt.getOutgoing());
 							mt.replaceWithElement(changeBackToTask);
 							idForBrt++;
-							
+
 						} else {
-						
-						SequenceFlow toBeDeleted = nodeBeforeXorSplit.getOutgoing().iterator().next();
-						String idOfSFlow = toBeDeleted.getId();
 
-						BpmnEdge edgeToBeDeleted = getEdge(idOfSFlow);
+							SequenceFlow toBeDeleted = nodeBeforeXorSplit.getOutgoing().iterator().next();
+							String idOfSFlow = toBeDeleted.getId();
 
-						edgeToBeDeleted.getParentElement().removeChildElement(edgeToBeDeleted);
-						nodeBeforeXorSplit.getParentElement().removeChildElement(toBeDeleted);
-						
-						nodeBeforeXorSplit.builder().businessRuleTask().name("InsertedBrt" + idForBrt).connectTo(xor.getId());
-						idForBrt++;
+							BpmnEdge edgeToBeDeleted = getEdge(idOfSFlow);
+
+							edgeToBeDeleted.getParentElement().removeChildElement(edgeToBeDeleted);
+							nodeBeforeXorSplit.getParentElement().removeChildElement(toBeDeleted);
+
+							String nameForBrt = "InsertedBrt" + idForBrt;
+							if (!modelWithLanes) {
+								// add a random participantName to the nameForBr
+								nameForBrt += getRandomItem(differentParticipants);
+							}
+
+							nodeBeforeXorSplit.builder().businessRuleTask().name(nameForBrt).connectTo(xor.getId());
+							idForBrt++;
 						}
 					}
 				}
 			}
-			
+
 		}
 
 		flowNodes = modelInstance.getModelElementsByType(FlowNode.class);
@@ -211,24 +253,25 @@ public class ProcessModellAnnotater {
 			// iterate through all tasks of the process and assign readers and writers
 			// if task is a writer - add the sphere
 			// task can only be either reader or writer to a specific dataObject
+
 			for (FlowNode node : flowNodes) {
 				if (node instanceof Task) {
 					Task task = (Task) node;
 
-					if (taskIsReaderOrWriter(writerProb)&&taskIsBrtFollowedByXorSplit(task)) {
+					if (taskIsReaderOrWriter(writerProb) && taskIsBrtFollowedByXorSplit(task)) {
 						// task is a writer
 						// businessRuleTasks right before xor-splits can not be writers
 						boolean toBeInserted = true;
-						for(DataOutputAssociation dao: task.getDataOutputAssociations()) {
-							if(dao.getTarget().getId().contentEquals(dataORef.getId())) {
+						for (DataOutputAssociation dao : task.getDataOutputAssociations()) {
+							if (dao.getTarget().getId().contentEquals(dataORef.getId())) {
 								toBeInserted = false;
 							}
 						}
-						for(DataInputAssociation dia: task.getDataInputAssociations()) {							
-							for(ItemAwareElement iae: dia.getSources()) {
-							if(iae.getId().contentEquals(dataORef.getId())) {
-								toBeInserted = false;
-							}
+						for (DataInputAssociation dia : task.getDataInputAssociations()) {
+							for (ItemAwareElement iae : dia.getSources()) {
+								if (iae.getId().contentEquals(dataORef.getId())) {
+									toBeInserted = false;
+								}
 							}
 						}
 						if (toBeInserted) {
@@ -248,19 +291,19 @@ public class ProcessModellAnnotater {
 					if (taskIsReaderOrWriter(readerProb)) {
 						// task is a reader
 						boolean toBeInserted = true;
-						for(DataOutputAssociation dao: task.getDataOutputAssociations()) {
-							if(dao.getTarget().getId().contentEquals(dataORef.getId())) {
+						for (DataOutputAssociation dao : task.getDataOutputAssociations()) {
+							if (dao.getTarget().getId().contentEquals(dataORef.getId())) {
 								toBeInserted = false;
 							}
 						}
-						for(DataInputAssociation dia: task.getDataInputAssociations()) {							
-							for(ItemAwareElement iae: dia.getSources()) {
-							if(iae.getId().contentEquals(dataORef.getId())) {
-								toBeInserted = false;
-							}
+						for (DataInputAssociation dia : task.getDataInputAssociations()) {
+							for (ItemAwareElement iae : dia.getSources()) {
+								if (iae.getId().contentEquals(dataORef.getId())) {
+									toBeInserted = false;
+								}
 							}
 						}
-						
+
 						if (toBeInserted) {
 							DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
 							Property p1 = modelInstance.newInstance(Property.class);
@@ -290,99 +333,96 @@ public class ProcessModellAnnotater {
 		StartEvent st = modelInstance.getModelElementsByType(StartEvent.class).iterator().next();
 		EndEvent end = modelInstance.getModelElementsByType(EndEvent.class).iterator().next();
 
-		LinkedList<LinkedList<FlowNode>>paths = goDFSAndRepairModel(st, end, new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(),
-		new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>());
-/*
+		LinkedList<LinkedList<FlowNode>> paths = goDFSAndRepairModel(st, end, new LinkedList<FlowNode>(),
+				new LinkedList<FlowNode>(), new LinkedList<Gateway>(), new LinkedList<FlowNode>(),
+				new LinkedList<LinkedList<FlowNode>>());
+
 		int idPath = 1;
-		for(LinkedList<FlowNode>f: paths ) {
-			System.out.println("Path: "+idPath);
-			for(FlowNode n: f) {
+		for (LinkedList<FlowNode> f : paths) {
+			System.out.println("Path: " + idPath);
+			for (FlowNode n : f) {
 				System.out.println(n.getId());
 			}
 			idPath++;
 		}
-		*/
+
 		// check again if a brt followed by a xor-split has at least one data object
 		// connected!!!
 		// insert tuples for xor-gateways if not already done
 
-		for (FlowNode f : modelInstance.getModelElementsByType(FlowNode.class)) {
-			if (f instanceof Task) {				
-				if(taskIsBrtFollowedByXorSplit(f)) {
-					BusinessRuleTask brt = (BusinessRuleTask)f;
-					ExclusiveGateway gtw = (ExclusiveGateway) brt.getOutgoing().iterator().next().getTarget();
-					// brt is followed by a xor-split
-						if (brt.getDataInputAssociations().isEmpty()) {
-							// when brt doesnt have a dataObject connected -> randomly connect one
-							int randomCount = ThreadLocalRandom.current().nextInt(0, dataObjects.size());
+		for (Task task : modelInstance.getModelElementsByType(Task.class)) {
+			if (taskIsBrtFollowedByXorSplit(task)) {
+				BusinessRuleTask brt = (BusinessRuleTask) task;
+				ExclusiveGateway gtw = (ExclusiveGateway) brt.getOutgoing().iterator().next().getTarget();
+				// brt is followed by a xor-split
+				if (brt.getDataInputAssociations().isEmpty()) {
+					// when brt doesnt have a dataObject connected -> randomly connect one
+					int randomCount = ThreadLocalRandom.current().nextInt(0, dataObjects.size());
 
-							DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
-							Property p1 = modelInstance.newInstance(Property.class);
-							p1.setName("__targetRef_placeholder");
-							brt.addChildElement(p1);
-							dia.setTarget(p1);
-							brt.getDataInputAssociations().add(dia);
-							dia.getSources().add(dataObjects.get(randomCount));
-							generateDIElementForReader(dia, getShape(dataObjects.get(randomCount).getId()),
-									getShape(brt.getId()));
+					DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
+					Property p1 = modelInstance.newInstance(Property.class);
+					p1.setName("__targetRef_placeholder");
+					brt.addChildElement(p1);
+					dia.setTarget(p1);
+					brt.getDataInputAssociations().add(dia);
+					dia.getSources().add(dataObjects.get(randomCount));
+					generateDIElementForReader(dia, getShape(dataObjects.get(randomCount).getId()),
+							getShape(brt.getId()));
 
-						}
-						// insert tuples for xor-gateways if there are non already
-						// tuples are e.g. (3,2,5) -> 3 Voters needed, 2 have to decide the same, loop
-						// goes 5 times until the final decider will take decision
-						boolean insert = true;
-						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
-							for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
-								if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-									if (tx.getTextContent().startsWith("[Voters]")) {
-										insert = false;
-									}
-								}
-
+				}
+				// insert tuples for xor-gateways if there are non already
+				// tuples are e.g. (3,2,5) -> 3 Voters needed, 2 have to decide the same, loop
+				// goes 5 times until the final decider will take decision
+				boolean insert = true;
+				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+							if (tx.getTextContent().startsWith("[Voters]")) {
+								insert = false;
 							}
 						}
 
-						if (insert) {
-							Collection<Lane> lanes = modelInstance.getModelElementsByType(Lane.class);
-							int randomCountVotersNeeded = ThreadLocalRandom.current().nextInt(0, lanes.size());
-							int randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(0,
-									randomCountVotersNeeded + 1);
-							int randomCountIterations = ThreadLocalRandom.current().nextInt(0, 10 + 1);
+					}
+				}
 
-							// generate TextAnnotations for xor-splits
-							TextAnnotation votersAnnotation = modelInstance.newInstance(TextAnnotation.class);
-							String textContent = "[Voters]{" + randomCountVotersNeeded + ","
-									+ randomCountVotersSameDecision + "," + randomCountIterations + "}";
+				if (insert) {
 
-							votersAnnotation.setTextFormat("text/plain");
-							Text text = modelInstance.newInstance(Text.class);
-							text.setTextContent(textContent);
-							votersAnnotation.setText(text);
-							gtw.getParentElement().addChildElement(votersAnnotation);
+					int randomCountVotersNeeded = ThreadLocalRandom.current().nextInt(0, differentParticipants.size());
 
-							generateShapeForTextAnnotation(votersAnnotation, gtw);
+					int randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(0,
+							randomCountVotersNeeded + 1);
+					int randomCountIterations = ThreadLocalRandom.current().nextInt(0, 10 + 1);
 
-							Association assoc = modelInstance.newInstance(Association.class);
-							assoc.setSource(gtw);
-							assoc.setTarget(votersAnnotation);
-							gtw.getParentElement().addChildElement(assoc);
-							// DI element for the edge
-							BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
-							edge.setBpmnElement(assoc);
-							Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
-							wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
-							wp1.setY(gtw.getDiagramElement().getBounds().getY());
-							Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
-							wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
-							wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
+					// generate TextAnnotations for xor-splits
+					TextAnnotation votersAnnotation = modelInstance.newInstance(TextAnnotation.class);
+					String textContent = "[Voters]{" + randomCountVotersNeeded + "," + randomCountVotersSameDecision
+							+ "," + randomCountIterations + "}";
 
-							edge.getWaypoints().add(wp1);
-							edge.getWaypoints().add(wp2);
-							modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
+					votersAnnotation.setTextFormat("text/plain");
+					Text text = modelInstance.newInstance(Text.class);
+					text.setTextContent(textContent);
+					votersAnnotation.setText(text);
+					gtw.getParentElement().addChildElement(votersAnnotation);
 
-						}
+					generateShapeForTextAnnotation(votersAnnotation, gtw);
 
-					
+					Association assoc = modelInstance.newInstance(Association.class);
+					assoc.setSource(gtw);
+					assoc.setTarget(votersAnnotation);
+					gtw.getParentElement().addChildElement(assoc);
+					// DI element for the edge
+					BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
+					edge.setBpmnElement(assoc);
+					Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
+					wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+					wp1.setY(gtw.getDiagramElement().getBounds().getY());
+					Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+					wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+					wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
+
+					edge.getWaypoints().add(wp1);
+					edge.getWaypoints().add(wp2);
+					modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
 
 				}
 
@@ -621,105 +661,116 @@ public class ProcessModellAnnotater {
 			e.printStackTrace();
 		}
 	}
-	
-	
+
 	private static boolean taskIsBrtFollowedByXorSplit(FlowNode node) {
 		FlowNode directSuccessor = node.getOutgoing().iterator().next().getTarget();
-		if(node instanceof BusinessRuleTask && directSuccessor instanceof ExclusiveGateway && directSuccessor.getOutgoing().size()==2) {
+		if (node instanceof BusinessRuleTask && directSuccessor instanceof ExclusiveGateway
+				&& directSuccessor.getOutgoing().size() == 2) {
 			return true;
 		}
 		return false;
 	}
 
 	public static LinkedList<LinkedList<FlowNode>> goDFSAndRepairModel(FlowNode startNode, FlowNode endNode,
-			LinkedList<FlowNode> queue, LinkedList<FlowNode> parallelGtwQueue, LinkedList<FlowNode> openXorStack,
+			LinkedList<FlowNode> queue, LinkedList<FlowNode> parallelGtwQueue, LinkedList<Gateway> openSplits,
 			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths) {
 		// go DFS inside the XOR till corresponding join is found
 		queue.add(startNode);
 
-		boolean reachedParallelEndGateway = false;
-
 		while (!(queue.isEmpty())) {
 			FlowNode element = queue.poll();
 
-			// when a reader is found -> check if on each possible path to the reader there
+			// when a reader is found -> check if on the currentPath to the reader there
 			// is a writer to the dataObject
 			if (element instanceof Task) {
 				Task currTask = (Task) element;
 				if (!currTask.getDataInputAssociations().isEmpty()) {
 					for (DataInputAssociation dia : currTask.getDataInputAssociations()) {
 						for (ItemAwareElement iae : dia.getSources()) {
-							//reader has been found
-							//check if there is a writer on each path to the reader
-							//randomly change one task on the currentPath to a writer if there is no writer
+							// reader has been found
+							// check if there is a writer on each path to the reader
+							// randomly change one task on the currentPath to a writer if there is no writer
 							int countWriterOnPath = 0;
-					
-							for(FlowNode currentPathEl: currentPath) {
-								if(currentPathEl instanceof Task) {
-									Task currentPathTask = (Task)currentPathEl;
-									for(DataOutputAssociation dao: currentPathTask.getDataOutputAssociations()) {
-										if(dao.getTarget().equals(iae)) {
+
+							for (FlowNode currentPathEl : currentPath) {
+								if (currentPathEl instanceof Task) {
+									Task currentPathTask = (Task) currentPathEl;
+									for (DataOutputAssociation dao : currentPathTask.getDataOutputAssociations()) {
+										if (dao.getTarget().equals(iae)) {
 											countWriterOnPath++;
 										}
-												
+
 									}
 								}
-							}
-							
-						System.out.println(countWriterOnPath+", "+paths.size());	
-						
-							if(countWriterOnPath==0) {
-								if(currentPath.size()==1&&currentPath.get(0)instanceof StartEvent) {
-									//if the path only contains the startEvent - change the currTask from reader to writer for that dataO if the reader is not a brt
-									if(taskIsBrtFollowedByXorSplit(currTask)) {
-										System.err.println("Not possible!");
-										
-									} else {
-									
-									currTask.getDataInputAssociations().remove(dia);
-									currTask.removeChildElement(dia);
-									DataOutputAssociation dao = modelInstance.newInstance(DataOutputAssociation.class);
-									dao.setTarget(iae);
-									currTask.addChildElement(dao);	
-									DataObjectReference daoR = modelInstance.getModelElementById(iae.getId());
 
-									
-									ProcessModellAnnotater.generateDIElementForWriter(dao, ProcessModellAnnotater.getShape(iae.getId()), ProcessModellAnnotater.getShape(currTask.getId()));
-									System.out.println("Change made:" +currTask.getName()+" has been modified from reader to writer for"+daoR.getName());
+							}
+
+							if (countWriterOnPath == 0) {
+								// no writer on the currentPath
+
+								if (currentPath.size() == 1 && currentPath.get(0) instanceof StartEvent) {
+									// if the path only contains the startEvent - change the currTask from reader to
+									// writer for that dataO if the reader is not a brt
+									if (taskIsBrtFollowedByXorSplit(currTask)) {
+										System.err.println("Not possible!");
+
+									} else {
+
+										BpmnEdge edgeToBeRemoved = getEdge(dia.getId());
+										currTask.getDataInputAssociations().remove(dia);
+										currTask.removeChildElement(dia);
+										edgeToBeRemoved.getParentElement().removeChildElement(edgeToBeRemoved);
+										DataOutputAssociation dao = modelInstance
+												.newInstance(DataOutputAssociation.class);
+										dao.setTarget(iae);
+										currTask.addChildElement(dao);
+										DataObjectReference daoR = modelInstance.getModelElementById(iae.getId());
+
+										ProcessModellAnnotater.generateDIElementForWriter(dao,
+												ProcessModellAnnotater.getShape(iae.getId()),
+												ProcessModellAnnotater.getShape(currTask.getId()));
+										System.out.println("Change made: " + currTask.getName()
+												+ " has been modified from reader to writer for" + daoR.getName());
 									}
 								} else {
-									//randomly select a Task on the path and make it a writer to the dataObject
-									//if the task is inside a xor-split -> add one task of the other branch too
-									
-									
-									//BusinessRuleTasks with a xor-split right after will be excluded 
-									LinkedList<FlowNode>tasksOnCurrPath = new LinkedList<FlowNode>();
-									for(FlowNode fl: currentPath) {
-										if(fl instanceof Task) {
-											if(ProcessModellAnnotater.taskIsBrtFollowedByXorSplit(fl)==false) {
+									// randomly select a Task on the path and make it a writer to the dataObject
+									// BusinessRuleTasks with a xor-split right after will be excluded
+
+									// if the randomly selected Task is inside a Parallel Branch -> lock the other
+									// branch
+									// readers and writers for a specific dataObject can only be in a specific
+									// parallel branch
+									// readers and writers for a specific dataObject need to be removed from the
+									// locked path
+
+									LinkedList<FlowNode> tasksOnCurrPath = new LinkedList<FlowNode>();
+									for (FlowNode fl : currentPath) {
+										if (fl instanceof Task) {
+											if (ProcessModellAnnotater.taskIsBrtFollowedByXorSplit(fl) == false) {
 												tasksOnCurrPath.add(fl);
 											}
-											
+
 										}
 									}
-									
-							
-										int randomInt = ThreadLocalRandom.current().nextInt(0, tasksOnCurrPath.size());
-										FlowNode taskToBeWriter = tasksOnCurrPath.get(randomInt);
-										DataOutputAssociation dao = modelInstance.newInstance(DataOutputAssociation.class);
-										dao.setTarget(iae);
-										taskToBeWriter.addChildElement(dao);		
-										DataObjectReference daoR = modelInstance.getModelElementById(iae.getId());
-										
-										ProcessModellAnnotater.generateDIElementForWriter(dao, ProcessModellAnnotater.getShape(iae.getId()), ProcessModellAnnotater.getShape(taskToBeWriter.getId()));
-										
-										
-										System.out.println("Change made: "+taskToBeWriter.getName()+" has been added as a writer for "+daoR.getName());
-									
-									}
-									
+
+									int randomInt = ThreadLocalRandom.current().nextInt(0, tasksOnCurrPath.size());
+									FlowNode taskToBeWriter = tasksOnCurrPath.get(randomInt);
+									DataOutputAssociation dao = modelInstance.newInstance(DataOutputAssociation.class);
+									dao.setTarget(iae);
+									taskToBeWriter.addChildElement(dao);
+									DataObjectReference daoR = modelInstance.getModelElementById(iae.getId());
+
+									ProcessModellAnnotater.generateDIElementForWriter(dao,
+											ProcessModellAnnotater.getShape(iae.getId()),
+											ProcessModellAnnotater.getShape(taskToBeWriter.getId()));
+
+									System.out.println("Change made: " + taskToBeWriter.getName()
+											+ " has been added as a writer for " + daoR.getName());
+
+								}
+
 							}
-							
+
 						}
 					}
 
@@ -733,28 +784,28 @@ public class ProcessModellAnnotater {
 
 				paths.add(currentPath);
 
-				if (endNode instanceof ExclusiveGateway && endNode.getIncoming().size()==2) {
+				if (endNode instanceof Gateway && endNode.getIncoming().size() == 2) {
 
-					ExclusiveGateway joinGtw = (ExclusiveGateway) element;
+					Gateway joinGtw = (Gateway) element;
 
 					// when a xor-join is found - poll the last opened xor gateway from the stack
-					ExclusiveGateway lastOpenedXor = (ExclusiveGateway) openXorStack.pollLast();
+					Gateway lastOpenedSplitGtw = openSplits.pollLast();
 
-					if (!openXorStack.isEmpty()) {
-						if (!openXorStack.contains(lastOpenedXor)) {
+					if (!openSplits.isEmpty()) {
+						if (!openSplits.contains(lastOpenedSplitGtw)) {
 							// when the openXorStack does not contain the lastOpenedXor anymore, all
 							// branches to the joinGtw have been visited
-							// go from joinGtw to the Join of the last opened xor-split in the stack
-							FlowNode lastOpenedSplit = openXorStack.getLast();
+							// go from joinGtw to the Join of the last opened split in the stack
+							Gateway lastOpenedSplit = openSplits.getLast();
 							String correspondingJoinId = lastOpenedSplit.getName() + "_join";
 							FlowNode correspondingJoin = modelInstance.getModelElementById(correspondingJoinId);
 
-							goDFSAndRepairModel(joinGtw, correspondingJoin, queue, parallelGtwQueue, openXorStack,
-									currentPath, paths);
+							goDFSAndRepairModel(joinGtw.getOutgoing().iterator().next().getTarget(), correspondingJoin,
+									queue, parallelGtwQueue, openSplits, currentPath, paths);
 
 						}
-					} else if (openXorStack.isEmpty()) {
-						// when there are no open Xor gtws
+					} else if (openSplits.isEmpty()) {
+						// when there are no open splits gtws
 						// go from the successor of the element to bpmnEnd since the currentElement has
 						// already been added to the path
 						LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
@@ -770,77 +821,68 @@ public class ProcessModellAnnotater {
 						for (LinkedList<FlowNode> newPath : newPaths) {
 							goDFSAndRepairModel(element.getOutgoing().iterator().next().getTarget(),
 									modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), queue,
-									parallelGtwQueue, openXorStack, newPath, paths);
+									parallelGtwQueue, openSplits, newPath, paths);
 						}
 
 					}
 
-				} 
+				}
 				element = queue.poll();
 				if (element == null && queue.isEmpty()) {
-					
+
 					return paths;
 				}
 
 			}
 
-			if (element instanceof ExclusiveGateway && element.getOutgoing().size()==2) {
+			if (element instanceof Gateway && element.getOutgoing().size() == 2) {
 				// add the xor split to the openXorStack 1 times for each outgoing paths
 				int amountOfOutgoingPaths = element.getOutgoing().size();
 				int i = 0;
 				while (i < amountOfOutgoingPaths) {
-					openXorStack.add((ExclusiveGateway) element);
+					openSplits.add((Gateway) element);
 					i++;
 				}
 
 			}
 
-			if (element instanceof ParallelGateway && element.getOutgoing().size()==2) {
-				for (SequenceFlow outgoingFlow : element.getOutgoing()) {
-					parallelGtwQueue.add(outgoingFlow.getTarget());
-				}
-			}
-
-			if (element instanceof ParallelGateway && element.getIncoming().size()==2) {
-				parallelGtwQueue.poll();
-				if (!parallelGtwQueue.isEmpty()) {
-					reachedParallelEndGateway = true;
-				}
-			}
-
 			for (SequenceFlow outgoingFlow : element.getOutgoing()) {
 				FlowNode successor = outgoingFlow.getTarget();
-				if (element instanceof ExclusiveGateway && element.getOutgoing().size()==2) {
-					// when a xor-split is found - go dfs till the corresponding join is found
+				if (element instanceof Gateway && element.getOutgoing().size() == 2) {
+					// when a split is found - go dfs till the corresponding join is found
 					FlowNode correspondingJoinGtw = null;
 
-					for(ExclusiveGateway gtw: modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
-						if(gtw.getName().equals(element.getName())&&gtw.getIncoming().size()==2) {
+					for (Gateway gtw : modelInstance.getModelElementsByType(Gateway.class)) {
+						if (gtw.getName().equals(element.getName()) && gtw.getIncoming().size() == 2) {
 							correspondingJoinGtw = gtw;
 						}
-						
+
 					}
-					
 
 					LinkedList<FlowNode> newPath = new LinkedList<FlowNode>();
 					newPath.addAll(currentPath);
 
-					goDFSAndRepairModel(successor, correspondingJoinGtw, queue, parallelGtwQueue, openXorStack, newPath,
+					goDFSAndRepairModel(successor, correspondingJoinGtw, queue, parallelGtwQueue, openSplits, newPath,
 							paths);
 				} else {
 
-					if (reachedParallelEndGateway == false) {
-						queue.add(successor);
-					}
+					queue.add(successor);
 
 				}
 
 			}
-			reachedParallelEndGateway = false;
+
 		}
 
 		return paths;
 
+	}
+
+	private static <T> T getRandomItem(List<T> list) {
+		Random random = new Random();
+		int listSize = list.size();
+		int randomIndex = random.nextInt(listSize);
+		return list.get(randomIndex);
 	}
 
 }

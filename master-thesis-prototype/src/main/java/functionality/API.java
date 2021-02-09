@@ -267,22 +267,7 @@ public class API {
 
 	}
 
-	private void generateBrtDependenciesAndArcWithCosts() {
-		
-		this.processInstancesWithVoters = this.goDFSthroughProcessBuildArcsAndGetVoters(this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(), new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(), new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>(), new LinkedList<VoterForXorArc>(),new LinkedList<BPMNElement>(),
-				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-				new LinkedList<LinkedList<BPMNElement>>());
-		
-
-	for(ProcessInstanceWithVoters processInstance: processInstancesWithVoters) {
-		processInstance.printProcessInstance();		
-	}
-		
-		
-		this.setAmountPossibleCombinationsOfParticipants(processInstancesWithVoters.size());
-
-	}
-
+	
 	public BPMNExclusiveGateway getLastXorJoinInProcess() {
 
 		LinkedList<BPMNElement> stack = new LinkedList<BPMNElement>();
@@ -498,8 +483,16 @@ public class API {
 		}
 
 	}
+	
+	public LinkedList<ProcessInstanceWithVoters> localMinimumAlgorithm(){
+		//at each businessRuleTask in front of a xor-split:
+		//generate all possible combinations of voters - calculate cost and only take cheapest one(s)
+		System.out.println("Local Minimum Algorithm generating all cheapest process instances: ");
+		return this.goDFSthroughProcessBuildArcsAndGetVoters(this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(), new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(), new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>(), new LinkedList<VoterForXorArc>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+				
+	}
 
-	public LinkedList<ProcessInstanceWithVoters> bruteForce(){
+	public LinkedList<ProcessInstanceWithVoters> bruteForceAlgorithm(){
 		//generate all possible combinations of voters for all brts of the process
 		//calculate the cost for each one and return all of them
 		System.out.println("Brute Force generating all possible process instances: ");
@@ -1418,11 +1411,7 @@ public class API {
 						
 					}
 
-				} else if (endNode instanceof BPMNEndEvent) {
-					//when the endnode of the process is found
-					
-				}
-
+				} 
 				element = queue.poll();
 				if (element == null&&queue.isEmpty()) {
 					int id = 1;
@@ -1458,8 +1447,10 @@ public class API {
 							
 							this.setRequiredUpdatesForArc(voters, pInstance);
 							
-							pInstance.addVoterArc(voters);									
-							processInstancesWithVoters.add(pInstance);
+							pInstance.addVoterArc(voters);		
+							
+							this.insertIfCheapest(processInstancesWithVoters, pInstance);
+							
 						}
 						
 					} else {
@@ -1500,7 +1491,8 @@ public class API {
 							this.setRequiredUpdatesForArc(currBrtCombArc, newInstance);	
 							
 							newInstance.addVoterArc(currBrtCombArc);
-							newInstances.add(newInstance);
+							this.insertIfCheapest(newInstances, newInstance);
+							
 						}
 												
 						processInstancesWithVoters.clear();
@@ -1627,6 +1619,24 @@ public class API {
 		return paths;
 
 	}
+	
+	private void insertIfCheapest(LinkedList<ProcessInstanceWithVoters>processInstancesWithVoters, ProcessInstanceWithVoters currInstance) {
+		if(processInstancesWithVoters.isEmpty()) {
+			processInstancesWithVoters.add(currInstance);
+			} else {
+				//check if current Instance is as cheap or cheaper than the ones in the list				
+					if(currInstance.getCostForModelInstance()<processInstancesWithVoters.getFirst().getCostForModelInstance()) {
+						//new cheapest combination found
+						processInstancesWithVoters.clear();
+						processInstancesWithVoters.add(currInstance);
+					} else if(currInstance.getCostForModelInstance()==processInstancesWithVoters.getFirst().getCostForModelInstance()) {
+						processInstancesWithVoters.add(currInstance);
+					} 
+			}
+		
+	
+	}
+	
 
 	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> getEffectivePathsBetweenWriterAndTargetElement(
 			BPMNDataObject dataO, BPMNElement writerTask, BPMNElement targetElement, LinkedList<BPMNElement> stack,

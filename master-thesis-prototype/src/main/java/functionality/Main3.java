@@ -40,12 +40,12 @@ public class Main3 {
 	 JFileChooser.APPROVE_OPTION) {pathToFile=
 	  chooser.getSelectedFile().getAbsolutePath();	  
 	  }*/
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches2.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\algorithmTest.bpmn";
-
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2BranchesWith2DataObjects1.bpmn";
 	JFrame frame = new JFrame(pathToFile);
 	frame.setVisible(true);
 	
@@ -66,24 +66,25 @@ public class Main3 {
 	}
 	
 	try {
-		ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\testAnnotatingAlgorithm2.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20);
-		//a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
+		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\generatedModel1.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20);
+		a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
 		
 
 	} catch (Exception e2) {
 		// TODO Auto-generated catch block
 		e2.printStackTrace();
 	}
-	/*
+	
 
 	frame.setLayout(new GridLayout(0, a2.getDataObjects().size()+1, 10, 0));
 	
-	//JPanel panel2 = new JPanel();
-	//panel2.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
-	//panel2.add(new JLabel("Amount of possible combinations of participants: "+a2.getAmountPossibleCombinationsOfParticipants()));
-	//panel2.add(new JLabel("Amount of possible paths from StartEvent to EndEvent: "+a2.getAllPathsThroughProcess().size()));
-	//frame.add(panel2);
-
+	/*
+	JPanel panel2 = new JPanel();
+	panel2.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
+	panel2.add(new JLabel("Amount of possible combinations of participants: "+a2.getAmountPossibleCombinationsOfParticipants()));
+	panel2.add(new JLabel("Amount of possible paths from StartEvent to EndEvent: "+a2.getAllPathsThroughProcess().size()));
+	frame.add(panel2);
+	*/
 	
 	for(BPMNDataObject dataO: a2.getDataObjects()) {
 		JPanel dataPanel = new JPanel();
@@ -99,9 +100,34 @@ public class Main3 {
 		
 	}
 	
+	//localMinimumAlgorithm
+	for(ProcessInstanceWithVoters pInstance: a2.localMinimumAlgorithm()) {
+		JPanel dataPanel = new JPanel();
+		frame.add(dataPanel);
+		dataPanel.setLayout(new BoxLayout(dataPanel, BoxLayout.PAGE_AXIS));
+		JLabel pInstLabel = new JLabel("ProcessInstance "+pInstance.getProcessInstanceID() +" with cost: "+pInstance.getCostForModelInstance());
+		pInstLabel.setForeground(Color.blue);
+		dataPanel.add(pInstLabel);
+		StringBuilder sb = new StringBuilder();
+		for(VoterForXorArc a: pInstance.getListOfArcs()) {
+			
+			sb.append(a.getBrt().getName()+": ");
+			for(BPMNParticipant part: a.getChosenCombinationOfParticipants()) {
+				sb.append(part.getName()+", ");
+			}
+		}
+		
+		sb.deleteCharAt(sb.length()-2);
+		dataPanel.add(new JLabel(sb.toString()));
+		
+	}
+	
+	
+	
+	/*
 	//Brute Force Attempt
 	//print out all cheapest solutions
-	for(ProcessInstanceWithVoters pInstance: a2.bruteForce()) {
+	for(ProcessInstanceWithVoters pInstance: a2.bruteForceAlgorithm()) {
 		JPanel dataPanel = new JPanel();
 		frame.add(dataPanel);
 		dataPanel.setLayout(new BoxLayout(dataPanel, BoxLayout.PAGE_AXIS));
