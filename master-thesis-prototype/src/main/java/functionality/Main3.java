@@ -100,7 +100,7 @@ public class Main3 {
 		
 	}
 	
-	//localMinimumAlgorithm
+	//use local minimum Algorithm
 	for(ProcessInstanceWithVoters pInstance: a2.localMinimumAlgorithm()) {
 		JPanel dataPanel = new JPanel();
 		frame.add(dataPanel);
