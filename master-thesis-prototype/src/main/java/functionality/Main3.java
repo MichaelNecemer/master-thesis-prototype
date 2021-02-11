@@ -101,7 +101,8 @@ public class Main3 {
 	}
 	
 	//use local minimum Algorithm to find cheapest combinations
-	for(ProcessInstanceWithVoters pInstance: a2.localMinimumAlgorithm()) {
+	LinkedList<ProcessInstanceWithVoters>pInstances = a2.localMinimumAlgorithm();
+	for(ProcessInstanceWithVoters pInstance: pInstances) {
 		JPanel dataPanel = new JPanel();
 		frame.add(dataPanel);
 		dataPanel.setLayout(new BoxLayout(dataPanel, BoxLayout.PAGE_AXIS));
@@ -121,7 +122,7 @@ public class Main3 {
 		dataPanel.add(new JLabel(sb.toString()));
 		
 	}
-	
+	a2.annotateModelWithChosenParticipants(pInstances);
 	
 	
 	/*
