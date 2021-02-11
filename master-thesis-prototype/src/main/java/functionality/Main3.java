@@ -100,7 +100,7 @@ public class Main3 {
 		
 	}
 	
-	//use local minimum Algorithm to find cheapest combinationss
+	//use local minimum Algorithm to find cheapest combinations
 	for(ProcessInstanceWithVoters pInstance: a2.localMinimumAlgorithm()) {
 		JPanel dataPanel = new JPanel();
 		frame.add(dataPanel);
