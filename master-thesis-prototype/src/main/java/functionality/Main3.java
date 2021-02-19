@@ -57,9 +57,11 @@ public class Main3 {
 	
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	double costForAddingReaderAfterBrt = 1.0;
+	String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels";
+	
 	
 	try {
-		//ProcessGenerator g= new ProcessGenerator(4, 8, 2, 1,50,30,20,50,10);
+		//ProcessGenerator g= new ProcessGenerator(pathForAddingRandomModels, 8, 30, 8, 6,50,30,20,20,10);
 	} catch (Exception e1) {
 		System.out.println("Random process could not be generated");
 		e1.printStackTrace();
@@ -67,7 +69,9 @@ public class Main3 {
 	
 	try {
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\generatedModel1.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20);
-		a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
+		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\processModel7738027195225637857.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20);
+
+		//a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
 		
 
 	} catch (Exception e2) {

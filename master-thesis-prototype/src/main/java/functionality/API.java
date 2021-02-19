@@ -1957,7 +1957,7 @@ public class API {
 					StringBuilder sb = new StringBuilder();
 					sb.append("[Voters]{");
 					for (BPMNParticipant participant : entry.getValue()) {
-						sb.append(participant.getName() + ", ");
+						sb.append(participant.getName()+ ", ");
 					}
 					sb.deleteCharAt(sb.length() - 1);
 					sb.append("}");

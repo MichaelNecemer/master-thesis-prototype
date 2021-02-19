@@ -13,7 +13,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.soap.Node;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
@@ -34,6 +33,9 @@ import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import org.camunda.bpm.model.bpmn.instance.Gateway;
 import org.camunda.bpm.model.bpmn.instance.ItemAwareElement;
+import org.camunda.bpm.model.bpmn.instance.Lane;
+import org.camunda.bpm.model.bpmn.instance.ManualTask;
+import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
 import org.camunda.bpm.model.bpmn.instance.Property;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
 import org.camunda.bpm.model.bpmn.instance.StartEvent;
@@ -46,25 +48,11 @@ import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnShape;
 import org.camunda.bpm.model.bpmn.instance.dc.Bounds;
 import org.camunda.bpm.model.bpmn.instance.di.Plane;
 import org.camunda.bpm.model.bpmn.instance.di.Waypoint;
-import org.camunda.bpm.model.bpmn.instance.Lane;
-import org.camunda.bpm.model.bpmn.instance.ManualTask;
-import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-
-import Mapping.BPMNBusinessRuleTask;
-import Mapping.BPMNElement;
-import Mapping.BPMNEndEvent;
-import Mapping.BPMNExclusiveGateway;
-import Mapping.BPMNGateway;
-import Mapping.BPMNParallelGateway;
-import Mapping.BPMNParticipant;
-import Mapping.Combination;
-import Mapping.ProcessInstanceWithVoters;
-import Mapping.RequiredUpdate;
-import Mapping.VoterForXorArc;
 
 public class ProcessModellAnnotater {
 	// class takes a process model and annotates it with dataObjects, readers,
@@ -74,15 +62,20 @@ public class ProcessModellAnnotater {
 	private static LinkedList<DataObjectReference> dataObjects = new LinkedList<DataObjectReference>();
 	private static boolean modelWithLanes;
 	private static LinkedList<String> differentParticipants = new LinkedList<String>();
-
+	private static int idForTask = 1;
+	private static int idForBrt = 1;
+	
+	
 	public static void annotateModel(String pathToFile, List<Integer> countDataObjects, List<String> defaultSpheres,
 			int sphereProb, int readerProb, int writerProb) {
 		File process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);
-
+		
+		
+		
 		// sphereProb is the probability to annotate a random required sphere for a
 		// writer
-
+		
 		if (modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
 			modelWithLanes = false;
 			for (FlowNode task : modelInstance.getModelElementsByType(Task.class)) {
@@ -103,38 +96,20 @@ public class ProcessModellAnnotater {
 
 		}
 
-		int idForBrt = 1;
-		int idForTask = 1;
 		for (FlowNode f : modelInstance.getModelElementsByType(FlowNode.class)) {
 
 			if (f instanceof StartEvent) {
 				FlowNode successor = f.getOutgoing().iterator().next().getTarget();
 				if (successor instanceof BusinessRuleTask) {
 					System.out.println("First node after StartEvent can not be a brt - insert a task in between!");
-					SequenceFlow toBeDeleted = f.getOutgoing().iterator().next();
-					String idOfSFlow = toBeDeleted.getId();
-
-					BpmnEdge edgeToBeDeleted = getEdge(idOfSFlow);
-
-					edgeToBeDeleted.getParentElement().removeChildElement(edgeToBeDeleted);
-					f.getParentElement().removeChildElement(toBeDeleted);
-
-					String taskName = "InsertedTask" + idForTask;
-					if (!modelWithLanes) {
-						taskName += " " + getRandomItem(differentParticipants);
-					}
-
-					f.builder().manualTask().name(taskName).connectTo(successor.getId());
-					idForTask++;
-					FlowNode insertedTask = f.getOutgoing().iterator().next().getTarget();
-
-					Task changeBackToTask = modelInstance.newInstance(Task.class);
-					changeBackToTask.setName(insertedTask.getName());
-					changeBackToTask.setId(insertedTask.getId());
-					changeBackToTask.getIncoming().addAll(insertedTask.getIncoming());
-					changeBackToTask.getOutgoing().addAll(insertedTask.getOutgoing());
-					insertedTask.replaceWithElement(changeBackToTask);
-
+					ProcessModellAnnotater.insertTaskAfterNode(f, successor, modelWithLanes);
+				} else if (successor instanceof ParallelGateway && successor.getOutgoing().size()>=2) {
+					//either: insert a task in before the parallel split 
+					//or: check if on each branch there is a task before the brt
+					System.out.println("First Node after Start Event is a Parallel-Split - insert a task in front of it!");
+					ProcessModellAnnotater.insertTaskAfterNode(f, successor, modelWithLanes);
+					
+					
 				}
 			}
 			// if there is no brt right before xor-split -> insert one
@@ -156,7 +131,7 @@ public class ProcessModellAnnotater {
 							mt.setId(nodeBeforeXorSplit.getId());
 							mt.getIncoming().addAll(nodeBeforeXorSplit.getIncoming());
 							mt.getOutgoing().addAll(nodeBeforeXorSplit.getOutgoing());
-							SequenceFlow toBeDeleted = nodeBeforeXorSplit.getOutgoing().iterator().next();
+							SequenceFlow toBeDeleted = xor.getIncoming().iterator().next();
 							String idOfSFlow = toBeDeleted.getId();
 
 							BpmnEdge edgeToBeDeleted = getEdge(idOfSFlow);
@@ -183,8 +158,9 @@ public class ProcessModellAnnotater {
 							idForBrt++;
 
 						} else {
-
-							SequenceFlow toBeDeleted = nodeBeforeXorSplit.getOutgoing().iterator().next();
+							
+							SequenceFlow toBeDeleted = xor.getIncoming().iterator().next();
+							
 							String idOfSFlow = toBeDeleted.getId();
 
 							BpmnEdge edgeToBeDeleted = getEdge(idOfSFlow);
@@ -250,14 +226,14 @@ public class ProcessModellAnnotater {
 			generateShapeForTextAnnotation(defaultSphere, dataORef);
 
 			// iterate through all tasks of the process and assign readers and writers
-			// if task is a writer - add the sphere
+			// if task is a writer - add the sphere 
 			// task can only be either reader or writer to a specific dataObject
 
 			for (FlowNode node : flowNodes) {
 				if (node instanceof Task) {
 					Task task = (Task) node;
 
-					if (taskIsReaderOrWriter(writerProb) && taskIsBrtFollowedByXorSplit(task)) {
+					if (taskIsReaderOrWriter(writerProb) && !taskIsBrtFollowedByXorSplit(task)) {
 						// task is a writer
 						// businessRuleTasks right before xor-splits can not be writers
 						boolean toBeInserted = true;
@@ -322,29 +298,7 @@ public class ProcessModellAnnotater {
 
 		}
 
-		// query again
-		// go dfs through process until all branches inside split have been visited
-		// if reader is found check if on currentPath there is a writer
-		// for the dataObject!
-		// in a parallel split there must only be writers/readers in one branch for a
-		// specific dataObject!
-
-		StartEvent st = modelInstance.getModelElementsByType(StartEvent.class).iterator().next();
-		EndEvent end = modelInstance.getModelElementsByType(EndEvent.class).iterator().next();
-
-		LinkedList<LinkedList<FlowNode>> paths = goDFSAndRepairModel(st, end, new LinkedList<FlowNode>(),
-				new LinkedList<FlowNode>(), new LinkedList<Gateway>(), new LinkedList<FlowNode>(),
-				new LinkedList<LinkedList<FlowNode>>());
-
-		int idPath = 1;
-		for (LinkedList<FlowNode> f : paths) {
-			System.out.println("Path: " + idPath);
-			for (FlowNode n : f) {
-				System.out.println(n.getId());
-			}
-			idPath++;
-		}
-
+		
 		// check again if a brt followed by a xor-split has at least one data object
 		// connected!!!
 		// insert tuples for xor-gateways if not already done
@@ -426,18 +380,44 @@ public class ProcessModellAnnotater {
 				}
 
 			}
+			
+			
+			// query again
+			// go dfs through process until all branches inside split have been visited
+			// if reader is found check if on currentPath there is a writer
+			// for the dataObject!
+			// in a parallel split there must only be writers/readers in one branch for a
+			// specific dataObject!
+
+			StartEvent st = modelInstance.getModelElementsByType(StartEvent.class).iterator().next();
+			EndEvent end = modelInstance.getModelElementsByType(EndEvent.class).iterator().next();
+
+			LinkedList<LinkedList<FlowNode>> paths = goDFSAndRepairModel(st, end, new LinkedList<FlowNode>(),
+					new LinkedList<FlowNode>(), new LinkedList<Gateway>(), new LinkedList<FlowNode>(),
+					new LinkedList<LinkedList<FlowNode>>(), new LinkedList<LockedBranch>());
+
+			int idPath = 1;
+			for (LinkedList<FlowNode> f : paths) {
+				System.out.println("Path: " + idPath);
+				for (FlowNode n : f) {
+					System.out.println(n.getId());
+				}
+				idPath++;
+			}
+
 
 		}
 
 		try {
-			writeChangesToFile();
+			writeChangesToFile(process);
 		} catch (IOException | ParserConfigurationException | SAXException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
 	}
-
+	
+	
 	private static void generateDIElementForSphereAnnotation(Task writerTask, DataObjectReference daoR,
 			List<String> defaultSpheres) {
 		TextAnnotation writerSphere = modelInstance.newInstance(TextAnnotation.class);
@@ -603,11 +583,18 @@ public class ProcessModellAnnotater {
 
 	}
 
-	private static void writeChangesToFile() throws IOException, ParserConfigurationException, SAXException {
+	private static void writeChangesToFile(File process) throws IOException, ParserConfigurationException, SAXException {
 		// validate and write model to file
 		Bpmn.validateModel(modelInstance);
-		File file = File.createTempFile("modelWithAnnotation", ".bpmn",
-				new File("C:\\Users\\Micha\\OneDrive\\Desktop"));
+		
+		String pathOfProcessFile = process.getParent();
+		String fileName = process.getAbsolutePath().substring(process.getAbsolutePath().lastIndexOf("\\"), process.getAbsolutePath().indexOf(".bpmn"));
+		String annotatedFileName = fileName+"_annotated.bpmn";
+		File file = new File(pathOfProcessFile, annotatedFileName);
+
+		file.getParentFile().mkdirs(); 
+		System.out.println("FileCreated: "+file.createNewFile());
+		
 		Bpmn.writeModelToFile(file, modelInstance);
 
 		DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
@@ -672,7 +659,7 @@ public class ProcessModellAnnotater {
 
 	public static LinkedList<LinkedList<FlowNode>> goDFSAndRepairModel(FlowNode startNode, FlowNode endNode,
 			LinkedList<FlowNode> queue, LinkedList<FlowNode> parallelGtwQueue, LinkedList<Gateway> openSplits,
-			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths) {
+			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths, LinkedList<LockedBranch>lockedBranches) {
 		// go DFS inside the XOR till corresponding join is found
 		queue.add(startNode);
 
@@ -689,17 +676,55 @@ public class ProcessModellAnnotater {
 							// reader has been found
 							// check if there is a writer on each path to the reader
 							// randomly change one task on the currentPath to a writer if there is no writer
-							int countWriterOnPath = 0;
-
+							int countWriterOnPath = 0;						
+							
+							boolean removeReadersAndWriters = false;
+							//if currentPathEl is inside a lockedBranch -> remove it as reader/writer
+							LinkedList<FlowNode>available = new LinkedList<FlowNode>();
+							
 							for (FlowNode currentPathEl : currentPath) {
+								
+								if(currentPathEl instanceof ParallelGateway && currentPathEl.getId().contains("_split")) {
+								for(LockedBranch lockedBranch: lockedBranches) {
+									if(currentPathEl.equals(lockedBranch.getpSplit())) {
+										removeReadersAndWriters = true;
+									}
+								}
+							
+								}
+								
 								if (currentPathEl instanceof Task) {
 									Task currentPathTask = (Task) currentPathEl;
 									for (DataOutputAssociation dao : currentPathTask.getDataOutputAssociations()) {
 										if (dao.getTarget().equals(iae)) {
+											if(removeReadersAndWriters==false) {
 											countWriterOnPath++;
+											} else {
+												//change this task from writer to normal task
+												BpmnEdge edgeToBeRemoved = getEdge(dao.getId());
+												currentPathTask.getDataOutputAssociations().remove(dao);
+												currentPathTask.removeChildElement(dao);
+												edgeToBeRemoved.getParentElement().removeChildElement(edgeToBeRemoved);
+												System.out.println(currentPathTask.getId()+" has been removed as writer for: "+iae.getId());
+
+											}
 										}
 
 									}
+									if(removeReadersAndWriters) {
+										for(DataInputAssociation dataIa: currentPathTask.getDataInputAssociations()) {
+											for(ItemAwareElement currIae: dataIa.getSources()) {
+												if(currIae.getId().equals(dia.getId())) {
+												BpmnEdge edgeToBeRemoved = getEdge(dia.getId());
+												currentPathTask.getDataInputAssociations().remove(dia);
+												currentPathTask.removeChildElement(dia);
+												edgeToBeRemoved.getParentElement().removeChildElement(edgeToBeRemoved);
+												System.out.println(currentPathTask.getId()+" has been removed as reader for: "+iae.getId());	
+												}
+												}
+										}
+									}
+									
 								}
 
 							}
@@ -742,30 +767,52 @@ public class ProcessModellAnnotater {
 									// readers and writers for a specific dataObject need to be removed from the
 									// locked path
 
-									LinkedList<FlowNode> tasksOnCurrPath = new LinkedList<FlowNode>();
-									for (FlowNode fl : currentPath) {
-										if (fl instanceof Task) {
-											if (ProcessModellAnnotater.taskIsBrtFollowedByXorSplit(fl) == false) {
-												tasksOnCurrPath.add(fl);
-											}
+									if(!removeReadersAndWriters) {
+									
+									
+									if(available.size()>0) {
+										int randomInt = ThreadLocalRandom.current().nextInt(0, available.size());
+										FlowNode taskToBeWriter = available.get(randomInt);
+										DataOutputAssociation dao = modelInstance.newInstance(DataOutputAssociation.class);
+										dao.setTarget(iae);
+										taskToBeWriter.addChildElement(dao);
+										DataObjectReference daoR = modelInstance.getModelElementById(iae.getId());
 
-										}
+										ProcessModellAnnotater.generateDIElementForWriter(dao,
+												ProcessModellAnnotater.getShape(iae.getId()),
+												ProcessModellAnnotater.getShape(taskToBeWriter.getId()));
+
+										System.out.println("Change made: " + taskToBeWriter.getName()
+												+ " has been added as a writer for " + daoR.getName());
+									}
+										
+									
+									} else {
+									//lock this branch 
+									for(Gateway openParallelGtw: openSplits) {
+										if(openParallelGtw instanceof ParallelGateway && openParallelGtw.getOutgoing().size()>=2) {
+											//currTask is a reader inside a parallelBranch
+											//readers and writers in other branch for that dataObject need to be removed
+											//mark other branch as locked!
+											for(int i = 0; i < currentPath.size()-1; i++) {
+												if(currentPath.get(i).equals(openParallelGtw)) {
+													System.out.println("HEU");
+													FlowNode outgoingNodeOfBranch = currentPath.get(i+1);								
+													
+													for(SequenceFlow sFlowIntoBranch: currentPath.get(i).getOutgoing()) {
+														if(!sFlowIntoBranch.getTarget().equals(outgoingNodeOfBranch)){
+															LockedBranch lockedBranch = new LockedBranch((ParallelGateway)currentPath.get(i), sFlowIntoBranch, sFlowIntoBranch.getTarget(), iae );
+															lockedBranches.add(lockedBranch);
+														}
+													}											
+													
+												}
+											}
+										
+										}	
 									}
 
-									int randomInt = ThreadLocalRandom.current().nextInt(0, tasksOnCurrPath.size());
-									FlowNode taskToBeWriter = tasksOnCurrPath.get(randomInt);
-									DataOutputAssociation dao = modelInstance.newInstance(DataOutputAssociation.class);
-									dao.setTarget(iae);
-									taskToBeWriter.addChildElement(dao);
-									DataObjectReference daoR = modelInstance.getModelElementById(iae.getId());
-
-									ProcessModellAnnotater.generateDIElementForWriter(dao,
-											ProcessModellAnnotater.getShape(iae.getId()),
-											ProcessModellAnnotater.getShape(taskToBeWriter.getId()));
-
-									System.out.println("Change made: " + taskToBeWriter.getName()
-											+ " has been added as a writer for " + daoR.getName());
-
+									}
 								}
 
 							}
@@ -800,7 +847,7 @@ public class ProcessModellAnnotater {
 							FlowNode correspondingJoin = modelInstance.getModelElementById(correspondingJoinId);
 
 							goDFSAndRepairModel(joinGtw.getOutgoing().iterator().next().getTarget(), correspondingJoin,
-									queue, parallelGtwQueue, openSplits, currentPath, paths);
+									queue, parallelGtwQueue, openSplits, currentPath, paths, lockedBranches);
 
 						}
 					} else if (openSplits.isEmpty()) {
@@ -820,7 +867,7 @@ public class ProcessModellAnnotater {
 						for (LinkedList<FlowNode> newPath : newPaths) {
 							goDFSAndRepairModel(element.getOutgoing().iterator().next().getTarget(),
 									modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), queue,
-									parallelGtwQueue, openSplits, newPath, paths);
+									parallelGtwQueue, openSplits, newPath, paths, lockedBranches);
 						}
 
 					}
@@ -850,19 +897,25 @@ public class ProcessModellAnnotater {
 				if (element instanceof Gateway && element.getOutgoing().size() == 2) {
 					// when a split is found - go dfs till the corresponding join is found
 					FlowNode correspondingJoinGtw = null;
+					String idCorrespondingJoinGtw = element.getName()+"_join";
 
 					for (Gateway gtw : modelInstance.getModelElementsByType(Gateway.class)) {
-						if (gtw.getName().equals(element.getName()) && gtw.getIncoming().size() == 2) {
+						if (gtw.getId().contentEquals(idCorrespondingJoinGtw) && gtw.getIncoming().size()==2) {
 							correspondingJoinGtw = gtw;
+							break;
 						}
 
+					}
+					if(correspondingJoinGtw == null) {
+						System.out.println("no corresponding join for "+element.getId()+", "+element.getOutgoing().size());
+						
 					}
 
 					LinkedList<FlowNode> newPath = new LinkedList<FlowNode>();
 					newPath.addAll(currentPath);
 
 					goDFSAndRepairModel(successor, correspondingJoinGtw, queue, parallelGtwQueue, openSplits, newPath,
-							paths);
+							paths, lockedBranches);
 				} else {
 
 					queue.add(successor);
@@ -882,6 +935,34 @@ public class ProcessModellAnnotater {
 		int listSize = list.size();
 		int randomIndex = random.nextInt(listSize);
 		return list.get(randomIndex);
+	}
+	
+	private static FlowNode insertTaskAfterNode(FlowNode node, FlowNode successor, boolean modelWithLanes) {
+		SequenceFlow toBeDeleted = node.getOutgoing().iterator().next();
+		String idOfSFlow = toBeDeleted.getId();
+
+		BpmnEdge edgeToBeDeleted = getEdge(idOfSFlow);
+
+		edgeToBeDeleted.getParentElement().removeChildElement(edgeToBeDeleted);
+		node.getParentElement().removeChildElement(toBeDeleted);
+
+		String taskName = "InsertedTask" + idForTask;
+		if (!modelWithLanes) {
+			taskName += " " + getRandomItem(differentParticipants);
+		}
+		idForTask++;
+
+		node.builder().manualTask().name(taskName).connectTo(successor.getId());
+		FlowNode insertedTask = node.getOutgoing().iterator().next().getTarget();
+
+		Task changeBackToTask = modelInstance.newInstance(Task.class);
+		changeBackToTask.setName(insertedTask.getName());
+		changeBackToTask.setId(insertedTask.getId());
+		changeBackToTask.getIncoming().addAll(insertedTask.getIncoming());
+		changeBackToTask.getOutgoing().addAll(insertedTask.getOutgoing());
+		insertedTask.replaceWithElement(changeBackToTask);
+		return changeBackToTask;
+		
 	}
 
 }

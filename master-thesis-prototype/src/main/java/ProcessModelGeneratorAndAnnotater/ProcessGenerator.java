@@ -5,7 +5,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -15,7 +14,6 @@ import java.util.stream.Collectors;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.soap.Node;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
@@ -23,45 +21,29 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
-import org.camunda.bpm.model.bpmn.instance.EndEvent;
 import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import org.camunda.bpm.model.bpmn.instance.Gateway;
-import org.camunda.bpm.model.bpmn.instance.ManualTask;
 import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
-import org.camunda.bpm.model.bpmn.instance.StartEvent;
-import org.camunda.bpm.model.bpmn.instance.Task;
-import org.camunda.bpm.model.bpmn.instance.di.Waypoint;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-
-import Mapping.BPMNElement;
-import Mapping.BPMNEndEvent;
-import Mapping.BPMNExclusiveGateway;
-import Mapping.BPMNGateway;
 
 public class ProcessGenerator {
 	// generates a new Process Model using the camunda fluent API
 	// model can than be annotated using the ProcessModelAnnotater
-
+	
+	private static int processGeneratorId = 1;
+	private int processId;
 	private static int run = 1;
 	private static BpmnModelInstance modelInstance;
 	private LinkedList<String> participantNames;
-	private int amountTasksLeft;
-	private int amountXorsLeft;
-	private int amountParallelsLeft;
 	
-	private int probTask;
-	private int probXorGtw;
-	private int probParallelGtw;
-	private int nestingDepthFactor;
-	private LinkedList<FlowNode> queue;
 	private LinkedList<FlowNode> entryPointsStack;
 
 	private static int taskId;
@@ -70,13 +52,15 @@ public class ProcessGenerator {
 	private int[] taskProbArray;
 	private int[] xorProbArray;
 	private int[] parallelProbArray;
-	private FlowNode lastNode = null;
-	private LinkedList<Gateway> openSplits;
+
+
 	private LinkedList<String>possibleNodeTypes;
 	private LinkedList<InsertionConstruct>insertionConstructs;
 	private int probJoinGtw;
+	private String directoryToStore;
+	
 
-	public ProcessGenerator(int amountParticipants, int amountTasksLeft, int amountXorsLeft,
+	public ProcessGenerator(String directoryToStore, int amountParticipants, int amountTasksLeft, int amountXorsLeft,
 			int amountParallelsLeft, int probTask, int probXorGtw, int probParallelGtw, int probJoinGtw, int nestingDepthFactor) {
 		// process model will have 1 StartEvent and 1 EndEvent
 		this.participantNames = new LinkedList<String>();
@@ -84,18 +68,20 @@ public class ProcessGenerator {
 			String participantName = "Participant_" + (i + 1);
 			participantNames.add(participantName);
 		}
-		this.amountTasksLeft=amountTasksLeft;
-		this.amountXorsLeft=amountXorsLeft;
-		this.amountParallelsLeft=amountParallelsLeft;
+	
 		this.probJoinGtw=probJoinGtw;
-		this.probTask = probTask;
-		this.probXorGtw = probXorGtw;
-		this.probParallelGtw = probParallelGtw;
-		this.nestingDepthFactor = nestingDepthFactor;
+		
 		this.entryPointsStack = new LinkedList<FlowNode>();
-		this.openSplits = new LinkedList<Gateway>();
+		
 		this.insertionConstructs=new LinkedList<InsertionConstruct>();
-
+		
+		
+		
+		this.processId=processGeneratorId++;
+		
+		
+		
+		this.directoryToStore=directoryToStore;
 		taskId = 1;
 		xorGtwId = 1;
 		parallelGtwId = 1;
@@ -137,18 +123,18 @@ public class ProcessGenerator {
 	}
 	
 	
-	private void goDfs(FlowNode startNode, FlowNode endNode, int amountTasksLeft, int amountXorsLeft, int amountParallelsLeft, LinkedList<String> possibleNodeTypesToBeInserted, LinkedList<FlowNode>queue, LinkedList<FlowNode>openGatewayStack, int branchingFactor){
+	private void goDfs(FlowNode startNode, FlowNode endNode, int amountTasksLeft, int amountXorsLeft, int amountParallelsLeft, LinkedList<String> possibleNodeTypesToBeInserted, LinkedList<FlowNode>queue, LinkedList<FlowNode>openGatewayStack, int nestingDepthFactor){
 		
 		queue.add(startNode);
 		while (!(queue.isEmpty())) {
 		FlowNode currentNode = queue.pollLast();
+		List<FlowNode> listDistinct = openGatewayStack.stream().distinct().collect(Collectors.toList());
 		
+		nestingDepthFactor = this.probJoinGtw + (listDistinct.size()*nestingDepthFactor);
 		
 		LinkedList<String> nodeTypesToBeInserted = this.computeNodesToBeInserted(possibleNodeTypesToBeInserted, amountTasksLeft, amountXorsLeft, amountParallelsLeft);
 		
-		
-		
-		InsertionConstruct nextConstructToBeAdded = this.getNextNodeToAdd(currentNode, nodeTypesToBeInserted,amountTasksLeft, amountXorsLeft, amountParallelsLeft, branchingFactor, openGatewayStack, queue);	
+		InsertionConstruct nextConstructToBeAdded = this.getNextNodeToAdd(currentNode, nodeTypesToBeInserted,amountTasksLeft, amountXorsLeft, amountParallelsLeft, nestingDepthFactor, openGatewayStack, queue);	
 		
 		FlowNode addedNode = null;
 		//append the nextNodeToBeAdded to the currentNode	
@@ -257,12 +243,21 @@ public class ProcessGenerator {
 		}	else {
 			//return of nextNode function is null
 			//append endEvent	
+			if(currentNode instanceof Gateway && currentNode.getId().contains("_split")) {
+				String idOfJoin = currentNode.getName()+"_join";
+				if(modelInstance.getModelElementById(idOfJoin)!=null) {
+				currentNode.builder().connectTo(idOfJoin).endEvent().id("endEvent_1");
+				} else {
+					currentNode.builder().exclusiveGateway(idOfJoin).endEvent().id("endEvent_1");
+				}
+			} else {
 				currentNode.builder().endEvent().id("endEvent_1").name("endEvent_1");
 				System.out.println("RUN"+run++);
 				for(SequenceFlow f: modelInstance.getModelElementsByType(SequenceFlow.class)) {
 					System.out.println("Sflow: "+f.getDiagramElement().getId()+", "+f.getSource().getId()+", "+f.getTarget().getId());
 					
 				}
+			}
 				return;
 			
 		
@@ -320,18 +315,19 @@ public class ProcessGenerator {
 			boolean callFinishCurrentBranch = false;
 			FlowNode lastOpenedSplit = openSplitStack.getLast();
 		
-			if(lastOpenedSplit instanceof ExclusiveGateway&&lastOpenedSplit.getId().contains("_split") && lastOpenedSplit.getOutgoing().size()>=1) {
+			if(lastOpenedSplit.getId().contains("_split") && lastOpenedSplit.getOutgoing().size()>=1) {
 				//when there is an open branch already after a xor-split
 				//call the function to choose whether to close it or not
 					callFinishCurrentBranch = true;
-			} else if(lastOpenedSplit instanceof ParallelGateway && lastOpenedSplit.getId().contains("_split")) {
-					//both branches inside a parallel split contain elements
-					//call the function to choose whether to append the join or not
-				if(lastOpenedSplit.getOutgoing().size()>=1) {
-				callFinishCurrentBranch = true;
-				}
-			}
-			
+					if(lastOpenedSplit instanceof ParallelGateway) {
+						//call the function only if there is on each outgoing branch an element
+						if(currentNode.equals(lastOpenedSplit)) {
+							if(currentNode.getOutgoing().size()<=1) {
+								callFinishCurrentBranch = false;
+							}
+						}
+					}
+			} 		
 			
 			
 			if (possibleNodeTypesToBeInserted.isEmpty()) {
@@ -443,13 +439,12 @@ public class ProcessGenerator {
 			return true;
 		}
 		
-		List<FlowNode> listDistinct = openXorStack.stream().distinct().collect(Collectors.toList());
 		
-		int depthFactor = this.probJoinGtw + (listDistinct.size()*branchingFactor);
+
 		
 		int randomInt = this.getRandomInt(0, 100);
 		
-		if(depthFactor>=randomInt) {
+		if(branchingFactor>=randomInt) {
 			return true;
 		}
 		
@@ -531,11 +526,22 @@ public class ProcessGenerator {
 
 	
 	
-	private static void writeChangesToFile() throws IOException, ParserConfigurationException, SAXException {
+	private void writeChangesToFile() throws IOException, ParserConfigurationException, SAXException {
 		// validate and write model to file
+		//add the generated models to the given directory
+				
+		
 		Bpmn.validateModel(modelInstance);
-		File file = File.createTempFile("processModel", ".bpmn", new File("C:\\Users\\Micha\\OneDrive\\Desktop"));
-		Bpmn.writeModelToFile(file, modelInstance);
+		String pathOfProcessFile = this.directoryToStore;
+		String fileName = "randomProcessModel"+this.processId+".bpmn";
+		
+	
+		File file = new File(pathOfProcessFile, fileName);
+
+		file.getParentFile().mkdirs(); 
+		System.out.println("FileCreated: "+file.createNewFile());
+		
+				Bpmn.writeModelToFile(file, modelInstance);
 
 		DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
 		docBuilderFactory.setNamespaceAware(true);
