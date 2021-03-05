@@ -1,5 +1,7 @@
 package ProcessModelGeneratorAndAnnotater;
 
+import java.util.LinkedList;
+
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import org.camunda.bpm.model.bpmn.instance.ItemAwareElement;
 import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
@@ -9,22 +11,36 @@ public class LockedBranch {
 	//when a reader is found inside a parallelBranch - check for writers
 	//may be inside the branch or in front of the split
 
-	//lock the other branch for this specific dataObject 
-	// -> when algorithm queries a locked other branch - it will remove readers and writers of that dataObject inside it!
+	//lockedBranch means, that there is a reader/writer of a dataObject inside of it
+	//this results in removing readers/writers in the other branch 
+	
+	
 	
 	private ParallelGateway pSplit;
+	private SequenceFlow sFlowIntoBranchToRemoveReadersAndWriters;
+	private FlowNode successorOfBranchToRemoveReadersAndWriters;
 	private SequenceFlow sFlowIntoLockedBranch; 
 	private FlowNode successorOfLockedBranch;
+	private ParallelGateway pJoin;
+	
 	private ItemAwareElement iae;
 	
 	
-	public LockedBranch(ParallelGateway pSplit, SequenceFlow sFlowIntoLockedBranch, FlowNode successorOfLockedBranch,ItemAwareElement iae) {
+	public LockedBranch(ParallelGateway pSplit, SequenceFlow sFlowIntoLockedBranch, FlowNode successorOfLockedBranch,ItemAwareElement iae,SequenceFlow sFlowIntoBranchToRemoveReadersAndWriters, FlowNode successorOfBranchToRemoveReadersAndWriters, ParallelGateway pJoin) {
 		this.pSplit=pSplit;
 		this.sFlowIntoLockedBranch=sFlowIntoLockedBranch;
 		this.successorOfLockedBranch=successorOfLockedBranch;
 		this.iae=iae;
+		this.sFlowIntoBranchToRemoveReadersAndWriters=sFlowIntoBranchToRemoveReadersAndWriters;
+		this.successorOfBranchToRemoveReadersAndWriters=successorOfBranchToRemoveReadersAndWriters;
+		this.pJoin=pJoin;	
+	}
+	
+	public LockedBranch() {
 		
 	}
+	
+
 
 
 	public ParallelGateway getpSplit() {

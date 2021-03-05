@@ -65,9 +65,8 @@ public class ProcessModellAnnotater {
 	private static int idForTask = 1;
 	private static int idForBrt = 1;
 	
-	
 	public static void annotateModel(String pathToFile, List<Integer> countDataObjects, List<String> defaultSpheres,
-			int sphereProb, int readerProb, int writerProb) {
+			int sphereProb, int readerProb, int writerProb, int probPublicDecision) {
 		File process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);
 		
@@ -95,6 +94,8 @@ public class ProcessModellAnnotater {
 			}
 
 		}
+		
+		
 
 		for (FlowNode f : modelInstance.getModelElementsByType(FlowNode.class)) {
 
@@ -326,6 +327,7 @@ public class ProcessModellAnnotater {
 				// insert tuples for xor-gateways if there are non already
 				// tuples are e.g. (3,2,5) -> 3 Voters needed, 2 have to decide the same, loop
 				// goes 5 times until the final decider will take decision
+				// tuple can also be only: {Public}
 				boolean insert = true;
 				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
@@ -340,20 +342,47 @@ public class ProcessModellAnnotater {
 
 				if (insert) {
 
-					int randomCountVotersNeeded = ThreadLocalRandom.current().nextInt(0, differentParticipants.size());
-
-					int randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(0,
+					//check if decision will be public
+					int decideIfPublic = ThreadLocalRandom.current().nextInt(0,
+							101);
+					
+					TextAnnotation votersAnnotation = modelInstance.newInstance(TextAnnotation.class);
+					StringBuilder textContentBuilder = new StringBuilder();
+					textContentBuilder.append("[Voters]{");
+					
+					if(probPublicDecision>=decideIfPublic) {
+						//xor will be annotated with {Public}
+						
+						textContentBuilder.append("Public");
+						
+					} else {
+					
+						
+						
+					int randomCountVotersNeeded = ThreadLocalRandom.current().nextInt(1, differentParticipants.size());
+					
+					
+					//second argument -> voters that need to decide the same
+					//must be bigger than the voters needed divided by 2 and rounded up to next int
+					// e.g. if 3 voters are needed -> 2 or 3 must decide the same
+					// e.g. if 5 voters are needed -> 3,4 or 5 must decide the same
+					int lowerBound = (int) Math.ceil((double)randomCountVotersNeeded / 2);				
+					
+					
+					int randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
 							randomCountVotersNeeded + 1);
-					int randomCountIterations = ThreadLocalRandom.current().nextInt(0, 10 + 1);
+					int randomCountIterations = ThreadLocalRandom.current().nextInt(1, 10 + 1);
 
 					// generate TextAnnotations for xor-splits
-					TextAnnotation votersAnnotation = modelInstance.newInstance(TextAnnotation.class);
-					String textContent = "[Voters]{" + randomCountVotersNeeded + "," + randomCountVotersSameDecision
-							+ "," + randomCountIterations + "}";
-
+					textContentBuilder.append(randomCountVotersNeeded + "," + randomCountVotersSameDecision
+							+ "," + randomCountIterations);
+				
+					}
+					textContentBuilder.append("}");
+					
 					votersAnnotation.setTextFormat("text/plain");
 					Text text = modelInstance.newInstance(Text.class);
-					text.setTextContent(textContent);
+					text.setTextContent(textContentBuilder.toString());
 					votersAnnotation.setText(text);
 					gtw.getParentElement().addChildElement(votersAnnotation);
 
@@ -381,7 +410,7 @@ public class ProcessModellAnnotater {
 
 			}
 			
-			
+		}
 			// query again
 			// go dfs through process until all branches inside split have been visited
 			// if reader is found check if on currentPath there is a writer
@@ -396,6 +425,7 @@ public class ProcessModellAnnotater {
 					new LinkedList<FlowNode>(), new LinkedList<Gateway>(), new LinkedList<FlowNode>(),
 					new LinkedList<LinkedList<FlowNode>>(), new LinkedList<LockedBranch>());
 
+			/*
 			int idPath = 1;
 			for (LinkedList<FlowNode> f : paths) {
 				System.out.println("Path: " + idPath);
@@ -403,10 +433,10 @@ public class ProcessModellAnnotater {
 					System.out.println(n.getId());
 				}
 				idPath++;
-			}
+			}*/
+			System.out.println("Size: "+paths.size());
 
-
-		}
+		
 
 		try {
 			writeChangesToFile(process);
@@ -665,7 +695,8 @@ public class ProcessModellAnnotater {
 
 		while (!(queue.isEmpty())) {
 			FlowNode element = queue.poll();
-
+			System.out.println("Element: "+element.getName()+", "+element.getId());
+			
 			// when a reader is found -> check if on the currentPath to the reader there
 			// is a writer to the dataObject
 			if (element instanceof Task) {
@@ -674,31 +705,40 @@ public class ProcessModellAnnotater {
 					for (DataInputAssociation dia : currTask.getDataInputAssociations()) {
 						for (ItemAwareElement iae : dia.getSources()) {
 							// reader has been found
-							// check if there is a writer on each path to the reader
+							// check if there is a writer on the currentPath to the reader
 							// randomly change one task on the currentPath to a writer if there is no writer
-							int countWriterOnPath = 0;						
+							boolean writerOnPath = false;	
 							
 							boolean removeReadersAndWriters = false;
-							//if currentPathEl is inside a lockedBranch -> remove it as reader/writer
+
+							// available will contain the tasks that one of will be randomly chosen to be a writer
+							// if no writer on the path to the reader is found
+							
 							LinkedList<FlowNode>available = new LinkedList<FlowNode>();
 							
-							for (FlowNode currentPathEl : currentPath) {
+							for (int i = 0; i < currentPath.size(); i++) {
+								FlowNode currentPathEl = currentPath.get(i);
 								
-								if(currentPathEl instanceof ParallelGateway && currentPathEl.getId().contains("_split")) {
-								for(LockedBranch lockedBranch: lockedBranches) {
-									if(currentPathEl.equals(lockedBranch.getpSplit())) {
-										removeReadersAndWriters = true;
+								if(currentPathEl instanceof ParallelGateway ) {
+									if(currentPathEl.getId().contains("_split")) {
+									
+									} else if (currentPathEl.getId().contains("_join")) {
+								
+									
 									}
-								}
 							
 								}
 								
 								if (currentPathEl instanceof Task) {
 									Task currentPathTask = (Task) currentPathEl;
+									
 									for (DataOutputAssociation dao : currentPathTask.getDataOutputAssociations()) {
 										if (dao.getTarget().equals(iae)) {
+											//currentPathTask is a writer								
+											
 											if(removeReadersAndWriters==false) {
-											countWriterOnPath++;
+											writerOnPath=true;
+											
 											} else {
 												//change this task from writer to normal task
 												BpmnEdge edgeToBeRemoved = getEdge(dao.getId());
@@ -729,7 +769,7 @@ public class ProcessModellAnnotater {
 
 							}
 
-							if (countWriterOnPath == 0) {
+							if (!writerOnPath) {
 								// no writer on the currentPath
 
 								if (currentPath.size() == 1 && currentPath.get(0) instanceof StartEvent) {
@@ -796,12 +836,12 @@ public class ProcessModellAnnotater {
 											//mark other branch as locked!
 											for(int i = 0; i < currentPath.size()-1; i++) {
 												if(currentPath.get(i).equals(openParallelGtw)) {
-													System.out.println("HEU");
+													System.out.println("Lock other Branch!");
 													FlowNode outgoingNodeOfBranch = currentPath.get(i+1);								
 													
 													for(SequenceFlow sFlowIntoBranch: currentPath.get(i).getOutgoing()) {
 														if(!sFlowIntoBranch.getTarget().equals(outgoingNodeOfBranch)){
-															LockedBranch lockedBranch = new LockedBranch((ParallelGateway)currentPath.get(i), sFlowIntoBranch, sFlowIntoBranch.getTarget(), iae );
+															LockedBranch lockedBranch = new LockedBranch();
 															lockedBranches.add(lockedBranch);
 														}
 													}											
@@ -850,8 +890,8 @@ public class ProcessModellAnnotater {
 									queue, parallelGtwQueue, openSplits, currentPath, paths, lockedBranches);
 
 						}
-					} else if (openSplits.isEmpty()) {
-						// when there are no open splits gtws
+					} else if (openSplits.isEmpty()&&!queue.isEmpty()) {
+						// when there are no open splits gtws but there are still elements in the queue
 						// go from the successor of the element to bpmnEnd since the currentElement has
 						// already been added to the path
 						LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
@@ -878,7 +918,7 @@ public class ProcessModellAnnotater {
 
 					return paths;
 				}
-
+				
 			}
 
 			if (element instanceof Gateway && element.getOutgoing().size() == 2) {
@@ -913,7 +953,10 @@ public class ProcessModellAnnotater {
 
 					LinkedList<FlowNode> newPath = new LinkedList<FlowNode>();
 					newPath.addAll(currentPath);
-
+					
+					
+					System.out.println("LockedBranches:"+lockedBranches.size());
+				
 					goDFSAndRepairModel(successor, correspondingJoinGtw, queue, parallelGtwQueue, openSplits, newPath,
 							paths, lockedBranches);
 				} else {

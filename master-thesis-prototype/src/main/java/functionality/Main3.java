@@ -2,10 +2,13 @@ package functionality;
 
 import java.awt.Color;
 import java.awt.GridLayout;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+
 
 import javax.swing.BoxLayout;
 import javax.swing.JFileChooser;
@@ -42,11 +45,13 @@ public class Main3 {
 	  }*/
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn";
-	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches2.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\algorithmTest.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2BranchesWith2DataObjects1.bpmn";
-	JFrame frame = new JFrame(pathToFile);
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2BranchesWith2DataObjects1.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel10_annotated.bpmn";
+
+		JFrame frame = new JFrame(pathToFile);
 	frame.setVisible(true);
 	
 	JPanel panel = new JPanel();
@@ -57,7 +62,7 @@ public class Main3 {
 	
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	double costForAddingReaderAfterBrt = 1.0;
-	String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels";
+	//String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop";
 	
 	
 	try {
@@ -69,9 +74,11 @@ public class Main3 {
 	
 	try {
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\generatedModel1.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20);
-		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\processModel7738027195225637857.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20);
+		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel7.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
+		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
 
-		//a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
+		
+		a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
 		
 
 	} catch (Exception e2) {
@@ -104,6 +111,8 @@ public class Main3 {
 		
 	}
 	
+	
+	
 	//use local minimum Algorithm to find cheapest combinations
 	LinkedList<ProcessInstanceWithVoters>pInstances = a2.localMinimumAlgorithm();
 	for(ProcessInstanceWithVoters pInstance: pInstances) {
@@ -126,6 +135,25 @@ public class Main3 {
 		dataPanel.add(new JLabel(sb.toString()));
 		
 	}
+	
+	//write the results to a csv file
+	File csvFile = new File(a2.getProcessFile().getParent(), "resultsOfAlgorithm1.csv");
+	try {
+		if(csvFile.createNewFile()) {
+			System.out.println("CSV File has been created at: "+csvFile.getAbsolutePath());
+		}  else {
+			System.out.println("CSV File already exists!");
+		}
+	} catch (IOException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	}
+	csvFile.getParentFile().mkdirs();
+	ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
+	writer.writeResultsOfAlgorithmToCSVFile(a2, pInstances);
+	writer.writeRowsToCSVAndcloseWriter();
+	
+	
 	a2.annotateModelWithChosenParticipants(pInstances);
 	
 	

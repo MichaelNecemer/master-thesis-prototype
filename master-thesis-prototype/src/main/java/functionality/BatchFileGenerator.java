@@ -26,10 +26,11 @@ public class BatchFileGenerator {
 	
 	//bounds for ProcessModellAnnotater
 	static LinkedList<Integer> dataObjectBounds = new LinkedList<Integer>(Arrays.asList(1,2));
-	static LinkedList<String> defaultSpheres = new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic"));
+	static LinkedList<String> defaultSpheres = new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic"));
 	static int sphereProb = 50;
 	static int readerProb = 30;
 	static int writerProb = 20;
+	static int probPublicSphere = 30;
 	
 	public static void main(String[]args) {
 		
@@ -48,18 +49,23 @@ public class BatchFileGenerator {
 		File dir = new File(pathForAddingRandomModels);
 		  File[] directoryListing = dir.listFiles();
 		
-		  
+		  LinkedList<String>paths = new LinkedList<String>();
 		  if (directoryListing != null) {
 		    for (File model : directoryListing) {
-		    	if(model.getName().contains(".bpmn")) {
-		    	ProcessModellAnnotater.annotateModel(model.getAbsolutePath(), dataObjectBounds, defaultSpheres, sphereProb, readerProb, writerProb);
-		    	System.out.println(model.getName()+" was annotated");  
+		    	if(model.getName().contains(".bpmn")&&!model.getName().contains("_annotated")) {
+		    		paths.add(model.getAbsolutePath());
 		    	}
 		    }
 		  } else {
 			  System.out.println("No process models found in "+dir.getAbsolutePath());
 			  
 		  }
+		  
+		  for(String pathToFile: paths) {
+			  ProcessModellAnnotater.annotateModel(pathToFile, dataObjectBounds, defaultSpheres, sphereProb, readerProb, writerProb, probPublicSphere);
+		    	System.out.println(" was annotated");  
+		  }
+		  
 	}
 	
 	

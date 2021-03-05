@@ -16,6 +16,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -107,6 +108,8 @@ public class API {
 	private File process;
 	private BpmnModelInstance modelInstance;
 	private int amountPossibleCombinationsOfParticipants;
+	private boolean modelWithLanes;
+	private long executionTimeLocalMinAlgorithm;
 
 	private BPMNStartEvent bpmnStart;
 	private BPMNEndEvent bpmnEnd;
@@ -133,42 +136,36 @@ public class API {
 		modelInstance = Bpmn.readModelFromFile(process);
 		startEvent = modelInstance.getModelElementsByType(StartEvent.class);
 		endEvent = modelInstance.getModelElementsByType(EndEvent.class);
+		
 		this.costForAddingReaderAfterBrt = costForAddingReaderAfterBrt;
 		this.costForAddingToGlobalSphere = cost.get(0);
 		this.costForLiftingFromGlobalToStatic = cost.get(1);
 		this.costForLiftingFromStaticToWeakDynamic = cost.get(2);
 		this.costForLiftingFromWeakDynamicToStrongDynamic = cost.get(3);
+		this.executionTimeLocalMinAlgorithm = 0; 
 
 		this.mapAndCompute();
 
+		
+		this.bpmnStart.printElement();
+		this.bpmnEnd.printElement();
 		this.pathsThroughProcess = this.allPathsBetweenNodesDFS(this.bpmnStart, this.bpmnEnd,
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<LinkedList<BPMNElement>>());
-		this.possibleBrtCombinationsTillEnd = new LinkedList<LinkedList<BPMNBusinessRuleTask>>();
-		for (LinkedList<BPMNElement> path : pathsThroughProcess) {
-			LinkedList<BPMNBusinessRuleTask> brtCombToEndEvent = new LinkedList<BPMNBusinessRuleTask>();
-			for (BPMNElement el : path) {
-				if (el instanceof BPMNBusinessRuleTask) {
-					brtCombToEndEvent.add((BPMNBusinessRuleTask) el);
-				}
-			}
-			for (int i = 0; i < brtCombToEndEvent.size() - 1; i++) {
-				if (!brtCombToEndEvent.get(i).getDirectSuccessors().contains((brtCombToEndEvent.get(i + 1)))) {
-					brtCombToEndEvent.get(i).getDirectSuccessors().add(brtCombToEndEvent.get(i + 1));
-				}
-			}
-
-			if (!this.possibleBrtCombinationsTillEnd.contains(brtCombToEndEvent)) {
-				this.possibleBrtCombinationsTillEnd.add(brtCombToEndEvent);
-			}
-		}
-		System.out.println("Possible combs to endpath" + this.possibleBrtCombinationsTillEnd.size());
-
+		System.out.println("Amount of paths through process: "+pathsThroughProcess.size());
+		
 		// this.generateBrtDependenciesAndArcWithCosts();
 
 	}
 
 	private void mapAndCompute() {
+		//check if it is a model with lanes 
+		if(modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
+			this.modelWithLanes=false;
+		} else {
+			this.modelWithLanes=true;
+		}
+			
 		// maps all the Camunda FlowNodes to BPMNElements
 		this.mapProcessElements();
 		// maps the successors and predecessors of the elements directly to the
@@ -176,7 +173,12 @@ public class API {
 		this.mapSuccessorsAndPredecessors(startEvent.iterator().next(), endEvent.iterator().next(),
 				new LinkedList<SequenceFlow>(), new ArrayList<Label>());
 
-		this.storeLanePerTask();
+		if(modelWithLanes) {
+			this.storeLanePerTask();
+		} else {
+			this.addParticipantToTask();
+		}
+		
 		this.mapDataObjects();
 		this.createDataObjectAsssociatons();
 		this.computeGlobalSphere();
@@ -500,13 +502,20 @@ public class API {
 		// generate all possible combinations of voters - calculate cost and only take
 		// cheapest one(s)
 		System.out.println("Local Minimum Algorithm generating all cheapest process instances: ");
-		return this.goDFSthroughProcessBuildArcsAndGetVoters(this.bpmnStart, this.bpmnEnd, null,
+		long startTime = System.nanoTime();
+		LinkedList<ProcessInstanceWithVoters> cheapestCombinations =  this.goDFSthroughProcessBuildArcsAndGetVoters(this.bpmnStart, this.bpmnEnd, null,
 				new LinkedList<ProcessInstanceWithVoters>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>(), new LinkedList<VoterForXorArc>(),
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
-
+		long stopTime = System.nanoTime();
+		long executionTime = stopTime - startTime;
+		System.out.println(executionTime);
+		 long durationInMs = TimeUnit.NANOSECONDS.toMillis(executionTime);
+		 System.out.println(durationInMs);
+		 this.executionTimeLocalMinAlgorithm = executionTime;
+		 return cheapestCombinations;
 	}
 
 	public LinkedList<ProcessInstanceWithVoters> bruteForceAlgorithm() {
@@ -743,24 +752,33 @@ public class API {
 		if (node instanceof Task || node instanceof UserTask || node instanceof BusinessRuleTask
 				|| node instanceof SendTask) {
 			if (node instanceof BusinessRuleTask) {
+				if(this.modelWithLanes) {
 				mappedNode = new BPMNBusinessRuleTask(node.getId(), node.getName());
+				} else {
+				mappedNode = new BPMNBusinessRuleTask(node.getId(), node.getName().substring(0, node.getName().indexOf("[")));	
+				}
 				this.businessRuleTaskList.add((BPMNBusinessRuleTask) mappedNode);
 
 			} else {
+				if(this.modelWithLanes) {
 				mappedNode = new BPMNTask(node.getId(), node.getName());
+				} else {
+					mappedNode = new BPMNTask(node.getId(), node.getName().substring(0, node.getName().indexOf("[")));	
+
+				}
 			}
 
 		} else if (node instanceof ParallelGateway) {
-			if (node.getOutgoing().size() == 1) {
+			if (node.getIncoming().size()>=2 && node.getOutgoing().size() == 1) {
 				mappedNode = new BPMNParallelGateway(node.getId(), node.getName(), "join");
-			} else {
+			} else if(node.getIncoming().size()==1 && node.getOutgoing().size()>=2) {
 				mappedNode = new BPMNParallelGateway(node.getId(), node.getName(), "split");
 
 			}
 		} else if (node instanceof ExclusiveGateway) {
-			if (node.getOutgoing().size() == 1) {
+			if (node.getIncoming().size()>=2 && node.getOutgoing().size() == 1) {
 				mappedNode = new BPMNExclusiveGateway(node.getId(), node.getName(), "join");
-			} else {
+			} else if (node.getIncoming().size()==1 && node.getOutgoing().size()>=2){
 				mappedNode = new BPMNExclusiveGateway(node.getId(), node.getName(), "split");
 
 			}
@@ -793,6 +811,7 @@ public class API {
 	// go through each lane of the process and store the lane as a participant to
 	// the tasks
 	public void storeLanePerTask() {
+		if(this.modelWithLanes) {
 		for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
 			BPMNParticipant lanePart = new BPMNParticipant(l.getId(), l.getName().trim());
 			for (FlowNode flowNode : l.getFlowNodeRefs()) {
@@ -803,7 +822,26 @@ public class API {
 				}
 			}
 		}
+		}
 	}
+	
+	public void addParticipantToTask() {
+		if(this.modelWithLanes==false) {		
+			for (Task task : modelInstance.getModelElementsByType(Task.class)) {
+				for (BPMNElement t : this.processElements) {
+					if (t instanceof BPMNTask && task.getId().equals(t.getId())) {
+						String participantName = task.getName().substring(task.getName().indexOf("["), task.getName().indexOf("]")+1);
+						BPMNParticipant participant = new BPMNParticipant(participantName, participantName);						
+						((BPMNTask) t).setParticipant(participant);
+					}
+				}
+			}
+		}
+		
+		
+	}
+	
+	
 
 	// Map the Camunda Data Objects to BPMNDataObjects
 	public void mapDataObjects() {
@@ -1573,7 +1611,7 @@ public class API {
 			if (element.getId().equals(endNode.getId())) {
 				paths.add(currentPath);
 				element = stack.pollLast();
-				if (element == null) {
+				if (element == null&&stack.isEmpty()) {
 					return paths;
 				}
 			}
@@ -1597,7 +1635,6 @@ public class API {
 						&& ((BPMNExclusiveGateway) element).getType().equals("split")) {
 					LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
 					newPath.addAll(currentPath);
-
 					this.allPathsBetweenNodesDFS(successor, endNode, stack, gtwStack, newPath, paths);
 				} else {
 					if (reachedEndGateway == false) {
@@ -1892,7 +1929,7 @@ public class API {
 			if (mapModelBtn) {
 				this.mapModel();
 			}
-			this.writeChangesToFile();
+			this.writeChangesToFile("votingAsBpmnElements");
 		} catch (ParserConfigurationException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -1906,13 +1943,16 @@ public class API {
 	public void annotateModelWithChosenParticipants(LinkedList<ProcessInstanceWithVoters> pInstances) {
 		// call this method after the localMinimumAlgorithm has found the best
 		// solution(s)
+		//for each solution -> generate a new bpmn file
 		// annotate the participants to the xor-splits
-		// if amount participants needed for voting equals the participants in the
+		// if amount participants generated for voting equals the participants in the
 		// global sphere: mark the xor-split as private
-		// if amount participants needed for voting > participants in the global sphere:
+		// if amount participants needed for voting > participants in the global sphere or if it is marked as public already:
 		// mark the xor-split as public
-
+		int i = 1;	
+		
 		for (ProcessInstanceWithVoters pInst : pInstances) {
+		
 			for (Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> entry : pInst.getVotersMap().entrySet()) {
 
 				BPMNExclusiveGateway xorSplit = (BPMNExclusiveGateway) entry.getKey().getSuccessors().iterator().next();
@@ -1934,7 +1974,7 @@ public class API {
 					this.generateShapeForTextAnnotation(sphere, gtw);
 
 				} else if (xorSplit.getAmountVoters() > this.getGlobalSphereList().size()) {
-					// annotate "global" to the xor-split
+					// annotate "public" to the xor-split
 					sphere = modelInstance.newInstance(TextAnnotation.class);
 					String textContent = "[Voters] {Public}";
 
@@ -1960,6 +2000,7 @@ public class API {
 						sb.append(participant.getName()+ ", ");
 					}
 					sb.deleteCharAt(sb.length() - 1);
+					sb.deleteCharAt(sb.length()-1);
 					sb.append("}");
 					text.setTextContent(sb.toString());
 
@@ -1992,16 +2033,17 @@ public class API {
 				}
 
 			}
-
+			try {
+				String id = "votingAsAnnotation-solution"+i;
+				this.writeChangesToFile(id);
+			} catch (IOException | ParserConfigurationException | SAXException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			i++;
 		}
 
-		try {
-			this.writeChangesToFile();
-		} catch (IOException | ParserConfigurationException | SAXException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
+		
 	}
 
 	private void addTasksToVotingSystem(int i, BusinessRuleTask brt, BPMNExclusiveGateway bpmnEx,
@@ -2590,14 +2632,27 @@ public class API {
 		return this.businessRuleTaskList;
 	}
 
-	public void writeChangesToFile() throws IOException, ParserConfigurationException, SAXException {
+	public void writeChangesToFile(String attachToFileName) throws IOException, ParserConfigurationException, SAXException {
 		// validate and write model to file
 
 		Bpmn.validateModel(modelInstance);
-		File file = File.createTempFile("bpmn-model-with-voting", ".bpmn",
-				new File("C:\\Users\\Micha\\OneDrive\\Desktop"));
+	
+		String pathOfProcessFile = process.getParent();
+		String fileName = process.getAbsolutePath().substring(process.getAbsolutePath().lastIndexOf("\\"), process.getAbsolutePath().indexOf(".bpmn"));
+		String fileNameWithAttachToFileName = fileName+"_"+attachToFileName+".bpmn";
+		File file = new File(pathOfProcessFile, fileNameWithAttachToFileName);
+
+		file.getParentFile().mkdirs(); 
+		System.out.println("FileCreated: "+file.createNewFile());
+		
 		Bpmn.writeModelToFile(file, modelInstance);
 
+		
+		
+		
+		
+		
+		
 		DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
 		docBuilderFactory.setNamespaceAware(true);
 		DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
@@ -3225,5 +3280,12 @@ public class API {
 		return null;
 
 	}
+	
+	public long getExecutionTimeLocalMinimumAlgorithm() {
+		return this.executionTimeLocalMinAlgorithm;
+	}
 
+	public File getProcessFile() {
+		return this.process;
+	}
 }
