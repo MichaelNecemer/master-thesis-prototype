@@ -415,9 +415,9 @@ public class ProcessModellAnnotater {
 			// go dfs through process until all branches inside split have been visited
 			// if reader is found check if on currentPath there is a writer
 			// for the dataObject!
-			// in a parallel split there must only be writers/readers in one branch for a
-			// specific dataObject!
-
+			//if writer is found inside a parallel split -> readers of same dataObject can not be in the other branch!
+			//mark dataObject - remove readers in other branch when it is queried
+		
 			StartEvent st = modelInstance.getModelElementsByType(StartEvent.class).iterator().next();
 			EndEvent end = modelInstance.getModelElementsByType(EndEvent.class).iterator().next();
 
@@ -708,23 +708,28 @@ public class ProcessModellAnnotater {
 							// check if there is a writer on the currentPath to the reader
 							// randomly change one task on the currentPath to a writer if there is no writer
 							boolean writerOnPath = false;	
+							LinkedList<ParallelGateway> insideParallelSplit = new LinkedList<ParallelGateway>();
 							
 							boolean removeReadersAndWriters = false;
 
 							// available will contain the tasks that one of will be randomly chosen to be a writer
 							// if no writer on the path to the reader is found
+							//remove reading and writing tasks in a parallel branch if there is a writer in the other one!
 							
-							LinkedList<FlowNode>available = new LinkedList<FlowNode>();
+							LinkedList<FlowNode>availableTasksToChangeToWriters = new LinkedList<FlowNode>();
+							FlowNode directSuccessorOfPSplit = null;
 							
 							for (int i = 0; i < currentPath.size(); i++) {
 								FlowNode currentPathEl = currentPath.get(i);
 								
 								if(currentPathEl instanceof ParallelGateway ) {
 									if(currentPathEl.getId().contains("_split")) {
-									
+										insideParallelSplit.add((ParallelGateway)currentPathEl);
+										directSuccessorOfPSplit = currentPath.get(i+1);
+										
 									} else if (currentPathEl.getId().contains("_join")) {
-								
-									
+										insideParallelSplit.pollLast();
+										
 									}
 							
 								}
@@ -734,7 +739,26 @@ public class ProcessModellAnnotater {
 									
 									for (DataOutputAssociation dao : currentPathTask.getDataOutputAssociations()) {
 										if (dao.getTarget().equals(iae)) {
-											//currentPathTask is a writer								
+											//currentPathTask is a writer
+											
+											if(!insideParallelSplit.isEmpty()) {
+												//currentPathTask is a writer inside a parallel Branch
+												ParallelGateway openBranch = insideParallelSplit.getLast();
+												
+												//check if the branch is a locked branch
+												
+												for(LockedBranch lBranch: lockedBranches) {
+													if(lBranch.getpSplit().equals(openBranch)&&lBranch.getSuccessorOfBranchToRemoveReadersAndWriters().equals(directSuccessorOfPSplit)) {
+														//there is already a writer for the dataObject in the other branch
+														//remove the writers and readers inside this parallel branch for this dataObject
+														removeReadersAndWriters=true;
+														
+													}
+												}
+												
+												
+											}
+											
 											
 											if(removeReadersAndWriters==false) {
 											writerOnPath=true;
@@ -798,7 +822,7 @@ public class ProcessModellAnnotater {
 									}
 								} else {
 									// randomly select a Task on the path and make it a writer to the dataObject
-									// BusinessRuleTasks with a xor-split right after will be excluded
+									// BusinessRuleTasks with a xor-split right after as well as tasks inside a lockedBranch are not part of the selection
 
 									// if the randomly selected Task is inside a Parallel Branch -> lock the other
 									// branch
@@ -810,9 +834,9 @@ public class ProcessModellAnnotater {
 									if(!removeReadersAndWriters) {
 									
 									
-									if(available.size()>0) {
-										int randomInt = ThreadLocalRandom.current().nextInt(0, available.size());
-										FlowNode taskToBeWriter = available.get(randomInt);
+									if(availableTasksToChangeToWriters.size()>0) {
+										int randomInt = ThreadLocalRandom.current().nextInt(0, availableTasksToChangeToWriters.size());
+										FlowNode taskToBeWriter = availableTasksToChangeToWriters.get(randomInt);
 										DataOutputAssociation dao = modelInstance.newInstance(DataOutputAssociation.class);
 										dao.setTarget(iae);
 										taskToBeWriter.addChildElement(dao);

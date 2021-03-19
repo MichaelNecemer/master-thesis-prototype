@@ -1,10 +1,13 @@
 package functionality;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.concurrent.ThreadLocalRandom;
 
+import Mapping.ProcessInstanceWithVoters;
 import ProcessModelGeneratorAndAnnotater.ProcessGenerator;
 import ProcessModelGeneratorAndAnnotater.ProcessModellAnnotater;
 
@@ -32,6 +35,10 @@ public class BatchFileGenerator {
 	static int writerProb = 20;
 	static int probPublicSphere = 30;
 	
+	//bounds for Algorithm that runs on annotated models
+	static ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
+	static double costForAddingReaderAfterBrt = 1.0;
+	
 	public static void main(String[]args) {
 		
 		
@@ -41,7 +48,16 @@ public class BatchFileGenerator {
 		//BatchFileGenerator.generateRandomProcesses(10);
 		
 		//annotate models
-		BatchFileGenerator.annotateModels();
+		//BatchFileGenerator.annotateModels();
+		
+		//perform the algorithms and generate csv file
+		LinkedList<API> apiList = BatchFileGenerator.runAlgorithmsOnAnnotatedProcesses();
+		if(!apiList.isEmpty()) {
+		BatchFileGenerator.addInformationToCSVFile(apiList);
+		} else {
+			System.out.println("No Algorithms have been run successfully on annotated models");
+		}
+		
 	}
 	
 	public static void annotateModels() {
@@ -63,7 +79,7 @@ public class BatchFileGenerator {
 		  
 		  for(String pathToFile: paths) {
 			  ProcessModellAnnotater.annotateModel(pathToFile, dataObjectBounds, defaultSpheres, sphereProb, readerProb, writerProb, probPublicSphere);
-		    	System.out.println(" was annotated");  
+		    	System.out.println(pathToFile +" was annotated");  
 		  }
 		  
 	}
@@ -83,6 +99,79 @@ public class BatchFileGenerator {
 			new ProcessGenerator(pathForAddingRandomModels, randomAmountParticipants, randomAmountMaxTasks, randomAmountMaxXorSplits, randomAmountMaxParallelSplits,50,30,20,20,10);
 			System.out.println("randomProcess"+i+" deployed");
 		}
+		
+	}
+	
+	public static LinkedList<API> runAlgorithmsOnAnnotatedProcesses() {
+		//iterate through all files in the directory and annotate them
+		LinkedList<API> apiList = new LinkedList<API>();
+				File dir = new File(pathForAddingRandomModels);
+				  File[] directoryListing = dir.listFiles();
+				
+				  LinkedList<String>paths = new LinkedList<String>();
+				  if (directoryListing != null) {
+				    for (File model : directoryListing) {
+				    	if(model.getName().contains(".bpmn")&&model.getName().contains("_annotated")) {
+				    		paths.add(model.getAbsolutePath());
+				    	}
+				    }
+				  } else {
+					  System.out.println("No annotated process models found in "+dir.getAbsolutePath());
+					  
+				  }
+				  
+				  for(String pathToFile: paths) {
+				    	try {
+							API api = new API(pathToFile, cost, costForAddingReaderAfterBrt);
+							apiList.add(api);
+							
+							
+							
+							
+							
+						} catch (Exception e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					  
+				  }
+				  
+		 return apiList;
+	}
+	
+
+	private static void addInformationToCSVFile(LinkedList<API>apiList) {
+		//write the results to a csv file
+		int i = 1; 
+		String fileNameForResults = "resultsOfAlgorithm"+i+".csv";
+		File csvFile = new File(apiList.get(0).getProcessFile().getParent(), fileNameForResults);
+		try {
+			while(csvFile.createNewFile()==false) {
+				System.out.println("CSV File"+fileNameForResults+" already exists!");
+				i++;
+				fileNameForResults = "resultsOfAlgorithm"+i+".csv";
+				csvFile = new File(apiList.get(0).getProcessFile().getParent(), fileNameForResults);
+				if(csvFile.createNewFile()) {
+					System.out.println("CSV File"+fileNameForResults+" has been created at: "+csvFile.getAbsolutePath());
+					break;
+				}
+			}
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
+		csvFile.getParentFile().mkdirs();
+		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
+		for(API api: apiList) {
+		LinkedList<ProcessInstanceWithVoters>localMin = api.localMinimumAlgorithm();
+		LinkedList<ProcessInstanceWithVoters>bruteForce = api.bruteForceAlgorithm();
+		writer.writeResultsOfBothAlgorithmsToCSVFile(api, api.localMinimumAlgorithm(), api.compareResultsOfAlgorithms(localMin, bruteForce));
+		}
+		writer.writeRowsToCSVAndcloseWriter();
+		
+		
+		
 		
 	}
 

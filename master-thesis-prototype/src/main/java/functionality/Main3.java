@@ -45,12 +45,14 @@ public class Main3 {
 	  }*/
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches2.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\algorithmTest.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2BranchesWith2DataObjects1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel10_annotated.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel3_annotated.bpmn";
 
+		
 		JFrame frame = new JFrame(pathToFile);
 	frame.setVisible(true);
 	
@@ -115,6 +117,14 @@ public class Main3 {
 	
 	//use local minimum Algorithm to find cheapest combinations
 	LinkedList<ProcessInstanceWithVoters>pInstances = a2.localMinimumAlgorithm();
+	System.out.println("Amount of solutions found with localMinimumAlgorithm: "+pInstances.size());
+	System.out.println("Cheapest Brute Force Instances: ");
+
+	for(ProcessInstanceWithVoters pInstance:pInstances) {
+		pInstance.printProcessInstance();
+	}
+	
+	
 	for(ProcessInstanceWithVoters pInstance: pInstances) {
 		JPanel dataPanel = new JPanel();
 		frame.add(dataPanel);
@@ -133,7 +143,7 @@ public class Main3 {
 		
 		sb.deleteCharAt(sb.length()-2);
 		dataPanel.add(new JLabel(sb.toString()));
-		
+		System.out.println(sb.toString());
 	}
 	
 	//write the results to a csv file
@@ -150,16 +160,28 @@ public class Main3 {
 	}
 	csvFile.getParentFile().mkdirs();
 	ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
-	writer.writeResultsOfAlgorithmToCSVFile(a2, pInstances);
+	
+	//writer.writeResultsOfAlgorithmToCSVFile(a2, pInstances);
+	LinkedList<ProcessInstanceWithVoters> bruteForceSolutions = a2.bruteForceAlgorithm();
+	System.out.println("Solutions found with BruteForce: "+bruteForceSolutions.size());
+	System.out.println("Cheapest brute Force solutions: "+a2.getCheapestProcessInstancesWithVoters(bruteForceSolutions).size());
+	boolean isCheapestSolutionInBruteForce = a2.compareResultsOfAlgorithms(pInstances, bruteForceSolutions);
+	System.out.println("Cheapest solution(s) of localMinAlgorithm is also found in BruteForce: "+isCheapestSolutionInBruteForce);
+	writer.writeResultsOfBothAlgorithmsToCSVFile(a2, pInstances, isCheapestSolutionInBruteForce);
 	writer.writeRowsToCSVAndcloseWriter();
 	
 	
-	a2.annotateModelWithChosenParticipants(pInstances);
+	//a2.annotateModelWithChosenParticipants(pInstances);
+	
+	System.out.println("Cheapest Brute Force Instances: ");
+	for(ProcessInstanceWithVoters pInstance:a2.getCheapestProcessInstancesWithVoters(a2.bruteForceAlgorithm())) {
+		pInstance.printProcessInstance();
+	}
 	
 	
 	/*
 	//Brute Force Attempt
-	//print out all cheapest solutions
+	//print out all solutions
 	for(ProcessInstanceWithVoters pInstance: a2.bruteForceAlgorithm()) {
 		JPanel dataPanel = new JPanel();
 		frame.add(dataPanel);

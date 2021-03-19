@@ -109,8 +109,9 @@ public class API {
 	private BpmnModelInstance modelInstance;
 	private int amountPossibleCombinationsOfParticipants;
 	private boolean modelWithLanes;
-	private long executionTimeLocalMinAlgorithm;
-
+	private double executionTimeLocalMinAlgorithmInSeconds;
+	private double executionTimeBruteForceAlgorithmInSeconds;
+	
 	private BPMNStartEvent bpmnStart;
 	private BPMNEndEvent bpmnEnd;
 	private ArrayList<BPMNDataObject> dataObjects = new ArrayList<BPMNDataObject>();
@@ -142,7 +143,8 @@ public class API {
 		this.costForLiftingFromGlobalToStatic = cost.get(1);
 		this.costForLiftingFromStaticToWeakDynamic = cost.get(2);
 		this.costForLiftingFromWeakDynamicToStrongDynamic = cost.get(3);
-		this.executionTimeLocalMinAlgorithm = 0; 
+		this.executionTimeLocalMinAlgorithmInSeconds = 0; 
+		this.executionTimeLocalMinAlgorithmInSeconds=0;
 
 		this.mapAndCompute();
 
@@ -511,24 +513,23 @@ public class API {
 				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 		long stopTime = System.nanoTime();
 		long executionTime = stopTime - startTime;
-		System.out.println(executionTime);
-		 long durationInMs = TimeUnit.NANOSECONDS.toMillis(executionTime);
-		 System.out.println(durationInMs);
-		 this.executionTimeLocalMinAlgorithm = executionTime;
-		 return cheapestCombinations;
+		this.executionTimeLocalMinAlgorithmInSeconds = (double) executionTime/1000000000;
+		return cheapestCombinations;
 	}
 
 	public LinkedList<ProcessInstanceWithVoters> bruteForceAlgorithm() {
 		// generate all possible combinations of voters for all brts of the process
 		// calculate the cost for each one and return all of them
 		System.out.println("Brute Force generating all possible process instances: ");
+		
 		LinkedList<LinkedList<Object>> arcs = new LinkedList<LinkedList<Object>>();
 		LinkedList<ProcessInstanceWithVoters> pInstances = new LinkedList<ProcessInstanceWithVoters>();
 
+		long startTime = System.nanoTime();
 		for (BPMNBusinessRuleTask brt : this.businessRuleTaskList) {
 			arcs.add(this.generateArcsForXorSplitReturnAsObjectList(brt));
 		}
-
+		
 		for (List<Object> possibleCombinationList : Combination.permutations(arcs)) {
 
 			ProcessInstanceWithVoters newInstance = new ProcessInstanceWithVoters();
@@ -546,6 +547,12 @@ public class API {
 			pInstances.add(newInstance);
 
 		}
+		
+		long stopTime = System.nanoTime();
+		long executionTime = stopTime - startTime;
+		
+		this.executionTimeBruteForceAlgorithmInSeconds=(double)executionTime/1000000000;
+		
 
 		return pInstances;
 
@@ -577,7 +584,24 @@ public class API {
 
 	}
 
-	private boolean arcAlreadyGenerated(BPMNBusinessRuleTask brt, VoterForXorArc arc) {
+	private VoterForXorArc arcAlreadyGenerated(BPMNBusinessRuleTask brt, VoterForXorArc arc) {
+		for (VoterForXorArc a : brt.getVoterArcs()) {
+			if (a.getBrt().equals(arc.getBrt())) {
+				if (a.getXorSplit().equals(arc.getXorSplit())) {
+
+					if (a.getChosenCombinationOfParticipants().equals(arc.getChosenCombinationOfParticipants())) {
+						return arc;
+
+					}
+				}
+			}
+
+		}
+		return null;
+	}
+	
+	
+	private boolean arcAlreadyGeneratedBool(BPMNBusinessRuleTask brt, VoterForXorArc arc) {
 		for (VoterForXorArc a : brt.getVoterArcs()) {
 			if (a.getBrt().equals(arc.getBrt())) {
 				if (a.getXorSplit().equals(arc.getXorSplit())) {
@@ -592,6 +616,7 @@ public class API {
 		}
 		return false;
 	}
+
 
 	public boolean readerIsOnPath(BPMNParticipant reader, BPMNTask lastWriter, BPMNDataObject dataO,
 			LinkedList<BPMNElement> path) {
@@ -1352,7 +1377,7 @@ public class API {
 				VoterForXorArc arc = new VoterForXorArc(currBrt, bpmnEx, partList);
 
 				// check if arc already exists
-				if (!this.arcAlreadyGenerated(currBrt, arc)) {
+				if (!this.arcAlreadyGeneratedBool(currBrt, arc)) {
 					brtCombs.add(arc);
 				} else {
 					ArcWithCost.id--;
@@ -1383,9 +1408,12 @@ public class API {
 				VoterForXorArc arc = new VoterForXorArc(currBrt, bpmnEx, partList);
 
 				// check if arc already exists
-				if (!this.arcAlreadyGenerated(currBrt, arc)) {
+				VoterForXorArc arcAlreadyGenerated = this.arcAlreadyGenerated(currBrt, arc);
+				if (arcAlreadyGenerated==null) {
 					brtCombs.add(arc);
 				} else {
+					
+					brtCombs.add(arcAlreadyGenerated);
 					ArcWithCost.id--;
 				}
 
@@ -3238,19 +3266,21 @@ public class API {
 		this.processInstancesWithVoters = processInstancesWithVoters;
 	}
 
-	public LinkedList<ProcessInstanceWithVoters> getCheapestProcessInstancesWithVoters() {
-		List<ProcessInstanceWithVoters> allInstSortedByCheapest = this.processInstancesWithVoters.parallelStream()
+	public LinkedList<ProcessInstanceWithVoters> getCheapestProcessInstancesWithVoters(LinkedList<ProcessInstanceWithVoters>pInstances) {
+		List<ProcessInstanceWithVoters> allInstSortedByCheapest = pInstances.parallelStream()
 				.sorted((Comparator.comparingDouble(ProcessInstanceWithVoters::getCostForModelInstance)))
 				.collect(Collectors.toList());
+		//allInstSortedByCheapest contains all solutions sorted by cheapest ones
+		
 		LinkedList<ProcessInstanceWithVoters> allCheapestInst = new LinkedList<ProcessInstanceWithVoters>();
 		allCheapestInst.add(allInstSortedByCheapest.get(0));
 
 		for (int i = 1; i < allInstSortedByCheapest.size(); i++) {
 			ProcessInstanceWithVoters currInst = allInstSortedByCheapest.get(i);
-			if (allCheapestInst.getFirst().getCostForModelInstance() >= currInst.getCostForModelInstance()) {
+			if (allCheapestInst.getFirst().getCostForModelInstance() == currInst.getCostForModelInstance()) {
 				allCheapestInst.add(currInst);
 			} else {
-				break;
+				return allCheapestInst;
 			}
 		}
 
@@ -3281,9 +3311,40 @@ public class API {
 
 	}
 	
-	public long getExecutionTimeLocalMinimumAlgorithm() {
-		return this.executionTimeLocalMinAlgorithm;
+	public double getExecutionTimeLocalMinimumAlgorithm() {
+		return this.executionTimeLocalMinAlgorithmInSeconds;
 	}
+	
+	public double getExecutionTimeBruteForceAlgorithm() {
+		return this.executionTimeBruteForceAlgorithmInSeconds;
+	}
+
+	
+	
+	
+	public boolean compareResultsOfAlgorithms(LinkedList<ProcessInstanceWithVoters>localMinInstances, LinkedList<ProcessInstanceWithVoters>bruteForceInstances) {
+		int countCheapestSolutionFoundInBruteForceSolutions = 0; 
+		LinkedList<ProcessInstanceWithVoters>cheapestBruteForceSolutions = this.getCheapestProcessInstancesWithVoters(bruteForceInstances);
+		
+		for(ProcessInstanceWithVoters cheapestInstBruteForce: cheapestBruteForceSolutions) {
+			for(ProcessInstanceWithVoters cheapestInstLocalMin: localMinInstances) {
+				if(cheapestInstBruteForce.getCostForModelInstance()==(cheapestInstLocalMin.getCostForModelInstance())) {
+					if(cheapestInstBruteForce.getVotersMap().equals(cheapestInstLocalMin.getVotersMap())){
+						countCheapestSolutionFoundInBruteForceSolutions++;
+					}
+					
+				}
+				
+			}
+			
+		}
+		if(countCheapestSolutionFoundInBruteForceSolutions==localMinInstances.size()&&localMinInstances.size()==cheapestBruteForceSolutions.size()) {
+			return true;
+		}
+		
+		return false;
+	}
+	
 
 	public File getProcessFile() {
 		return this.process;

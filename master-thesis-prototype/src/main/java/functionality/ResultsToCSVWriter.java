@@ -20,12 +20,12 @@ public class ResultsToCSVWriter {
 
 	public ResultsToCSVWriter(File csvFile) {
 		try {
-			this.writer = new CSVWriter(new FileWriter(csvFile), ';', CSVWriter.NO_QUOTE_CHARACTER,
+			this.writer = new CSVWriter(new FileWriter(csvFile, true), ';', CSVWriter.NO_QUOTE_CHARACTER,
 					CSVWriter.DEFAULT_ESCAPE_CHARACTER, CSVWriter.DEFAULT_LINE_END);
 
 			rows = new ArrayList<>();
-			String[] header = new String[] { "fileName", "pathToFile", "cheapest solution(s)", "cost",
-					"executionTime" };
+			String[] header = new String[] { "fileName", "pathToFile", "cheapest solution(s) localMinimumAlgorithm", "cost",
+					"executionTimeLocalMinimumAlogrithm", "executionTimeBruteForce", "deltaExecutionTime", "isCheapestSolutionInBruteForce" };
 			this.rows.add(header);
 			
 			
@@ -35,6 +35,38 @@ public class ResultsToCSVWriter {
 		}
 
 	}
+	public void writeResultsOfBothAlgorithmsToCSVFile(API api, List<ProcessInstanceWithVoters> pInstances, boolean isCheapestSolutionInBruteForce) {
+		//call this method after both algorithms ran
+		// compare the execution of both algorithms
+		// written to a csv file
+				
+					String pathToFile = api.getProcessFile().getAbsolutePath();
+					String fileName = api.getProcessFile().getName();
+
+					// map the cheapest process instances to rows in the csv file
+					StringBuilder sb = new StringBuilder();
+					double cost = 0;
+					for(ProcessInstanceWithVoters pInst: pInstances) {
+					cost = pInst.getCostForModelInstance();
+
+					for (VoterForXorArc arc : pInst.getListOfArcs()) {
+						sb.append(arc.getBrt().getName() + ": ");
+						for (BPMNParticipant part : arc.getChosenCombinationOfParticipants()) {
+							sb.append(part.getName() + ", ");
+						}
+					}
+					}
+					String[] row = new String[] { fileName, pathToFile, sb.toString(), cost + "",
+							api.getExecutionTimeLocalMinimumAlgorithm() + "", api.getExecutionTimeBruteForceAlgorithm()+"", api.getExecutionTimeLocalMinimumAlgorithm()-api.getExecutionTimeBruteForceAlgorithm()+"", isCheapestSolutionInBruteForce+"" };
+					
+					this.rows.add(row);
+
+			}	
+		
+		
+	
+	
+	
 
 	public void writeResultsOfAlgorithmToCSVFile(API api, List<ProcessInstanceWithVoters> pInstances) {
 		// Results of using either brute force or local minimum algorithm will be
