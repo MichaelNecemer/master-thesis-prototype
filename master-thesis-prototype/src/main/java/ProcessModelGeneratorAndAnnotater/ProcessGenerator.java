@@ -274,7 +274,7 @@ public class ProcessGenerator {
 		//check if nodeTypes can still be inserted e.g. a xor-split can only be inserted if there is still at least a flowNode to be inserted
 		LinkedList<String> nodeList = new LinkedList<String>();
 		nodeList.addAll(nodeTypes);
-		if(amountTasksLeft==0) {
+		if(amountTasksLeft<=0) {
 			//no tasks can be inserted anymore
 			//no parallel and xor splits can be inserted anymore too
 			nodeList.remove("ParallelGateway");
@@ -282,12 +282,12 @@ public class ProcessGenerator {
 			nodeList.remove("Task");			
 		}
 		
-		if(amountXorsLeft==0) {
+		if(amountXorsLeft<=0) {
 			nodeList.remove("ExclusiveGateway");			
 		}
 		
 		
-		if(amountParallelsLeft==0) {
+		if(amountParallelsLeft<=0) {
 			nodeList.remove("ParallelGateway");
 		}
 		

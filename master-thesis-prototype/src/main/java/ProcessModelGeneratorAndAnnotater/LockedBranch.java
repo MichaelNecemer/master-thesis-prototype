@@ -8,34 +8,39 @@ import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
 
 public class LockedBranch {
-	//when a writer is found inside a parallel branch -> generate a new Object of this class
-	//this will mark the elements of the other branch 
-	//when ProcessModellAnnotater will query a LockedBranch -> readers and writers of the dataObject will be removed
-	//also, elements within locked Branches will be excluded from random selection process if a writer is needed on a path
+	//when a writer is found inside a parallel branch -> readers and writers inside the other branch for a specific dataObject will be removed
+	//after that, the branch will be marked as locked
+	//elements within locked Branches will be excluded from random selection process if a writer is needed on a path
 	
-	private ParallelGateway pSplit;
-	private SequenceFlow sFlowIntoBranchToRemoveReadersAndWriters;
-	private FlowNode successorOfBranchToRemoveReadersAndWriters;
+	private ParallelGateway pSplit; 
 	private ParallelGateway pJoin;
+	private LinkedList<FlowNode>path;
 	
 	
 	private ItemAwareElement iae;
 	
 	
-	public LockedBranch(ParallelGateway pSplit, ItemAwareElement iae,SequenceFlow sFlowIntoBranchToRemoveReadersAndWriters, FlowNode successorOfBranchToRemoveReadersAndWriters, ParallelGateway pJoin) {
+	public LockedBranch(ParallelGateway pSplit, ItemAwareElement iae, ParallelGateway pJoin, LinkedList<FlowNode>path) {
 		this.pSplit=pSplit;
 		this.iae=iae;
-		this.sFlowIntoBranchToRemoveReadersAndWriters=sFlowIntoBranchToRemoveReadersAndWriters;
-		this.successorOfBranchToRemoveReadersAndWriters=successorOfBranchToRemoveReadersAndWriters;
 		this.pJoin=pJoin;	
+		this.path=path;
 	}
 	
 	public LockedBranch() {
 		
 	}
 	
+	
 
 
+	public LinkedList<FlowNode> getPath() {
+		return path;
+	}
+
+	public void setPath(LinkedList<FlowNode> path) {
+		this.path = path;
+	}
 
 	public ParallelGateway getpSplit() {
 		return pSplit;
@@ -56,21 +61,7 @@ public class LockedBranch {
 		this.iae = iae;
 	}
 
-	public SequenceFlow getsFlowIntoBranchToRemoveReadersAndWriters() {
-		return sFlowIntoBranchToRemoveReadersAndWriters;
-	}
-
-	public void setsFlowIntoBranchToRemoveReadersAndWriters(SequenceFlow sFlowIntoBranchToRemoveReadersAndWriters) {
-		this.sFlowIntoBranchToRemoveReadersAndWriters = sFlowIntoBranchToRemoveReadersAndWriters;
-	}
-
-	public FlowNode getSuccessorOfBranchToRemoveReadersAndWriters() {
-		return successorOfBranchToRemoveReadersAndWriters;
-	}
-
-	public void setSuccessorOfBranchToRemoveReadersAndWriters(FlowNode successorOfBranchToRemoveReadersAndWriters) {
-		this.successorOfBranchToRemoveReadersAndWriters = successorOfBranchToRemoveReadersAndWriters;
-	}
+	
 
 	public ParallelGateway getpJoin() {
 		return pJoin;

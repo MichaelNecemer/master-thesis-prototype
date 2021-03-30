@@ -151,7 +151,7 @@ public class API {
 		
 		this.bpmnStart.printElement();
 		this.bpmnEnd.printElement();
-		this.pathsThroughProcess = this.allPathsBetweenNodesDFS(this.bpmnStart, this.bpmnEnd,
+		this.pathsThroughProcess = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(this.bpmnStart, this.bpmnEnd,
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<LinkedList<BPMNElement>>());
 		System.out.println("Amount of paths through process: "+pathsThroughProcess.size());
@@ -562,7 +562,7 @@ public class API {
 			BPMNBusinessRuleTask brt) {
 
 		double foundCurrentLastWriterCount = 0;
-		LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodesDFS(start, brt,
+		LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(start, brt,
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<LinkedList<BPMNElement>>());
 
@@ -643,7 +643,7 @@ public class API {
 			// now check if participants are in the required sphere of the reader at the
 			// position of the brt
 			for (BPMNTask writerTask : lastWriterList) {
-				LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodesDFS(writerTask, bpmnBrt,
+				LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(writerTask, bpmnBrt,
 						new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 						new LinkedList<LinkedList<BPMNElement>>());
 				System.out.println("Paths: " + paths.size());
@@ -1625,57 +1625,7 @@ public class API {
 
 	}
 
-	public LinkedList<LinkedList<BPMNElement>> allPathsBetweenNodesDFS(BPMNElement startNode, BPMNElement endNode,
-			LinkedList<BPMNElement> stack, LinkedList<BPMNElement> gtwStack, LinkedList<BPMNElement> currentPath,
-			LinkedList<LinkedList<BPMNElement>> paths) {
-
-		stack.add(startNode);
-		boolean reachedEndGateway = false;
-
-		while (!(stack.isEmpty())) {
-			BPMNElement element = stack.pollLast();
-			currentPath.add(element);
-
-			if (element.getId().equals(endNode.getId())) {
-				paths.add(currentPath);
-				element = stack.pollLast();
-				if (element == null&&stack.isEmpty()) {
-					return paths;
-				}
-			}
-
-			if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway) element).getType().equals("split")) {
-				for (BPMNElement successor : element.getSuccessors()) {
-					gtwStack.add(successor);
-				}
-			}
-
-			if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway) element).getType().equals("join")) {
-				gtwStack.pollLast();
-				if (!gtwStack.isEmpty()) {
-					reachedEndGateway = true;
-				}
-			}
-
-			for (BPMNElement successor : element.getSuccessors()) {
-
-				if (element instanceof BPMNExclusiveGateway
-						&& ((BPMNExclusiveGateway) element).getType().equals("split")) {
-					LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
-					newPath.addAll(currentPath);
-					this.allPathsBetweenNodesDFS(successor, endNode, stack, gtwStack, newPath, paths);
-				} else {
-					if (reachedEndGateway == false) {
-						stack.add(successor);
-					}
-				}
-
-			}
-			reachedEndGateway = false;
-		}
-		return paths;
-
-	}
+	
 
 	private void insertIfCheapest(LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters,
 			ProcessInstanceWithVoters currInstance) {
@@ -1705,8 +1655,7 @@ public class API {
 		// where key = false: contains all paths where another writer writes to same
 		// dataO between the writerTask and the currentBrt
 
-		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndTargetElement = this
-				.allPathsBetweenNodesDFS(writerTask, targetElement, stack, gtwStack, currentPath, paths);
+		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndTargetElement = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(writerTask, targetElement, stack, gtwStack, currentPath, paths);
 		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> pathMap = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
 		LinkedList<LinkedList<BPMNElement>> effectivePaths = new LinkedList<LinkedList<BPMNElement>>();
 		LinkedList<LinkedList<BPMNElement>> nonEffectivePaths = new LinkedList<LinkedList<BPMNElement>>();
@@ -1749,7 +1698,7 @@ public class API {
 		// dataO
 		// the participants on the path are set to be equal to the chosencombination
 		// given as parameter
-		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndEndEvent = this.allPathsBetweenNodesDFS(startNode,
+		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndEndEvent = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(startNode,
 				endNode, stack, gtwStack, currentPath, paths);
 		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> pathMap = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
 		LinkedList<LinkedList<BPMNElement>> effectivePaths = new LinkedList<LinkedList<BPMNElement>>();
@@ -1785,7 +1734,7 @@ public class API {
 
 	// Test Method for pathing through the process
 	public void getAllProcessPaths() {
-		LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodesDFS(this.bpmnStart, this.bpmnEnd,
+		LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(this.bpmnStart, this.bpmnEnd,
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<LinkedList<BPMNElement>>());
 		int i = 1;
@@ -2285,7 +2234,7 @@ public class API {
 								System.out.println(lWriter.getName() + " mininum Sphere " + minimumSphere);
 
 								for (BPMNElement reader : sphere.getReaders()) {
-									LinkedList<LinkedList<BPMNElement>> paths = this.allPathsBetweenNodesDFS(lWriter,
+									LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(lWriter,
 											reader, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 											new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 									// Check whether there is a path between the lastWriter and some Reader

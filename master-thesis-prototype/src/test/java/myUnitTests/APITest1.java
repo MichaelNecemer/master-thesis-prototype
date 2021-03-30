@@ -27,7 +27,7 @@ public class APITest1 {
 	ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	double costForAddingReaderAfterBrt = 1.0;
 	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn";
-
+	
 	@Test
 	public void testAmountPossibleProcessInstances() {
 
