@@ -68,8 +68,9 @@ public class ProcessModellAnnotater {
 	private static int idForTask;
 	private static int idForBrt;
 	
+	
 	public static void annotateModel(String pathToFile, List<Integer> countDataObjects, List<String> defaultSpheres,
-			int sphereProb, int readerProb, int writerProb, int probPublicDecision) {
+			int dynamicWriter, int readerProb, int writerProb, int probPublicDecision) {
 		File process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);
 		
@@ -78,7 +79,8 @@ public class ProcessModellAnnotater {
 		dataObjects = new LinkedList<DataObjectReference>();
 		differentParticipants = new LinkedList<String>();
 		
-		// sphereProb is the probability to annotate a random required sphere for a
+	
+		// dynamicWriter is the probability to annotate a random required sphere for a
 		// writer
 		
 		if (modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
@@ -266,7 +268,7 @@ public class ProcessModellAnnotater {
 							generateDIElementForWriter(dao, getShape(dataORef.getId()), getShape(task.getId()));
 							// add sphere annotation for writer
 							int randomCountSphere = ThreadLocalRandom.current().nextInt(0, 100 + 1);
-							if (randomCountSphere <= sphereProb) {
+							if (randomCountSphere <= dynamicWriter) {
 								generateDIElementForSphereAnnotation(task, dataORef, defaultSpheres);
 							}
 						}
@@ -437,17 +439,16 @@ public class ProcessModellAnnotater {
 
 		
 
-		try {
-			if(CommonFunctionality.isCorrectModel(modelInstance)) {
-				System.out.println("Correct Model!");
-			} else {
-				System.err.println("Model is not correct!");
-			}
+		try {			
+			CommonFunctionality.isCorrectModel(modelInstance);
 			writeChangesToFile(process);
 			
 		} catch (IOException | ParserConfigurationException | SAXException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			System.err.println(e.getMessage());
 		}
 
 	}

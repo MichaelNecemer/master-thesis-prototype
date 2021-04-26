@@ -120,7 +120,7 @@ public class API {
 
 	private ArrayList<BPMNBusinessRuleTask> businessRuleTaskList = new ArrayList<BPMNBusinessRuleTask>();
 	private ArrayList<Label> labelList = new ArrayList<Label>();
-	private LinkedList<LinkedList<BPMNElement>> pathsThroughProcess = new LinkedList<LinkedList<BPMNElement>>();
+	private LinkedList<LinkedList<FlowNode>> pathsThroughProcess = new LinkedList<LinkedList<FlowNode>>();
 	private double costForAddingReaderAfterBrt;
 	private double costForAddingToGlobalSphere;
 	private double costForLiftingFromGlobalToStatic;
@@ -146,18 +146,17 @@ public class API {
 		this.executionTimeLocalMinAlgorithmInSeconds = 0; 
 		this.executionTimeLocalMinAlgorithmInSeconds=0;
 
+		System.out.println("Correctness check of model: ");
+		CommonFunctionality.isCorrectModel(modelInstance);
+		
 		this.mapAndCompute();
 
-		
-		this.bpmnStart.printElement();
-		this.bpmnEnd.printElement();
-		this.pathsThroughProcess = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(this.bpmnStart, this.bpmnEnd,
-				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-				new LinkedList<LinkedList<BPMNElement>>());
-		System.out.println("Amount of paths through process: "+pathsThroughProcess.size());
-		
-		// this.generateBrtDependenciesAndArcWithCosts();
-
+		 this.pathsThroughProcess= CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
+				  modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
+				  modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), new
+				  LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new
+				 LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new
+				  LinkedList<LinkedList<FlowNode>>());
 	}
 
 	private void mapAndCompute() {
@@ -474,7 +473,8 @@ public class API {
 									alreadyChosenVoters, reader, spheres, update, weight, cost);
 							reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(this
 									.calculateWeightingForLastWriter(lastWriter, this.bpmnStart, dataO, currentBrt));
-
+							System.out.println("Weighting of ReqUpdate: "+reqUpdate.getWeightingOfLastWriterToWriteDataForBrt());
+							
 							currInst.getListOfRequiredUpdates().add(reqUpdate);
 
 							// add additional cost for adding a reader as voter who reads data after the brt
@@ -558,14 +558,16 @@ public class API {
 
 	}
 
+	
 	private double calculateWeightingForLastWriter(BPMNTask currentLastWriter, BPMNElement start, BPMNDataObject dataO,
 			BPMNBusinessRuleTask brt) {
 
 		double foundCurrentLastWriterCount = 0;
-		LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(start, brt,
+		LinkedList<LinkedList<BPMNElement>> paths = this.getPathsWithMappedNodesFromCamundaNodes(CommonFunctionality.getAllPathsBetweenNodes(modelInstance, modelInstance.getModelElementById(start.getId()), modelInstance.getModelElementById(brt.getId()), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new LinkedList<LinkedList<FlowNode>>()));
+		/*LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(start, brt,
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<LinkedList<BPMNElement>>());
-
+		*/
 		for (LinkedList<BPMNElement> pathList : paths) {
 
 			for (int i = pathList.size() - 1; i > 0; i--) {
@@ -2965,7 +2967,7 @@ public class API {
 		ArrayList<Label> efReaderLabels = effectiveReader.getLabels();
 		ArrayList<Label> brtLabels = currentBrt.getLabels();
 		if (efReaderLabels.equals(brtLabels)) {
-			sphereForEffectiveReader = "Strong";
+			sphereForEffectiveReader = "Strong-Dynamic";
 		} else if (efReaderLabels.containsAll(brtLabels) && efReaderLabels.size() > brtLabels.size()) {
 			sphereForEffectiveReader = "Weak-Dynamic";
 		} else {
@@ -3191,7 +3193,7 @@ public class API {
 		this.amountPossibleCombinationsOfParticipants = amountPossibleCombinationsOfParticipants;
 	}
 
-	public LinkedList<LinkedList<BPMNElement>> getAllPathsThroughProcess() {
+	public LinkedList<LinkedList<FlowNode>> getAllPathsThroughProcess() {
 		return this.pathsThroughProcess;
 	}
 
@@ -3294,6 +3296,20 @@ public class API {
 		return false;
 	}
 	
+	public LinkedList<LinkedList<BPMNElement>> getPathsWithMappedNodesFromCamundaNodes(LinkedList<LinkedList<FlowNode>>pathsWithCamundaNodes){
+		LinkedList<LinkedList<BPMNElement>>mappedPaths=new LinkedList<LinkedList<BPMNElement>>();
+		
+		for(LinkedList<FlowNode>path: pathsWithCamundaNodes) {
+			LinkedList<BPMNElement>mappedPath = new LinkedList<BPMNElement>();
+			for(FlowNode camundaNode: path) {
+				mappedPath.add(this.getNodeById(camundaNode.getId()));
+				
+			}
+			
+			mappedPaths.add(mappedPath);
+		}
+		return mappedPaths;
+	}
 
 	public File getProcessFile() {
 		return this.process;

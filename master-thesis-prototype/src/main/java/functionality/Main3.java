@@ -20,6 +20,7 @@ import Mapping.BPMNDataObject;
 import Mapping.BPMNExclusiveGateway;
 import Mapping.BPMNParticipant;
 import Mapping.ProcessInstanceWithVoters;
+import Mapping.RequiredUpdate;
 import Mapping.VoterForXorArc;
 import ProcessModelGeneratorAndAnnotater.ProcessGenerator;
 import ProcessModelGeneratorAndAnnotater.ProcessModellAnnotater;
@@ -43,14 +44,15 @@ public class Main3 {
 	 JFileChooser.APPROVE_OPTION) {pathToFile=
 	  chooser.getSelectedFile().getAbsolutePath();	  
 	  }*/
-	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches2.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\algorithmTest.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2BranchesWith2DataObjects1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel10_annotated.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel3_annotated.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel5_annotated.bpmn";
 
 		
 		JFrame frame = new JFrame(pathToFile);
@@ -60,7 +62,7 @@ public class Main3 {
 	panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
 	panel.add(new JLabel("Algorithms: "));
 	panel.add(new JLabel("Final Decider: "));
-	frame.add(panel);
+	
 	
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	double costForAddingReaderAfterBrt = 1.0;
@@ -70,29 +72,37 @@ public class Main3 {
 	try {
 		//ProcessGenerator g= new ProcessGenerator(pathForAddingRandomModels, 8, 30, 8, 6,50,30,20,20,10);
 	} catch (Exception e1) {
-		System.out.println("Random process could not be generated");
-		e1.printStackTrace();
+		panel.add(new JLabel("Error: "+ e1.getMessage()));
+		frame.add(panel);
+		frame.pack();
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
 	
 	try {
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\generatedModel1.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20);
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel7.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
-		ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
+		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel5.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_2.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
-
+	
 		
-		//a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
+		a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
+		panel.add(new JLabel("Paths through process: "+a2.getAllPathsThroughProcess().size()));
+		frame.add(panel);
+		frame.setLayout(new GridLayout(0, a2.getDataObjects().size()+1, 10, 0));
 		
 
 	} catch (Exception e2) {
 		// TODO Auto-generated catch block
+		System.err.println("Error found: ");
 		e2.printStackTrace();
+		panel.add(new JLabel("Error: "+ e2.getMessage()));
+		frame.add(panel);
+		frame.pack();
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
 	
 
-	frame.setLayout(new GridLayout(0, a2.getDataObjects().size()+1, 10, 0));
-	
 	/*
 	JPanel panel2 = new JPanel();
 	panel2.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
@@ -142,6 +152,7 @@ public class Main3 {
 				sb.append(part.getName()+", ");
 			}
 		}
+		
 		
 		sb.deleteCharAt(sb.length()-2);
 		dataPanel.add(new JLabel(sb.toString()));

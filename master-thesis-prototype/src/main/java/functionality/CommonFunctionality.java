@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
@@ -43,69 +44,16 @@ import ProcessModelGeneratorAndAnnotater.ProcessModellAnnotater;
 
 public class CommonFunctionality {
 
-	public static boolean isCorrectModel(BpmnModelInstance modelInstance) {
+	public static boolean isCorrectModel(BpmnModelInstance modelInstance) throws Exception {
 		// does correctness checking of the process model
 		// e.g. 1 Start and 1 End Event
 		boolean correctModel = true;
-		if (CommonFunctionality.checkIfOnlyOneStartEventAndEventEvent(modelInstance)) {
-
-		} else {
-			System.err.println("There must be 1 Start and 1 End Event!");
-			correctModel = false;
+		if (!CommonFunctionality.checkIfOnlyOneStartEventAndEventEvent(modelInstance)) {
+			throw new Exception("Model must have exactly 1 Start and 1 End Event");
+		} 
+		if(!CommonFunctionality.isModelValid(modelInstance)) {
+			throw new Exception("Model is not valid!");
 		}
-
-		// if(!CommonFunctionality.checkCorrectnessOfBranches(modelInstance)) {
-		// correctModel = false; }
-		
-		
-		/*
-		 LinkedList<LinkedList<FlowNode>> paths =
-		 CommonFunctionality.getAllPaths(modelInstance,
-		  modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
-		  modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), new
-		  LinkedList<FlowNode>(), new LinkedList<Gateway>(), new
-		 LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new
-		  LinkedList<LinkedList<FlowNode>>(), modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), false);
-		 */
-
-		 	
-		 LinkedList<LinkedList<FlowNode>> paths =
-		 CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
-		  modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
-		  modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), new
-		  LinkedList<FlowNode>(), new LinkedList<Gateway>(), new
-		 LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new
-		  LinkedList<LinkedList<FlowNode>>());
-		 
-		 LinkedList<LinkedList<FlowNode>> paths2 = CommonFunctionality.allPathsBetweenNodesWithCamundaNodes(modelInstance.getModelElementsByType(StartEvent.class).iterator().next(), modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), new
-				  LinkedList<FlowNode>(), new
-				  LinkedList<FlowNode>(), new
-				  LinkedList<FlowNode>(), new
-				  LinkedList<LinkedList<FlowNode>>());
-	
-		int i = 1;
-		for (LinkedList<FlowNode> path : paths) {
-			System.out.println("Path: " + i);
-			for (FlowNode f : path) {
-				System.out.println(f.getId());
-			}
-			i++;
-		}
-		
-		int j = 1;
-		for (LinkedList<FlowNode> path : paths2) {
-			System.out.println("Path: " + j);
-			for (FlowNode f : path) {
-				System.out.println(f.getId());
-			}
-			j++;
-		}
-
-
-		System.out.println("Amount paths " + paths.size());
-		System.out.println("Amount paths2 " +paths2.size());
-		System.out.println("has duplicates: " + CommonFunctionality.hasduplicateList(paths));
-
 		return correctModel;
 
 	}
@@ -649,8 +597,9 @@ public class CommonFunctionality {
 	
 	
 	
+	
 	public static LinkedList<LinkedList<FlowNode>> getAllPathsBetweenNodes(BpmnModelInstance modelInstance, FlowNode startNode,
-			FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<Gateway> openSplits,
+			FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<FlowNode> openSplits,
 			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths,
 			LinkedList<LinkedList<FlowNode>> parallelBranches) {
 			
@@ -658,23 +607,167 @@ public class CommonFunctionality {
 		LinkedList<LinkedList<FlowNode>> subPaths = CommonFunctionality.getAllPaths(modelInstance, startNode, endNode, queue, openSplits, currentPath, paths, parallelBranches, endNode);
 		System.out.println("Subpaths: "+subPaths.size());
 		
-		/*
+		
 		Iterator<LinkedList<FlowNode>> subPathsIter = subPaths.iterator();
 		while(subPathsIter.hasNext()) {
 			LinkedList<FlowNode>subPath = subPathsIter.next();
-			if(!subPath.getLast().equals(endNode)) {
-				subPathsIter.remove();
+			if(!subPath.getLast().equals(endNode)&&!(subPath.contains(endNode))) {				
+				subPathsIter.remove();				
 			}
 			
-		}*/
+		}
 		return subPaths;
 	}
 	
 	
+public static boolean isModelValid(BpmnModelInstance modelInstance) {
+	//model must have a writer on each path to a reader
+	//model can not have a reader/writer in a parallel branch when there is a writer in the other one
+	//readers in both branches are allowed if there is no writer in any branch
+	boolean isModelValid = true;
+	
+	LinkedList<LinkedList<FlowNode>> allProcessPaths =
+			 CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
+			  modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
+			  modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), new
+			  LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new
+			 LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new
+			  LinkedList<LinkedList<FlowNode>>());
+	
+	for(LinkedList<FlowNode>path: allProcessPaths) {
+		LinkedList<FlowNode>openParallelSplits = new LinkedList<FlowNode>();
+		LinkedList<FlowNode>pathToCurrTask = new LinkedList<FlowNode>();
+		for(int i = 0; i < path.size(); i++) {
+			FlowNode f = path.get(i);
+			pathToCurrTask.add(f);
+			if(f instanceof ParallelGateway && f.getOutgoing().size()>=2) {
+				//parallel Split found on path				
+				openParallelSplits.add(f);
+				
+			}
+			if (f instanceof ParallelGateway && f.getIncoming().size()>=2) {
+				//parallel Join found on path
+				openParallelSplits.pollLast();
+			}
+			if(f instanceof Task) {
+				Task currTask = (Task)f;
+				if(!currTask.getDataInputAssociations().isEmpty()) {
+					//task is a reader
+				
+				for (DataInputAssociation dia : currTask.getDataInputAssociations()) {
+					for (ItemAwareElement iae : dia.getSources()) {
+						//check if there is a writer to the dataObject on the pathToReader
+						boolean writerOnPath = false;
+						for(FlowNode pathToReaderNode: pathToCurrTask) {							
+							if(pathToReaderNode instanceof Task) {							
+								if(CommonFunctionality.isWriterForDataObject((Task)pathToReaderNode, iae)) {
+									writerOnPath = true;
+								}
+							
+							}
+						}
+						if(writerOnPath==false) {
+							System.err.println("Not a writer before every reader!");
+							return false; 
+						}
+			
+					}
+			
+			
+				}
+		
+			
+			
+		}
+				
+				if(!currTask.getDataOutputAssociations().isEmpty()) {
+					//currTask is a writer
+					//check if currTask is inside a parallel Branch
+					//if yes, check if there is a reader/writer in the other branch
+					
+					if(!openParallelSplits.isEmpty()) {
+						//currTask is in a parallel Branch
+						//for the lastOpened parallelSplit:						
+						//check if there are readers/writers in the other branch
+						//if so - model is not valid
+						
+						LinkedList<FlowNode>currOpenPSplits = new LinkedList<FlowNode>();
+						currOpenPSplits.addAll(openParallelSplits);
+									boolean insidePBranch = false;		
+							LinkedList<FlowNode>currPBranchPath = new LinkedList<FlowNode>();
+							ListIterator<FlowNode>currOpenPSplitsIter = currOpenPSplits.listIterator(currOpenPSplits.size());
+							while(currOpenPSplitsIter.hasPrevious()) {						
+							FlowNode currentLastPSplit = currOpenPSplitsIter.previous();
+								
+							for(int j = 0; j<path.size();j++) {
+								FlowNode otherNode = path.get(j);	
+								if(insidePBranch) {
+									currPBranchPath.add(otherNode);									
+								}
+								
+								if(otherNode instanceof ParallelGateway && otherNode.equals(currentLastPSplit)) {
+									currPBranchPath.add(otherNode);
+									insidePBranch=true;									
+								} else if(otherNode instanceof ParallelGateway && CommonFunctionality.getCorrespondingGtw(modelInstance, (Gateway) currentLastPSplit)==otherNode) {
+									if(!currPBranchPath.contains(currTask)) {
+									//end of parallelSplit reached on other branch than currTask is - which is a writer							
+									//check if this branch contains a reader or writer to the same dataObject
+										
+										Iterator<FlowNode>subPathNodeIter = currPBranchPath.iterator();
+											while(subPathNodeIter.hasNext()) {
+												FlowNode subPathNode = subPathNodeIter.next();
+												if(subPathNode instanceof Task) {
+													for (DataOutputAssociation dao : currTask.getDataOutputAssociations()) {
+														ItemAwareElement iae = dao.getTarget();
+														if(CommonFunctionality.isReaderForDataObject((Task)subPathNode, iae)==true) {
+															//subPathNode is reader in other parallel branch than currTask
+															return false;															
+														}
+														if(CommonFunctionality.isWriterForDataObject((Task)subPathNode, iae)==true) {
+															//subPathNode is writer in other parallel branch than currTask
+															return false;															
+														}
+													
+													}
+												
+											}
+										
+								
+										
+									
+										
+									}
+											//other branch has been checked for writers/readers
+											currOpenPSplitsIter.remove();
+								}
+									insidePBranch = false;									
+									currPBranchPath=new LinkedList<FlowNode>();
+																															
+							}
+							
+							
+							
+						
+					}
+							}
+					
+					
+										
+					
+				}
+		
+			}
+		}
+		
+	}
+	}
+	return isModelValid;
+}
+	
 
 	
-	private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance modelInstance, FlowNode startNode,
-			FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<Gateway> openSplits,
+private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance modelInstance, FlowNode startNode,
+			FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<FlowNode> openSplits,
 			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths,
 			LinkedList<LinkedList<FlowNode>> parallelBranches, FlowNode endPointOfSearch) {
 		// go DFS inside all branch till corresponding join is found
@@ -682,14 +775,19 @@ public class CommonFunctionality {
 		
 		while (!(queue.isEmpty())) {
 			FlowNode element = queue.poll();
-			System.out.println("Element: " + element.getName() + ", " + element.getId());
 			
+			if((endPointOfSearch instanceof EndEvent || endPointOfSearch instanceof Gateway)) {
+			Iterator<LinkedList<FlowNode>>subPaths = paths.iterator();
+			while(subPaths.hasNext()) {
+				LinkedList<FlowNode>subPath = subPaths.next();
+				if(currentPath.containsAll(subPath)&&currentPath.size()==subPath.size()+1) {
+					subPaths.remove();
+				}
+				
+			}
+			}
 			currentPath.add(element);
 			
-			if(element.equals(endPointOfSearch)) {
-				//foundEndPoint = true;
-				System.out.println("KEK");
-			}
 						
 			if (element.getId().equals(endNode.getId())) {
 				
@@ -716,7 +814,7 @@ public class CommonFunctionality {
 					Gateway joinGtw = (Gateway) element;
 
 					// when a join is found - poll the last opened gateway from the stack
-					Gateway lastOpenedSplitGtw = openSplits.pollLast();
+					Gateway lastOpenedSplitGtw = (Gateway)openSplits.pollLast();
 
 					if (!openSplits.contains(lastOpenedSplitGtw)) {
 						// when the openSplitStack does not contain the lastOpenedSplit anymore, all
@@ -795,10 +893,11 @@ public class CommonFunctionality {
 
 						if (!openSplits.isEmpty()) {
 							// still inside a branch
-							Gateway lastOpenedSplit = openSplits.getLast();
-							String correspondingJoinId = lastOpenedSplit.getName() + "_join";
-							FlowNode correspondingJoin = modelInstance.getModelElementById(correspondingJoinId);
-
+							Gateway lastOpenedSplit = (Gateway)openSplits.getLast();
+							
+							FlowNode correspondingJoin = 	CommonFunctionality.getCorrespondingGtw(modelInstance, lastOpenedSplit);
+							
+							
 							// go to next join node with all paths
 							LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
 
@@ -870,16 +969,7 @@ public class CommonFunctionality {
 				FlowNode successor = outgoingFlow.getTarget();
 				if (element instanceof Gateway && element.getOutgoing().size() == 2) {
 					// when a split is found - go dfs till the corresponding join is found
-					FlowNode correspondingJoinGtw = null;
-					String idCorrespondingJoinGtw = element.getName() + "_join";
-
-					for (Gateway gtw : modelInstance.getModelElementsByType(Gateway.class)) {
-						if (gtw.getId().contentEquals(idCorrespondingJoinGtw) && gtw.getIncoming().size() == 2) {
-							correspondingJoinGtw = gtw;
-							break;
-						}
-
-					}
+					FlowNode correspondingJoinGtw = CommonFunctionality.getCorrespondingGtw(modelInstance, (Gateway)element);
 					if (correspondingJoinGtw == null) {
 						System.err.println(
 								"no corresponding join for " + element.getId() + ", " + element.getOutgoing().size());
@@ -905,6 +995,13 @@ public class CommonFunctionality {
 
 	}
 
+
+
+
+
+
+
+
 	public static <T> boolean isSubListOfEachList(LinkedList<T> list1, LinkedList<LinkedList<FlowNode>> listOfLists) {
 		boolean isSubListOfEachList = true;
 		for (LinkedList<FlowNode> list2 : listOfLists) {
@@ -919,7 +1016,7 @@ public class CommonFunctionality {
 		return isSubListOfEachList;
 	}
 
-	public static <T> boolean isSubListOfList2(LinkedList<FlowNode> list1, LinkedList<FlowNode> list2) {
+	public static <T> boolean isSubListOfList2(LinkedList<T> list1, LinkedList<T> list2) {
 		boolean isSubListOfList = true;
 
 		if (!list1.equals(list2)) {
@@ -939,5 +1036,90 @@ public class CommonFunctionality {
 				.count() < lists.size();
 	}
 
+	public static Gateway getCorrespondingGtw(BpmnModelInstance modelInstance, Gateway gtw) {
+		Gateway correspondingGtw = null;
+		if(gtw.getIncoming().size()>=2&&gtw.getOutgoing().size()==1) {
+			//gtw is a join
+			StringBuilder splitGtwId = new StringBuilder();
+			
+			if(gtw.getName().contains("_join")) {
+				splitGtwId.append(gtw.getName()+"_split");
+			} else {
+				//it must have the same name but >=2 outgoing and ==1 incoming
+				for(Gateway gateway: modelInstance.getModelElementsByType(Gateway.class)) {
+					if(gateway.getName().contentEquals(gtw.getName())) {
+						if(gateway.getIncoming().size()==1&&gateway.getOutgoing().size()>=2) {
+							splitGtwId.append(gateway.getId());
+							break;
+						}
+					}
+				}
+				
+				
+				
+			}			
+			Gateway splitGtw = modelInstance.getModelElementById(splitGtwId.toString().trim());
+			if(splitGtw.getIncoming().size()==1&&splitGtw.getOutgoing().size()>=2) {
+				return splitGtw;
+			} 
+		} else if(gtw.getIncoming().size()==1&&gtw.getOutgoing().size()>=2) {
+			//gtw is a split
+			StringBuilder joinGtwId = new StringBuilder();
+			if(gtw.getName().contains("_split")) {
+				joinGtwId.append(gtw.getName()+"_join");
+			} else {
+				//it must have the same name but ==1 outgoing and >=2 incoming				
+				for(Gateway gateway: modelInstance.getModelElementsByType(Gateway.class)) {
+					if(gateway.getName().contentEquals(gtw.getName())) {
+						if(gateway.getIncoming().size()>=2&&gateway.getOutgoing().size()==1) {
+							joinGtwId.append(gateway.getId());
+							break;
+						}
+					}
+				}
+								
+			}			
+			Gateway joinGtw = modelInstance.getModelElementById(joinGtwId.toString().trim());
+			if(joinGtw.getIncoming().size()>=2&&joinGtw.getOutgoing().size()==1) {
+				return joinGtw;
+			} 
+		}
+		if(correspondingGtw==null) {
+			System.err.println("No corresponding Gtw found!");
+		}
+		return correspondingGtw;
+	}
+	
+	
+	
+	
+	
+	public boolean isModelBlockStructured (BpmnModelInstance modelInstance) {
+		if(modelInstance.getModelElementsByType(Gateway.class).size()%2!=0) {
+			return false;
+		}
+		for(Gateway gtw: modelInstance.getModelElementsByType(Gateway.class)) {
+			if(CommonFunctionality.getCorrespondingGtw(modelInstance, gtw)==null) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public int getAmountExclusiveGtwSplits(BpmnModelInstance modelInstance) {
+		int amount = 0;
+		for(ExclusiveGateway gtw: modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+			if(gtw.getIncoming().size()==1&&gtw.getOutgoing().size()>=2) {
+				amount++;
+			}
+		}
+		
+		return amount;
+		
+		
+	}
+	
+	
+	
 
 }
