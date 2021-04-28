@@ -1,6 +1,6 @@
 
 package functionality;
-
+/*
 import java.awt.Checkbox;
 import java.awt.Color;
 import java.awt.GridLayout;
@@ -40,7 +40,7 @@ public class Main2 {
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 
-		/*
+		
 		 JFileChooser chooser = new JFileChooser();
 		 
 		 chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
@@ -51,7 +51,7 @@ public class Main2 {
 		  chooser.getSelectedFile().getAbsolutePath());
 		  
 		  }
-		*/
+		
 		
 		ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 		double cost2 = 1;
@@ -336,4 +336,5 @@ public class Main2 {
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
 
-}
+}*/
+

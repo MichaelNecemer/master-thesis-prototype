@@ -6,9 +6,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-
+import java.util.Map.Entry;
 
 import javax.swing.BoxLayout;
 import javax.swing.JFileChooser;
@@ -16,9 +17,15 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import org.camunda.bpm.model.bpmn.BpmnModelInstance;
+import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
+import org.camunda.bpm.model.bpmn.instance.FlowNode;
+
+import Mapping.BPMNBusinessRuleTask;
 import Mapping.BPMNDataObject;
 import Mapping.BPMNExclusiveGateway;
 import Mapping.BPMNParticipant;
+import Mapping.BPMNTask;
 import Mapping.ProcessInstanceWithVoters;
 import Mapping.RequiredUpdate;
 import Mapping.VoterForXorArc;
@@ -44,7 +51,7 @@ public class Main3 {
 	 JFileChooser.APPROVE_OPTION) {pathToFile=
 	  chooser.getSelectedFile().getAbsolutePath();	  
 	  }*/
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\overlappingLastWriters1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\git\\master-thesis-prototype\\master-thesis-prototype\\src\\main\\resources\\process3.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches2.bpmn";
@@ -53,7 +60,8 @@ public class Main3 {
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel10_annotated.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel3_annotated.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel5_annotated.bpmn";
-
+	//String pathToFile = "C\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn";
+	String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2.bpmn";
 		
 		JFrame frame = new JFrame(pathToFile);
 	frame.setVisible(true);
@@ -65,12 +73,12 @@ public class Main3 {
 	
 	
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
-	double costForAddingReaderAfterBrt = 1.0;
-	//String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop";
+	double costForAddingReaderAfterBrt = 0.0;
+	String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop";
 	
 	
 	try {
-		//ProcessGenerator g= new ProcessGenerator(pathForAddingRandomModels, 8, 30, 8, 6,50,30,20,20,10);
+		//ProcessGenerator g= new ProcessGenerator(pathForAddingRandomModels,4000, 15, 200, 40, 18,50,30,20,20,5);
 	} catch (Exception e1) {
 		panel.add(new JLabel("Error: "+ e1.getMessage()));
 		frame.add(panel);
@@ -84,14 +92,30 @@ public class Main3 {
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel5.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_2.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
-	
+		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel1.bpmn","C:\\Users\\Micha\\OneDrive\\Desktop", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
+
 		
 		a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
 		panel.add(new JLabel("Paths through process: "+a2.getAllPathsThroughProcess().size()));
 		frame.add(panel);
 		frame.setLayout(new GridLayout(0, a2.getDataObjects().size()+1, 10, 0));
 		
-
+		for(Entry<DataObjectReference, LinkedList<FlowNode>>  entry: a2.getReadersMap().entrySet()) {
+			System.out.println(entry.getKey().getName());
+			for(FlowNode f: entry.getValue()) {
+				System.out.println(f.getName());
+			}
+			
+		}
+		
+		for(Entry<DataObjectReference, LinkedList<FlowNode>>  entry: a2.getWritersMap().entrySet()) {
+			System.out.println(entry.getKey().getName());
+			for(FlowNode f: entry.getValue()) {
+				System.out.println(f.getName());
+			}
+			
+		}
+		
 	} catch (Exception e2) {
 		// TODO Auto-generated catch block
 		System.err.println("Error found: ");
@@ -128,69 +152,67 @@ public class Main3 {
 	
 	
 	//use local minimum Algorithm to find cheapest combinations
-	LinkedList<ProcessInstanceWithVoters>pInstances = a2.localMinimumAlgorithm();
-	System.out.println("Amount of solutions found with localMinimumAlgorithm: "+pInstances.size());
-	System.out.println("Cheapest Brute Force Instances: ");
-
-	for(ProcessInstanceWithVoters pInstance:pInstances) {
-		pInstance.printProcessInstance();
-	}
-	
-	
-	for(ProcessInstanceWithVoters pInstance: pInstances) {
-		JPanel dataPanel = new JPanel();
-		frame.add(dataPanel);
-		dataPanel.setLayout(new BoxLayout(dataPanel, BoxLayout.PAGE_AXIS));
-		JLabel pInstLabel = new JLabel("ProcessInstance "+pInstance.getProcessInstanceID() +" with cost: "+pInstance.getCostForModelInstance());
-		pInstLabel.setForeground(Color.blue);
-		dataPanel.add(pInstLabel);
-		StringBuilder sb = new StringBuilder();
-		for(VoterForXorArc a: pInstance.getListOfArcs()) {
-			
-			sb.append(a.getBrt().getName()+": ");
-			for(BPMNParticipant part: a.getChosenCombinationOfParticipants()) {
-				sb.append(part.getName()+", ");
-			}
-		}
-		
-		
-		sb.deleteCharAt(sb.length()-2);
-		dataPanel.add(new JLabel(sb.toString()));
-		System.out.println(sb.toString());
-	}
-	
-	//write the results to a csv file
-	File csvFile = new File(a2.getProcessFile().getParent(), "resultsOfAlgorithm1.csv");
+	LinkedList<ProcessInstanceWithVoters> pInstances;
 	try {
-		if(csvFile.createNewFile()) {
-			System.out.println("CSV File has been created at: "+csvFile.getAbsolutePath());
-		}  else {
-			System.out.println("CSV File already exists!");
+		pInstances = a2.localMinimumAlgorithm();
+		System.out.println("Amount of solutions found with localMinimumAlgorithm: "+pInstances.size());
+		System.out.println("Cheapest Heuristic Search Instances: ");
+		
+		for(ProcessInstanceWithVoters pInstance:pInstances) {
+			
+		
+		pInstance.printProcessInstance();
 		}
-	} catch (IOException e) {
+		
+		for(ProcessInstanceWithVoters pInstance: pInstances) {
+			JPanel dataPanel = new JPanel();
+			frame.add(dataPanel);
+			dataPanel.setLayout(new BoxLayout(dataPanel, BoxLayout.PAGE_AXIS));
+			JLabel pInstLabel = new JLabel("ProcessInstance "+pInstance.getProcessInstanceID() +" with cost: "+pInstance.getCostForModelInstance());
+			pInstLabel.setForeground(Color.blue);
+			dataPanel.add(pInstLabel);
+			StringBuilder sb = new StringBuilder();
+			for(VoterForXorArc a: pInstance.getListOfArcs()) {
+				
+				sb.append(a.getBrt().getName()+": ");
+				for(BPMNParticipant part: a.getChosenCombinationOfParticipants()) {
+					sb.append(part.getName()+", ");
+				}
+			}
+			
+			
+			sb.deleteCharAt(sb.length()-2);
+			dataPanel.add(new JLabel(sb.toString()));
+			System.out.println(sb.toString());
+		}
+	} catch (NullPointerException e1) {
+		// TODO Auto-generated catch block
+		e1.printStackTrace();
+	} catch (Exception e1) {
+		// TODO Auto-generated catch block
+		e1.printStackTrace();
+	}
+	
+	LinkedList<ProcessInstanceWithVoters> bruteForceSolutions;
+	try {
+		bruteForceSolutions = a2.bruteForceAlgorithm();
+		System.out.println("Solutions found with BruteForce: "+bruteForceSolutions.size());
+		System.out.println("Cheapest brute Force solutions: "+a2.getCheapestProcessInstancesWithVoters(bruteForceSolutions).size());
+		
+		
+		
+	} catch (NullPointerException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	} catch (Exception e) {
 		// TODO Auto-generated catch block
 		e.printStackTrace();
 	}
-	csvFile.getParentFile().mkdirs();
-	ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 	
-	//writer.writeResultsOfAlgorithmToCSVFile(a2, pInstances);
-	LinkedList<ProcessInstanceWithVoters> bruteForceSolutions = a2.bruteForceAlgorithm();
-	System.out.println("Solutions found with BruteForce: "+bruteForceSolutions.size());
-	System.out.println("Cheapest brute Force solutions: "+a2.getCheapestProcessInstancesWithVoters(bruteForceSolutions).size());
-	boolean isCheapestSolutionInBruteForce = a2.compareResultsOfAlgorithms(pInstances, bruteForceSolutions);
-	System.out.println("Cheapest solution(s) of localMinAlgorithm is also found in BruteForce: "+isCheapestSolutionInBruteForce);
-	writer.writeResultsOfBothAlgorithmsToCSVFile(a2, pInstances, isCheapestSolutionInBruteForce);
-	writer.writeRowsToCSVAndcloseWriter();
+
 	
 	
 	//a2.annotateModelWithChosenParticipants(pInstances);
-	
-	System.out.println("Cheapest Brute Force Instances: ");
-	for(ProcessInstanceWithVoters pInstance:a2.getCheapestProcessInstancesWithVoters(a2.bruteForceAlgorithm())) {
-		pInstance.printProcessInstance();
-	}
-	
 	
 	/*
 	//Brute Force Attempt
@@ -216,8 +238,16 @@ public class Main3 {
 		
 	}
 	*/
+	
+	/*
+	try {
+		a2.addVotingTasksToProcess(1, pInstances.get(0), a2.getTroubleShooter(), true);
+	} catch (IOException e1) {
+		// TODO Auto-generated catch block
+		e1.printStackTrace();
+	}*/
 	frame.pack();
 	frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
+	
 }
 }

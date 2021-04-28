@@ -1,5 +1,6 @@
 package functionality;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -10,8 +11,12 @@ import java.util.ListIterator;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
+import org.camunda.bpm.model.bpmn.instance.Association;
 import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.DataOutputAssociation;
@@ -20,10 +25,12 @@ import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import org.camunda.bpm.model.bpmn.instance.Gateway;
 import org.camunda.bpm.model.bpmn.instance.ItemAwareElement;
+import org.camunda.bpm.model.bpmn.instance.Lane;
 import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
 import org.camunda.bpm.model.bpmn.instance.StartEvent;
 import org.camunda.bpm.model.bpmn.instance.Task;
+import org.camunda.bpm.model.bpmn.instance.TextAnnotation;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnEdge;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnShape;
 import org.camunda.bpm.model.bpmn.instance.di.Plane;
@@ -35,6 +42,7 @@ import Mapping.BPMNExclusiveGateway;
 import Mapping.BPMNGateway;
 import Mapping.BPMNParallelGateway;
 import Mapping.BPMNParticipant;
+import Mapping.BPMNTask;
 import Mapping.Combination;
 import Mapping.ProcessInstanceWithVoters;
 import Mapping.RequiredUpdate;
@@ -601,7 +609,7 @@ public class CommonFunctionality {
 	public static LinkedList<LinkedList<FlowNode>> getAllPathsBetweenNodes(BpmnModelInstance modelInstance, FlowNode startNode,
 			FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<FlowNode> openSplits,
 			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths,
-			LinkedList<LinkedList<FlowNode>> parallelBranches) {
+			LinkedList<LinkedList<FlowNode>> parallelBranches) throws NullPointerException, Exception {
 			
 		//filter out subpaths that do not have the endNode as target
 		LinkedList<LinkedList<FlowNode>> subPaths = CommonFunctionality.getAllPaths(modelInstance, startNode, endNode, queue, openSplits, currentPath, paths, parallelBranches, endNode);
@@ -620,7 +628,7 @@ public class CommonFunctionality {
 	}
 	
 	
-public static boolean isModelValid(BpmnModelInstance modelInstance) {
+public static boolean isModelValid(BpmnModelInstance modelInstance) throws NullPointerException, Exception {
 	//model must have a writer on each path to a reader
 	//model can not have a reader/writer in a parallel branch when there is a writer in the other one
 	//readers in both branches are allowed if there is no writer in any branch
@@ -769,7 +777,7 @@ public static boolean isModelValid(BpmnModelInstance modelInstance) {
 private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance modelInstance, FlowNode startNode,
 			FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<FlowNode> openSplits,
 			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths,
-			LinkedList<LinkedList<FlowNode>> parallelBranches, FlowNode endPointOfSearch) {
+			LinkedList<LinkedList<FlowNode>> parallelBranches, FlowNode endPointOfSearch) throws NullPointerException, Exception {
 		// go DFS inside all branch till corresponding join is found
 		queue.add(startNode);		
 		
@@ -1036,13 +1044,14 @@ private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mo
 				.count() < lists.size();
 	}
 
-	public static Gateway getCorrespondingGtw(BpmnModelInstance modelInstance, Gateway gtw) {
+	public static Gateway getCorrespondingGtw(BpmnModelInstance modelInstance, Gateway gtw) throws NullPointerException, Exception{
+		
 		Gateway correspondingGtw = null;
 		if(gtw.getIncoming().size()>=2&&gtw.getOutgoing().size()==1) {
 			//gtw is a join
 			StringBuilder splitGtwId = new StringBuilder();
 			
-			if(gtw.getName().contains("_join")) {
+			if(gtw.getId().contains("_join")) {
 				splitGtwId.append(gtw.getName()+"_split");
 			} else {
 				//it must have the same name but >=2 outgoing and ==1 incoming
@@ -1054,18 +1063,19 @@ private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mo
 						}
 					}
 				}
-				
-				
-				
+								
 			}			
 			Gateway splitGtw = modelInstance.getModelElementById(splitGtwId.toString().trim());
+			if(splitGtw==null) {
+				throw new Exception("Names of corresponding split and join gtws have to be equal!");
+			}
 			if(splitGtw.getIncoming().size()==1&&splitGtw.getOutgoing().size()>=2) {
-				return splitGtw;
+				correspondingGtw =  splitGtw;
 			} 
 		} else if(gtw.getIncoming().size()==1&&gtw.getOutgoing().size()>=2) {
 			//gtw is a split
 			StringBuilder joinGtwId = new StringBuilder();
-			if(gtw.getName().contains("_split")) {
+			if(gtw.getId().contains("_split")) {
 				joinGtwId.append(gtw.getName()+"_join");
 			} else {
 				//it must have the same name but ==1 outgoing and >=2 incoming				
@@ -1080,21 +1090,23 @@ private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mo
 								
 			}			
 			Gateway joinGtw = modelInstance.getModelElementById(joinGtwId.toString().trim());
+			if(joinGtw==null) {
+				throw new Exception("Names of corresponding split and join gtws have to be equal!");
+			}
 			if(joinGtw.getIncoming().size()>=2&&joinGtw.getOutgoing().size()==1) {
-				return joinGtw;
+				correspondingGtw = joinGtw;
 			} 
 		}
-		if(correspondingGtw==null) {
-			System.err.println("No corresponding Gtw found!");
-		}
+		
 		return correspondingGtw;
+		
 	}
 	
 	
 	
 	
 	
-	public boolean isModelBlockStructured (BpmnModelInstance modelInstance) {
+	public boolean isModelBlockStructured (BpmnModelInstance modelInstance) throws NullPointerException, Exception {
 		if(modelInstance.getModelElementsByType(Gateway.class).size()%2!=0) {
 			return false;
 		}
@@ -1106,7 +1118,7 @@ private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mo
 		return true;
 	}
 	
-	public int getAmountExclusiveGtwSplits(BpmnModelInstance modelInstance) {
+	public static int getAmountExclusiveGtwSplits(BpmnModelInstance modelInstance) {
 		int amount = 0;
 		for(ExclusiveGateway gtw: modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if(gtw.getIncoming().size()==1&&gtw.getOutgoing().size()>=2) {
@@ -1121,5 +1133,229 @@ private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mo
 	
 	
 	
+	
+	public static int getAmountElements(BpmnModelInstance modelInstance) {
+		
+		return modelInstance.getModelElementsByType(FlowNode.class).size();
+		
+		
+	}
+	
+	
+
+	public static int getAmountParallelGtwSplits(BpmnModelInstance modelInstance) {
+		int amount = 0;
+		for(ParallelGateway gtw: modelInstance.getModelElementsByType(ParallelGateway.class)) {
+			if(gtw.getIncoming().size()==1&&gtw.getOutgoing().size()>=2) {
+				amount++;
+			}
+		}
+		
+		return amount;
+		
+		
+	}
+	
+	
+	public static HashMap<DataObjectReference, LinkedList<FlowNode>> getReadersForDataObjects(BpmnModelInstance modelInstance){
+		HashMap<DataObjectReference, LinkedList<FlowNode>> readersMap = new HashMap<DataObjectReference, LinkedList<FlowNode>>();
+		for(DataObjectReference daoR: modelInstance.getModelElementsByType(DataObjectReference.class)) {
+			readersMap.putIfAbsent(daoR, new LinkedList<FlowNode>());
+		}
+		
+		for(Task task: modelInstance.getModelElementsByType(Task.class)) {
+			for(DataInputAssociation dia: task.getDataInputAssociations()) {
+				for(ItemAwareElement iae: dia.getSources()) {
+					for(DataObjectReference daoRef: readersMap.keySet()) {
+					if(iae.getId().contentEquals(daoRef.getId())) {
+						readersMap.get(daoRef).add(task);
+					}
+					}
+				}
+			}
+		}
+		
+		return readersMap;
+	}
+	
+	
+	public static HashMap<DataObjectReference, LinkedList<FlowNode>> getWritersForDataObjects(BpmnModelInstance modelInstance){
+		HashMap<DataObjectReference, LinkedList<FlowNode>> writersMap = new HashMap<DataObjectReference, LinkedList<FlowNode>>();
+		for(DataObjectReference daoR: modelInstance.getModelElementsByType(DataObjectReference.class)) {
+			writersMap.putIfAbsent(daoR, new LinkedList<FlowNode>());
+		}
+		
+		for(Task task: modelInstance.getModelElementsByType(Task.class)) {
+			for(DataOutputAssociation dao: task.getDataOutputAssociations()) {
+				ItemAwareElement iae = dao.getTarget();
+					for(DataObjectReference daoRef: writersMap.keySet()) {
+					if(iae.getId().contentEquals(daoRef.getId())) {
+						writersMap.get(daoRef).add(task);
+					}
+					}
+				}
+			}
+		
+		
+		return writersMap;
+	}
+	
+	
+	public boolean increaseAmountVotersForDecisions(BpmnModelInstance modelInstance) {
+		//increase the amount of voters needed for the decisions
+		boolean modelChanged = false;
+		
+		
+		
+		return modelChanged;
+	}
+	
+	
+	public static String fileWithDirectoryAssurance(String directory, String filename) {
+	    File dir = new File(directory);
+	    if (!dir.exists()) {
+	    	dir.mkdirs();	    
+	    }
+	    
+	    File newFile = new File(directory + File.separatorChar + filename);
+	    if(!newFile.exists()) {
+	    	newFile.mkdirs();
+	    }
+	    return newFile.getAbsolutePath();
+	}
+	
+	public static void setTimeout(Runnable runnable, int delay){
+	    new Thread(() -> {
+	        try {
+	            Thread.sleep(delay);
+	            runnable.run();
+	        }
+	        catch (Exception e){
+	            System.err.println(e);
+	        }
+	    }).start();
+	}
+	
+	public static String getNextStricterSphere(String sphere) {
+		sphere.trim();
+		if(sphere.contentEquals("Public")) {
+			return "Global";
+		} else if(sphere.contentEquals("Global")) {
+			return "Weak-Dynamic";
+		} else if(sphere.contentEquals("Weak-Dynamic")) {
+			return "Strong-Dynamic";
+		} else 
+		
+			return"";
+	
+		
+	}
+	
+	
+	public static int getGlobalSphere(BpmnModelInstance modelInstance, boolean modelWithLanes) {	
+		
+		
+		if(!modelWithLanes) {
+			//if the model is without lanes -> the participants must be extracted from the task name 
+			LinkedList<String>participants = new LinkedList<String>();
+		for (Task task : modelInstance.getModelElementsByType(Task.class)) {
+				
+				
+			String participantName = task.getName().substring(task.getName().indexOf("[")+1, task.getName().indexOf("]"));
+			if(!participants.contains(participantName)) {
+				participants.add(participantName);
+			}
+				
+			}
+			return participants.size();
+		} else {
+			// model is with lanes 
+			return modelInstance.getModelElementsByType(Lane.class).size();			
+		}
+		
+	}
+	
+public static void generateNewModelAndIncreaseVotersForEachDataObject(String pathToFile, int increaseBy) {
+	File file = new File(pathToFile);	
+	BpmnModelInstance modelInstance = Bpmn.readModelFromFile(file);
+		
+		boolean modelWithLanes = true;
+		if(modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
+			modelWithLanes=false;
+		}
+		
+		int maxParticipants = CommonFunctionality.getGlobalSphere(modelInstance, modelWithLanes);
+		
+		
+		for(ExclusiveGateway gtw: modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+			if(gtw.getIncoming().size()==1&&gtw.getOutgoing().size()>=2) {
+				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+							if (tx.getTextContent().startsWith("[Voters]")) {
+								String string = tx.getTextContent();
+								String substr = string.substring(string.indexOf('{') + 1, string.indexOf(','));
+								
+								int currAmountVoters = Integer.parseInt(substr);
+								if(currAmountVoters<maxParticipants) {
+									int amountAfterIncreasing = currAmountVoters+increaseBy;
+									string.replaceFirst(substr, amountAfterIncreasing+"");
+									tx.setTextContent(string);
+								}
+								
+							}
+						}
+
+					}
+				}
+				
+			}
+			
+		}
+		
+	}
+	
+	
+	
+	
+	
+	
+	public static void increaseVotersPerDataObject(BpmnModelInstance modelInstance, int increaseBy) {
+		
+		boolean modelWithLanes = true;
+		if(modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
+			modelWithLanes=false;
+		}
+		
+		int maxParticipants = CommonFunctionality.getGlobalSphere(modelInstance, modelWithLanes);
+		
+		
+		for(ExclusiveGateway gtw: modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+			if(gtw.getIncoming().size()==1&&gtw.getOutgoing().size()>=2) {
+				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+							if (tx.getTextContent().startsWith("[Voters]")) {
+								String string = tx.getTextContent();
+								String substr = string.substring(string.indexOf('{') + 1, string.indexOf(','));
+								
+								int currAmountVoters = Integer.parseInt(substr);
+								if(currAmountVoters<maxParticipants) {
+									int amountAfterIncreasing = currAmountVoters+increaseBy;
+									string.replaceFirst(substr, amountAfterIncreasing+"");
+									tx.setTextContent(string);
+								}
+								
+							}
+						}
+
+					}
+				}
+				
+			}
+			
+		}
+		
+	}
 
 }

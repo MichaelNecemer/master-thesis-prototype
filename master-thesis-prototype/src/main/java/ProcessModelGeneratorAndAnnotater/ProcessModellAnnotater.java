@@ -60,6 +60,7 @@ import functionality.CommonFunctionality;
 public class ProcessModellAnnotater {
 	// class takes a process model and annotates it with dataObjects, readers,
 	// writers, etc.
+
 	private static BpmnModelInstance modelInstance;
 	private static Collection<FlowNode> flowNodes;
 	private static LinkedList<DataObjectReference> dataObjects;
@@ -69,10 +70,11 @@ public class ProcessModellAnnotater {
 	private static int idForBrt;
 	
 	
-	public static void annotateModel(String pathToFile, List<Integer> countDataObjects, List<String> defaultSpheres,
+	public static void annotateModel(String pathToFile, String pathWhereToCreateAnnotatedFile, List<Integer> countDataObjects, List<String> defaultSpheres,
 			int dynamicWriter, int readerProb, int writerProb, int probPublicDecision) {
 		File process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);
+	
 		
 		idForTask = 1;
 		idForBrt = 1;
@@ -440,8 +442,9 @@ public class ProcessModellAnnotater {
 		
 
 		try {			
+			//if the model is not valid -> try annotating again
 			CommonFunctionality.isCorrectModel(modelInstance);
-			writeChangesToFile(process);
+			writeChangesToFile(process, pathWhereToCreateAnnotatedFile);
 			
 		} catch (IOException | ParserConfigurationException | SAXException e) {
 			// TODO Auto-generated catch block
@@ -449,6 +452,9 @@ public class ProcessModellAnnotater {
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			System.err.println(e.getMessage());
+			System.out.println("Try annotating again");
+			ProcessModellAnnotater.annotateModel(pathToFile, pathWhereToCreateAnnotatedFile, countDataObjects, defaultSpheres, dynamicWriter, readerProb, writerProb, probPublicDecision);
+
 		}
 
 	}
@@ -619,16 +625,17 @@ public class ProcessModellAnnotater {
 
 	}
 
-	private static void writeChangesToFile(File process) throws IOException, ParserConfigurationException, SAXException {
+	private static void writeChangesToFile(File process, String directoryToStoreAnnotatedModel) throws IOException, ParserConfigurationException, SAXException {
 		// validate and write model to file
 		Bpmn.validateModel(modelInstance);
 		
-		String pathOfProcessFile = process.getParent();
+		String parentFolder = process.getParentFile().getAbsolutePath();
+		CommonFunctionality.fileWithDirectoryAssurance(parentFolder, directoryToStoreAnnotatedModel);
 		String fileName = process.getAbsolutePath().substring(process.getAbsolutePath().lastIndexOf("\\"), process.getAbsolutePath().indexOf(".bpmn"));
 		String annotatedFileName = fileName+"_annotated.bpmn";
-		File file = new File(pathOfProcessFile, annotatedFileName);
+		File file = new File(directoryToStoreAnnotatedModel, annotatedFileName);
 
-		file.getParentFile().mkdirs(); 
+		
 		System.out.println("FileCreated: "+file.createNewFile());
 		
 		Bpmn.writeModelToFile(file, modelInstance);
@@ -1031,5 +1038,8 @@ public class ProcessModellAnnotater {
 		return changeBackToTask;
 		
 	}
+	
+	
+	
 
 }

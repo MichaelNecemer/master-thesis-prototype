@@ -52,6 +52,7 @@ public class ProcessGenerator {
 	private int[] taskProbArray;
 	private int[] xorProbArray;
 	private int[] parallelProbArray;
+	private int nestingDepthFactor;
 
 
 	private LinkedList<String>possibleNodeTypes;
@@ -60,8 +61,8 @@ public class ProcessGenerator {
 	private String directoryToStore;
 	
 
-	public ProcessGenerator(String directoryToStore, int amountParticipants, int amountTasksLeft, int amountXorsLeft,
-			int amountParallelsLeft, int probTask, int probXorGtw, int probParallelGtw, int probJoinGtw, int nestingDepthFactor) {
+	public ProcessGenerator(String directoryToStore, long timeoutAfterMilliSeconds, int amountParticipants, int amountTasksLeft, int amountXorsLeft,
+			int amountParallelsLeft, int probTask, int probXorGtw, int probParallelGtw, int probJoinGtw, int nestingDepthFactor) throws Exception {
 		// process model will have 1 StartEvent and 1 EndEvent
 		this.participantNames = new LinkedList<String>();
 		for (int i = 0; i < amountParticipants; i++) {
@@ -75,6 +76,7 @@ public class ProcessGenerator {
 		
 		this.insertionConstructs=new LinkedList<InsertionConstruct>();
 		
+		this.nestingDepthFactor=nestingDepthFactor;
 		
 		
 		this.processId=processGeneratorId++;
@@ -109,10 +111,18 @@ public class ProcessGenerator {
 		this.possibleNodeTypes.add("ExclusiveGateway");
 		this.possibleNodeTypes.add("ParallelGateway");
 		
+		long start = System.currentTimeMillis();
+		long end = start+timeoutAfterMilliSeconds;
 		// go dfs
+		
+	
+	
 		this.goDfs(startEvent, null, amountTasksLeft, amountXorsLeft, amountParallelsLeft, this.possibleNodeTypes, new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), nestingDepthFactor);
 		
 		
+		if(System.currentTimeMillis()>end) {
+			throw new Exception("Time limit is reached! ");
+		}
 	
 		try {
 			writeChangesToFile();
@@ -125,6 +135,7 @@ public class ProcessGenerator {
 	
 	private void goDfs(FlowNode startNode, FlowNode endNode, int amountTasksLeft, int amountXorsLeft, int amountParallelsLeft, LinkedList<String> possibleNodeTypesToBeInserted, LinkedList<FlowNode>queue, LinkedList<FlowNode>openGatewayStack, int nestingDepthFactor){
 		
+		nestingDepthFactor = this.nestingDepthFactor;
 		queue.add(startNode);
 		while (!(queue.isEmpty())) {
 		FlowNode currentNode = queue.pollLast();

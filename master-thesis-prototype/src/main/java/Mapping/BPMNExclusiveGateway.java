@@ -19,10 +19,10 @@ public class BPMNExclusiveGateway extends BPMNGateway{
 		
 	public BPMNExclusiveGateway(String id, String name, String type) {
 		super(id, name, type);
-		//by default a gateway needs 2 voters and has no loops
+		//by default a gateway needs 2 voters and has 2 loops
 		this.amountVoters=2;	
 		this.votersSameChoice=2;
-		this.amountLoops=0;
+		this.amountLoops=2;
 		//by default the sphere is global
 		this.sphere="Global";
 		//by default there are no constraints 
