@@ -157,6 +157,21 @@ public class API {
 		
 		this.mapAndCompute();
 
+		/*
+		LinkedList<LinkedList<FlowNode>>pathsBetweenNodes = CommonFunctionality.getAllPaths(modelInstance, modelInstance.getModelElementById("manualTask_050fe99b-6b0b-4e56-a714-edd58cd171d2"), modelInstance.getModelElementById("task_1"), new
+				  LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new
+				 LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new
+				  LinkedList<LinkedList<FlowNode>>(), modelInstance.getModelElementById("task_1"));
+		int i = 0; 
+		for(LinkedList<FlowNode>l: pathsBetweenNodes) {
+			System.out.println("Path: "+i);
+			for(FlowNode f: l) {
+				System.out.println(f.getName());
+			}
+			i++;
+		}
+			*/	  
+		
 		 this.pathsThroughProcess= CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
 				  modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
 				  modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), new

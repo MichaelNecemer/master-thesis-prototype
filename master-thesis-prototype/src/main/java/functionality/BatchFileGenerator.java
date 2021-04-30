@@ -16,7 +16,7 @@ public class BatchFileGenerator {
 	
 	static String rootFolder = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup";
 	static long timeOutForProcessGenerator = 60000; //1 min for generating random processes
-	static long timeOutForApi = 180000; //3 min time limit for Api to finish all calcualtions
+	static long timeOutForApi = 180000; //3 min time limit for Api to finish all calculations
 
 	
 	//bounds for ProcessModellAnnotater
@@ -28,39 +28,60 @@ public class BatchFileGenerator {
 	static int probPublicSphere = 0;
 	static int nestingDepthFactor = 5;
 	
+	//bounds for "small", "medium", "large" amountOfWriters 
+	static int percentageOfSmallAmountWriters = 20; //if there are 0-20% writers in a process it is considered a "small" amount
+	static int percentageOfMediumAmountWriters = 30; //if there are 21-30% writers -> "medium" amount
+	static int percentageOfLargeAmountWriters = 40; //
+	
+	//bounds for "small", "medium", "large" amountOfReaders
+	
 	//bounds for Algorithm that runs on annotated models
 	static ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	static double costForAddingReaderAfterBrt = 0.0;
 	
-	public static void main(String[]args) {
+	public static void main(String[]args) throws Exception {
 				
 		//generate 3 Classes -> small, medium, large processes (without annotation)
 		//put them into a new folder into the root
-		String pathToFolderForModelsWithoutAnnotation = CommonFunctionality.fileWithDirectoryAssurance(rootFolder, "ProcessesWithoutAnnotation");
+		String pathToFolderForModelsWithoutAnnotation = CommonFunctionality.fileWithDirectoryAssurance(rootFolder, "ProcessesWithoutAnnotation").getAbsolutePath();
 		
-		String pathToSmallProcessesFolder = CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "SmallProcessesFolder");
-		String pathToMediumProcessesFolder = CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "MediumProcessesFolder");
-		String pathToLargeProcessesFolder = CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "LargeProcessesFolder");
+		String pathToSmallProcessesFolder = CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "SmallProcessesFolder").getAbsolutePath();
+		String pathToMediumProcessesFolder = CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "MediumProcessesFolder").getAbsolutePath();
+		String pathToLargeProcessesFolder = CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "LargeProcessesFolder").getAbsolutePath();
 		
 		//for each processes folder -> generate 100 random processes
 		//small processes: 2-5 participants, 7-15 tasks, 1-4 xors, 0-2 parallels, 100 processes
 		//BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolder, 2, 5, 7, 15, 1, 4, 0, 2, 100);
-		
+	
 		
 		//medium processes: 6-10 participants, 16-30 tasks, 5-10 xors, 0-6 parallels, 100 processes
 		//BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToMediumProcessesFolder, 6, 10, 16, 30, 5, 10, 0, 6, 100);
 		
 		//large processes: 11-15 participants, 31-60 tasks, 11-15 xors, 0-9, parallels, 100 processes
 		//BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolder, 11, 15, 31, 60, 11, 15, 0, 9, 100);
-
+		new ProcessGenerator(rootFolder,timeOutForProcessGenerator, 2, 5, 5, 5,sphereProb,readerProb,writerProb,probPublicSphere,nestingDepthFactor);
 		
-		String pathToFolderForModelsForTest1 = CommonFunctionality.fileWithDirectoryAssurance(rootFolder, "Test1");
+		String pathToFolderForModelsForTest1 = CommonFunctionality.fileWithDirectoryAssurance(rootFolder, "Test1").getAbsolutePath();
 		//Test 1.1 - Measure impact of enforceability on privity
 		// increase the amount of voters needed for decisions till the max amount voters is reached on all xors
 		// for n models of a class create m new ones 
-		String pathToSmallProcessesForTest1= CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsForTest1, "SmallProcessesAnnotatedFolder");
+		// annotate a model with some dataObjects -> in 1. iteration every decision has 1 Participant for every dataObject connected
+												//-> in 2. iteration every decision has 2 Participants for every dataObject connected
+		
+		
+		String pathToSmallProcessesForTest1= CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsForTest1, "SmallProcessesAnnotatedFolder").getAbsolutePath();
 		//run through the small processes without annotation and annotate them -> increase the amount of voters for each xor on every run
 		//on first run there should be 1 voter on each xor split - on last run, there should be the amount of participants in the global sphere 
+		//generate one random model with 1 voter
+		
+		//take x process models from the folder with the small processes without annotation
+		int amountSmallProcesses = 10;
+		LinkedList<Integer> dataObjectBoundsSmallProcesses = new LinkedList<Integer>(Arrays.asList(1,3));
+		for(int i = 0; i < amountSmallProcesses; i++) {
+		//for each model -> annotate it with 1 Voter for each dataObject of all decisions and safe it into the SmallProcessesForTest1 folder			
+			//ProcessModellAnnotater.annotateModelWithReaderAndWriterProbabilities("", pathToSmallProcessesForTest1, dataObjectBoundsSmallProcesses, defaultSpheres, 0, 20, 20, 0);
+		}
+		
 		
 		
 		//Test 1.2 - Measure impact of privity on enforceability
@@ -84,7 +105,7 @@ public class BatchFileGenerator {
 	public static void annotateModels(String rootFolder, String pathToFiles, String nameOfAnnotatedModelsFolder) {
 		//iterate through all files in the directory and annotate them
 		
-		String newDirectory = CommonFunctionality.fileWithDirectoryAssurance(rootFolder, nameOfAnnotatedModelsFolder);
+		String newDirectory = CommonFunctionality.fileWithDirectoryAssurance(rootFolder, nameOfAnnotatedModelsFolder).getAbsolutePath();
 		
 		File dir = new File(pathToFiles);
 		  File[] directoryListing = dir.listFiles();
@@ -122,7 +143,7 @@ public class BatchFileGenerator {
 		  while(fileIter.hasNext()) {
 			  String pathToFile = fileIter.next();
 			  System.out.println(pathToFile);
-			ProcessModellAnnotater.annotateModel(pathToFile, newDirectory, dataObjectBounds, defaultSpheres, sphereProb, readerProb, writerProb, probPublicSphere);
+			ProcessModellAnnotater.annotateModelWithReaderAndWriterProbabilities(pathToFile, newDirectory, dataObjectBounds, defaultSpheres, sphereProb, readerProb, writerProb, probPublicSphere);
 		    System.out.println(pathToFile +" was annotated");  
 		  }
 		  

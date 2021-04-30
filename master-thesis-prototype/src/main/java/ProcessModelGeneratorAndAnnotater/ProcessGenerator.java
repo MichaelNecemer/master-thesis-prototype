@@ -34,6 +34,8 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import functionality.CommonFunctionality;
+
 public class ProcessGenerator {
 	// generates a new Process Model using the camunda fluent API
 	// model can than be annotated using the ProcessModelAnnotater
@@ -546,10 +548,9 @@ public class ProcessGenerator {
 		String pathOfProcessFile = this.directoryToStore;
 		String fileName = "randomProcessModel"+this.processId+".bpmn";
 		
+		File file = CommonFunctionality.createFileWithinDirectory(pathOfProcessFile, fileName);
 	
-		File file = new File(pathOfProcessFile, fileName);
-
-		file.getParentFile().mkdirs(); 
+		
 		System.out.println("FileCreated: "+file.createNewFile());
 		
 				Bpmn.writeModelToFile(file, modelInstance);

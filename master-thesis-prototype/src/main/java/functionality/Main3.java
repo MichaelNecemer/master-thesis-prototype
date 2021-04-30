@@ -60,8 +60,8 @@ public class Main3 {
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel10_annotated.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel3_annotated.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel5_annotated.bpmn";
-	//String pathToFile = "C\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn";
-	String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2.bpmn";
+	String pathToFile = "C\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn";
+	//String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2.bpmn";
 		
 		JFrame frame = new JFrame(pathToFile);
 	frame.setVisible(true);
@@ -78,7 +78,7 @@ public class Main3 {
 	
 	
 	try {
-		//ProcessGenerator g= new ProcessGenerator(pathForAddingRandomModels,4000, 15, 200, 40, 18,50,30,20,20,5);
+		ProcessGenerator g= new ProcessGenerator(pathForAddingRandomModels,4000, 15, 20, 40, 18,50,30,20,20,5);
 	} catch (Exception e1) {
 		panel.add(new JLabel("Error: "+ e1.getMessage()));
 		frame.add(panel);
@@ -91,11 +91,11 @@ public class Main3 {
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel7.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel5.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
-		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_2.bpmn", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
+		//ProcessModellAnnotater.annotateModelWithReaderAndWriterProbabilities("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn", "C:\\Users\\Micha\\OneDrive\\Desktop",new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel1.bpmn","C:\\Users\\Micha\\OneDrive\\Desktop", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
 
 		
-		a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
+		//a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
 		panel.add(new JLabel("Paths through process: "+a2.getAllPathsThroughProcess().size()));
 		frame.add(panel);
 		frame.setLayout(new GridLayout(0, a2.getDataObjects().size()+1, 10, 0));

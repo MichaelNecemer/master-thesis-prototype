@@ -62,6 +62,11 @@ public class CommonFunctionality {
 		if(!CommonFunctionality.isModelValid(modelInstance)) {
 			throw new Exception("Model is not valid!");
 		}
+		if(!CommonFunctionality.isModelBlockStructured(modelInstance)) {
+			throw new Exception("Model must be block structured!");
+		}
+		
+		
 		return correctModel;
 
 	}
@@ -774,7 +779,7 @@ public static boolean isModelValid(BpmnModelInstance modelInstance) throws NullP
 	
 
 	
-private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance modelInstance, FlowNode startNode,
+public static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance modelInstance, FlowNode startNode,
 			FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<FlowNode> openSplits,
 			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths,
 			LinkedList<LinkedList<FlowNode>> parallelBranches, FlowNode endPointOfSearch) throws NullPointerException, Exception {
@@ -796,7 +801,6 @@ private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mo
 			}
 			currentPath.add(element);
 			
-						
 			if (element.getId().equals(endNode.getId())) {
 				
 				Iterator<LinkedList<FlowNode>>subPathIter = paths.iterator();
@@ -1106,7 +1110,7 @@ private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mo
 	
 	
 	
-	public boolean isModelBlockStructured (BpmnModelInstance modelInstance) throws NullPointerException, Exception {
+	public static boolean isModelBlockStructured (BpmnModelInstance modelInstance) throws NullPointerException, Exception {
 		if(modelInstance.getModelElementsByType(Gateway.class).size()%2!=0) {
 			return false;
 		}
@@ -1201,17 +1205,21 @@ private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mo
 	}
 	
 	
-	public boolean increaseAmountVotersForDecisions(BpmnModelInstance modelInstance) {
-		//increase the amount of voters needed for the decisions
-		boolean modelChanged = false;
+	public static File createFileWithinDirectory(String directory, String filename) {
+		 File dir = new File(directory);
+		    if (!dir.exists()) {
+		    	dir.mkdirs();	    
+		    }
+		    
+		    File newFile = new File(directory + File.separatorChar + filename);
+	
+		    return newFile;
 		
 		
-		
-		return modelChanged;
 	}
 	
 	
-	public static String fileWithDirectoryAssurance(String directory, String filename) {
+	public static File fileWithDirectoryAssurance(String directory, String filename) {
 	    File dir = new File(directory);
 	    if (!dir.exists()) {
 	    	dir.mkdirs();	    
@@ -1221,8 +1229,11 @@ private static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mo
 	    if(!newFile.exists()) {
 	    	newFile.mkdirs();
 	    }
-	    return newFile.getAbsolutePath();
+	    return newFile;
 	}
+	
+	
+
 	
 	public static void setTimeout(Runnable runnable, int delay){
 	    new Thread(() -> {
@@ -1357,5 +1368,13 @@ public static void generateNewModelAndIncreaseVotersForEachDataObject(String pat
 		}
 		
 	}
+	
+	public static int getAmountFromPercentage(int amountTasks, int percentage) {
+		double amountFromPercentage = amountTasks*percentage/100;
+		return (int) Math.ceil(amountFromPercentage);		
+	}
+	
+	
+	
 
 }
