@@ -8,9 +8,15 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.concurrent.ThreadLocalRandom;
 
+
+import org.camunda.bpm.model.bpmn.Bpmn;
+import org.camunda.bpm.model.bpmn.BpmnModelInstance;
+import org.camunda.bpm.model.bpmn.instance.FlowNode;
+import org.camunda.bpm.model.bpmn.instance.Task;
+
 import Mapping.ProcessInstanceWithVoters;
 import ProcessModelGeneratorAndAnnotater.ProcessGenerator;
-import ProcessModelGeneratorAndAnnotater.ProcessModellAnnotater;
+import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
 
 public class BatchFileGenerator {
 	
@@ -18,22 +24,22 @@ public class BatchFileGenerator {
 	static long timeOutForProcessGenerator = 60000; //1 min for generating random processes
 	static long timeOutForApi = 180000; //3 min time limit for Api to finish all calculations
 
-	
-	//bounds for ProcessModellAnnotater
+	//bounds for ProcessModelGenerator and ProcessModelAnnotater
 	static LinkedList<Integer> dataObjectBounds = new LinkedList<Integer>(Arrays.asList(1,3));
 	static LinkedList<String> defaultSpheres = new LinkedList<String>(Arrays.asList("Global","Static","Weak-Dynamic","Strong-Dynamic"));
-	static int sphereProb = 0;
+	static LinkedList<String> defaultNamesSeqFlowsXorSplits = new LinkedList<String>(Arrays.asList("true", "false"));
+	static int dynamicWriterProb = 0; 
 	static int readerProb = 30;
 	static int writerProb = 20;
 	static int probPublicSphere = 0;
 	static int nestingDepthFactor = 5;
 	
-	//bounds for "small", "medium", "large" amountOfWriters 
-	static int percentageOfSmallAmountWriters = 20; //if there are 0-20% writers in a process it is considered a "small" amount
-	static int percentageOfMediumAmountWriters = 30; //if there are 21-30% writers -> "medium" amount
-	static int percentageOfLargeAmountWriters = 40; //
+	//bounds for "small", "medium", "large" amountOfWriters classes in percentage
+	// e.g. 10 means, there will be 10% writers of the tasks in the process
+	static LinkedList<Integer>percentageOfWritersClasses = new LinkedList<Integer>(Arrays.asList(10, 20,30));
 	
 	//bounds for "small", "medium", "large" amountOfReaders
+	static LinkedList<Integer>percentageOfReadersClasses = new LinkedList<Integer>(Arrays.asList(10,20,30));
 	
 	//bounds for Algorithm that runs on annotated models
 	static ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
@@ -51,7 +57,7 @@ public class BatchFileGenerator {
 		
 		//for each processes folder -> generate 100 random processes
 		//small processes: 2-5 participants, 7-15 tasks, 1-4 xors, 0-2 parallels, 100 processes
-		//BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolder, 2, 5, 7, 15, 1, 4, 0, 2, 100);
+		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolder, 2, 5, 7, 15, 1, 4, 0, 2, 100);
 	
 		
 		//medium processes: 6-10 participants, 16-30 tasks, 5-10 xors, 0-6 parallels, 100 processes
@@ -59,7 +65,6 @@ public class BatchFileGenerator {
 		
 		//large processes: 11-15 participants, 31-60 tasks, 11-15 xors, 0-9, parallels, 100 processes
 		//BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolder, 11, 15, 31, 60, 11, 15, 0, 9, 100);
-		new ProcessGenerator(rootFolder,timeOutForProcessGenerator, 2, 5, 5, 5,sphereProb,readerProb,writerProb,probPublicSphere,nestingDepthFactor);
 		
 		String pathToFolderForModelsForTest1 = CommonFunctionality.fileWithDirectoryAssurance(rootFolder, "Test1").getAbsolutePath();
 		//Test 1.1 - Measure impact of enforceability on privity
@@ -77,9 +82,32 @@ public class BatchFileGenerator {
 		//take x process models from the folder with the small processes without annotation
 		int amountSmallProcesses = 10;
 		LinkedList<Integer> dataObjectBoundsSmallProcesses = new LinkedList<Integer>(Arrays.asList(1,3));
+		File folder = new File(pathToSmallProcessesFolder);
+		LinkedList<File>listOfFiles =  (LinkedList<File>) Arrays.asList(folder.listFiles());
+		LinkedList<File>filesToBeChosenOf = new LinkedList<File>();
+		filesToBeChosenOf.addAll(listOfFiles);			
+		
 		for(int i = 0; i < amountSmallProcesses; i++) {
 		//for each model -> annotate it with 1 Voter for each dataObject of all decisions and safe it into the SmallProcessesForTest1 folder			
-			//ProcessModellAnnotater.annotateModelWithReaderAndWriterProbabilities("", pathToSmallProcessesForTest1, dataObjectBoundsSmallProcesses, defaultSpheres, 0, 20, 20, 0);
+			//get a random model from the folder			
+			File randomProcessModelFile = CommonFunctionality.getRandomItem(filesToBeChosenOf);
+			BpmnModelInstance processModel = Bpmn.readModelFromFile(randomProcessModelFile);
+			int amountTasks = processModel.getModelElementsByType(Task.class).size();			
+			
+			for(int writerClass = 0; writerClass < percentageOfWritersClasses.size(); writerClass++) {
+				int amountWriterTasksInModel = CommonFunctionality.getAmountFromPercentage(amountTasks, percentageOfWritersClasses.get(writerClass));
+
+				for(int readerClass = 0; readerClass < percentageOfReadersClasses.size(); readerClass++) {
+					//for each model -> annotate it with small, medium, large amount of writers 
+					//for each model -> annotate it with small, medium, large amount of readers
+					int amountReaderTasksInModel = CommonFunctionality.getAmountFromPercentage(amountTasks, percentageOfReadersClasses.get(readerClass));
+
+					ProcessModelAnnotater.annotateModelWithFixedAmountOfReadersAndWritersAndRangeForDataObjects(pathToSmallProcessesFolder, pathToSmallProcessesForTest1, dataObjectBoundsSmallProcesses, defaultSpheres, dynamicWriterProb, amountWriterTasksInModel, amountReaderTasksInModel, 0, 1, dataObjectBoundsSmallProcesses.get(1), defaultNamesSeqFlowsXorSplits);
+										
+				}
+			}
+			
+			filesToBeChosenOf.remove(randomProcessModelFile);
 		}
 		
 		
@@ -143,7 +171,7 @@ public class BatchFileGenerator {
 		  while(fileIter.hasNext()) {
 			  String pathToFile = fileIter.next();
 			  System.out.println(pathToFile);
-			ProcessModellAnnotater.annotateModelWithReaderAndWriterProbabilities(pathToFile, newDirectory, dataObjectBounds, defaultSpheres, sphereProb, readerProb, writerProb, probPublicSphere);
+			ProcessModelAnnotater.annotateModelWithReaderAndWriterProbabilities(pathToFile, newDirectory, dataObjectBounds, defaultSpheres, dynamicWriterProb, readerProb, writerProb, probPublicSphere, defaultNamesSeqFlowsXorSplits);
 		    System.out.println(pathToFile +" was annotated");  
 		  }
 		  
@@ -154,7 +182,7 @@ public class BatchFileGenerator {
 			
 			//will be written to the pathForAddingRandomModels
 			try {
-				new ProcessGenerator(pathForAddingRandomModels, timeOutForProcessGenerator, maxAmountParticipants, maxAmountMaxTasks, maxAmountMaxXorSplits, maxAmountMaxParallelSplits,50,30,20,20,10);
+				new ProcessGenerator(pathForAddingRandomModels, timeOutForProcessGenerator, maxAmountParticipants, maxAmountMaxTasks, maxAmountMaxXorSplits, maxAmountMaxParallelSplits,dynamicWriterProb,readerProb,writerProb,probPublicSphere,nestingDepthFactor);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -173,15 +201,17 @@ public class BatchFileGenerator {
 			int randomAmountMaxTasks = ThreadLocalRandom.current().nextInt(lowerBoundTasks, upperBoundTasks+1);
 			int randomAmountMaxXorSplits = ThreadLocalRandom.current().nextInt(lowerBoundXorGtws, lowerBoundXorGtws+1);
 			int randomAmountMaxParallelSplits = ThreadLocalRandom.current().nextInt(lowerBoundParallelGtws, upperBoundParallelGtws+ 1);
-			
+		
 			try {
-				new ProcessGenerator(pathToFiles,timeOutForProcessGenerator, randomAmountParticipants, randomAmountMaxTasks, randomAmountMaxXorSplits, randomAmountMaxParallelSplits,sphereProb,readerProb,writerProb,probPublicSphere,nestingDepthFactor);
+			ProcessGenerator g= new ProcessGenerator(pathToFiles,timeOutForProcessGenerator, randomAmountParticipants, randomAmountMaxTasks, randomAmountMaxXorSplits, randomAmountMaxParallelSplits, dynamicWriterProb,readerProb,writerProb,probPublicSphere,nestingDepthFactor);
+
+			//ProcessGenerator g = 	new ProcessGenerator(pathToFiles,timeOutForProcessGenerator, randomAmountParticipants, randomAmountMaxTasks, randomAmountMaxXorSplits, randomAmountMaxParallelSplits, dynamicWriterProb,readerProb,writerProb,probPublicSphere,nestingDepthFactor);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			
-			System.out.println("randomProcess"+i+" deployed");
+		System.out.println("randomProcess"+i+" deployed");
 		}
 		
 	}

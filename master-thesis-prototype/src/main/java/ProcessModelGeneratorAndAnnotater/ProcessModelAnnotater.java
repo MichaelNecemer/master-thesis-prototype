@@ -60,7 +60,7 @@ import org.xml.sax.SAXException;
 
 import functionality.CommonFunctionality;
 
-public class ProcessModellAnnotater {
+public class ProcessModelAnnotater {
 	// class takes a process model and annotates it with dataObjects, readers,
 	// writers, etc.
 
@@ -72,14 +72,17 @@ public class ProcessModellAnnotater {
 	private static int idForTask;
 	private static int idForBrt;
 	
-	
-	public static void annotateModelWithFixedAmountOfReadersAndWriters(String pathToFile, String pathWhereToCreateAnnotatedFile, List<Integer> countDataObjects, List<String> defaultSpheres,
-			int dynamicWriter, int amountWritersOfProcess, int amountReadersOfProcess, int probPublicDecision, int amountParticipantsPerDataObject, int dataObjectsPerDecision) throws Exception {
+	public static void annotateModelWithFixedAmountOfReadersAndWritersAndRangeForDataObjects(String pathToFile, String pathWhereToCreateAnnotatedFile, List<Integer> countDataObjects, List<String> defaultSpheres,
+			int dynamicWriter, int amountWritersOfProcess, int amountReadersOfProcess, int probPublicDecision, int amountParticipantsPerDataObject, int maxDataObjectsPerDecision, List<String>namesForOutgoingSeqFlowsOfXorSplits) throws Exception {
 				
 		File process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);	
-		if(dataObjectsPerDecision>countDataObjects.get(1)) {
+		if(maxDataObjectsPerDecision>countDataObjects.get(1)) {
 			throw new Exception ("There can't be more dataObjects for a decision than dataObjects in the model!");
+		}
+		
+		if(maxDataObjectsPerDecision>countDataObjects.get(1)) {
+			maxDataObjectsPerDecision=countDataObjects.get(1);
 		}
 		
 		idForTask = 1;
@@ -87,29 +90,38 @@ public class ProcessModellAnnotater {
 		dataObjects = new LinkedList<DataObjectReference>();
 		differentParticipants = new LinkedList<String>();
 		
-		ProcessModellAnnotater.setDifferentParticipants();
-		ProcessModellAnnotater.addFlowNodesIfNecessary();
 
-		// randomly generate dataObjects within the range from
-		// countDataObjects[minCountDataObjects, maxCountDataObjects]
+		ProcessModelAnnotater.setDifferentParticipants();
+		ProcessModelAnnotater.addFlowNodesIfNecessary();
+
+		// randomly generate dataObjects within the range 
+
+		// randomly generate dataObjectsuntDataObjects, maxCountDataObjects]
 		int amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(countDataObjects.get(0),
 				countDataObjects.get(1) + 1);
-		ProcessModellAnnotater.generateDataObjectsWithDefaultSpheres(amountRandomCountDataObjectsToCreate, defaultSpheres);
+		ProcessModelAnnotater.generateDataObjectsWithDefaultSpheres(amountRandomCountDataObjectsToCreate, defaultSpheres);
 		for(DataObjectReference dataORef: modelInstance.getModelElementsByType(DataObjectReference.class)) {
-		ProcessModellAnnotater.addReadersAndWritersForDataObjectWithFixedAmounts(amountWritersOfProcess, amountReadersOfProcess, dynamicWriter, dataORef, defaultSpheres);
+		ProcessModelAnnotater.addReadersAndWritersForDataObjectWithFixedAmounts(amountWritersOfProcess, amountReadersOfProcess, dynamicWriter, dataORef, defaultSpheres);
 		}
 		
 		//add data objects for brts and tuples for xor splits
-		//each brt will have same amount of dataObjects connected
+		//each brt will have random amount of dataObjects within the range connected
 		//each xor split will have exactly the same amount of needed participants
 		for(Task task: modelInstance.getModelElementsByType(Task.class)) {
 			if(taskIsBrtFollowedByXorSplit(task)) {
-				ProcessModellAnnotater.addDataObjectsForBrt(task, dataObjectsPerDecision);
-				ProcessModellAnnotater.addTuplesForXorSplits(task, probPublicDecision, amountParticipantsPerDataObject, amountParticipantsPerDataObject);
+				int boundedRandomValue = ThreadLocalRandom.current().nextInt(0, (maxDataObjectsPerDecision+1));
+				ProcessModelAnnotater.addDataObjectsForBrt(task, boundedRandomValue);
+				ProcessModelAnnotater.addTuplesForXorSplits(task, probPublicDecision, amountParticipantsPerDataObject, amountParticipantsPerDataObject);
 				
 			}
 			
 		}
+		
+		//add names for xor split seq flows
+		ProcessModelAnnotater.addNamesForOutgoingFlowsOfXorSplits(namesForOutgoingSeqFlowsOfXorSplits);
+					
+
+		
 		
 		try {			
 			//if the model is not valid -> try annotating again
@@ -123,7 +135,80 @@ public class ProcessModellAnnotater {
 			// TODO Auto-generated catch block
 			System.err.println(e.getMessage());
 			System.out.println("Try annotating again");
-			ProcessModellAnnotater.annotateModelWithFixedAmountOfReadersAndWriters(pathToFile, pathWhereToCreateAnnotatedFile, countDataObjects, defaultSpheres, dynamicWriter, amountWritersOfProcess, amountReadersOfProcess, probPublicDecision, amountParticipantsPerDataObject, dataObjectsPerDecision);
+			ProcessModelAnnotater.annotateModelWithFixedAmountOfReadersAndWritersAndRangeForDataObjects(pathToFile, pathWhereToCreateAnnotatedFile, countDataObjects, defaultSpheres, dynamicWriter, amountWritersOfProcess, amountReadersOfProcess, probPublicDecision, amountParticipantsPerDataObject, maxDataObjectsPerDecision, namesForOutgoingSeqFlowsOfXorSplits);
+
+		}
+	
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	public static void annotateModelWithFixedAmountOfReadersAndWriters(String pathToFile, String pathWhereToCreateAnnotatedFile, List<Integer> countDataObjects, List<String> defaultSpheres,
+			int dynamicWriter, int amountWritersOfProcess, int amountReadersOfProcess, int probPublicDecision, int amountParticipantsPerDataObject, int dataObjectsPerDecision, List<String>namesForOutgoingSeqFlowsOfXorSplits) throws Exception {
+				
+		File process = new File(pathToFile);
+		modelInstance = Bpmn.readModelFromFile(process);	
+		if(dataObjectsPerDecision>countDataObjects.get(1)) {
+			throw new Exception ("There can't be more dataObjects for a decision than dataObjects in the model!");
+		}
+		
+		if(dataObjectsPerDecision>countDataObjects.get(1)) {
+			dataObjectsPerDecision=countDataObjects.get(1);
+		}
+		
+		idForTask = 1;
+		idForBrt = 1;
+		dataObjects = new LinkedList<DataObjectReference>();
+		differentParticipants = new LinkedList<String>();
+		
+		ProcessModelAnnotater.setDifferentParticipants();
+		ProcessModelAnnotater.addFlowNodesIfNecessary();
+
+		// randomly generate dataObjects within the range from
+		// countDataObjects[minCountDataObjects, maxCountDataObjects]
+		int amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(countDataObjects.get(0),
+				countDataObjects.get(1) + 1);
+		ProcessModelAnnotater.generateDataObjectsWithDefaultSpheres(amountRandomCountDataObjectsToCreate, defaultSpheres);
+		for(DataObjectReference dataORef: modelInstance.getModelElementsByType(DataObjectReference.class)) {
+		ProcessModelAnnotater.addReadersAndWritersForDataObjectWithFixedAmounts(amountWritersOfProcess, amountReadersOfProcess, dynamicWriter, dataORef, defaultSpheres);
+		}
+		
+		//add data objects for brts and tuples for xor splits
+		//each brt will have same amount of dataObjects connected
+		//each xor split will have exactly the same amount of needed participants
+		for(Task task: modelInstance.getModelElementsByType(Task.class)) {
+			if(taskIsBrtFollowedByXorSplit(task)) {
+				ProcessModelAnnotater.addDataObjectsForBrt(task, dataObjectsPerDecision);
+				ProcessModelAnnotater.addTuplesForXorSplits(task, probPublicDecision, amountParticipantsPerDataObject, amountParticipantsPerDataObject);
+				
+			}
+			
+		}
+		
+		//add names for xor split seq flows
+		ProcessModelAnnotater.addNamesForOutgoingFlowsOfXorSplits(namesForOutgoingSeqFlowsOfXorSplits);
+					
+
+		
+		
+		try {			
+			//if the model is not valid -> try annotating again
+			CommonFunctionality.isCorrectModel(modelInstance);
+			writeChangesToFile(process, pathWhereToCreateAnnotatedFile);
+			
+		} catch (IOException | ParserConfigurationException | SAXException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			System.err.println(e.getMessage());
+			System.out.println("Try annotating again");
+			ProcessModelAnnotater.annotateModelWithFixedAmountOfReadersAndWriters(pathToFile, pathWhereToCreateAnnotatedFile, countDataObjects, defaultSpheres, dynamicWriter, amountWritersOfProcess, amountReadersOfProcess, probPublicDecision, amountParticipantsPerDataObject, dataObjectsPerDecision, namesForOutgoingSeqFlowsOfXorSplits);
 
 		}
 	
@@ -142,7 +227,7 @@ public class ProcessModellAnnotater {
 	
 
 	public static void annotateModelWithReaderAndWriterProbabilities(String pathToFile, String pathWhereToCreateAnnotatedFile, List<Integer> countDataObjects, List<String> defaultSpheres,
-			int dynamicWriter, int readerProb, int writerProb, int probPublicDecision) {
+			int dynamicWriter, int readerProb, int writerProb, int probPublicDecision, List<String>namesForOutgoingSeqFlowsOfXorSplits) {
 		File process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);	
 		
@@ -151,16 +236,17 @@ public class ProcessModellAnnotater {
 		dataObjects = new LinkedList<DataObjectReference>();
 		differentParticipants = new LinkedList<String>();
 		
-		ProcessModellAnnotater.setDifferentParticipants();
-		ProcessModellAnnotater.addFlowNodesIfNecessary();
+		
+		ProcessModelAnnotater.setDifferentParticipants();
+		ProcessModelAnnotater.addFlowNodesIfNecessary();
 
 		// randomly generate dataObjects within the range from
 		// countDataObjects[minCountDataObjects, maxCountDataObjects]
 		int amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(countDataObjects.get(0),
 				countDataObjects.get(1) + 1);
-		ProcessModellAnnotater.generateDataObjectsWithDefaultSpheres(amountRandomCountDataObjectsToCreate, defaultSpheres);
+		ProcessModelAnnotater.generateDataObjectsWithDefaultSpheres(amountRandomCountDataObjectsToCreate, defaultSpheres);
 		for(DataObjectReference dataORef: modelInstance.getModelElementsByType(DataObjectReference.class)) {
-		ProcessModellAnnotater.addReadersAndWritersForDataObjectWithProbabilities(writerProb, readerProb, dynamicWriter, dataORef, defaultSpheres);
+		ProcessModelAnnotater.addReadersAndWritersForDataObjectWithProbabilities(writerProb, readerProb, dynamicWriter, dataORef, defaultSpheres);
 		}		
 
 		//add data objects for brts and tuples for xor splits
@@ -168,14 +254,16 @@ public class ProcessModellAnnotater {
 		//each xor split will have random amount of needed participants (in the range)
 		for(Task task: modelInstance.getModelElementsByType(Task.class)) {
 			if(taskIsBrtFollowedByXorSplit(task)) {
-				ProcessModellAnnotater.addDataObjectsForBrt(task, amountRandomCountDataObjectsToCreate);				
+				ProcessModelAnnotater.addDataObjectsForBrt(task, amountRandomCountDataObjectsToCreate);				
 				int randomIntAmountParticipantsForDecision = ThreadLocalRandom.current().nextInt(1,
 						differentParticipants.size());
-				ProcessModellAnnotater.addTuplesForXorSplits(task, probPublicDecision, 1, randomIntAmountParticipantsForDecision);
+				ProcessModelAnnotater.addTuplesForXorSplits(task, probPublicDecision, 1, randomIntAmountParticipantsForDecision);
 				}
 			
 		}
 		
+		//add names for xor split seq flows
+		ProcessModelAnnotater.addNamesForOutgoingFlowsOfXorSplits(namesForOutgoingSeqFlowsOfXorSplits);
 			
 
 		try {			
@@ -190,7 +278,7 @@ public class ProcessModellAnnotater {
 			// TODO Auto-generated catch block
 			System.err.println(e.getMessage());
 			System.out.println("Try annotating again");
-			ProcessModellAnnotater.annotateModelWithReaderAndWriterProbabilities(pathToFile, pathWhereToCreateAnnotatedFile, countDataObjects, defaultSpheres, dynamicWriter, readerProb, writerProb, probPublicDecision);
+			ProcessModelAnnotater.annotateModelWithReaderAndWriterProbabilities(pathToFile, pathWhereToCreateAnnotatedFile, countDataObjects, defaultSpheres, dynamicWriter, readerProb, writerProb, probPublicDecision, namesForOutgoingSeqFlowsOfXorSplits);
 
 		}
 
@@ -606,9 +694,9 @@ public class ProcessModellAnnotater {
 										currTask.addChildElement(dao);
 										DataObjectReference daoR = modelInstance.getModelElementById(iae.getId());
 
-										ProcessModellAnnotater.generateDIElementForWriter(dao,
-												ProcessModellAnnotater.getShape(iae.getId()),
-												ProcessModellAnnotater.getShape(currTask.getId()));
+										ProcessModelAnnotater.generateDIElementForWriter(dao,
+												ProcessModelAnnotater.getShape(iae.getId()),
+												ProcessModelAnnotater.getShape(currTask.getId()));
 										System.out.println("Change made: " + currTask.getName()
 												+ " has been modified from reader to writer for" + daoR.getName());
 									}
@@ -631,9 +719,9 @@ public class ProcessModellAnnotater {
 										taskToBeWriter.addChildElement(dao);
 										DataObjectReference daoR = modelInstance.getModelElementById(iae.getId());
 
-										ProcessModellAnnotater.generateDIElementForWriter(dao,
-												ProcessModellAnnotater.getShape(iae.getId()),
-												ProcessModellAnnotater.getShape(taskToBeWriter.getId()));
+										ProcessModelAnnotater.generateDIElementForWriter(dao,
+												ProcessModelAnnotater.getShape(iae.getId()),
+												ProcessModelAnnotater.getShape(taskToBeWriter.getId()));
 
 										System.out.println("Change made: " + taskToBeWriter.getName()
 												+ " has been added as a writer for " + daoR.getName());
@@ -799,7 +887,7 @@ public class ProcessModellAnnotater {
 				BusinessRuleTask brt = (BusinessRuleTask) brtTask;
 				
 				if (brt.getDataInputAssociations().isEmpty()) {
-					// when brt does not have a dataObject connected -> randomly connect dataObjects till dataObjectsPerDecision is reached					
+					// randomly connect dataObjects till dataObjectsPerDecision is reached					
 					int i = 0; 
 					LinkedList<DataObjectReference>doRefs = new LinkedList<DataObjectReference>();
 					doRefs.addAll(dataObjects);
@@ -947,12 +1035,12 @@ public class ProcessModellAnnotater {
 				FlowNode successor = f.getOutgoing().iterator().next().getTarget();
 				if (successor instanceof BusinessRuleTask) {
 					System.out.println("First node after StartEvent can not be a brt - insert a task in between!");
-					ProcessModellAnnotater.insertTaskAfterNode(f, successor, modelWithLanes);
+					ProcessModelAnnotater.insertTaskAfterNode(f, successor, modelWithLanes);
 				} else if (successor instanceof ParallelGateway && successor.getOutgoing().size()>=2) {
 					//either: insert a task in before the parallel split 
 					//or: check if on each branch there is a task before the brt
 					System.out.println("First Node after Start Event is a Parallel-Split - insert a task in front of it!");
-					ProcessModellAnnotater.insertTaskAfterNode(f, successor, modelWithLanes);
+					ProcessModelAnnotater.insertTaskAfterNode(f, successor, modelWithLanes);
 					
 					
 				}
@@ -1242,6 +1330,26 @@ public class ProcessModellAnnotater {
 		
 				
 	
+	}
+	
+	public static void addNamesForOutgoingFlowsOfXorSplits(List<String>namesForOutgoingSeqFlowsOfXorSplits) {
+		for(ExclusiveGateway gtw: modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+			if(gtw.getOutgoing().size()==2&&gtw.getIncoming().size()==1) {
+				if(namesForOutgoingSeqFlowsOfXorSplits!=null&&namesForOutgoingSeqFlowsOfXorSplits.size()!=0) {
+					LinkedList<String>names = new LinkedList<String>();
+					names.addAll(namesForOutgoingSeqFlowsOfXorSplits);
+					for(SequenceFlow seq: gtw.getOutgoing()) {
+						String randomName = CommonFunctionality.getRandomItem(names);
+						seq.setName(randomName);
+						names.remove(randomName);
+					}
+					
+				}
+				
+			}
+			
+		}
+		
 	}
 	
 	

@@ -30,7 +30,7 @@ import Mapping.ProcessInstanceWithVoters;
 import Mapping.RequiredUpdate;
 import Mapping.VoterForXorArc;
 import ProcessModelGeneratorAndAnnotater.ProcessGenerator;
-import ProcessModelGeneratorAndAnnotater.ProcessModellAnnotater;
+import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
 
 public class Main3 {
 	
@@ -60,8 +60,8 @@ public class Main3 {
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel10_annotated.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel3_annotated.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel5_annotated.bpmn";
-	String pathToFile = "C\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn";
-	//String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2.bpmn";
+	//String pathToFile = "C\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn";
+	String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2.bpmn";
 		
 		JFrame frame = new JFrame(pathToFile);
 	frame.setVisible(true);
@@ -95,7 +95,9 @@ public class Main3 {
 		//ProcessModellAnnotater.annotateModel("C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel1.bpmn","C:\\Users\\Micha\\OneDrive\\Desktop", new LinkedList<Integer>(Arrays.asList(1,2)), new LinkedList<String>(Arrays.asList("Public","Global","Static","Weak-Dynamic","Strong-Dynamic")),50,30, 20, 30);
 
 		
-		//a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
+		
+	//	a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
+		
 		panel.add(new JLabel("Paths through process: "+a2.getAllPathsThroughProcess().size()));
 		frame.add(panel);
 		frame.setLayout(new GridLayout(0, a2.getDataObjects().size()+1, 10, 0));
@@ -163,6 +165,9 @@ public class Main3 {
 		
 		pInstance.printProcessInstance();
 		}
+		
+		a2.annotateModelWithChosenParticipants(pInstances);
+		
 		
 		for(ProcessInstanceWithVoters pInstance: pInstances) {
 			JPanel dataPanel = new JPanel();

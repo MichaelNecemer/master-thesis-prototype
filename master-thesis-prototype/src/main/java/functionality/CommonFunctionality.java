@@ -48,7 +48,7 @@ import Mapping.ProcessInstanceWithVoters;
 import Mapping.RequiredUpdate;
 import Mapping.VoterForXorArc;
 import ProcessModelGeneratorAndAnnotater.LockedBranch;
-import ProcessModelGeneratorAndAnnotater.ProcessModellAnnotater;
+import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
 
 public class CommonFunctionality {
 

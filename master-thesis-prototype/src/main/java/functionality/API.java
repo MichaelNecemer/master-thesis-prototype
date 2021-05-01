@@ -37,6 +37,7 @@ import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.builder.AbstractFlowNodeBuilder;
 import org.camunda.bpm.model.bpmn.impl.instance.FlowNodeRef;
 import org.camunda.bpm.model.bpmn.instance.Association;
+import org.camunda.bpm.model.bpmn.instance.BaseElement;
 import org.camunda.bpm.model.bpmn.instance.BusinessRuleTask;
 import org.camunda.bpm.model.bpmn.instance.Collaboration;
 import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
@@ -77,6 +78,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import Mapping.BPMNBusinessRuleTask;
@@ -97,7 +99,7 @@ import Mapping.Label;
 import Mapping.ProcessInstanceWithVoters;
 import Mapping.RequiredUpdate;
 import Mapping.VoterForXorArc;
-import ProcessModelGeneratorAndAnnotater.ProcessModellAnnotater;
+import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
 
 //Class that uses the camunda model API to interact with the process model directly without parsing the XML first to e.g. DOM Object
 //Note that only processes with exactly 1 Start Event are possible
@@ -202,6 +204,7 @@ public class API {
 		}
 		
 		this.mapDataObjects();
+		
 		this.createDataObjectAsssociatons();
 		this.computeGlobalSphere();
 		this.mapDefaultTroubleShooter();
@@ -209,6 +212,7 @@ public class API {
 
 		// set last writer lists for the brts
 		for (BPMNBusinessRuleTask brt : this.businessRuleTaskList) {
+			this.mapDecisions(brt);
 			for (BPMNDataObject dataO : brt.getDataObjects()) {
 				ArrayList<BPMNTask> lastWritersForDataO = this.getLastWriterListForDataObject(brt, dataO,
 						new ArrayList<BPMNTask>(), new LinkedList<BPMNElement>());
@@ -2132,7 +2136,28 @@ public class API {
 		for (ProcessInstanceWithVoters pInst : pInstances) {
 		
 			for (Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> entry : pInst.getVotersMap().entrySet()) {
-
+				
+				ObjectMapper mapper = new ObjectMapper();
+				// Convert object to JSON string
+				StringBuilder sbDecision = new StringBuilder();
+				String jsonInString;
+				try {
+					jsonInString = mapper.writeValueAsString(entry.getKey().getDecisionEvaluation());
+					sbDecision.append(jsonInString);
+				} catch (JsonProcessingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}			
+				
+				
+				Documentation doc = modelInstance.newInstance(Documentation.class);
+				doc.setTextContent(sbDecision.toString());
+				BusinessRuleTask brt = (BusinessRuleTask)this.getFlowNodeByBPMNNodeId(entry.getKey().getId());
+				brt.getDocumentations().add(doc);
+				
+				
+				
+				
 				BPMNExclusiveGateway xorSplit = (BPMNExclusiveGateway) entry.getKey().getSuccessors().iterator().next();
 				FlowNode gtw = getFlowNodeByBPMNNodeId(xorSplit.getId());
 				TextAnnotation sphere = null;
@@ -2211,6 +2236,35 @@ public class API {
 				}
 
 			}
+			
+			for(BusinessRuleTask brt: modelInstance.getModelElementsByType(BusinessRuleTask.class)){
+			Iterator<Association>assocIter = modelInstance.getModelElementsByType(Association.class).iterator();
+			while(assocIter.hasNext()) {	
+			Association a = assocIter.next();
+			for(TextAnnotation txt: modelInstance.getModelElementsByType(TextAnnotation.class)) {
+				if (txt.getTextContent().startsWith("[Decision]") && a.getSource().equals(brt)
+						&& txt.getId().equals(a.getTarget().getId())) {
+					for (BpmnEdge edge : modelInstance.getModelElementsByType(BpmnEdge.class)) {
+						if (edge.getBpmnElement().equals(a)) {
+							edge.getParentElement().removeChildElement(edge);
+						}
+					}
+					a.getParentElement().removeChildElement(a);
+					txt.getParentElement().removeChildElement(txt);
+					for (BpmnShape shape : modelInstance.getModelElementsByType(BpmnShape.class)) {
+						if (shape.getBpmnElement() == null || shape.getBpmnElement().getId().contentEquals(a.getId())) {
+							shape.getParentElement().removeChildElement(shape);
+						}
+					}
+				}
+			
+			}
+			}
+			
+			}
+			
+			
+
 			try {
 				String id = "votingAsAnnotation-solution"+i;
 				this.writeChangesToFile(id);
@@ -2221,6 +2275,7 @@ public class API {
 			i++;
 		}
 
+		
 		
 	}
 	
