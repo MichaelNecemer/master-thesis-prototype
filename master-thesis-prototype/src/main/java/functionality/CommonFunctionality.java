@@ -1,6 +1,9 @@
 package functionality;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,6 +16,16 @@ import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
@@ -35,6 +48,11 @@ import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnEdge;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnShape;
 import org.camunda.bpm.model.bpmn.instance.di.Plane;
 import org.camunda.bpm.model.bpmn.instance.di.Waypoint;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 import Mapping.BPMNBusinessRuleTask;
 import Mapping.BPMNElement;
@@ -1331,7 +1349,10 @@ public static void generateNewModelAndIncreaseVotersForEachDataObject(String pat
 	
 	
 	
-	public static void increaseVotersPerDataObject(BpmnModelInstance modelInstance, int increaseBy) {
+	public static void increaseVotersPerDataObject(File file, String directoryToStore, String suffixName,  int increaseBy) throws IOException, ParserConfigurationException, SAXException {
+		BpmnModelInstance modelInstance = Bpmn.readModelFromFile(file);
+		String fileName = file.getName().substring(0, file.getName().indexOf(".bpmn"));
+		String iterationName = "";
 		
 		boolean modelWithLanes = true;
 		if(modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
@@ -1347,14 +1368,25 @@ public static void generateNewModelAndIncreaseVotersForEachDataObject(String pat
 					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
 							if (tx.getTextContent().startsWith("[Voters]")) {
-								String string = tx.getTextContent();
-								String substr = string.substring(string.indexOf('{') + 1, string.indexOf(','));
 								
-								int currAmountVoters = Integer.parseInt(substr);
+								String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{')+1, tx.getTextContent().indexOf('}'));
+								String[]values = subString.split(",");
+								
+								int currAmountVoters = Integer.parseInt(values[0]);
 								if(currAmountVoters<maxParticipants) {
-									int amountAfterIncreasing = currAmountVoters+increaseBy;
-									string.replaceFirst(substr, amountAfterIncreasing+"");
-									tx.setTextContent(string);
+									int amountAfterIncreasing = currAmountVoters+increaseBy;									
+									
+									int lowerBound = (int) Math.ceil((double)amountAfterIncreasing / 2);								
+									
+									int randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
+											amountAfterIncreasing + 1);
+									
+									StringBuilder sb = new StringBuilder();
+									sb.append("[Voters]{"+amountAfterIncreasing+","+randomCountVotersSameDecision+","+values[2]+"}");
+									
+									tx.setTextContent(sb.toString());
+									
+									iterationName = "amountVoters"+amountAfterIncreasing;
 								}
 								
 							}
@@ -1366,15 +1398,130 @@ public static void generateNewModelAndIncreaseVotersForEachDataObject(String pat
 			}
 			
 		}
-		
+		if(!iterationName.isEmpty()) {
+		String modelWithNewAmountVoters = fileName+iterationName;
+		CommonFunctionality.writeChangesToFile(modelInstance, modelWithNewAmountVoters,  directoryToStore, suffixName);
+		}
 	}
 	
 	public static int getAmountFromPercentage(int amountTasks, int percentage) {
-		double amountFromPercentage = amountTasks*percentage/100;
+		double amountFromPercentage = (double)amountTasks*percentage/100;
 		return (int) Math.ceil(amountFromPercentage);		
 	}
 	
+	public static void writeChangesToFile(BpmnModelInstance modelInstance, String fileName,  String directoryToStoreAnnotatedModel, String suffixName) throws IOException, ParserConfigurationException, SAXException {
+		// validate and write model to file
+		Bpmn.validateModel(modelInstance);		
+		
+		int fileNumber = 0;
+		
+		File dir = new File(directoryToStoreAnnotatedModel);		
+		  File[] directoryListing = dir.listFiles();
+		  if (directoryListing != null) {
+		    for (File child : directoryListing) {	
+		    	if(child.getName().contains(fileName)&&child.getName().contains(".bpmn")) {
+		    	String nameOfFileInsideDirectory = child.getName().substring(0, child.getName().indexOf(".bpmn"));	
+		    	if(nameOfFileInsideDirectory.contains("_annotated")) {
+		    	Pattern p = Pattern.compile("[0-9]+");
+		    	Matcher m = p.matcher(nameOfFileInsideDirectory);
+		    	while (m.find()) {
+		    	    int num = Integer.parseInt(m.group());
+		    	    if(num>fileNumber) {
+		    	    	fileNumber = num;
+		    	    }
+		    	}
+		    }
+		    }
+		    }
+		  }
+		 fileNumber++; 
+		String annotatedFileName = fileName+fileNumber+suffixName+".bpmn";
+		File file = CommonFunctionality.createFileWithinDirectory(directoryToStoreAnnotatedModel, annotatedFileName);
+			
+		System.out.println("File path: "+file.getAbsolutePath());
+		Bpmn.writeModelToFile(file, modelInstance);
+		
+
+		DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
+		docBuilderFactory.setNamespaceAware(true);
+		DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
+		Document document = docBuilder.parse(file);
+		
+
+		NodeList nodeList = document.getElementsByTagName("*");
+		for (int i = 0; i < nodeList.getLength(); i++) {
+			org.w3c.dom.Node node = nodeList.item(i);
+			if (node.getNodeType() == Node.ELEMENT_NODE && !(node.getNamespaceURI() == null)
+					&& !(node.getNodeName().contains(":"))) {
+				String nodeName = node.getNodeName();
+				if (nodeName.equals("property")) {
+					node.setPrefix("camunda");
+
+				} else {
+					node.setPrefix("bpmn");
+				}
+
+				if (((Element) node).hasAttribute("xmlns")) {
+					((Element) node).removeAttribute("xmlns");
+				}
+
+			}
+
+		}
+
+		try {
+			TransformerFactory tf = TransformerFactory.newInstance();
+			Transformer transformer = tf.newTransformer();
+			transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
+			transformer.setOutputProperty(OutputKeys.METHOD, "xml");
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+			transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+
+			StreamResult result = new StreamResult(new PrintWriter(new FileOutputStream(file, false)));
+			DOMSource source = new DOMSource(document);
+			transformer.transform(source, result);
+			/*
+			 * DOMSource source = new DOMSource(document); StreamResult filex = new
+			 * StreamResult(new File("C:\\Users\\Micha\\OneDrive\\Desktop\\test.xml"));
+			 * 
+			 * transformer.transform(source, filex);
+			 */
+			
+		} catch (TransformerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 	
+	public static int[] getRandomSplitSubValues(int maxAmount, int parts) {
+		//splits the maxAmount in random parts so that the sum of the subAmounts is equal to the maxAmount
+		// no value should be 0!
+		
+		
+		if(parts==1) {
+			return new int[] {maxAmount};
+		}
+			
+
+		int[]subParts = new int[parts];
+		
+		int i = 0; 
+		while (maxAmount > 0 && i < subParts.length) {
+		  int s = (int) (Math.round(Math.random() * (maxAmount - 1)) + 1);
+		  if(i==subParts.length-1) {
+			  subParts[i] = maxAmount;
+		  } else {
+			  subParts[i]=s;
+		  }
+		
+		 i++;
+		  maxAmount -= s;
+		}
+		return subParts;
+
+	}
+
 	
 
 }

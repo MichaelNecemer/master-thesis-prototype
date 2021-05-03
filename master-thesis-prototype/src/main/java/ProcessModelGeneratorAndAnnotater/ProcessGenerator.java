@@ -83,6 +83,10 @@ public class ProcessGenerator {
 		
 		this.processId=processGeneratorId++;
 		
+		if(probTask == 0) {
+			throw new Exception ("Process can not be created without tasks!");
+		}
+		
 		
 		
 		this.directoryToStore=directoryToStore;
@@ -93,14 +97,27 @@ public class ProcessGenerator {
 		taskProbArray = new int[2];
 		taskProbArray[0] = 0;
 		taskProbArray[1] = probTask - 1;
+		
+		for(int i = 0; i < taskProbArray.length; i++) {
+			System.out.println(taskProbArray[i]);
+		}
 
 		xorProbArray = new int[2];
 		xorProbArray[0] = probTask;
 		xorProbArray[1] = (probTask + probXorGtw - 1);
+		
+		for(int i = 0; i < xorProbArray.length; i++) {
+			System.out.println(xorProbArray[i]);
+		}
 
 		parallelProbArray = new int[2];
 		parallelProbArray[0] = (probTask + probXorGtw);
 		parallelProbArray[1] = (probTask + probXorGtw + probParallelGtw - 1);
+		
+		for(int i = 0; i < parallelProbArray.length; i++) {
+			System.out.println(parallelProbArray[i]);
+		}
+
 
 		modelInstance = Bpmn.createProcess("Process_"+run).startEvent("startEvent_1").done();
 		FlowNode startEvent = (FlowNode) modelInstance.getModelElementById("startEvent_1");

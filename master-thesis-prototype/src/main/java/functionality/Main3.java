@@ -79,6 +79,9 @@ public class Main3 {
 	
 	try {
 		ProcessGenerator g= new ProcessGenerator(pathForAddingRandomModels,4000, 15, 20, 40, 18,50,30,20,20,5);
+	
+
+	
 	} catch (Exception e1) {
 		panel.add(new JLabel("Error: "+ e1.getMessage()));
 		frame.add(panel);
