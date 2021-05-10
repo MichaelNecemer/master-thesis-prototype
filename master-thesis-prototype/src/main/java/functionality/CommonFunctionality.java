@@ -30,6 +30,7 @@ import javax.xml.transform.stream.StreamResult;
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.Association;
+import org.camunda.bpm.model.bpmn.instance.BusinessRuleTask;
 import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.DataOutputAssociation;
@@ -43,6 +44,7 @@ import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
 import org.camunda.bpm.model.bpmn.instance.StartEvent;
 import org.camunda.bpm.model.bpmn.instance.Task;
+import org.camunda.bpm.model.bpmn.instance.Text;
 import org.camunda.bpm.model.bpmn.instance.TextAnnotation;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnEdge;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnShape;
@@ -56,6 +58,7 @@ import org.xml.sax.SAXException;
 
 import Mapping.BPMNBusinessRuleTask;
 import Mapping.BPMNElement;
+import Mapping.BPMNEndEvent;
 import Mapping.BPMNExclusiveGateway;
 import Mapping.BPMNGateway;
 import Mapping.BPMNParallelGateway;
@@ -797,233 +800,238 @@ public static boolean isModelValid(BpmnModelInstance modelInstance) throws NullP
 	
 
 	
+
+
 public static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance modelInstance, FlowNode startNode,
-			FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<FlowNode> openSplits,
-			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths,
-			LinkedList<LinkedList<FlowNode>> parallelBranches, FlowNode endPointOfSearch) throws NullPointerException, Exception {
-		// go DFS inside all branch till corresponding join is found
-		queue.add(startNode);		
+		FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<FlowNode> openSplits,
+		LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths,
+		LinkedList<LinkedList<FlowNode>> parallelBranches, FlowNode endPointOfSearch) throws NullPointerException, Exception {
+	// go DFS inside all branch till corresponding join is found
+	queue.add(startNode);		
+	
+	while (!(queue.isEmpty())) {
+		FlowNode element = queue.poll();
 		
-		while (!(queue.isEmpty())) {
-			FlowNode element = queue.poll();
+		if((endPointOfSearch instanceof EndEvent || endPointOfSearch instanceof Gateway)) {
+		Iterator<LinkedList<FlowNode>>subPaths = paths.iterator();
+		while(subPaths.hasNext()) {
+			LinkedList<FlowNode>subPath = subPaths.next();
+			if(currentPath.containsAll(subPath)&&currentPath.size()==subPath.size()+1) {
+				subPaths.remove();
+			}
 			
-			if((endPointOfSearch instanceof EndEvent || endPointOfSearch instanceof Gateway)) {
-			Iterator<LinkedList<FlowNode>>subPaths = paths.iterator();
-			while(subPaths.hasNext()) {
-				LinkedList<FlowNode>subPath = subPaths.next();
+		}
+		}
+		currentPath.add(element);
+		
+		if (element.getId().equals(endNode.getId())) {
+			
+			Iterator<LinkedList<FlowNode>>subPathIter = paths.iterator();
+			while(subPathIter.hasNext()) {
+				LinkedList<FlowNode>subPath = subPathIter.next();
 				if(currentPath.containsAll(subPath)&&currentPath.size()==subPath.size()+1) {
-					subPaths.remove();
+					subPathIter.remove();
 				}
 				
 			}
-			}
-			currentPath.add(element);
+			paths.add(currentPath);
 			
-			if (element.getId().equals(endNode.getId())) {
-				
-				Iterator<LinkedList<FlowNode>>subPathIter = paths.iterator();
-				while(subPathIter.hasNext()) {
-					LinkedList<FlowNode>subPath = subPathIter.next();
-					if(currentPath.containsAll(subPath)&&currentPath.size()==subPath.size()+1) {
-						subPathIter.remove();
-					}
-					
-				}
-				paths.add(currentPath);
-				
-				
-				
-				
-				if (endNode instanceof ParallelGateway) {
-					// currentPath is part of a parallel branch
-					parallelBranches.add(currentPath);
-				}
+			
+			
+			
+			if (endNode instanceof ParallelGateway) {
+				// currentPath is part of a parallel branch
+				parallelBranches.add(currentPath);
+			}
 
-				if (endNode instanceof Gateway && endNode.getIncoming().size() == 2) {
+			if (endNode instanceof Gateway && endNode.getIncoming().size() == 2) {
 
-					Gateway joinGtw = (Gateway) element;
+				Gateway joinGtw = (Gateway) element;
 
-					// when a join is found - poll the last opened gateway from the stack
-					Gateway lastOpenedSplitGtw = (Gateway)openSplits.pollLast();
+				// when a join is found - poll the last opened gateway from the stack
+				Gateway lastOpenedSplitGtw = (Gateway)openSplits.pollLast();
 
-					if (!openSplits.contains(lastOpenedSplitGtw)) {
-						// when the openSplitStack does not contain the lastOpenedSplit anymore, all
-						// branches to the joinGtw have been visited
-						// go from joinGtw to the Join of the last opened split in the stack, if there
-						// is any
+				if (!openSplits.contains(lastOpenedSplitGtw)) {
+					// when the openSplitStack does not contain the lastOpenedSplit anymore, all
+					// branches to the joinGtw have been visited
+					// go from joinGtw to the Join of the last opened split in the stack, if there
+					// is any
 
-						// if lastOpenedSplit was a parallelGtw -> get possible combinations of paths
-						// within the branches
-						if (lastOpenedSplitGtw instanceof ParallelGateway) {
-							// -> check if each path containing the corresponding split of the
-							// parallelJoinGtw has the joinGtw as last element!
-							// else there are paths inside the branch that are not a fully built yet
+					// if lastOpenedSplit was a parallelGtw -> get possible combinations of paths
+					// within the branches
+					if (lastOpenedSplitGtw instanceof ParallelGateway) {
+						// -> check if each path containing the corresponding split of the
+						// parallelJoinGtw has the joinGtw as last element!
+						// else there are paths inside the branch that are not a fully built yet
 
-							String idOfSplit = joinGtw.getName() + "_split";
-							FlowNode splitGtw = modelInstance.getModelElementById(idOfSplit);
+						String idOfSplit = joinGtw.getName() + "_split";
+						FlowNode splitGtw = modelInstance.getModelElementById(idOfSplit);
 
-							LinkedList<LinkedList<FlowNode>> pathsToCombine = new LinkedList<LinkedList<FlowNode>>();
-							LinkedList<LinkedList<FlowNode>> pathsNotFullyBuilt = new LinkedList<LinkedList<FlowNode>>();
+						LinkedList<LinkedList<FlowNode>> pathsToCombine = new LinkedList<LinkedList<FlowNode>>();
+						LinkedList<LinkedList<FlowNode>> pathsNotFullyBuilt = new LinkedList<LinkedList<FlowNode>>();
 
-							for (LinkedList<FlowNode> path : paths) {
-								if (path.contains(splitGtw) && path.getLast().equals(joinGtw)) {
-									pathsToCombine.add(path);
-								} else if (path.contains(splitGtw) && !path.getLast().equals(joinGtw)) {
-									pathsNotFullyBuilt.add(path);
-								}
-
-							}
-
-							if (pathsToCombine.size()>=2) {
-								// all paths to joinGtw are fully built
-								LinkedList<LinkedList<FlowNode>> combinedPaths = CommonFunctionality
-										.combineParallelBranches(modelInstance, pathsToCombine,
-												(ParallelGateway) lastOpenedSplitGtw);
-
-								Iterator<LinkedList<FlowNode>> pathsIter = paths.iterator();
-
-								while (pathsIter.hasNext()) {
-									LinkedList<FlowNode> currPath = pathsIter.next();
-									boolean isSubList = false;
-									for(LinkedList<FlowNode>combPath: combinedPaths) {
-										if(CommonFunctionality.isSubListOfList2(currPath, combPath)) {
-											isSubList=true;	
-											break;
-										}
-									}
-									if (isSubList) {
-										pathsIter.remove();
-									}
-
-								}
-								paths.addAll(combinedPaths);
-
-								Iterator<LinkedList<FlowNode>> pBranchIter = parallelBranches.iterator();
-
-								while (pBranchIter.hasNext()) {
-									LinkedList<FlowNode> pBranch = pBranchIter.next();
-									boolean isSubList = false;
-									for(LinkedList<FlowNode>combPath: combinedPaths) {
-										if(CommonFunctionality.isSubListOfList2(pBranch, combPath)) {
-											isSubList=true;
-											break;
-										}
-									}
-									if (isSubList) {
-										pBranchIter.remove();
-									}
-								}
-
-								if (!parallelBranches.isEmpty()) {
-									parallelBranches.addAll(combinedPaths);
-								}
-							
-							}
-						}
-
-						if (!openSplits.isEmpty()) {
-							// still inside a branch
-							Gateway lastOpenedSplit = (Gateway)openSplits.getLast();
-							
-							FlowNode correspondingJoin = 	CommonFunctionality.getCorrespondingGtw(modelInstance, lastOpenedSplit);
-							
-							
-							// go to next join node with all paths
-							LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
-
-							for (LinkedList<FlowNode> path : paths) {
-								if (path.getLast().equals(element)) {
-									LinkedList<FlowNode> newPathAfterJoin = new LinkedList<FlowNode>();
-									newPathAfterJoin.addAll(path);
-									newPaths.add(newPathAfterJoin);
-								}
-							}
-							
-							//need to add the lastOpenedSplit, since one path has gone dfs till the join already
-							
-							for(int i = 0; i < newPaths.size()-1;i++) {
-								openSplits.add(lastOpenedSplit);
-							}
-
-							for (LinkedList<FlowNode> newPath : newPaths) {
-								getAllPaths(modelInstance, element.getOutgoing().iterator().next().getTarget(),
-										correspondingJoin, queue, openSplits, newPath, paths, parallelBranches, endPointOfSearch);
-							}
-
-							
-						} else {
-							// when there are no open splits gtws 
-							// go from the successor of the element to end since the currentElement has
-							// already been added to the path
-							LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
-
-							for (LinkedList<FlowNode> path : paths) {
-								if (path.getLast().equals(element)) {
-									LinkedList<FlowNode> newPathAfterJoin = new LinkedList<FlowNode>();
-									newPathAfterJoin.addAll(path);
-									newPaths.add(newPathAfterJoin);
-								}
-							}
-
-							for (LinkedList<FlowNode> newPath : newPaths) {
-								getAllPaths(modelInstance, element.getOutgoing().iterator().next().getTarget(),
-										endPointOfSearch, queue,
-										openSplits, newPath, paths, parallelBranches, endPointOfSearch);
+						for (LinkedList<FlowNode> path : paths) {
+							if (path.contains(splitGtw) && path.getLast().equals(joinGtw)) {
+								pathsToCombine.add(path);
+							} else if (path.contains(splitGtw) && !path.getLast().equals(joinGtw)) {
+								pathsNotFullyBuilt.add(path);
 							}
 
 						}
+
+						if (pathsToCombine.size()>=2) {
+							// all paths to joinGtw are fully built
+							LinkedList<LinkedList<FlowNode>> combinedPaths = CommonFunctionality
+									.combineParallelBranches(modelInstance, pathsToCombine,
+											(ParallelGateway) lastOpenedSplitGtw);
+
+							Iterator<LinkedList<FlowNode>> pathsIter = paths.iterator();
+
+							while (pathsIter.hasNext()) {
+								LinkedList<FlowNode> currPath = pathsIter.next();
+								boolean isSubList = false;
+								for(LinkedList<FlowNode>combPath: combinedPaths) {
+									if(CommonFunctionality.isSubListOfList2(currPath, combPath)) {
+										isSubList=true;	
+										break;
+									}
+								}
+								if (isSubList) {
+									pathsIter.remove();
+								}
+
+							}
+							paths.addAll(combinedPaths);
+
+							Iterator<LinkedList<FlowNode>> pBranchIter = parallelBranches.iterator();
+
+							while (pBranchIter.hasNext()) {
+								LinkedList<FlowNode> pBranch = pBranchIter.next();
+								boolean isSubList = false;
+								for(LinkedList<FlowNode>combPath: combinedPaths) {
+									if(CommonFunctionality.isSubListOfList2(pBranch, combPath)) {
+										isSubList=true;
+										break;
+									}
+								}
+								if (isSubList) {
+									pBranchIter.remove();
+								}
+							}
+
+							if (!parallelBranches.isEmpty()) {
+								parallelBranches.addAll(combinedPaths);
+							}
+						
+						}
 					}
 
-				}
-				
-				element = queue.poll();
-				if (element == null && queue.isEmpty()) {
+					if (!openSplits.isEmpty()) {
+						// still inside a branch
+						Gateway lastOpenedSplit = (Gateway)openSplits.getLast();
+						
+						FlowNode correspondingJoin = 	CommonFunctionality.getCorrespondingGtw(modelInstance, lastOpenedSplit);
+						
+						
+						// go to next join node with all paths
+						LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
 
-					return paths;
+						for (LinkedList<FlowNode> path : paths) {
+							if (path.getLast().equals(element)) {
+								LinkedList<FlowNode> newPathAfterJoin = new LinkedList<FlowNode>();
+								newPathAfterJoin.addAll(path);
+								newPaths.add(newPathAfterJoin);
+							}
+						}
+						
+						//need to add the lastOpenedSplit, since one path has gone dfs till the join already
+						
+						for(int i = 0; i < newPaths.size()-1;i++) {
+							openSplits.add(lastOpenedSplit);
+						}
+
+						for (LinkedList<FlowNode> newPath : newPaths) {
+							getAllPaths(modelInstance, element.getOutgoing().iterator().next().getTarget(),
+									correspondingJoin, queue, openSplits, newPath, paths, parallelBranches, endPointOfSearch);
+						}
+
+						
+					} else {
+						// when there are no open splits gtws 
+						// go from the successor of the element to end since the currentElement has
+						// already been added to the path
+						LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
+
+						for (LinkedList<FlowNode> path : paths) {
+							if (path.getLast().equals(element)) {
+								LinkedList<FlowNode> newPathAfterJoin = new LinkedList<FlowNode>();
+								newPathAfterJoin.addAll(path);
+								newPaths.add(newPathAfterJoin);
+							}
+						}
+
+						for (LinkedList<FlowNode> newPath : newPaths) {
+							getAllPaths(modelInstance, element.getOutgoing().iterator().next().getTarget(),
+									endPointOfSearch, queue,
+									openSplits, newPath, paths, parallelBranches, endPointOfSearch);
+						}
+
+					}
 				}
 
 			}
+			
+			element = queue.poll();
+			if (element == null && queue.isEmpty()) {
 
+				return paths;
+			}
+
+		}
+
+		if (element instanceof Gateway && element.getOutgoing().size() == 2) {
+			// add the split to the openSplitStack 1 times for each outgoing paths
+			int amountOfOutgoingPaths = element.getOutgoing().size();
+			int i = 0;
+			while (i < amountOfOutgoingPaths) {
+				openSplits.add((Gateway) element);
+				i++;
+			}
+
+		}
+
+		for (SequenceFlow outgoingFlow : element.getOutgoing()) {
+			FlowNode successor = outgoingFlow.getTarget();
 			if (element instanceof Gateway && element.getOutgoing().size() == 2) {
-				// add the split to the openSplitStack 1 times for each outgoing paths
-				int amountOfOutgoingPaths = element.getOutgoing().size();
-				int i = 0;
-				while (i < amountOfOutgoingPaths) {
-					openSplits.add((Gateway) element);
-					i++;
-				}
-
-			}
-
-			for (SequenceFlow outgoingFlow : element.getOutgoing()) {
-				FlowNode successor = outgoingFlow.getTarget();
-				if (element instanceof Gateway && element.getOutgoing().size() == 2) {
-					// when a split is found - go dfs till the corresponding join is found
-					FlowNode correspondingJoinGtw = CommonFunctionality.getCorrespondingGtw(modelInstance, (Gateway)element);
-					if (correspondingJoinGtw == null) {
-						System.err.println(
-								"no corresponding join for " + element.getId() + ", " + element.getOutgoing().size());
-
-					}
-
-					LinkedList<FlowNode> newPath = new LinkedList<FlowNode>();
-					newPath.addAll(currentPath);
-
-					getAllPaths(modelInstance, successor, correspondingJoinGtw, queue, openSplits, newPath, paths,
-							parallelBranches, endPointOfSearch);
-				} else {
-
-					queue.add(successor);
+				// when a split is found - go dfs till the corresponding join is found
+				FlowNode correspondingJoinGtw = CommonFunctionality.getCorrespondingGtw(modelInstance, (Gateway)element);
+				if (correspondingJoinGtw == null) {
+					System.err.println(
+							"no corresponding join for " + element.getId() + ", " + element.getOutgoing().size());
 
 				}
+
+				LinkedList<FlowNode> newPath = new LinkedList<FlowNode>();
+				newPath.addAll(currentPath);
+
+				getAllPaths(modelInstance, successor, correspondingJoinGtw, queue, openSplits, newPath, paths,
+						parallelBranches, endPointOfSearch);
+			} else {
+
+				queue.add(successor);
 
 			}
 
 		}
-		
-		return paths;
 
 	}
+	
+	return paths;
+
+}
+
+
+
 
 
 
@@ -1270,7 +1278,10 @@ public static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mod
 		if(sphere.contentEquals("Public")) {
 			return "Global";
 		} else if(sphere.contentEquals("Global")) {
-			return "Weak-Dynamic";
+			return "Static";
+		}else if(sphere.contentEquals("Static")) {
+				return "Weak-Dynamic";
+			
 		} else if(sphere.contentEquals("Weak-Dynamic")) {
 			return "Strong-Dynamic";
 		} else 
@@ -1343,16 +1354,56 @@ public static void generateNewModelAndIncreaseVotersForEachDataObject(String pat
 		}
 		
 	}
+
+
+
+
 	
-	
-	
-	
-	
-	
-	public static void increaseVotersPerDataObject(File file, String directoryToStore, String suffixName,  int increaseBy) throws IOException, ParserConfigurationException, SAXException {
+	public static void increaseSpherePerDataObject(File file, String directoryToStore, String suffixName, String sphereToSet) throws IOException, ParserConfigurationException, SAXException {
+		//sets the sphere of each data object in the model to the sphereToSet
+		
 		BpmnModelInstance modelInstance = Bpmn.readModelFromFile(file);
 		String fileName = file.getName().substring(0, file.getName().indexOf(".bpmn"));
 		String iterationName = "";
+		
+				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+					
+							if (tx.getTextContent().startsWith("Default")) {
+				
+							String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{')+1, tx.getTextContent().indexOf('}'));
+								
+										StringBuilder sb = new StringBuilder();
+										sb.append(tx.getTextContent().substring(0, tx.getTextContent().indexOf('{')));
+										
+										
+										sb.append(sphereToSet+'}');
+										Text txt = modelInstance.newInstance(Text.class);
+										txt.setTextContent(sb.toString());
+										tx.setText(txt);
+										
+										
+							
+							
+						
+					
+				}
+				}	
+				String modelWithStricterSpheres = fileName+"_"+sphereToSet;
+				CommonFunctionality.writeChangesToFile(modelInstance, modelWithStricterSpheres,  directoryToStore, iterationName);
+		
+		
+		
+	}
+
+	
+	
+	
+	
+	
+	public static void increaseVotersPerDataObject(File file, String directoryToStore, String suffixName, int currValue) throws IOException, ParserConfigurationException, SAXException {
+		BpmnModelInstance modelInstance = Bpmn.readModelFromFile(file);
+		String fileName = file.getName().substring(0, file.getName().indexOf(".bpmn"));
+		String iterationName = "_amountVoters";
 		
 		boolean modelWithLanes = true;
 		if(modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
@@ -1373,20 +1424,24 @@ public static void generateNewModelAndIncreaseVotersForEachDataObject(String pat
 								String[]values = subString.split(",");
 								
 								int currAmountVoters = Integer.parseInt(values[0]);
-								if(currAmountVoters<maxParticipants) {
-									int amountAfterIncreasing = currAmountVoters+increaseBy;									
+								if(currAmountVoters<=maxParticipants&&currValue<=maxParticipants) {
+									int amountAfterIncreasing = currValue;								
 									
-									int lowerBound = (int) Math.ceil((double)amountAfterIncreasing / 2);								
-									
-									int randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
+									int lowerBound = (int) Math.ceil((double)amountAfterIncreasing / 2)+1;								
+									int randomCountVotersSameDecision = 0;
+									if(lowerBound<currValue) {
+									randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
 											amountAfterIncreasing + 1);
-									
+									} else {
+										randomCountVotersSameDecision = currValue;
+									}
 									StringBuilder sb = new StringBuilder();
 									sb.append("[Voters]{"+amountAfterIncreasing+","+randomCountVotersSameDecision+","+values[2]+"}");
 									
-									tx.setTextContent(sb.toString());
-									
-									iterationName = "amountVoters"+amountAfterIncreasing;
+									Text text = modelInstance.newInstance(Text.class);
+									text.setTextContent(sb.toString());				
+									tx.setText(text);									
+									iterationName += "-"+amountAfterIncreasing;
 								}
 								
 							}
@@ -1399,14 +1454,25 @@ public static void generateNewModelAndIncreaseVotersForEachDataObject(String pat
 			
 		}
 		if(!iterationName.isEmpty()) {
-		String modelWithNewAmountVoters = fileName+iterationName;
+		String modelWithNewAmountVoters = fileName;
 		CommonFunctionality.writeChangesToFile(modelInstance, modelWithNewAmountVoters,  directoryToStore, suffixName);
 		}
+	}
+	
+	public static int getAmountFromPercentageWithMinimum(int amountTasks, int percentage, int min) {
+		double amountFromPercentage = (double)amountTasks*percentage/100;
+		int amountTasksToBeWriter =  (int) Math.ceil(amountFromPercentage);		
+		if(amountTasksToBeWriter<min) {
+			return min;
+		} 
+			return amountTasksToBeWriter;
+		
 	}
 	
 	public static int getAmountFromPercentage(int amountTasks, int percentage) {
 		double amountFromPercentage = (double)amountTasks*percentage/100;
 		return (int) Math.ceil(amountFromPercentage);		
+		
 	}
 	
 	public static void writeChangesToFile(BpmnModelInstance modelInstance, String fileName,  String directoryToStoreAnnotatedModel, String suffixName) throws IOException, ParserConfigurationException, SAXException {
@@ -1494,34 +1560,145 @@ public static void generateNewModelAndIncreaseVotersForEachDataObject(String pat
 		}
 	}
 	
-	public static int[] getRandomSplitSubValues(int maxAmount, int parts) {
-		//splits the maxAmount in random parts so that the sum of the subAmounts is equal to the maxAmount
-		// no value should be 0!
-		
-		
-		if(parts==1) {
-			return new int[] {maxAmount};
-		}
-			
+	
+	 public static List<LinkedList<Integer>> computeRepartitionNumber(int maxAmount, int subParts, int threshold_number) throws Exception {
+	    
+		 List<LinkedList<Integer>> resultRec = new LinkedList<LinkedList<Integer>>();
+	        
+	        
+	        if (subParts == 1) {
+	            List<LinkedList<Integer>> resultEnd = new LinkedList<LinkedList<Integer>>();
+	            LinkedList<Integer> unitary = new LinkedList<>();
+	            resultEnd.add(unitary);
+	            unitary.add(maxAmount);
+	            return resultEnd;
+	        }
 
-		int[]subParts = new int[parts];
-		
-		int i = 0; 
-		while (maxAmount > 0 && i < subParts.length) {
-		  int s = (int) (Math.round(Math.random() * (maxAmount - 1)) + 1);
-		  if(i==subParts.length-1) {
-			  subParts[i] = maxAmount;
-		  } else {
-			  subParts[i]=s;
-		  }
-		
-		 i++;
-		  maxAmount -= s;
-		}
-		return subParts;
+	        for (int i = threshold_number; i <= maxAmount-threshold_number; i++) {
+	            int remain = maxAmount - i;
+	            List<LinkedList<Integer>> partialRec = computeRepartitionNumber(remain, subParts - 1, threshold_number);
+	            for(List<Integer> subList : partialRec){
+	                subList.add(i);             
+	            }
+	            resultRec.addAll(partialRec);
+	        }
+	        return resultRec;
 
+	    }
+
+	public static int getSumAmountVotersOfModel(BpmnModelInstance modelInstance) {
+		
+		int sumAmountVoters = 0; 
+		for(ExclusiveGateway gtw: modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+			if(gtw.getIncoming().size()==1&&gtw.getOutgoing().size()>=2) {
+				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+							if (tx.getTextContent().startsWith("[Voters]")) {
+								
+								String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{')+1, tx.getTextContent().indexOf('}'));
+								String[]values = subString.split(",");
+								
+								int currAmountVoters = Integer.parseInt(values[0]);
+								sumAmountVoters+=currAmountVoters;
+							}
+						}
+					}
+				}
+		
+			}
+	}
+		return sumAmountVoters;
+	}
+	
+	
+public static double getAverageAmountVotersOfModel(BpmnModelInstance modelInstance) {
+		int amountGtws = 0; 
+		double sumAmountVoters = 0; 
+		for(ExclusiveGateway gtw: modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+			if(gtw.getIncoming().size()==1&&gtw.getOutgoing().size()>=2) {
+				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+							if (tx.getTextContent().startsWith("[Voters]")) {
+								
+								String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{')+1, tx.getTextContent().indexOf('}'));
+								String[]values = subString.split(",");
+								
+								double currAmountVoters = Double.parseDouble(values[0]);
+								sumAmountVoters+=currAmountVoters;
+								amountGtws++;
+							}
+						}
+					}
+				}
+		
+			}
+	}
+		return ((double)sumAmountVoters/amountGtws);
+	}
+	
+	
+	
+public static int getSphereSumOfModel(BpmnModelInstance modelInstance) {
+		//global = 0, ....,  Strong-Dynamic = 3
+	//a higher sum will be a model with more strict decisions
+		int sumSpheres = 0; 
+		
+			HashMap<DataObjectReference, LinkedList<FlowNode>> readers = CommonFunctionality.getReadersForDataObjects(modelInstance);
+				for(DataObjectReference dataO: readers.keySet()) {
+					for(FlowNode f: readers.get(dataO)) {
+						if(f instanceof BusinessRuleTask) {
+
+							for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+								
+										if (tx.getTextContent().startsWith("Default ")) {
+							
+										String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{')+1, tx.getTextContent().indexOf('}'));
+									
+													if(subString.contentEquals("Strong-Dynamic")) {
+														sumSpheres+=3;
+													}
+													else if(subString.contentEquals("Weak-Dynamic")) {
+														sumSpheres+=2;
+													} 
+													else if(subString.contentEquals("Static")) {
+														sumSpheres+=1;
+													} 
+														else if(subString.contentEquals("Global")) {
+														sumSpheres+=0;
+													} 
+													
+												}
+												}
+											}
+					}
+							
+					}
+		return sumSpheres;
 	}
 
+
+public static double getAverageCostForAllModelInstances(LinkedList<ProcessInstanceWithVoters>pInstances) {
+	double cumulatedCost = 0; 
+	for(ProcessInstanceWithVoters pInst: pInstances) {
+		cumulatedCost = pInst.getCostForModelInstance();
+	}
 	
+	return cumulatedCost/pInstances.size();
+	
+	
+}
+
+public static int getAmountTasks(BpmnModelInstance modelInstance) {
+	int amountTasks = 0;
+	for(Task t: modelInstance.getModelElementsByType(Task.class)) {
+		amountTasks++;
+	}
+	return amountTasks;
+}
+
+
+
 
 }

@@ -115,6 +115,8 @@ public class ProcessModelAnnotater {
 		if (amountWritersOfProcess == 0 || amountReadersOfProcess == 0) {
 			throw new Exception("0 writers and 0 readers specified!");
 		}
+		
+		
 
 		this.pathToFile = pathToFile;
 		this.pathWhereToCreateAnnotatedFile = pathWhereToCreateAnnotatedFile;
@@ -124,7 +126,10 @@ public class ProcessModelAnnotater {
 		this.dataObjects = new LinkedList<DataObjectReference>();
 		dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
 		this.differentParticipants = new LinkedList<String>();
-
+		
+		if(amountWritersOfProcess<this.dataObjects.size()) {
+			throw new Exception("Amount of writers must be >= amount of DataObjects!");
+		}
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 		this.addNamesForOutgoingFlowsOfXorSplits(namesForOutgoingSeqFlowsOfXorSplits);
@@ -235,13 +240,27 @@ public class ProcessModelAnnotater {
 			List<String> defaultSpheresForDynamicWriter) throws Exception {
 		// amountWriters and amountReaders is for whole process
 		// randomly generate subAmounts for each dataObject
-
+		// get each dataObject -> insert a writer for it 
+		// if it is needed for a decision -> writer must be on path to the brt!
+		//amountWriters must be >= dataObjects, since every dataObject will need to be written before it can get read
+		
+		
 		if (!this.dataObjects.isEmpty()) {
+			
+			
+			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality.computeRepartitionNumber(amountWriters,
+					this.dataObjects.size(), 1);
+			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
+			LinkedList<Integer>subAmountWriters = subAmountWritersLists.get(randomNum);
+			
+			List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders,
+					this.dataObjects.size(), 0);
+			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
+			LinkedList<Integer>subAmountReaders= subAmountReadersLists.get(randomNum2);
 
-			int[] subAmountsWriters = CommonFunctionality.getRandomSplitSubValues(amountWriters,
-					this.dataObjects.size());
-			int[] subAmountsReaders = CommonFunctionality.getRandomSplitSubValues(amountReaders,
-					this.dataObjects.size());
+			
+			
+			
 			Task firstBrt = null;
 			LinkedList<Task> tasksBeforeBrt = new LinkedList<Task>();
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
@@ -249,44 +268,45 @@ public class ProcessModelAnnotater {
 					LinkedList<Task> tasksBefore = new LinkedList<Task>();
 					boolean firstBrtBool = true;
 					int connectedDataObjects = task.getDataInputAssociations().size();
-					LinkedList<LinkedList<FlowNode>> pathsBetweenStartAndTask = CommonFunctionality.getAllPaths(
-							modelInstance, modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
-							task, new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(),
-							new LinkedList<LinkedList<FlowNode>>(), new LinkedList<LinkedList<FlowNode>>(), task);
+					LinkedList<LinkedList<FlowNode>> pathsBetweenStartAndTask = CommonFunctionality.getAllPathsBetweenNodes(modelInstance, modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
+							task, new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new LinkedList<LinkedList<FlowNode>>());
+							
 					for (LinkedList<FlowNode> subPath : pathsBetweenStartAndTask) {
 						for (FlowNode f : subPath) {
 							if (f instanceof ExclusiveGateway) {
 								firstBrtBool = false;
 							}
 							if (f instanceof Task && !ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(f)) {
-								tasksBeforeBrt.add((Task) f);
+								tasksBefore.add((Task) f);
 							}
 						}
 					}
 					if (firstBrtBool) {
 						firstBrt = task;
 						tasksBeforeBrt.addAll(tasksBefore);
+						break;
 					}
 				}
 
 			}
 
-			if (firstBrt != null && !tasksBeforeBrt.isEmpty()) {
-				Task writerBeforeFirstDecision = CommonFunctionality.getRandomItem(tasksBeforeBrt);
-
+			if (firstBrt != null && !tasksBeforeBrt.isEmpty()) {				
 				for (int i = 0; i < dataObjects.size(); i++) {
-					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountsWriters[i], subAmountsReaders[i],
+					Task writerBeforeFirstDecision = CommonFunctionality.getRandomItem(tasksBeforeBrt);
+
+					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i), subAmountReaders.get(i),
 							dynamicWriter, dataObjects.get(i), defaultSpheresForDynamicWriter,
 							writerBeforeFirstDecision);
 				}
 
 			}
 
+			
 			else {
 							
 				
 				for (int i = 0; i < dataObjects.size(); i++) {
-					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountsWriters[i], subAmountsReaders[i],
+					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i), subAmountReaders.get(i),
 							dynamicWriter, dataObjects.get(i), defaultSpheresForDynamicWriter,
 							null);
 				}
@@ -296,7 +316,7 @@ public class ProcessModelAnnotater {
 		} else {
 			throw new Exception("No dataObjects connected to the model!");
 		}
-
+	
 	}
 	/*
 	 * public void

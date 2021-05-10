@@ -50,6 +50,7 @@ import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
 import org.camunda.bpm.model.bpmn.instance.ExtensionElements;
 import org.camunda.bpm.model.bpmn.instance.FlowElement;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
+import org.camunda.bpm.model.bpmn.instance.Gateway;
 import org.camunda.bpm.model.bpmn.instance.ItemAwareElement;
 import org.camunda.bpm.model.bpmn.instance.Lane;
 import org.camunda.bpm.model.bpmn.instance.LaneSet;
@@ -319,7 +320,7 @@ public class API {
 
 	}
 
-	private void setRequiredUpdatesForArc(VoterForXorArc arcToBeAdded, ProcessInstanceWithVoters currInst) throws NullPointerException, Exception {
+	private void setRequiredUpdatesForArc(VoterForXorArc arcToBeAdded, ProcessInstanceWithVoters currInst, LinkedList<LinkedList<BPMNElement>>paths) throws NullPointerException, Exception {
 
 		// get all the participants of the current process instance and check which
 		// updates
@@ -366,7 +367,7 @@ public class API {
 								String sphereForReaderAfterBrt = this
 										.getSphereForParticipantOnEffectivePathsAfterCurrentBrtWithAlreadyChosenVoters(
 												currentBrt, lastWriter, dataO, readerParticipant, alreadyChosenVoters,
-												sphereForReaderBeforeBrt);
+												sphereForReaderBeforeBrt, paths);
 								// check if the sphere for reader after brt has been "upgraded" e.g. from static
 								// to WD
 								if (this.atLeastInSphere(sphereForReaderAfterBrt, sphereForReaderBeforeBrt)) {
@@ -506,7 +507,14 @@ public class API {
 							}
 
 							double currInstCost = currInst.getCostForModelInstance();
-							currInstCost += cost;
+							//cost will be multiplied with the weighting of the last writer and the weighting of the brt 
+							double weightingOfCurrentBrt = 1;
+							if(!currentBrt.getLabels().isEmpty()) {
+								//since process is block structured -> there are 2 paths for each xor-split
+								weightingOfCurrentBrt = weightingOfCurrentBrt / (currentBrt.getLabels().size()*2);
+							}
+							
+							currInstCost += (cost * reqUpdate.getWeightingOfLastWriterToWriteDataForBrt() *weightingOfCurrentBrt);
 							currInst.setCostForModelInstance(currInstCost);
 
 						}
@@ -523,9 +531,18 @@ public class API {
 		// at each businessRuleTask in front of a xor-split:
 		// generate all possible combinations of voters - calculate cost and only take
 		// cheapest one(s)
+		
+		if(this.executionTimeBruteForceAlgorithmInSeconds!=0) {
+			//delete all arcs for brts
+			for(BPMNBusinessRuleTask brt: this.businessRuleTaskList) {
+				brt.getCombinations().clear();
+				brt.getVoterArcs().clear();
+			}
+			
+		}
 		System.out.println("Local Minimum Algorithm generating all cheapest process instances: ");
 		long startTime = System.nanoTime();
-		LinkedList<ProcessInstanceWithVoters> cheapestCombinations =  this.goDFSthroughProcessBuildArcsAndGetVoters(this.bpmnStart, this.bpmnEnd, null,
+		LinkedList<ProcessInstanceWithVoters> cheapestCombinations =  this.goDFSthroughProcessBuildArcsAndGetVoters(true, this.bpmnStart, this.bpmnEnd, null,
 				new LinkedList<ProcessInstanceWithVoters>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>(), new LinkedList<VoterForXorArc>(),
@@ -541,42 +558,29 @@ public class API {
 		// generate all possible combinations of voters for all brts of the process
 		// calculate the cost for each one and return all of them
 		System.out.println("Brute Force generating all possible process instances: ");
-		
-		LinkedList<LinkedList<Object>> arcs = new LinkedList<LinkedList<Object>>();
-		LinkedList<ProcessInstanceWithVoters> pInstances = new LinkedList<ProcessInstanceWithVoters>();
-
-		long startTime = System.nanoTime();
-		for (BPMNBusinessRuleTask brt : this.businessRuleTaskList) {
-			arcs.add(this.generateArcsForXorSplitReturnAsObjectList(brt));
-		}
-		
-		for (List<Object> possibleCombinationList : Combination.permutations(arcs)) {
-
-			ProcessInstanceWithVoters newInstance = new ProcessInstanceWithVoters();
-
-			for (Object currObj : possibleCombinationList) {
-				if (currObj instanceof VoterForXorArc) {
-					VoterForXorArc curr = (VoterForXorArc) currObj;
-					VoterForXorArc newInstanceArc = new VoterForXorArc(curr.getBrt(), curr.getXorSplit(),
-							curr.getChosenCombinationOfParticipants());
-					this.setRequiredUpdatesForArc(newInstanceArc, newInstance);
-					newInstance.addVoterArc(newInstanceArc);
-				}
+		if(this.executionTimeLocalMinAlgorithmInSeconds!=0) {
+			//delete all arcs for brts
+			for(BPMNBusinessRuleTask brt: this.businessRuleTaskList) {
+				brt.getCombinations().clear();
+				brt.getVoterArcs().clear();
 			}
-
-			pInstances.add(newInstance);
-
+			
 		}
 		
+		long startTime = System.nanoTime();
+		LinkedList<ProcessInstanceWithVoters> pInstances =  this.goDFSthroughProcessBuildArcsAndGetVoters(false, this.bpmnStart, this.bpmnEnd, null,
+				new LinkedList<ProcessInstanceWithVoters>(),
+				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
+				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>(), new LinkedList<VoterForXorArc>(),
+				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 		long stopTime = System.nanoTime();
 		long executionTime = stopTime - startTime;
-		
-		this.executionTimeBruteForceAlgorithmInSeconds=(double)executionTime/1000000000;
-		
-
+		this.executionTimeBruteForceAlgorithmInSeconds = (double) executionTime/1000000000;
 		return pInstances;
-
 	}
+	
+
 
 	
 	private double calculateWeightingForLastWriter(BPMNTask currentLastWriter, BPMNElement start, BPMNDataObject dataO,
@@ -584,25 +588,29 @@ public class API {
 
 		double foundCurrentLastWriterCount = 0;
 		LinkedList<LinkedList<BPMNElement>> paths = this.getPathsWithMappedNodesFromCamundaNodes(CommonFunctionality.getAllPathsBetweenNodes(modelInstance, modelInstance.getModelElementById(start.getId()), modelInstance.getModelElementById(brt.getId()), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new LinkedList<LinkedList<FlowNode>>()));
-		/*LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(start, brt,
-				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-				new LinkedList<LinkedList<BPMNElement>>());
-		*/
+	
+		
 		for (LinkedList<BPMNElement> pathList : paths) {
 
 			for (int i = pathList.size() - 1; i > 0; i--) {
 				if (pathList.get(i).equals(currentLastWriter)) {
 					// go backwards through the list of paths between start and brt
-					// if lastWriter is found in the list increase the count
+					// if lastWriter is found in the list increase the count				
 					foundCurrentLastWriterCount++;
 					i = 0;
 				}
-
+				
+				if(pathList.get(i) instanceof BPMNTask) {
+					BPMNTask currTask = (BPMNTask)pathList.get(i);
+					if(dataO.getWriters().contains(currTask)&&!currTask.equals(currentLastWriter)) {
+						i=0;
+					}
+				}
 			}
 
 		}
 
-		return (foundCurrentLastWriterCount / paths.size());
+		return ((double)foundCurrentLastWriterCount / paths.size());
 
 	}
 
@@ -1438,6 +1446,14 @@ public class API {
 		return brtCombs;
 
 	}
+	
+	
+	
+	
+	
+	
+	
+	
 
 	public LinkedList<Object> generateArcsForXorSplitReturnAsObjectList(BPMNBusinessRuleTask currBrt) {
 		LinkedList<Object> brtCombs = new LinkedList<Object>();
@@ -1472,8 +1488,10 @@ public class API {
 		return brtCombs;
 
 	}
+	
+	
 
-	public LinkedList<ProcessInstanceWithVoters> goDFSthroughProcessBuildArcsAndGetVoters(BPMNElement startNode,
+	public LinkedList<ProcessInstanceWithVoters> goDFSthroughProcessBuildArcsAndGetVoters(boolean localMin, BPMNElement startNode,
 			BPMNElement endNode, BPMNBusinessRuleTask lastFoundBrt,
 			LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters,
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> votersMap,
@@ -1507,7 +1525,7 @@ public class API {
 							// when the openXorStack does not contain the lastOpenedXor anymore, all
 							// branches to the joinGtw have been visited
 							// go from joinGtw to the Join of the last opened xor-split in the stack
-							this.goDFSthroughProcessBuildArcsAndGetVoters(joinGtw,
+							this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, joinGtw,
 									this.getCorrespondingGtw((BPMNGateway) openXorStack.getLast()), lastFoundBrt,
 									processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters, queue,
 									parallelGtwQueue, openXorStack, currentPath, paths);
@@ -1528,7 +1546,7 @@ public class API {
 						}
 
 						for (LinkedList<BPMNElement> newPath : newPaths) {
-							this.goDFSthroughProcessBuildArcsAndGetVoters(element.getSuccessors().iterator().next(),
+							this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, element.getSuccessors().iterator().next(),
 									this.bpmnEnd, lastFoundBrt, processInstancesWithVoters, votersMap, requiredUpdates,
 									alreadyTakenVoters, queue, parallelGtwQueue, openXorStack, newPath, paths);
 						}
@@ -1558,12 +1576,15 @@ public class API {
 							// generate a new possible processInstance
 							ProcessInstanceWithVoters pInstance = new ProcessInstanceWithVoters();
 
-							this.setRequiredUpdatesForArc(voters, pInstance);
+							this.setRequiredUpdatesForArc(voters, pInstance, paths);
 
 							pInstance.addVoterArc(voters);
-
+							
+							if(localMin) {
 							this.insertIfCheapest(processInstancesWithVoters, pInstance);
-
+							} else {
+								processInstancesWithVoters.add(pInstance);
+							}
 						}
 
 					} else {
@@ -1602,10 +1623,14 @@ public class API {
 							newInstance.getListOfRequiredUpdates().addAll(currInst.getListOfRequiredUpdates());
 							newInstance.setCostForModelInstance(currInst.getCostForModelInstance());
 
-							this.setRequiredUpdatesForArc(currBrtCombArc, newInstance);
+							this.setRequiredUpdatesForArc(currBrtCombArc, newInstance, paths);
 
 							newInstance.addVoterArc(currBrtCombArc);
+							if(localMin) {
 							this.insertIfCheapest(newInstances, newInstance);
+							} else {
+								newInstances.add(newInstance);
+							}
 
 						}
 
@@ -1654,7 +1679,7 @@ public class API {
 					LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
 					newPath.addAll(currentPath);
 
-					this.goDFSthroughProcessBuildArcsAndGetVoters(successor, correspondingJoinGtw, lastFoundBrt,
+					this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, successor, correspondingJoinGtw, lastFoundBrt,
 							processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters, queue,
 							parallelGtwQueue, openXorStack, newPath, paths);
 				} else {
@@ -3190,10 +3215,8 @@ public class API {
 
 		for (Entry<BPMNDataObject, String> sphereEntry : lastWriter.getSphereAnnotation().entrySet()) {
 			if (sphereEntry.getKey().equals(dataO)) {
-				System.out.println("CHECKI");
 				System.out.println(sphereEntry.getValue());
 
-				System.out.println("KERAKAEJR");
 				LinkedList<BPMNElement> stack = new LinkedList<BPMNElement>();
 				stack.addAll(bpmnBrt.getSuccessors());
 				while (!stack.isEmpty()) {
@@ -3271,7 +3294,7 @@ public class API {
 
 	public String getSphereForParticipantOnEffectivePathsAfterCurrentBrtWithAlreadyChosenVoters(
 			BPMNBusinessRuleTask currentBrt, BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,
-			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters, String sphereForReader) {
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters, String sphereForReader, LinkedList<LinkedList<BPMNElement>>paths) {
 
 		// second step - search from currentBrt to ProcessEnd
 		// if the data that was written by the writerTask will be read by some task
@@ -3279,17 +3302,28 @@ public class API {
 		// WE ARE STILL AT THE POSITION OF THE CURRENTBRT!!!
 
 		// get the effective readers for the writer
-		// get the labels of the currentBrt
-		// only check for readers that start with same label
+		//only those that have not been visited yet
+		
 		String sphereForReaderAfterCurrentBrt = sphereForReader;
 
 		for (BPMNElement effectiveReader : ((BPMNTask) writerTask).getEffectiveReaders()) {
 			if (reader.equals(((BPMNTask) effectiveReader).getParticipant())) {
+				boolean alreadyVisited=false;
+				for(LinkedList<BPMNElement>path: paths) {
+					for(BPMNElement pathEl: path) {
+						if(pathEl.equals(effectiveReader)) {
+							alreadyVisited=true;
+							break;
+						}
+					}
+				}
+				if(alreadyVisited==false) {
 				sphereForReaderAfterCurrentBrt = this.getSphereForEffectiveReaderAfterBrt((BPMNTask) effectiveReader,
 						currentBrt);
 				System.out.println("KEKW: " + ((BPMNTask) writerTask).getName() + ", " + reader.getName() + ", "
 						+ sphereForReaderAfterCurrentBrt);
-			}
+				}
+				}
 
 		}
 

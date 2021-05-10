@@ -64,7 +64,7 @@ public class ProcessGenerator {
 	
 
 	public ProcessGenerator(String directoryToStore, long timeoutAfterMilliSeconds, int amountParticipants, int amountTasksLeft, int amountXorsLeft,
-			int amountParallelsLeft, int probTask, int probXorGtw, int probParallelGtw, int probJoinGtw, int nestingDepthFactor) throws Exception {
+			int amountParallelsLeft, int probTask, int probXorGtw, int probParallelGtw, int probJoinGtw, int nestingDepthFactor, boolean modelWithXorSplit) throws Exception {
 		// process model will have 1 StartEvent and 1 EndEvent
 		this.participantNames = new LinkedList<String>();
 		for (int i = 0; i < amountParticipants; i++) {
@@ -144,10 +144,13 @@ public class ProcessGenerator {
 		}
 	
 		try {
-			writeChangesToFile();
+			
+			writeChangesToFile(modelWithXorSplit);
 		} catch (IOException | ParserConfigurationException | SAXException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			new ProcessGenerator(directoryToStore,timeoutAfterMilliSeconds, amountParticipants, amountTasksLeft, amountXorsLeft,
+					amountParallelsLeft, probTask, probXorGtw,probParallelGtw, probJoinGtw, nestingDepthFactor, modelWithXorSplit);
 		}
 	}
 	
@@ -556,11 +559,19 @@ public class ProcessGenerator {
 
 	
 	
-	private void writeChangesToFile() throws IOException, ParserConfigurationException, SAXException {
+	private void writeChangesToFile(boolean modelWithXorSplit) throws NullPointerException, Exception {
 		// validate and write model to file
 		//add the generated models to the given directory
 				
-		
+		if(!CommonFunctionality.isModelBlockStructured(modelInstance)) {
+			throw new Exception("Model not block structured!");
+		}
+		if(modelWithXorSplit) {
+		if(CommonFunctionality.getAmountExclusiveGtwSplits(modelInstance)==0) {
+			throw new Exception("Model must have a xor-split!");
+			
+		}
+		}
 		Bpmn.validateModel(modelInstance);
 		String pathOfProcessFile = this.directoryToStore;
 		String fileName = "randomProcessModel"+this.processId+".bpmn";

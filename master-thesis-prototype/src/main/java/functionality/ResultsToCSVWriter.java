@@ -29,8 +29,8 @@ public class ResultsToCSVWriter {
 					CSVWriter.DEFAULT_ESCAPE_CHARACTER, CSVWriter.DEFAULT_LINE_END);
 
 			rows = new ArrayList<>();
-			String[] header = new String[] { "fileName", "pathToFile", "cheapest solution(s) localMinimumAlgorithm", "cost",
-					"executionTimeLocalMinimumAlogrithm", "executionTimeBruteForce", "deltaExecutionTime", "isCheapestSolutionInBruteForce", "amountPaths", "amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountElements" };
+			String[] header = new String[] { "fileName", "pathToFile", "totalAmountSolutions", "amount cheapest solution(s) localMinimumAlgorithm", "amount cheapest solution(s) bruteForce", "costCheapestSolution", "averageCostAllSolutions",
+					"executionTimeLocalMinimumAlogrithm in sec", "executionTimeBruteForce in sec", "deltaExecutionTime in sec", "isCheapestSolutionInBruteForce", "amountPaths", "amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements", "amountSumVoters", "averageAmountVoters", "globalSphereSize"};
 			this.rows.add(header);
 			
 			
@@ -40,7 +40,7 @@ public class ResultsToCSVWriter {
 		}
 
 	}
-	public void writeResultsOfBothAlgorithmsToCSVFile(API api, List<ProcessInstanceWithVoters> pInstances, boolean isCheapestSolutionInBruteForce) {
+	public void writeResultsOfBothAlgorithmsToCSVFile(API api, LinkedList<ProcessInstanceWithVoters> pInstancesLocalMin, LinkedList<ProcessInstanceWithVoters> pInstancesBruteForce, boolean isCheapestSolutionInBruteForce) {
 		//call this method after both algorithms ran
 		// compare the execution of both algorithms
 		// write the metadata to a csv file
@@ -49,50 +49,45 @@ public class ResultsToCSVWriter {
 					String fileName = api.getProcessFile().getName();
 
 					// map the cheapest process instances to rows in the csv file
-					StringBuilder sb = new StringBuilder();
-					double cost = 0;
-					for(ProcessInstanceWithVoters pInst: pInstances) {
-					cost = pInst.getCostForModelInstance();
-
-					for (VoterForXorArc arc : pInst.getListOfArcs()) {
-						sb.append(arc.getBrt().getName() + ": ");
-						for (BPMNParticipant part : arc.getChosenCombinationOfParticipants()) {
-							sb.append(part.getName() + ",");
-						}
-						sb.deleteCharAt(sb.length()-1);
-					}
-					}
+					double costCheapestSolution =pInstancesLocalMin.get(0).getCostForModelInstance();					
+					int amountCheapestSolutionsLocalMin = pInstancesLocalMin.size();
+					int amountCheapestSolutionsBruteForce = api.getCheapestProcessInstancesWithVoters(pInstancesBruteForce).size();
+					
+					double averageCostAllSolutions = CommonFunctionality.getAverageCostForAllModelInstances(pInstancesBruteForce);
+					
+					
 					
 					StringBuilder readersPerDataObject = new StringBuilder();
 					for(Entry<DataObjectReference, LinkedList<FlowNode>> entr: CommonFunctionality.getReadersForDataObjects(api.getModelInstance()).entrySet()) {
 						readersPerDataObject.append(entr.getKey().getName()+": ");
+						int amountReadersPerDataObject = 0; 
 						for(FlowNode f: entr.getValue()) {
-							readersPerDataObject.append(f.getName()+",");
+							amountReadersPerDataObject++;
 						}
-						readersPerDataObject.deleteCharAt(readersPerDataObject.length()-1);
+						readersPerDataObject.append(amountReadersPerDataObject+",");
 						
 					}
-					
+					readersPerDataObject.deleteCharAt(readersPerDataObject.length()-1);
 					StringBuilder writersPerDataObject = new StringBuilder();
-					for(Entry<DataObjectReference, LinkedList<FlowNode>> entr: CommonFunctionality.getReadersForDataObjects(api.getModelInstance()).entrySet()) {
+					for(Entry<DataObjectReference, LinkedList<FlowNode>> entr: CommonFunctionality.getWritersForDataObjects(api.getModelInstance()).entrySet()) {
 						writersPerDataObject.append(entr.getKey().getName()+": ");
+						int amountWritersPerDataObject = 0; 
 						for(FlowNode f: entr.getValue()) {
-							writersPerDataObject.append(f.getName()+",");
+							amountWritersPerDataObject++;
 						}
-						writersPerDataObject.deleteCharAt(writersPerDataObject.length()-1);
+						writersPerDataObject.append(amountWritersPerDataObject+",");
 						
 					}
+					writersPerDataObject.deleteCharAt(writersPerDataObject.length()-1);
 					
 					
-					
-					
-					
-					
-					String[] row = new String[] { fileName, pathToFile, sb.toString(), cost + "",
-							api.getExecutionTimeLocalMinimumAlgorithm() + "", api.getExecutionTimeBruteForceAlgorithm()+"", api.getExecutionTimeLocalMinimumAlgorithm()-api.getExecutionTimeBruteForceAlgorithm()+"", isCheapestSolutionInBruteForce+"", api.getAllPathsThroughProcess().size()+"", readersPerDataObject.toString(), writersPerDataObject.toString(), CommonFunctionality.getAmountExclusiveGtwSplits(api.getModelInstance())+"", CommonFunctionality.getAmountParallelGtwSplits(api.getModelInstance())+"", CommonFunctionality.getAmountElements(api.getModelInstance())+"" };
+					String[] row = new String[] { fileName, pathToFile, pInstancesBruteForce.size()+"", amountCheapestSolutionsLocalMin+"", amountCheapestSolutionsBruteForce+"", costCheapestSolution + "", averageCostAllSolutions+"",
+							api.getExecutionTimeLocalMinimumAlgorithm() + "", api.getExecutionTimeBruteForceAlgorithm()+"", api.getExecutionTimeLocalMinimumAlgorithm()-api.getExecutionTimeBruteForceAlgorithm()+"", isCheapestSolutionInBruteForce+"", api.getAllPathsThroughProcess().size()+"", readersPerDataObject.toString(), writersPerDataObject.toString(), CommonFunctionality.getAmountExclusiveGtwSplits(api.getModelInstance())+"", CommonFunctionality.getAmountParallelGtwSplits(api.getModelInstance())+"", CommonFunctionality.getAmountTasks(api.getModelInstance())+"",CommonFunctionality.getAmountElements(api.getModelInstance())+"", CommonFunctionality.getSumAmountVotersOfModel(api.getModelInstance())+"", CommonFunctionality.getAverageAmountVotersOfModel(api.getModelInstance())+"", CommonFunctionality.getGlobalSphere(api.getModelInstance(), false)+""};
 					
 					this.rows.add(row);
 
+					
+					
 			}	
 		
 		

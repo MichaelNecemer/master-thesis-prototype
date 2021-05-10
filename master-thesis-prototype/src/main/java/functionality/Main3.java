@@ -61,7 +61,11 @@ public class Main3 {
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModels\\randomProcessModel3_annotated.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel5_annotated.bpmn";
 	//String pathToFile = "C\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn";
-	String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2.bpmn";
+	//String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test2\\SmallProcessesAnnotatedFolder\\Spheres\\randomProcessModel84_annotated1_annotated92lWmR_Static1.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches3.bpmn";
+
 		
 		JFrame frame = new JFrame(pathToFile);
 	frame.setVisible(true);
@@ -78,7 +82,7 @@ public class Main3 {
 	
 	
 	try {
-		ProcessGenerator g= new ProcessGenerator(pathForAddingRandomModels,4000, 15, 20, 40, 18,50,30,20,20,5);
+		//ProcessGenerator g= new ProcessGenerator(pathForAddingRandomModels,4000, 15, 20, 40, 18,50,30,20,20,5);
 	
 
 	
@@ -99,7 +103,7 @@ public class Main3 {
 
 		
 		
-	//	a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
+		a2 = new API(pathToFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
 		
 		panel.add(new JLabel("Paths through process: "+a2.getAllPathsThroughProcess().size()));
 		frame.add(panel);
@@ -169,7 +173,7 @@ public class Main3 {
 		pInstance.printProcessInstance();
 		}
 		
-		a2.annotateModelWithChosenParticipants(pInstances);
+		//a2.annotateModelWithChosenParticipants(pInstances);
 		
 		
 		for(ProcessInstanceWithVoters pInstance: pInstances) {
