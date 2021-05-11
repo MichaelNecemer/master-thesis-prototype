@@ -7,8 +7,13 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Timer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
-
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
@@ -19,9 +24,11 @@ import org.camunda.bpm.model.bpmn.instance.Task;
 import Mapping.ProcessInstanceWithVoters;
 import ProcessModelGeneratorAndAnnotater.ProcessGenerator;
 import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
+import ProcessModelGeneratorAndAnnotater.TimeOutTask;
 
 public class BatchFileGenerator {
 	
+	static int idCSVFile = 1;
 	static String rootFolder = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup";
 	static long timeOutForProcessGenerator = 60000; //1 min for generating random processes
 	static long timeOutForApi = 180000; //3 min time limit for Api to finish all calculations
@@ -78,56 +85,36 @@ public class BatchFileGenerator {
 		//large processes: 11-15 participants, 31-60 tasks, 11-15 xors, 0-9, parallels, 100 processes
 		//BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolder, 11, 15, 31, 60, 11, 15, 0, 9, 100);
 		
+		
+		//each test will be based on the same randomly chosen models 
+		LinkedList<File> randomSmallProcesses = BatchFileGenerator.getRandomModelsFromSourceFolder(20, pathToSmallProcessesFolder);
+		LinkedList<File> randomMediumProcesses = BatchFileGenerator.getRandomModelsFromSourceFolder(5, pathToMediumProcessesFolder);
+		//LinkedList<File> randomLargeProcesses = BatchFileGenerator.getRandomModelsFromSourceFolder(20, pathToLargeProcessesFolder);
+
+		
 		String pathToFolderForModelsForTest1 = CommonFunctionality.fileWithDirectoryAssurance(rootFolder, "Test1").getAbsolutePath();
-		//Test 1 - Measure impact of enforceability on privity
-		// increase the amount of voters needed for decisions till the max amount voters is reached on all xors
-		// for n models of a class create m new ones 
+		//Test 1 - Measure impact of enforceability on privity and vice versa
+		//take x random models from small, medium and large processes
+		//add dataObjects with global sphere and 1 voter per decision
+		//add readers/writers combinations - generate new models (9 new models for each)
 		
-		
+		// increase the amount of voters needed for decisions till the global sphere of that process is reached on all xors
+		// increase privity requirements to next stricter sphere for all dataObjects
 		
 		String pathToSmallProcessesForTest1= CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsForTest1, "SmallProcessesAnnotatedFolder").getAbsolutePath();
 		String pathToMediumProcessesForTest1 = CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsForTest1, "MediumProcessesAnnotatedFolder").getAbsolutePath();
 		String pathToLargeProcessesForTest1 = CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsForTest1, "LargeProcessesAnnotatedFolder").getAbsolutePath();
 	
 		
-		//run through the small processes without annotation and annotate them -> increase the amount of voters for each xor on every run
-		//on first run there should be 0 voter on each xor split - on last run, there should be the amount of participants in the global sphere 
-		//generate models with 1 participant per decision
 		
-		
-		//BatchFileGenerator.performTest1(10, pathToSmallProcessesFolder, pathToSmallProcessesForTest1, dataObjectBoundsSmallProcesses );
-		//BatchFileGenerator.performTest1(10, pathToMediumProcessesFolder, pathToMediumProcessesForTest1, dataObjectBoundsMediumProcesses);
-		//BatchFileGenerator.performTest1(1, pathToLargeProcessesFolder, pathToLargeProcessesForTest1, dataObjectBoundsLargeProcesses);
+		//BatchFileGenerator.performTest1(randomSmallProcesses, pathToSmallProcessesForTest1, dataObjectBoundsSmallProcesses );
+		BatchFileGenerator.performTest1(randomMediumProcesses, pathToMediumProcessesForTest1, dataObjectBoundsMediumProcesses );
 
-		/*
-		String path = pathToSmallProcessesForTest1+"//Voter";
-		LinkedList<API> apiList = BatchFileGenerator.runAlgorithmsOnAnnotatedProcesses(path);
-		if(!apiList.isEmpty()) {
-		BatchFileGenerator.addInformationToCSVFile(apiList);
-		} else {
-			System.out.println("No Algorithms have been run successfully on annotated models");
-		}
-		*/
-		
-		//Test 2 - Measure impact of privity on enforceability
-		//increase the sphere of dataObjects to the next stricter one till "Strong-Dynamic" is reached on all dataObjects
-		String pathToFolderForModelsForTest2 = CommonFunctionality.fileWithDirectoryAssurance(rootFolder, "Test2").getAbsolutePath();
+		//BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV("C:\\Users\\Micha\\OneDrive\\Desktop\\TestModels");
+		//BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV("C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test1\\MediumProcessesAnnotatedFolder\\ModelsForEvaluation");
 
-		String pathToSmallProcessesForTest2= CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "SmallProcessesAnnotatedFolder").getAbsolutePath();
-		String pathToMediumProcessesForTest2 = CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "MediumProcessesAnnotatedFolder").getAbsolutePath();
-		String pathToLargeProcessesForTest2 = CommonFunctionality.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "LargeProcessesAnnotatedFolder").getAbsolutePath();
-	
 		
-		BatchFileGenerator.performTest2(10, pathToSmallProcessesFolder, pathToSmallProcessesForTest2, dataObjectBoundsSmallProcesses );
-				//BatchFileGenerator.performTest1(10, pathToMediumProcessesFolder, pathToMediumProcessesForTest1, dataObjectBoundsMediumProcesses);
-				//BatchFileGenerator.performTest1(1, pathToLargeProcessesFolder, pathToLargeProcessesForTest1, dataObjectBoundsLargeProcesses);
-
-		//String path = pathToSmallProcessesForTest2+"//Spheres";
-		//BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(path);
-		
-				
-		//annotate models
-		//BatchFileGenerator.annotateModels(rootFolder, pathToSmallProcessesFolder, "smallProcessesAnnotated");
+		//Test 2 - Measure impact of dataObjects 
 		
 		
 		
@@ -135,15 +122,7 @@ public class BatchFileGenerator {
 		
 		
 		
-		//Test 3 - Measure impact of dataobjects 
-		
-		
-		
-		
-		
-		
-		
-		
+		//Test 3 - Boundary Test
 		
 		
 		
@@ -248,7 +227,7 @@ public class BatchFileGenerator {
 	}
 	
 	public static LinkedList<API> runAlgorithmsOnAnnotatedProcesses(String pathToFiles) {
-		//iterate through all files in the directory and annotate them
+		//iterate through all files in the directory and run algorithms on annotated models
 		LinkedList<API> apiList = new LinkedList<API>();
 				File dir = new File(pathToFiles);
 				  File[] directoryListing = dir.listFiles();
@@ -284,14 +263,14 @@ public class BatchFileGenerator {
 
 	private static void addInformationToCSVFile(LinkedList<API>apiList) {
 		//write the results to a csv file
-		int i = 1; 
-		String fileNameForResults = "resultsOfAlgorithm"+i+".csv";
+		
+		String fileNameForResults = "resultsOfAlgorithm"+idCSVFile+".csv";
 		File csvFile = new File(apiList.get(0).getProcessFile().getParent(), fileNameForResults);
 		try {
 			while(csvFile.createNewFile()==false) {
 				System.out.println("CSV File"+fileNameForResults+" already exists!");
-				i++;
-				fileNameForResults = "resultsOfAlgorithm"+i+".csv";
+				idCSVFile++;
+				fileNameForResults = "resultsOfAlgorithm"+idCSVFile+".csv";
 				csvFile = new File(apiList.get(0).getProcessFile().getParent(), fileNameForResults);
 				if(csvFile.createNewFile()) {
 					System.out.println("CSV File"+fileNameForResults+" has been created at: "+csvFile.getAbsolutePath());
@@ -466,35 +445,46 @@ public class BatchFileGenerator {
 			
 	}
 	
-	
-	
-	public static void performTest1(int amountRandomProcessesToTakeFromFolder, String pathToSourceFolder, String pathToDestinationFolderForStoringModels, List<Integer>dataObjectBounds ) throws Exception {
-		
+	public static LinkedList<File> getRandomModelsFromSourceFolder(int amountRandomModels, String pathToSourceFolder){
 		File folder = new File(pathToSourceFolder);
 		LinkedList<File>listOfFiles = new LinkedList<File>();
 		listOfFiles.addAll(Arrays.asList(folder.listFiles()));
-		LinkedList<File>filesToBeChosenOf = new LinkedList<File>();
-		filesToBeChosenOf.addAll(listOfFiles);			
+	
+		LinkedList<File> randomModelsFromSourceFolder = new LinkedList<File>();
 		
-		for(int i = 0; i < amountRandomProcessesToTakeFromFolder; i++) {
-		//get a random model from the folder			
-			File randomProcessModelFile = CommonFunctionality.getRandomItem(filesToBeChosenOf);
-			BpmnModelInstance processModel = Bpmn.readModelFromFile(randomProcessModelFile);
+		for(int i = 0; i < amountRandomModels; i++) {	
+		File randomProcessModelFile = CommonFunctionality.getRandomItem(listOfFiles);
+		randomModelsFromSourceFolder.add(randomProcessModelFile);
+		listOfFiles.remove(randomProcessModelFile);
+		}
+		
+		return randomModelsFromSourceFolder;
+	}
+	
+	
+	
+	public static void performTest1(LinkedList<File>randomProcesses, String pathToDestinationFolderForStoringModels, List<Integer>dataObjectBounds) throws Exception {
+			
+			LinkedList<String>emptySphere = new LinkedList<String>();
+			emptySphere.add("");
+			
+			for(int i = 0; i < randomProcesses.size(); i++) {
+			String pathToRandomProcess = randomProcesses.get(i).getAbsolutePath();
+			BpmnModelInstance processModel = Bpmn.readModelFromFile(randomProcesses.get(i));
 			int amountTasks = processModel.getModelElementsByType(Task.class).size();			
 			File newModel = null;
 			boolean modelIsValid = false;
 			int amountRandomCountDataObjectsToCreate = 0;
 			while(modelIsValid==false) {
-			ProcessModelAnnotater pModel = new ProcessModelAnnotater(randomProcessModelFile.getAbsolutePath(), pathToDestinationFolderForStoringModels, "");
+			ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess, pathToDestinationFolderForStoringModels, "");
 					
 			// randomly generate dataObjects in the range [DataObjects, maxCountDataObjects]
 			amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(dataObjectBounds.get(0),
 					dataObjectBounds.get(1) + 1);
 			try {
-				//create model with dataObjects and exactly 0 participant needed for voting
-				pModel.generateDataObjects(amountRandomCountDataObjectsToCreate, defaultSpheres);			
+				//create model with amountRandomCountDataObjects dataObjects, 0 participant needed for voting and empty string as starting sphere
+				pModel.generateDataObjects(amountRandomCountDataObjectsToCreate, emptySphere);			
 				pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(amountRandomCountDataObjectsToCreate, 0, 0, 0);
-				//write this model (only the dataObjects annotated and connected to the brts so far) to the folder
 				newModel = pModel.writeChangesToFileWithoutCorrectnessCheck();
 				modelIsValid=true;
 			} catch(Exception e) {
@@ -534,47 +524,75 @@ public class BatchFileGenerator {
 					}
 					
 					boolean correctModel = false;
+					ExecutorService executor = Executors.newSingleThreadExecutor();
 					while(correctModel==false) {	
-						ProcessModelAnnotater modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(), pathToDestinationFolderForStoringModels, suffixBuilder.toString(), defaultSpheres,
+						ProcessModelAnnotater modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(), pathToDestinationFolderForStoringModels, suffixBuilder.toString(), emptySphere,
 								0, amountWriterTasksInModel, amountReaderTasksInModel,0, 1, amountRandomCountDataObjectsToCreate, defaultNamesSeqFlowsXorSplits);
 						
-						try {							
-						modelWithReadersAndWriters.checkCorrectnessAndWriteChangesToFile();
+						Future future = executor.submit(modelWithReadersAndWriters);
+						future.get(20, TimeUnit.SECONDS);
+						try {			
+						
+						//modelWithReadersAndWriters.checkCorrectnessAndWriteChangesToFile();
+											
 						correctModel=true;
+						
 						} catch(Exception e) {
+							
+							e.printStackTrace();
 							System.err.println(e.getMessage());
+							future.cancel(true);
+							executor.shutdown();
+
 							
 							//try annotating model again with same values
-						}			
+						}	
+						
 					}
-					
-					
-				
+								
 					
 				}
 			}
 			
-			filesToBeChosenOf.remove(randomProcessModelFile);
 		}
+			
+			
 		
 		
-		//for each model that has been generated with 0 participants per decision
+		//for each model that has been generated with 0 participants per decision and empty sphere annotated for each dataObject
 		// -> generate new ones where voters is increased by 1 on each model till globalSphereSize is reached
-		
-		String pathToFolderWithVoters = CommonFunctionality.fileWithDirectoryAssurance(pathToDestinationFolderForStoringModels, "Voter").getAbsolutePath();
+		// -> generate new ones where privity requirement is increased to next stricter sphere till Strong-Dynamic is reached on all dataObjects
+			
+		String pathToFolderWithModelsForEvaluation = CommonFunctionality.fileWithDirectoryAssurance(pathToDestinationFolderForStoringModels, "ModelsForEvaluation").getAbsolutePath();
 		File directory = new File(pathToDestinationFolderForStoringModels);
 		File[]directoryList = directory.listFiles();
-		for(int i = 0; i < directoryList.length; i++) {	
-			File annotatedModel = directoryList[i];
+		
+		
+		for(int modelIndex = 0; modelIndex < directoryList.length; modelIndex++) {	
+			File annotatedModel = directoryList[modelIndex];
 			try {
 			BpmnModelInstance currModel = Bpmn.readModelFromFile(annotatedModel);
-			int globalSphereSize = CommonFunctionality.getGlobalSphere(currModel,false);
 			
+			int globalSphereSize = CommonFunctionality.getGlobalSphere(currModel,false);
+						
 			if(annotatedModel.getName().contains("sWsR")||annotatedModel.getName().contains("sWmR")||annotatedModel.getName().contains("sWlR")||annotatedModel.getName().contains("mWsR")||annotatedModel.getName().contains("mWmR")||annotatedModel.getName().contains("mWlR")||annotatedModel.getName().contains("lWsR")||annotatedModel.getName().contains("lWmR")||annotatedModel.getName().contains("lWlR")) {
-			for(int j = 1; j <= globalSphereSize; j++) {
-				String suffix = "voters"+j;
-				CommonFunctionality.increaseVotersPerDataObject(annotatedModel, pathToFolderWithVoters, suffix, j);
+						
+				for(int spheresIndex = 0; spheresIndex < defaultSpheres.size(); spheresIndex++) {
+					String currentSphere = defaultSpheres.get(spheresIndex);
+					CommonFunctionality.increaseSpherePerDataObject(currModel, currentSphere);
+				
+					for(int votersAmountIndex= 1; votersAmountIndex <= globalSphereSize; votersAmountIndex++) {
+					String suffix = "_"+currentSphere + "_voters"+votersAmountIndex;
+					CommonFunctionality.increaseVotersPerDataObject(currModel, votersAmountIndex);
+					String modelName = annotatedModel.getName().substring(0, annotatedModel.getName().indexOf(".bpmn"));
+					CommonFunctionality.writeChangesToFile(currModel, modelName, pathToFolderWithModelsForEvaluation, suffix);
+					
+					}
+					
+				
 				}
+				
+								
 			
 			}
 			} catch(Exception e) {
@@ -584,7 +602,7 @@ public class BatchFileGenerator {
 		}
 
 		//perform the algorithms and generate csv file 
-		LinkedList<API> apiList = BatchFileGenerator.runAlgorithmsOnAnnotatedProcesses(pathToFolderWithVoters);
+		LinkedList<API> apiList = BatchFileGenerator.runAlgorithmsOnAnnotatedProcesses(pathToFolderWithModelsForEvaluation);
 		if(!apiList.isEmpty()) {
 		BatchFileGenerator.addInformationToCSVFile(apiList);
 		} else {

@@ -130,7 +130,6 @@ public class CommonFunctionality {
 				for (int i = 0; i < writersForDataO.size() - 1; i++) {
 
 					FlowNode writer = writersForDataO.get(i);
-					System.out.println("Writer: " + writer.getName() + ", Reader: " + reader.getName());
 					LinkedList<LinkedList<FlowNode>> pathsBetweenWriterAndReader = CommonFunctionality
 							.allPathsBetweenNodesWithCamundaNodes(writer, reader, new LinkedList<FlowNode>(),
 									new LinkedList<FlowNode>(), new LinkedList<FlowNode>(),
@@ -139,7 +138,6 @@ public class CommonFunctionality {
 							.allPathsBetweenNodesWithCamundaNodes(reader, writer, new LinkedList<FlowNode>(),
 									new LinkedList<FlowNode>(), new LinkedList<FlowNode>(),
 									new LinkedList<LinkedList<FlowNode>>());
-					System.out.println("Paths between: " + pathsBetweenWriterAndReader.size());
 					// there must be at least 1 path between the writer and the reader
 					if (pathsBetweenWriterAndReader.size() > 0) {
 						amountPathsWithWriter++;
@@ -594,14 +592,6 @@ public class CommonFunctionality {
 
 		}
 
-		for (Entry<SequenceFlow, LinkedList<LinkedList<FlowNode>>> entry : map.entrySet()) {
-			System.out.println("entry: " + entry.getKey().getId() + ", " + entry.getValue().size());
-			for (LinkedList<FlowNode> f : entry.getValue()) {
-				System.out.println("size: " + f.size());
-			}
-		}
-
-		System.out.println(flowIntoBranch.size() + " flowintoBranch");
 		SequenceFlow key1 = map.keySet().iterator().next();
 
 		for (SequenceFlow key2 : map.keySet()) {
@@ -639,7 +629,6 @@ public class CommonFunctionality {
 			
 		//filter out subpaths that do not have the endNode as target
 		LinkedList<LinkedList<FlowNode>> subPaths = CommonFunctionality.getAllPaths(modelInstance, startNode, endNode, queue, openSplits, currentPath, paths, parallelBranches, endNode);
-		System.out.println("Subpaths: "+subPaths.size());
 		
 		
 		Iterator<LinkedList<FlowNode>> subPathsIter = subPaths.iterator();
@@ -1356,6 +1345,34 @@ public static void generateNewModelAndIncreaseVotersForEachDataObject(String pat
 	}
 
 
+public static void increaseSpherePerDataObject(BpmnModelInstance modelInstance, String sphereToSet) throws IOException, ParserConfigurationException, SAXException {
+	//sets the sphere of each data object in the model to the sphereToSet
+
+	
+			for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+				
+						if (tx.getTextContent().startsWith("Default")) {
+			
+						
+									StringBuilder sb = new StringBuilder();
+									sb.append(tx.getTextContent().substring(0, tx.getTextContent().indexOf('{')+1));
+									
+									
+									sb.append(sphereToSet+'}');
+									Text txt = modelInstance.newInstance(Text.class);
+									txt.setTextContent(sb.toString());
+									tx.setText(txt);
+							
+						
+					
+				
+			}
+			}	
+			
+}
+
+
+
 
 
 	
@@ -1396,7 +1413,58 @@ public static void generateNewModelAndIncreaseVotersForEachDataObject(String pat
 	}
 
 	
-	
+	public static void increaseVotersPerDataObject(BpmnModelInstance modelInstance, int currValue) throws IOException, ParserConfigurationException, SAXException {
+		
+		boolean modelWithLanes = true;
+		if(modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
+			modelWithLanes=false;
+		}
+		
+		int maxParticipants = CommonFunctionality.getGlobalSphere(modelInstance, modelWithLanes);
+		
+		
+		for(ExclusiveGateway gtw: modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+			if(gtw.getIncoming().size()==1&&gtw.getOutgoing().size()>=2) {
+				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+							if (tx.getTextContent().startsWith("[Voters]")) {
+								
+								String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{')+1, tx.getTextContent().indexOf('}'));
+								String[]values = subString.split(",");
+								
+								int currAmountVoters = Integer.parseInt(values[0]);
+								if(currAmountVoters<=maxParticipants&&currValue<=maxParticipants) {
+									int amountAfterIncreasing = currValue;								
+									
+									int lowerBound = (int) Math.ceil((double)amountAfterIncreasing / 2)+1;								
+									int randomCountVotersSameDecision = 0;
+									if(lowerBound<currValue) {
+									randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
+											amountAfterIncreasing + 1);
+									} else {
+										randomCountVotersSameDecision = currValue;
+									}
+									StringBuilder sb = new StringBuilder();
+									sb.append("[Voters]{"+amountAfterIncreasing+","+randomCountVotersSameDecision+","+values[2]+"}");
+									
+									Text text = modelInstance.newInstance(Text.class);
+									text.setTextContent(sb.toString());				
+									tx.setText(text);									
+									
+								}
+								
+							}
+						}
+
+					}
+				}
+				
+			}
+			
+		}
+		
+	}
 	
 	
 	
@@ -1640,49 +1708,62 @@ public static double getAverageAmountVotersOfModel(BpmnModelInstance modelInstan
 	
 	
 	
-public static int getSphereSumOfModel(BpmnModelInstance modelInstance) {
-		//global = 0, ....,  Strong-Dynamic = 3
-	//a higher sum will be a model with more strict decisions
-		int sumSpheres = 0; 
-		
+public static double getSphereSumOfModel(BpmnModelInstance modelInstance) {
+		//global = 1, ....,  Strong-Dynamic = 4
+	//a higher value will be a model with more strict decisions
+		double sumSpheres = 0; 
+		double amountBrts = 0; 
 			HashMap<DataObjectReference, LinkedList<FlowNode>> readers = CommonFunctionality.getReadersForDataObjects(modelInstance);
 				for(DataObjectReference dataO: readers.keySet()) {
 					for(FlowNode f: readers.get(dataO)) {
 						if(f instanceof BusinessRuleTask) {
-
+							BusinessRuleTask brt = (BusinessRuleTask)f;
 							for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
-								
-										if (tx.getTextContent().startsWith("Default ")) {
-							
-										String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{')+1, tx.getTextContent().indexOf('}'));
-									
-													if(subString.contentEquals("Strong-Dynamic")) {
-														sumSpheres+=3;
-													}
-													else if(subString.contentEquals("Weak-Dynamic")) {
-														sumSpheres+=2;
-													} 
-													else if(subString.contentEquals("Static")) {
-														sumSpheres+=1;
-													} 
-														else if(subString.contentEquals("Global")) {
-														sumSpheres+=0;
-													} 
-													
+								for(DataInputAssociation dia: brt.getDataInputAssociations()) {
+									for(ItemAwareElement iae: dia.getSources()){
+										if(iae.getId().contentEquals(dataO.getId())) {
+											if (tx.getTextContent().startsWith("Default")) {
+												
+												amountBrts++;
+												String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{')+1, tx.getTextContent().indexOf('}'));
+											
+															if(subString.contentEquals("Strong-Dynamic")) {
+																sumSpheres+=4;
+															}
+															else if(subString.contentEquals("Weak-Dynamic")) {
+																sumSpheres+=3;
+															} 
+															else if(subString.contentEquals("Static")) {
+																sumSpheres+=2;
+															} 
+																else if(subString.contentEquals("Global")) {
+																sumSpheres+=1;
+															}  
+																else if(subString.contentEquals("Public")) {
+																	sumSpheres+=0;
+														}
 												}
+										}
+									}
+								}
+								
+								
 												}
 											}
 					}
 							
 					}
-		return sumSpheres;
+				if(amountBrts==0) {
+					amountBrts=1;
+				}
+		return sumSpheres/amountBrts;
 	}
 
 
 public static double getAverageCostForAllModelInstances(LinkedList<ProcessInstanceWithVoters>pInstances) {
 	double cumulatedCost = 0; 
 	for(ProcessInstanceWithVoters pInst: pInstances) {
-		cumulatedCost = pInst.getCostForModelInstance();
+		cumulatedCost += pInst.getCostForModelInstance();
 	}
 	
 	return cumulatedCost/pInstances.size();

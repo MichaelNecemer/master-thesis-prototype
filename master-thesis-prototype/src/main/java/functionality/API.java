@@ -152,8 +152,8 @@ public class API {
 		this.costForLiftingFromWeakDynamicToStrongDynamic = cost.get(3);
 		this.executionTimeLocalMinAlgorithmInSeconds = 0; 
 		this.executionTimeLocalMinAlgorithmInSeconds=0;
-
-		System.out.println("Correctness check of model: ");
+		
+		System.out.println("API for: "+process.getName());
 		CommonFunctionality.isCorrectModel(modelInstance);
 		readersMap = CommonFunctionality.getReadersForDataObjects(modelInstance);
 		writersMap = CommonFunctionality.getWritersForDataObjects(modelInstance);
@@ -220,10 +220,8 @@ public class API {
 				brt.getLastWriterList().putIfAbsent(dataO, lastWritersForDataO);
 			}
 		}
-		// set the dependent brts
-		this.setDependentBrts();
-
-
+		
+		
 	}
 
 	private void setDependentBrts() {
@@ -1082,10 +1080,11 @@ public class API {
 					if (a.getAttributeValue("sourceRef").equals(element.getId())
 							&& a.getAttributeValue("targetRef").equals(text.getId())) {
 						String str = text.getTextContent();
-
+						System.out.println(str);
 						// First 4 characters specify the Data object e.g. [D1]
 						String s = str.substring(str.indexOf('[') + 1, str.indexOf(']'));
 						// The Sphere for the data object is between {}
+						System.out.println(s);
 						String s2 = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 
 						// Check if it is the right data object
@@ -1497,12 +1496,12 @@ public class API {
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> votersMap,
 			HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>> requiredUpdates,
 			LinkedList<VoterForXorArc> alreadyTakenVoters, LinkedList<BPMNElement> queue,
-			LinkedList<BPMNElement> parallelGtwQueue, LinkedList<BPMNElement> openXorStack,
+			LinkedList<BPMNElement> parallelGtwQueue, LinkedList<BPMNElement> openSplitStack,
 			LinkedList<BPMNElement> currentPath, LinkedList<LinkedList<BPMNElement>> paths) throws NullPointerException, Exception {
 		// go DFS inside the XOR till corresponding join is found
 		queue.add(startNode);
 
-		boolean reachedParallelEndGateway = false;
+		
 
 		while (!(queue.isEmpty())) {
 			BPMNElement element = queue.poll();
@@ -1512,26 +1511,26 @@ public class API {
 
 				paths.add(currentPath);
 
-				if (endNode instanceof BPMNExclusiveGateway
-						&& ((BPMNExclusiveGateway) element).getType().equals("join")) {
+				if (endNode instanceof BPMNGateway
+						&& ((BPMNGateway) element).getPredecessors().size()>=2) {
 
-					BPMNExclusiveGateway joinGtw = (BPMNExclusiveGateway) element;
+					BPMNGateway joinGtw = (BPMNGateway) element;
 
 					// when a xor-join is found - poll the last opened xor gateway from the stack
-					BPMNExclusiveGateway lastOpenedXor = (BPMNExclusiveGateway) openXorStack.pollLast();
+					BPMNGateway lastOpenedSplit = (BPMNGateway) openSplitStack.pollLast();
 
-					if (!openXorStack.isEmpty()) {
-						if (!openXorStack.contains(lastOpenedXor)) {
-							// when the openXorStack does not contain the lastOpenedXor anymore, all
+					if (!openSplitStack.isEmpty()) {
+						if (!openSplitStack.contains(lastOpenedSplit)) {
+							// when the openSplitStack does not contain the lastOpenedSplit anymore, all
 							// branches to the joinGtw have been visited
-							// go from joinGtw to the Join of the last opened xor-split in the stack
+							// go from joinGtw to the Join of the last opened split in the stack
 							this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, joinGtw,
-									this.getCorrespondingGtw((BPMNGateway) openXorStack.getLast()), lastFoundBrt,
+									this.getCorrespondingGtw((BPMNGateway) openSplitStack.getLast()), lastFoundBrt,
 									processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters, queue,
-									parallelGtwQueue, openXorStack, currentPath, paths);
+									parallelGtwQueue, openSplitStack, currentPath, paths);
 
 						}
-					} else if (openXorStack.isEmpty()) {
+					} else if (openSplitStack.isEmpty()) {
 						// when there are no open Xor gtws
 						// go from the successor of the element to bpmnEnd since the currentElement has
 						// already been added to the path
@@ -1548,7 +1547,7 @@ public class API {
 						for (LinkedList<BPMNElement> newPath : newPaths) {
 							this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, element.getSuccessors().iterator().next(),
 									this.bpmnEnd, lastFoundBrt, processInstancesWithVoters, votersMap, requiredUpdates,
-									alreadyTakenVoters, queue, parallelGtwQueue, openXorStack, newPath, paths);
+									alreadyTakenVoters, queue, parallelGtwQueue, openSplitStack, newPath, paths);
 						}
 
 					}
@@ -1644,35 +1643,24 @@ public class API {
 
 			}
 
-			if (element instanceof BPMNExclusiveGateway && ((BPMNExclusiveGateway) element).getType().equals("split")) {
+			if (element instanceof BPMNGateway && ((BPMNGateway) element).getSuccessors().size()>=2) {
 				// add the xor split to the openXorStack 1 times for each outgoing paths
 				int amountOfOutgoingPaths = element.getSuccessors().size();
 				int i = 0;
 				while (i < amountOfOutgoingPaths) {
-					openXorStack.add((BPMNExclusiveGateway) element);
+					openSplitStack.add((BPMNGateway) element);
 					i++;
 				}
 
 			}
 
-			if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway) element).getType().equals("split")) {
-				for (BPMNElement successor : element.getSuccessors()) {
-					parallelGtwQueue.add(successor);
-				}
-			}
-
-			if (element instanceof BPMNParallelGateway && ((BPMNParallelGateway) element).getType().equals("join")) {
-				parallelGtwQueue.poll();
-				if (!parallelGtwQueue.isEmpty()) {
-					reachedParallelEndGateway = true;
-				}
-			}
+		
 
 			for (BPMNElement successor : element.getSuccessors()) {
 
-				if (element instanceof BPMNExclusiveGateway
-						&& ((BPMNExclusiveGateway) element).getType().equals("split")) {
-					// when a xor-split is found - go dfs till the corresponding join is found
+				if (element instanceof BPMNGateway
+						&& ((BPMNGateway) element).getSuccessors().size()>=2) {
+					// when a split is found - go dfs till the corresponding join is found
 
 					BPMNGateway correspondingJoinGtw = this.getCorrespondingGtw((BPMNGateway) element);
 
@@ -1681,17 +1669,17 @@ public class API {
 
 					this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, successor, correspondingJoinGtw, lastFoundBrt,
 							processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters, queue,
-							parallelGtwQueue, openXorStack, newPath, paths);
+							parallelGtwQueue, openSplitStack, newPath, paths);
 				} else {
 
-					if (reachedParallelEndGateway == false) {
+					
 						queue.add(successor);
-					}
+					
 
 				}
 
 			}
-			reachedParallelEndGateway = false;
+	
 		}
 
 		return processInstancesWithVoters;
@@ -3737,4 +3725,9 @@ public class API {
 		return this.troubleShooter;
 	}
 
+	public boolean modelWithLanes() {
+		return this.modelWithLanes;
+	}
+	
+	
 }

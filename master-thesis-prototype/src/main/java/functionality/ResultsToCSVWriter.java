@@ -30,7 +30,7 @@ public class ResultsToCSVWriter {
 
 			rows = new ArrayList<>();
 			String[] header = new String[] { "fileName", "pathToFile", "totalAmountSolutions", "amount cheapest solution(s) localMinimumAlgorithm", "amount cheapest solution(s) bruteForce", "costCheapestSolution", "averageCostAllSolutions",
-					"executionTimeLocalMinimumAlogrithm in sec", "executionTimeBruteForce in sec", "deltaExecutionTime in sec", "isCheapestSolutionInBruteForce", "amountPaths", "amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements", "amountSumVoters", "averageAmountVoters", "globalSphereSize"};
+					"executionTimeLocalMinimumAlogrithm in sec", "executionTimeBruteForce in sec", "deltaExecutionTime in sec", "isCheapestSolutionInBruteForce", "amountPaths", "amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements", "amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum"};
 			this.rows.add(header);
 			
 			
@@ -82,7 +82,7 @@ public class ResultsToCSVWriter {
 					
 					
 					String[] row = new String[] { fileName, pathToFile, pInstancesBruteForce.size()+"", amountCheapestSolutionsLocalMin+"", amountCheapestSolutionsBruteForce+"", costCheapestSolution + "", averageCostAllSolutions+"",
-							api.getExecutionTimeLocalMinimumAlgorithm() + "", api.getExecutionTimeBruteForceAlgorithm()+"", api.getExecutionTimeLocalMinimumAlgorithm()-api.getExecutionTimeBruteForceAlgorithm()+"", isCheapestSolutionInBruteForce+"", api.getAllPathsThroughProcess().size()+"", readersPerDataObject.toString(), writersPerDataObject.toString(), CommonFunctionality.getAmountExclusiveGtwSplits(api.getModelInstance())+"", CommonFunctionality.getAmountParallelGtwSplits(api.getModelInstance())+"", CommonFunctionality.getAmountTasks(api.getModelInstance())+"",CommonFunctionality.getAmountElements(api.getModelInstance())+"", CommonFunctionality.getSumAmountVotersOfModel(api.getModelInstance())+"", CommonFunctionality.getAverageAmountVotersOfModel(api.getModelInstance())+"", CommonFunctionality.getGlobalSphere(api.getModelInstance(), false)+""};
+							api.getExecutionTimeLocalMinimumAlgorithm() + "", api.getExecutionTimeBruteForceAlgorithm()+"", api.getExecutionTimeLocalMinimumAlgorithm()-api.getExecutionTimeBruteForceAlgorithm()+"", isCheapestSolutionInBruteForce+"", api.getAllPathsThroughProcess().size()+"", readersPerDataObject.toString(), writersPerDataObject.toString(), CommonFunctionality.getAmountExclusiveGtwSplits(api.getModelInstance())+"", CommonFunctionality.getAmountParallelGtwSplits(api.getModelInstance())+"", CommonFunctionality.getAmountTasks(api.getModelInstance())+"",CommonFunctionality.getAmountElements(api.getModelInstance())+"", CommonFunctionality.getSumAmountVotersOfModel(api.getModelInstance())+"", CommonFunctionality.getAverageAmountVotersOfModel(api.getModelInstance())+"", CommonFunctionality.getGlobalSphere(api.getModelInstance(), api.modelWithLanes())+"", CommonFunctionality.getSphereSumOfModel(api.getModelInstance())+""};
 					
 					this.rows.add(row);
 

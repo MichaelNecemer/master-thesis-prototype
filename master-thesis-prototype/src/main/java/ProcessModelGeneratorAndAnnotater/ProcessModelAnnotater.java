@@ -60,7 +60,7 @@ import org.xml.sax.SAXException;
 
 import functionality.CommonFunctionality;
 
-public class ProcessModelAnnotater {
+public class ProcessModelAnnotater implements Runnable{
 	// class takes a process model and annotates it with dataObjects, readers,
 	// writers, etc.
 
@@ -76,6 +76,7 @@ public class ProcessModelAnnotater {
 	private String pathWhereToCreateAnnotatedFile;
 	private String fileNameSuffix;
 	private static int processModellAnnotaterId;
+	private boolean stopRequested;
 
 	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix)
 			throws Exception {
@@ -89,7 +90,8 @@ public class ProcessModelAnnotater {
 		this.idForBrt = 1;
 		this.dataObjects = new LinkedList<DataObjectReference>();
 		this.differentParticipants = new LinkedList<String>();
-
+		this.stopRequested=false;
+		
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 	}
@@ -126,7 +128,7 @@ public class ProcessModelAnnotater {
 		this.dataObjects = new LinkedList<DataObjectReference>();
 		dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
 		this.differentParticipants = new LinkedList<String>();
-		
+		this.stopRequested=false;
 		if(amountWritersOfProcess<this.dataObjects.size()) {
 			throw new Exception("Amount of writers must be >= amount of DataObjects!");
 		}
@@ -1422,7 +1424,7 @@ public class ProcessModelAnnotater {
 
 						generateDIElementForWriter(dao, getShape(dataORef.getId()), getShape(task.getId()));
 						// add sphere annotation for writer if necessary
-						int randomCountSphere = ThreadLocalRandom.current().nextInt(0, 100 + 1);
+						int randomCountSphere = ThreadLocalRandom.current().nextInt(1, 100 + 1);
 						if (randomCountSphere <= dynamicWriter) {
 							generateDIElementForSphereAnnotation(task, dataORef, defaultSpheres);
 						}
@@ -1512,7 +1514,7 @@ public class ProcessModelAnnotater {
 
 					generateDIElementForWriter(dao, getShape(dataORef.getId()), getShape(task.getId()));
 					// add sphere annotation for writer if necessary
-					int randomCountSphere = ThreadLocalRandom.current().nextInt(0, 100 + 1);
+					int randomCountSphere = ThreadLocalRandom.current().nextInt(1, 100 + 1);
 					if (randomCountSphere <= dynamicWriter) {
 						generateDIElementForSphereAnnotation(task, dataORef, defaultSpheresForDynamicWriter);
 					}
@@ -1585,6 +1587,31 @@ public class ProcessModelAnnotater {
 
 		}
 
+	}
+	
+	
+	@Override
+	public void run() {
+		// TODO Auto-generated method stub
+	
+				
+			try {
+				while(!Thread.interrupted()) {		
+				File f = this.checkCorrectnessAndWriteChangesToFile();
+				if(f!=null) {
+					return;
+				}
+				}
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				System.out.println("Time limit reached!");
+				e.printStackTrace();
+			} 
+			
+		
+		
+		
+		
 	}
 
 }
