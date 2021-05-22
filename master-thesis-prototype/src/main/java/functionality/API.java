@@ -104,7 +104,7 @@ import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
 
 //Class that uses the camunda model API to interact with the process model directly without parsing the XML first to e.g. DOM Object
 //Note that only processes with exactly 1 Start Event are possible
-public class API {
+public class API implements Runnable {
 	
 	static int value = 0;
 	private Collection<StartEvent> startEvent;
@@ -116,6 +116,7 @@ public class API {
 	private double executionTimeLocalMinAlgorithmInSeconds;
 	private double executionTimeBruteForceAlgorithmInSeconds;
 	private BPMNParticipant troubleShooter;
+	private String algorithmToPerform;
 	
 	private BPMNStartEvent bpmnStart;
 	private BPMNEndEvent bpmnEnd;
@@ -152,6 +153,7 @@ public class API {
 		this.costForLiftingFromWeakDynamicToStrongDynamic = cost.get(3);
 		this.executionTimeLocalMinAlgorithmInSeconds = 0; 
 		this.executionTimeLocalMinAlgorithmInSeconds=0;
+		this.algorithmToPerform="bruteForce";
 		
 		System.out.println("API for: "+process.getName());
 		CommonFunctionality.isCorrectModel(modelInstance);
@@ -182,6 +184,8 @@ public class API {
 				 LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new
 				  LinkedList<LinkedList<FlowNode>>());
 	}
+	
+	
 
 	private void mapAndCompute() {
 		//check if it is a model with lanes 
@@ -334,7 +338,7 @@ public class API {
 					BPMNDataObject dataO = entry.getKey();
 					String requiredSphere = lastWriter.getSphereAnnotation().get(dataO);
 					HashMap<BPMNParticipant, LinkedList<String>> sphereMap = new HashMap<BPMNParticipant, LinkedList<String>>();
-
+					LinkedList<VoterForXorArc>readerAlreadyGenerated = new LinkedList<VoterForXorArc>();
 					// set the WD and SD sphere and consider the preceeding already chosen voters
 					// substitute the respective brts participant with the voters
 					ArrayList<BPMNParticipant> wdList = new ArrayList<BPMNParticipant>();
@@ -342,9 +346,9 @@ public class API {
 
 					for (BPMNParticipant readerParticipant : arcToBeAdded.getChosenCombinationOfParticipants()) {
 						// List will contain 1 or 2 entries, 1. sphereForReaderBeforeBrt 2.(if possible)
-						// - sphereForReaderAfterBrt
+						// - sphereForReaderAfterBrt						
 						LinkedList<String> sphereList = new LinkedList<String>();
-
+						
 						// get sphere for reader between lastWriter and currentBrt
 						String sphereForReaderBeforeBrt = this
 								.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(currentBrt, lastWriter,
@@ -392,6 +396,7 @@ public class API {
 
 						sphereMap.putIfAbsent(readerParticipant, sphereList);
 					}
+					
 
 					if (lastWriter.getWeakDynamicHashMap().get(dataO) == null) {
 						lastWriter.getWeakDynamicHashMap().put(dataO, wdList);
@@ -411,12 +416,15 @@ public class API {
 
 					for (BPMNParticipant reader : chosenPartForArc) {
 
+						
 						String update = "";
 						double cost = 0;
 						double weight = 1;
 						// to calculate the weight we have to check on how many paths the lastWriter
 						// writes data that is read by the brt
-
+	
+						
+						
 						if (requiredSphere.contentEquals("Strong-Dynamic")) {
 
 							if (lastWriter.getStrongDynamicHashMap().containsKey(dataO)) {
@@ -1608,7 +1616,6 @@ public class API {
 						// list of all possible combinations of Voters for currBrt combined with all
 						// existing process instances
 						Collection<List<Object>> combs = Combination.permutations(toCombine);
-
 						ProcessInstanceWithVoters.setProcessID(0);
 						for (List list : combs) {
 							ProcessInstanceWithVoters newInstance = new ProcessInstanceWithVoters();
@@ -3727,6 +3734,38 @@ public class API {
 
 	public boolean modelWithLanes() {
 		return this.modelWithLanes;
+	}
+
+	public void setAlgorithmToPerform(String algorithmToPerform) {
+		this.algorithmToPerform=algorithmToPerform;
+	}
+	public String getAlgorithmToPerform() {
+		return this.algorithmToPerform;
+	}
+	
+	
+	@Override
+	public void run() {
+		// TODO Auto-generated method stub
+		if(this.algorithmToPerform.contentEquals("bruteForce")) {
+			try {
+				this.bruteForceAlgorithm();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		} else if(this.algorithmToPerform.contentEquals("localMin")) {
+			try {
+				this.localMinimumAlgorithm();
+			} catch (NullPointerException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
 	}
 	
 	

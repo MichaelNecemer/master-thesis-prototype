@@ -1627,13 +1627,40 @@ public static void increaseSpherePerDataObject(BpmnModelInstance modelInstance, 
 			e.printStackTrace();
 		}
 	}
+	public static List<LinkedList<Integer>> computeRepartitionNumberWithResultBound(int maxAmount, int subParts, int threshold_number, int amountResults) throws Exception {
+	    
+		 List<LinkedList<Integer>> resultRec = new LinkedList<LinkedList<Integer>>();
+	        
+		 if(resultRec.size()==amountResults) {
+			 return resultRec;
+		 }
+	        
+	        if (subParts == 1) {
+	            List<LinkedList<Integer>> resultEnd = new LinkedList<LinkedList<Integer>>();
+	            LinkedList<Integer> unitary = new LinkedList<>();
+	            resultEnd.add(unitary);
+	            unitary.add(maxAmount);
+	            return resultEnd;
+	        }
+
+	        for (int i = threshold_number; i <= maxAmount-threshold_number; i++) {
+	            int remain = maxAmount - i;
+	            List<LinkedList<Integer>> partialRec = computeRepartitionNumberWithResultBound(remain, subParts - 1, threshold_number, amountResults);
+	            for(List<Integer> subList : partialRec){
+	                subList.add(i);             
+	            }
+	            resultRec.addAll(partialRec);
+	        }
+	        return resultRec;
+
+	    }
+
 	
 	
 	 public static List<LinkedList<Integer>> computeRepartitionNumber(int maxAmount, int subParts, int threshold_number) throws Exception {
 	    
 		 List<LinkedList<Integer>> resultRec = new LinkedList<LinkedList<Integer>>();
-	        
-	        
+	    
 	        if (subParts == 1) {
 	            List<LinkedList<Integer>> resultEnd = new LinkedList<LinkedList<Integer>>();
 	            LinkedList<Integer> unitary = new LinkedList<>();
@@ -1778,6 +1805,137 @@ public static int getAmountTasks(BpmnModelInstance modelInstance) {
 	}
 	return amountTasks;
 }
+
+
+public static int calculatePossibleCombinationsForProcess(BpmnModelInstance modelInstance, boolean modelWithLanes) {
+	int combinations = 1;
+	
+	int amountParticipants = CommonFunctionality.getGlobalSphere(modelInstance, modelWithLanes);
+	
+	for(BusinessRuleTask brt: modelInstance.getModelElementsByType(BusinessRuleTask.class)) {
+		if(brt.getOutgoing().iterator().next().getTarget() instanceof ExclusiveGateway) {
+			ExclusiveGateway gtw = (ExclusiveGateway) brt.getOutgoing().iterator().next().getTarget();
+			if(gtw.getOutgoing().size()>=2) {
+				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+							if (tx.getTextContent().startsWith("[Voters]")) {
+								
+								String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{')+1, tx.getTextContent().indexOf('}'));
+								String[]values = subString.split(",");
+								
+								int amountVoters = Integer.parseInt(values[0]);
+								combinations *= binom(amountParticipants, amountVoters);
+								
+								
+							}
+						}
+					}
+				}
+								
+			}
+			
+		}
+		
+	}
+	
+	return combinations;
+	
+}
+
+public static List<Integer> maxVoterCombsPerGatewayFromProcessDimension(double processDimensionSize, int amountDecisions, int globalSphere, int minVotersPerDecision, boolean equallyDistributed ) throws Exception {
+	//calculate the amount of maximum voter combinations per gateway to fit the processDimensionSize
+	//e.g. processDimensonSize 10000 with 4 gtws -> if equally distributed each decision has 10 voterCombinations which is e.g. binomial coefficient of 5 over 3
+	//decisions should have 2 voters at least
+	
+	
+	if(globalSphere<2) {
+		throw new Exception("Model shoud have >= 2 participants!");
+	}
+	if(minVotersPerDecision<2) {
+		throw new Exception("Model should have >= 2 voters per decision");
+	}
+	if(minVotersPerDecision>globalSphere) {
+		throw new Exception("Minimum voters per decision can not be > than global sphere!");
+
+	}
+	
+	LinkedList<Integer>votersPerGtw = new LinkedList<Integer>();
+	if(equallyDistributed) {
+		//each decision has the same size of voter combinations
+		double equallyDistributedVoterCombs = Math.floor(processDimensionSize / amountDecisions);
+			//n is the global sphere
+			// k is the amount of voters for the gtw
+			//find the k such that the binomial coefficient n over k is <= the equallyDistributedVoterCombs
+		int prevK = 0; 
+			for(int k = minVotersPerDecision; k <= globalSphere; k++) {				
+				double combs = CommonFunctionality.binom(globalSphere, k);
+				if(combs<=equallyDistributedVoterCombs) {
+					prevK = k;
+				} else {
+					if(prevK==0) {
+						throw new Exception("Voter will be 0!");
+					}
+					
+					for(int size = 0; size <= globalSphere; size++) {
+						votersPerGtw.add(prevK);
+					}
+					break;
+				}
+				
+			}
+		
+		
+	
+	} else {
+		//each gtw can have a different size of voters for the decision
+		double minVoterCombsPerDecision = Math.floor(processDimensionSize / minVotersPerDecision);
+		List<LinkedList<Integer>> voterCombsPerGtwLists = CommonFunctionality.computeRepartitionNumberWithResultBound((int)processDimensionSize, amountDecisions, (int)minVoterCombsPerDecision, 5);
+		LinkedList<Integer> voterCombsPerGtwList = CommonFunctionality.getRandomItem(voterCombsPerGtwLists);
+		
+		for(int i = 0; i < voterCombsPerGtwList.size(); i++) {
+			int currVotersComb = voterCombsPerGtwList.get(i);
+			int prevK = 0; 
+			for(int k = minVotersPerDecision; k <= globalSphere; k++) {				
+				double combs = CommonFunctionality.binom(globalSphere, k);
+				if(combs<=currVotersComb) {
+					prevK = k;
+				} else {
+					if(prevK==0) {
+						throw new Exception("Voter will be 0!");
+					}
+					votersPerGtw.add(prevK);
+					break;
+				}
+				
+			}			
+		}
+			
+	}
+	
+	if(votersPerGtw.size()!=amountDecisions) {
+		throw new Exception("Failed: VotersPerGtw!=amountDecisions!");
+	}
+	
+		return votersPerGtw;
+
+
+	
+	
+}
+
+
+
+public static int binom(int n, int k) {
+	if(n==k || k==0) {
+		return 1;
+	}
+	
+	return binom(n-1, k) + binom (n-1, k-1);
+	
+}
+
+
 
 
 

@@ -160,7 +160,7 @@ public class ProcessModelAnnotater implements Runnable{
 
 	public void connectDataObjectsToBrtsAndTuplesForXorSplits(int maxDataObjectsPerDecision,
 			int amountParticipantsPerDecisionLowerBound, int amountParticipantsPerDecisionUpperBound,
-			int probPublicDecision) throws Exception {
+			int probPublicDecision){
 		if (!this.dataObjects.isEmpty()) {
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
 				if (taskIsBrtFollowedByXorSplit(task)) {
@@ -177,9 +177,7 @@ public class ProcessModelAnnotater implements Runnable{
 				}
 
 			}
-		} else {
-			throw new Exception("No dataObjects in the model!");
-		}
+		} 
 	}
 
 	public File checkCorrectnessAndWriteChangesToFile() throws Exception {

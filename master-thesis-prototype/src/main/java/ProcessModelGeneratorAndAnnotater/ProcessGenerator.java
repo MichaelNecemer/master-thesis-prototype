@@ -36,17 +36,16 @@ import org.xml.sax.SAXException;
 
 import functionality.CommonFunctionality;
 
-public class ProcessGenerator {
+public class ProcessGenerator implements Runnable {
 	// generates a new Process Model using the camunda fluent API
 	// model can than be annotated using the ProcessModelAnnotater
 	
 	private static int processGeneratorId = 1;
 	private int processId;
 	private static int run = 1;
-	private static BpmnModelInstance modelInstance;
+	private BpmnModelInstance modelInstance;
 	private LinkedList<String> participantNames;
-	
-	private LinkedList<FlowNode> entryPointsStack;
+
 
 	private static int taskId;
 	private static int xorGtwId;
@@ -55,6 +54,13 @@ public class ProcessGenerator {
 	private int[] xorProbArray;
 	private int[] parallelProbArray;
 	private int nestingDepthFactor;
+	private FlowNode startEvent;
+	private int amountParticipants;
+	private int amountTasksLeft;
+	private int amountXorsLeft; 
+	private int amountParallelsLeft;
+	private int probTask;
+	
 
 
 	private LinkedList<String>possibleNodeTypes;
@@ -63,7 +69,7 @@ public class ProcessGenerator {
 	private String directoryToStore;
 	
 
-	public ProcessGenerator(String directoryToStore, long timeoutAfterMilliSeconds, int amountParticipants, int amountTasksLeft, int amountXorsLeft,
+	public ProcessGenerator(String directoryToStore, int amountParticipants, int amountTasksLeft, int amountXorsLeft,
 			int amountParallelsLeft, int probTask, int probXorGtw, int probParallelGtw, int probJoinGtw, int nestingDepthFactor, boolean modelWithXorSplit) throws Exception {
 		// process model will have 1 StartEvent and 1 EndEvent
 		this.participantNames = new LinkedList<String>();
@@ -73,8 +79,10 @@ public class ProcessGenerator {
 		}
 	
 		this.probJoinGtw=probJoinGtw;
-		
-		this.entryPointsStack = new LinkedList<FlowNode>();
+		this.amountParticipants=amountParticipants;
+		this.amountParallelsLeft=amountParallelsLeft;
+		this.amountTasksLeft = amountTasksLeft;
+		this.amountXorsLeft = amountXorsLeft;
 		
 		this.insertionConstructs=new LinkedList<InsertionConstruct>();
 		
@@ -119,39 +127,14 @@ public class ProcessGenerator {
 		}
 
 
-		modelInstance = Bpmn.createProcess("Process_"+run).startEvent("startEvent_1").done();
-		FlowNode startEvent = (FlowNode) modelInstance.getModelElementById("startEvent_1");
-		
-
-		entryPointsStack.add(startEvent);
+		this.modelInstance = Bpmn.createProcess("Process_"+run).startEvent("startEvent_1").done();
+		this.startEvent = (FlowNode) modelInstance.getModelElementById("startEvent_1");
 
 		this.possibleNodeTypes = new LinkedList<String>();
 		this.possibleNodeTypes.add("Task");
 		this.possibleNodeTypes.add("ExclusiveGateway");
 		this.possibleNodeTypes.add("ParallelGateway");
 		
-		long start = System.currentTimeMillis();
-		long end = start+timeoutAfterMilliSeconds;
-		// go dfs
-		
-	
-	
-		this.goDfs(startEvent, null, amountTasksLeft, amountXorsLeft, amountParallelsLeft, this.possibleNodeTypes, new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), nestingDepthFactor);
-		
-		
-		if(System.currentTimeMillis()>end) {
-			throw new Exception("Time limit is reached! ");
-		}
-	
-		try {
-			
-			writeChangesToFile(modelWithXorSplit);
-		} catch (IOException | ParserConfigurationException | SAXException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			new ProcessGenerator(directoryToStore,timeoutAfterMilliSeconds, amountParticipants, amountTasksLeft, amountXorsLeft,
-					amountParallelsLeft, probTask, probXorGtw,probParallelGtw, probJoinGtw, nestingDepthFactor, modelWithXorSplit);
-		}
 	}
 	
 	
@@ -537,7 +520,7 @@ public class ProcessGenerator {
 				FlowNode currentNode = queue.pollLast();
 				if (currentNode.getOutgoing().isEmpty()) {
 					currentNode.builder().connectTo(joinId);
-					this.entryPointsStack.remove(currentNode);
+					
 				} else {
 					for (SequenceFlow seq : currentNode.getOutgoing()) {
 						queue.add(seq.getTarget());
@@ -545,9 +528,6 @@ public class ProcessGenerator {
 				}
 			}
 		}
-
-		this.entryPointsStack.remove(insideBranch);
-		this.entryPointsStack.remove(split);
 
 	}
 
@@ -559,19 +539,14 @@ public class ProcessGenerator {
 
 	
 	
-	private void writeChangesToFile(boolean modelWithXorSplit) throws NullPointerException, Exception {
+	private File writeChangesToFile() throws NullPointerException, Exception {
 		// validate and write model to file
 		//add the generated models to the given directory
 				
 		if(!CommonFunctionality.isModelBlockStructured(modelInstance)) {
 			throw new Exception("Model not block structured!");
 		}
-		if(modelWithXorSplit) {
-		if(CommonFunctionality.getAmountExclusiveGtwSplits(modelInstance)==0) {
-			throw new Exception("Model must have a xor-split!");
-			
-		}
-		}
+		
 		Bpmn.validateModel(modelInstance);
 		String pathOfProcessFile = this.directoryToStore;
 		String fileName = "randomProcessModel"+this.processId+".bpmn";
@@ -634,6 +609,33 @@ public class ProcessGenerator {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		return file;
+	}
+
+
+	@Override
+	public void run() {
+		// TODO Auto-generated method stub	
+		
+		try {
+			while(!Thread.interrupted()) {
+			this.goDfs(this.startEvent, null, amountTasksLeft, amountXorsLeft, amountParallelsLeft, this.possibleNodeTypes, new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), nestingDepthFactor);
+			try {
+			File f = writeChangesToFile();
+			if(f!=null) {
+				return;
+			}
+			} catch(Exception e1){
+				System.out.println("Generated Model not valid!");
+				
+			}
+			
+			}
+		} catch(Exception e) {
+			
+			e.printStackTrace();
+		}
+		
 	}
 	
 	
