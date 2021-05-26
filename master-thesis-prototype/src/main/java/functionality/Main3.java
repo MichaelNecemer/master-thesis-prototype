@@ -65,8 +65,7 @@ public class Main3 {
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test2\\SmallProcessesAnnotatedFolder\\Spheres\\randomProcessModel84_annotated1_annotated92lWmR_Static1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches3.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test1\\MediumProcessesAnnotatedFolder\\ModelsForEvaluation\\randomProcessModel9_annotated1_annotated10sWsR1_Global_voters1.bpmn";
-		
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\ProcessesWithoutAnnotation\\MixedProcessesFolder\\AnnotatedModels\\randomProcessModel4_annotated1.bpmn";
 		JFrame frame = new JFrame(pathToFile);
 	frame.setVisible(true);
 	
@@ -173,7 +172,7 @@ public class Main3 {
 		pInstance.printProcessInstance();
 		}
 		
-		//a2.annotateModelWithChosenParticipants(pInstances);
+		a2.annotateModelWithChosenParticipants(pInstances, 2);
 		
 		
 		for(ProcessInstanceWithVoters pInstance: pInstances) {
@@ -224,7 +223,6 @@ public class Main3 {
 
 	
 	
-	//a2.annotateModelWithChosenParticipants(pInstances);
 	
 	/*
 	//Brute Force Attempt

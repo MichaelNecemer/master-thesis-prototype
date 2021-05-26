@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.Set;
@@ -104,8 +105,8 @@ import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
 
 //Class that uses the camunda model API to interact with the process model directly without parsing the XML first to e.g. DOM Object
 //Note that only processes with exactly 1 Start Event are possible
-public class API implements Runnable {
-	
+public class API implements Callable<LinkedList<ProcessInstanceWithVoters>> {
+
 	static int value = 0;
 	private Collection<StartEvent> startEvent;
 	private Collection<EndEvent> endEvent;
@@ -117,7 +118,7 @@ public class API implements Runnable {
 	private double executionTimeBruteForceAlgorithmInSeconds;
 	private BPMNParticipant troubleShooter;
 	private String algorithmToPerform;
-	
+
 	private BPMNStartEvent bpmnStart;
 	private BPMNEndEvent bpmnEnd;
 	private ArrayList<BPMNDataObject> dataObjects = new ArrayList<BPMNDataObject>();
@@ -136,7 +137,7 @@ public class API implements Runnable {
 	private LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters;
 	private HashMap<DataObjectReference, LinkedList<FlowNode>> readersMap;
 	private HashMap<DataObjectReference, LinkedList<FlowNode>> writersMap;
-	
+
 	public API(String pathToFile, ArrayList<Double> cost, double costForAddingReaderAfterBrt) throws Exception {
 		if (cost.size() != 4) {
 			throw new Exception("Not exactly 4 cost parameters in the list!");
@@ -145,56 +146,52 @@ public class API implements Runnable {
 		modelInstance = Bpmn.readModelFromFile(process);
 		startEvent = modelInstance.getModelElementsByType(StartEvent.class);
 		endEvent = modelInstance.getModelElementsByType(EndEvent.class);
-		
+
 		this.costForAddingReaderAfterBrt = costForAddingReaderAfterBrt;
 		this.costForAddingToGlobalSphere = cost.get(0);
 		this.costForLiftingFromGlobalToStatic = cost.get(1);
 		this.costForLiftingFromStaticToWeakDynamic = cost.get(2);
 		this.costForLiftingFromWeakDynamicToStrongDynamic = cost.get(3);
-		this.executionTimeLocalMinAlgorithmInSeconds = 0; 
-		this.executionTimeLocalMinAlgorithmInSeconds=0;
-		this.algorithmToPerform="bruteForce";
-		
-		System.out.println("API for: "+process.getName());
+		this.executionTimeLocalMinAlgorithmInSeconds = 0;
+		this.executionTimeLocalMinAlgorithmInSeconds = 0;
+		this.algorithmToPerform = "bruteForce";
+
+		System.out.println("API for: " + process.getName());
 		CommonFunctionality.isCorrectModel(modelInstance);
 		readersMap = CommonFunctionality.getReadersForDataObjects(modelInstance);
 		writersMap = CommonFunctionality.getWritersForDataObjects(modelInstance);
-		
+
 		this.mapAndCompute();
 
 		/*
-		LinkedList<LinkedList<FlowNode>>pathsBetweenNodes = CommonFunctionality.getAllPaths(modelInstance, modelInstance.getModelElementById("manualTask_050fe99b-6b0b-4e56-a714-edd58cd171d2"), modelInstance.getModelElementById("task_1"), new
-				  LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new
-				 LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new
-				  LinkedList<LinkedList<FlowNode>>(), modelInstance.getModelElementById("task_1"));
-		int i = 0; 
-		for(LinkedList<FlowNode>l: pathsBetweenNodes) {
-			System.out.println("Path: "+i);
-			for(FlowNode f: l) {
-				System.out.println(f.getName());
-			}
-			i++;
-		}
-			*/	  
-		
-		 this.pathsThroughProcess= CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
-				  modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
-				  modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), new
-				  LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new
-				 LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new
-				  LinkedList<LinkedList<FlowNode>>());
+		 * LinkedList<LinkedList<FlowNode>>pathsBetweenNodes =
+		 * CommonFunctionality.getAllPaths(modelInstance,
+		 * modelInstance.getModelElementById(
+		 * "manualTask_050fe99b-6b0b-4e56-a714-edd58cd171d2"),
+		 * modelInstance.getModelElementById("task_1"), new LinkedList<FlowNode>(), new
+		 * LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new
+		 * LinkedList<LinkedList<FlowNode>>(), new LinkedList<LinkedList<FlowNode>>(),
+		 * modelInstance.getModelElementById("task_1")); int i = 0;
+		 * for(LinkedList<FlowNode>l: pathsBetweenNodes) {
+		 * System.out.println("Path: "+i); for(FlowNode f: l) {
+		 * System.out.println(f.getName()); } i++; }
+		 */
+
+		this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
+				modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
+				modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), new LinkedList<FlowNode>(),
+				new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(),
+				new LinkedList<LinkedList<FlowNode>>());
 	}
-	
-	
 
 	private void mapAndCompute() {
-		//check if it is a model with lanes 
-		if(modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
-			this.modelWithLanes=false;
+		// check if it is a model with lanes
+		if (modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
+			this.modelWithLanes = false;
 		} else {
-			this.modelWithLanes=true;
+			this.modelWithLanes = true;
 		}
-			
+
 		// maps all the Camunda FlowNodes to BPMNElements
 		this.mapProcessElements();
 		// maps the successors and predecessors of the elements directly to the
@@ -202,14 +199,14 @@ public class API implements Runnable {
 		this.mapSuccessorsAndPredecessors(startEvent.iterator().next(), endEvent.iterator().next(),
 				new LinkedList<SequenceFlow>(), new ArrayList<Label>());
 
-		if(modelWithLanes) {
+		if (modelWithLanes) {
 			this.storeLanePerTask();
 		} else {
 			this.addParticipantToTask();
 		}
-		
+
 		this.mapDataObjects();
-		
+
 		this.createDataObjectAsssociatons();
 		this.computeGlobalSphere();
 		this.mapDefaultTroubleShooter();
@@ -224,8 +221,7 @@ public class API implements Runnable {
 				brt.getLastWriterList().putIfAbsent(dataO, lastWritersForDataO);
 			}
 		}
-		
-		
+
 	}
 
 	private void setDependentBrts() {
@@ -322,7 +318,8 @@ public class API implements Runnable {
 
 	}
 
-	private void setRequiredUpdatesForArc(VoterForXorArc arcToBeAdded, ProcessInstanceWithVoters currInst, LinkedList<LinkedList<BPMNElement>>paths) throws NullPointerException, Exception {
+	private void setRequiredUpdatesForArc(VoterForXorArc arcToBeAdded, ProcessInstanceWithVoters currInst,
+			LinkedList<LinkedList<BPMNElement>> paths) throws NullPointerException, Exception {
 
 		// get all the participants of the current process instance and check which
 		// updates
@@ -338,7 +335,7 @@ public class API implements Runnable {
 					BPMNDataObject dataO = entry.getKey();
 					String requiredSphere = lastWriter.getSphereAnnotation().get(dataO);
 					HashMap<BPMNParticipant, LinkedList<String>> sphereMap = new HashMap<BPMNParticipant, LinkedList<String>>();
-					LinkedList<VoterForXorArc>readerAlreadyGenerated = new LinkedList<VoterForXorArc>();
+					LinkedList<VoterForXorArc> readerAlreadyGenerated = new LinkedList<VoterForXorArc>();
 					// set the WD and SD sphere and consider the preceeding already chosen voters
 					// substitute the respective brts participant with the voters
 					ArrayList<BPMNParticipant> wdList = new ArrayList<BPMNParticipant>();
@@ -346,9 +343,9 @@ public class API implements Runnable {
 
 					for (BPMNParticipant readerParticipant : arcToBeAdded.getChosenCombinationOfParticipants()) {
 						// List will contain 1 or 2 entries, 1. sphereForReaderBeforeBrt 2.(if possible)
-						// - sphereForReaderAfterBrt						
+						// - sphereForReaderAfterBrt
 						LinkedList<String> sphereList = new LinkedList<String>();
-						
+
 						// get sphere for reader between lastWriter and currentBrt
 						String sphereForReaderBeforeBrt = this
 								.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(currentBrt, lastWriter,
@@ -396,7 +393,6 @@ public class API implements Runnable {
 
 						sphereMap.putIfAbsent(readerParticipant, sphereList);
 					}
-					
 
 					if (lastWriter.getWeakDynamicHashMap().get(dataO) == null) {
 						lastWriter.getWeakDynamicHashMap().put(dataO, wdList);
@@ -416,15 +412,12 @@ public class API implements Runnable {
 
 					for (BPMNParticipant reader : chosenPartForArc) {
 
-						
 						String update = "";
 						double cost = 0;
 						double weight = 1;
 						// to calculate the weight we have to check on how many paths the lastWriter
 						// writes data that is read by the brt
-	
-						
-						
+
 						if (requiredSphere.contentEquals("Strong-Dynamic")) {
 
 							if (lastWriter.getStrongDynamicHashMap().containsKey(dataO)) {
@@ -500,8 +493,9 @@ public class API implements Runnable {
 									alreadyChosenVoters, reader, spheres, update, weight, cost);
 							reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(this
 									.calculateWeightingForLastWriter(lastWriter, this.bpmnStart, dataO, currentBrt));
-							System.out.println("Weighting of ReqUpdate: "+reqUpdate.getWeightingOfLastWriterToWriteDataForBrt());
-							
+							System.out.println(
+									"Weighting of ReqUpdate: " + reqUpdate.getWeightingOfLastWriterToWriteDataForBrt());
+
 							currInst.getListOfRequiredUpdates().add(reqUpdate);
 
 							// add additional cost for adding a reader as voter who reads data after the brt
@@ -513,14 +507,16 @@ public class API implements Runnable {
 							}
 
 							double currInstCost = currInst.getCostForModelInstance();
-							//cost will be multiplied with the weighting of the last writer and the weighting of the brt 
+							// cost will be multiplied with the weighting of the last writer and the
+							// weighting of the brt
 							double weightingOfCurrentBrt = 1;
-							if(!currentBrt.getLabels().isEmpty()) {
-								//since process is block structured -> there are 2 paths for each xor-split
-								weightingOfCurrentBrt = weightingOfCurrentBrt / (currentBrt.getLabels().size()*2);
+							if (!currentBrt.getLabels().isEmpty()) {
+								// since process is block structured -> there are 2 paths for each xor-split
+								weightingOfCurrentBrt = weightingOfCurrentBrt / (currentBrt.getLabels().size() * 2);
 							}
-							
-							currInstCost += (cost * reqUpdate.getWeightingOfLastWriterToWriteDataForBrt() *weightingOfCurrentBrt);
+
+							currInstCost += (cost * reqUpdate.getWeightingOfLastWriterToWriteDataForBrt()
+									* weightingOfCurrentBrt);
 							currInst.setCostForModelInstance(currInstCost);
 
 						}
@@ -537,26 +533,26 @@ public class API implements Runnable {
 		// at each businessRuleTask in front of a xor-split:
 		// generate all possible combinations of voters - calculate cost and only take
 		// cheapest one(s)
-		
-		if(this.executionTimeBruteForceAlgorithmInSeconds!=0) {
-			//delete all arcs for brts
-			for(BPMNBusinessRuleTask brt: this.businessRuleTaskList) {
+
+		if (this.executionTimeBruteForceAlgorithmInSeconds != 0) {
+			// delete all arcs for brts
+			for (BPMNBusinessRuleTask brt : this.businessRuleTaskList) {
 				brt.getCombinations().clear();
 				brt.getVoterArcs().clear();
 			}
-			
+
 		}
 		System.out.println("Local Minimum Algorithm generating all cheapest process instances: ");
 		long startTime = System.nanoTime();
-		LinkedList<ProcessInstanceWithVoters> cheapestCombinations =  this.goDFSthroughProcessBuildArcsAndGetVoters(true, this.bpmnStart, this.bpmnEnd, null,
-				new LinkedList<ProcessInstanceWithVoters>(),
+		LinkedList<ProcessInstanceWithVoters> cheapestCombinations = this.goDFSthroughProcessBuildArcsAndGetVoters(true,
+				this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>(), new LinkedList<VoterForXorArc>(),
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 		long stopTime = System.nanoTime();
 		long executionTime = stopTime - startTime;
-		this.executionTimeLocalMinAlgorithmInSeconds = (double) executionTime/1000000000;
+		this.executionTimeLocalMinAlgorithmInSeconds = (double) executionTime / 1000000000;
 		return cheapestCombinations;
 	}
 
@@ -564,59 +560,59 @@ public class API implements Runnable {
 		// generate all possible combinations of voters for all brts of the process
 		// calculate the cost for each one and return all of them
 		System.out.println("Brute Force generating all possible process instances: ");
-		if(this.executionTimeLocalMinAlgorithmInSeconds!=0) {
-			//delete all arcs for brts
-			for(BPMNBusinessRuleTask brt: this.businessRuleTaskList) {
+		if (this.executionTimeLocalMinAlgorithmInSeconds != 0) {
+			// delete all arcs for brts
+			for (BPMNBusinessRuleTask brt : this.businessRuleTaskList) {
 				brt.getCombinations().clear();
 				brt.getVoterArcs().clear();
 			}
-			
+
 		}
-		
+
 		long startTime = System.nanoTime();
-		LinkedList<ProcessInstanceWithVoters> pInstances =  this.goDFSthroughProcessBuildArcsAndGetVoters(false, this.bpmnStart, this.bpmnEnd, null,
-				new LinkedList<ProcessInstanceWithVoters>(),
+		LinkedList<ProcessInstanceWithVoters> pInstances = this.goDFSthroughProcessBuildArcsAndGetVoters(false,
+				this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>(), new LinkedList<VoterForXorArc>(),
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 		long stopTime = System.nanoTime();
 		long executionTime = stopTime - startTime;
-		this.executionTimeBruteForceAlgorithmInSeconds = (double) executionTime/1000000000;
+		this.executionTimeBruteForceAlgorithmInSeconds = (double) executionTime / 1000000000;
 		return pInstances;
 	}
-	
 
-
-	
 	private double calculateWeightingForLastWriter(BPMNTask currentLastWriter, BPMNElement start, BPMNDataObject dataO,
 			BPMNBusinessRuleTask brt) throws NullPointerException, Exception {
 
 		double foundCurrentLastWriterCount = 0;
-		LinkedList<LinkedList<BPMNElement>> paths = this.getPathsWithMappedNodesFromCamundaNodes(CommonFunctionality.getAllPathsBetweenNodes(modelInstance, modelInstance.getModelElementById(start.getId()), modelInstance.getModelElementById(brt.getId()), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new LinkedList<LinkedList<FlowNode>>()));
-	
-		
+		LinkedList<LinkedList<BPMNElement>> paths = this.getPathsWithMappedNodesFromCamundaNodes(CommonFunctionality
+				.getAllPathsBetweenNodes(modelInstance, modelInstance.getModelElementById(start.getId()),
+						modelInstance.getModelElementById(brt.getId()), new LinkedList<FlowNode>(),
+						new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(),
+						new LinkedList<LinkedList<FlowNode>>()));
+
 		for (LinkedList<BPMNElement> pathList : paths) {
 
 			for (int i = pathList.size() - 1; i > 0; i--) {
 				if (pathList.get(i).equals(currentLastWriter)) {
 					// go backwards through the list of paths between start and brt
-					// if lastWriter is found in the list increase the count				
+					// if lastWriter is found in the list increase the count
 					foundCurrentLastWriterCount++;
 					i = 0;
 				}
-				
-				if(pathList.get(i) instanceof BPMNTask) {
-					BPMNTask currTask = (BPMNTask)pathList.get(i);
-					if(dataO.getWriters().contains(currTask)&&!currTask.equals(currentLastWriter)) {
-						i=0;
+
+				if (pathList.get(i) instanceof BPMNTask) {
+					BPMNTask currTask = (BPMNTask) pathList.get(i);
+					if (dataO.getWriters().contains(currTask) && !currTask.equals(currentLastWriter)) {
+						i = 0;
 					}
 				}
 			}
 
 		}
 
-		return ((double)foundCurrentLastWriterCount / paths.size());
+		return ((double) foundCurrentLastWriterCount / paths.size());
 
 	}
 
@@ -635,8 +631,7 @@ public class API implements Runnable {
 		}
 		return null;
 	}
-	
-	
+
 	private boolean arcAlreadyGeneratedBool(BPMNBusinessRuleTask brt, VoterForXorArc arc) {
 		for (VoterForXorArc a : brt.getVoterArcs()) {
 			if (a.getBrt().equals(arc.getBrt())) {
@@ -652,7 +647,6 @@ public class API implements Runnable {
 		}
 		return false;
 	}
-
 
 	public boolean readerIsOnPath(BPMNParticipant reader, BPMNTask lastWriter, BPMNDataObject dataO,
 			LinkedList<BPMNElement> path) {
@@ -679,9 +673,9 @@ public class API implements Runnable {
 			// now check if participants are in the required sphere of the reader at the
 			// position of the brt
 			for (BPMNTask writerTask : lastWriterList) {
-				LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(writerTask, bpmnBrt,
-						new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-						new LinkedList<LinkedList<BPMNElement>>());
+				LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(
+						writerTask, bpmnBrt, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+						new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 				System.out.println("Paths: " + paths.size());
 				String sphere = writerTask.getSphereAnnotation().get(dataO);
 				for (BPMNParticipant participant : participants) {
@@ -813,33 +807,34 @@ public class API implements Runnable {
 		if (node instanceof Task || node instanceof UserTask || node instanceof BusinessRuleTask
 				|| node instanceof SendTask) {
 			if (node instanceof BusinessRuleTask) {
-				if(this.modelWithLanes) {
-				mappedNode = new BPMNBusinessRuleTask(node.getId(), node.getName());
+				if (this.modelWithLanes) {
+					mappedNode = new BPMNBusinessRuleTask(node.getId(), node.getName());
 				} else {
-				mappedNode = new BPMNBusinessRuleTask(node.getId(), node.getName().substring(0, node.getName().indexOf("[")));	
+					mappedNode = new BPMNBusinessRuleTask(node.getId(),
+							node.getName().substring(0, node.getName().indexOf("[")));
 				}
 				this.businessRuleTaskList.add((BPMNBusinessRuleTask) mappedNode);
 
 			} else {
-				if(this.modelWithLanes) {
-				mappedNode = new BPMNTask(node.getId(), node.getName());
+				if (this.modelWithLanes) {
+					mappedNode = new BPMNTask(node.getId(), node.getName());
 				} else {
-					mappedNode = new BPMNTask(node.getId(), node.getName().substring(0, node.getName().indexOf("[")));	
+					mappedNode = new BPMNTask(node.getId(), node.getName().substring(0, node.getName().indexOf("[")));
 
 				}
 			}
 
 		} else if (node instanceof ParallelGateway) {
-			if (node.getIncoming().size()>=2 && node.getOutgoing().size() == 1) {
+			if (node.getIncoming().size() >= 2 && node.getOutgoing().size() == 1) {
 				mappedNode = new BPMNParallelGateway(node.getId(), node.getName(), "join");
-			} else if(node.getIncoming().size()==1 && node.getOutgoing().size()>=2) {
+			} else if (node.getIncoming().size() == 1 && node.getOutgoing().size() >= 2) {
 				mappedNode = new BPMNParallelGateway(node.getId(), node.getName(), "split");
 
 			}
 		} else if (node instanceof ExclusiveGateway) {
-			if (node.getIncoming().size()>=2 && node.getOutgoing().size() == 1) {
+			if (node.getIncoming().size() >= 2 && node.getOutgoing().size() == 1) {
 				mappedNode = new BPMNExclusiveGateway(node.getId(), node.getName(), "join");
-			} else if (node.getIncoming().size()==1 && node.getOutgoing().size()>=2){
+			} else if (node.getIncoming().size() == 1 && node.getOutgoing().size() >= 2) {
 				mappedNode = new BPMNExclusiveGateway(node.getId(), node.getName(), "split");
 
 			}
@@ -872,42 +867,41 @@ public class API implements Runnable {
 	// go through each lane of the process and store the lane as a participant to
 	// the tasks
 	public void storeLanePerTask() {
-		if(this.modelWithLanes) {
-		for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
-			BPMNParticipant lanePart = new BPMNParticipant(l.getId(), l.getName().trim());
-			for (FlowNode flowNode : l.getFlowNodeRefs()) {
-				for (BPMNElement t : this.processElements) {
-					if (t instanceof BPMNTask && flowNode.getId().equals(t.getId())) {
-						((BPMNTask) t).setParticipant(lanePart);
+		if (this.modelWithLanes) {
+			for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
+				BPMNParticipant lanePart = new BPMNParticipant(l.getId(), l.getName().trim());
+				for (FlowNode flowNode : l.getFlowNodeRefs()) {
+					for (BPMNElement t : this.processElements) {
+						if (t instanceof BPMNTask && flowNode.getId().equals(t.getId())) {
+							((BPMNTask) t).setParticipant(lanePart);
+						}
 					}
 				}
 			}
 		}
-		}
 	}
-	
+
 	public void addParticipantToTask() {
-		if(this.modelWithLanes==false) {		
+		if (this.modelWithLanes == false) {
 			for (Task task : modelInstance.getModelElementsByType(Task.class)) {
 				for (BPMNElement t : this.processElements) {
 					if (t instanceof BPMNTask && task.getId().equals(t.getId())) {
-						String participantName = task.getName().substring(task.getName().indexOf("["), task.getName().indexOf("]")+1);
-						BPMNParticipant participant = new BPMNParticipant(participantName, participantName);						
+						String participantName = task.getName().substring(task.getName().indexOf("["),
+								task.getName().indexOf("]") + 1);
+						BPMNParticipant participant = new BPMNParticipant(participantName, participantName);
 						((BPMNTask) t).setParticipant(participant);
 					}
 				}
 			}
 		}
-		
-		
+
 	}
-	
-	
 
 	// Map the Camunda Data Objects to BPMNDataObjects
 	public void mapDataObjects() {
 		for (DataObjectReference d : modelInstance.getModelElementsByType(DataObjectReference.class)) {
-			this.dataObjects.add(new BPMNDataObject(d.getAttributeValue("dataObjectRef"), d.getName().trim(), d.getId()));
+			this.dataObjects
+					.add(new BPMNDataObject(d.getAttributeValue("dataObjectRef"), d.getName().trim(), d.getId()));
 		}
 	}
 
@@ -1031,32 +1025,30 @@ public class API implements Runnable {
 		}
 
 	}
-	
+
 	private void mapDefaultTroubleShooter() {
 		for (TextAnnotation text : modelInstance.getModelElementsByType(TextAnnotation.class)) {
-					
-					String str = text.getTextContent();
-					String troubleshooter = "";
-					
-					if (str.toLowerCase().contains(("Default").toLowerCase()) && str.toLowerCase().contains(("[Troubleshooter]").toLowerCase())) {
-						troubleshooter = str.substring(str.indexOf('{') + 1, str.indexOf('}')).trim();
-						if(globalSphere.isEmpty()) {
-						this.computeGlobalSphere();					
-						}
-						for(BPMNParticipant part: this.globalSphere) {
-							if(part.getName().contentEquals(troubleshooter)) {
-								this.troubleShooter = part; 
-								break;
-							}
-						}
-						
-					} 
+
+			String str = text.getTextContent();
+			String troubleshooter = "";
+
+			if (str.toLowerCase().contains(("Default").toLowerCase())
+					&& str.toLowerCase().contains(("[Troubleshooter]").toLowerCase())) {
+				troubleshooter = str.substring(str.indexOf('{') + 1, str.indexOf('}')).trim();
+				if (globalSphere.isEmpty()) {
+					this.computeGlobalSphere();
+				}
+				for (BPMNParticipant part : this.globalSphere) {
+					if (part.getName().contentEquals(troubleshooter)) {
+						this.troubleShooter = part;
+						break;
+					}
+				}
+
+			}
 		}
-		
-			
+
 	}
-	
-	
 
 	private void mapSphereAnnotations(Task task) {
 		BPMNTask element = (BPMNTask) this.getNodeById(task.getId());
@@ -1453,14 +1445,6 @@ public class API implements Runnable {
 		return brtCombs;
 
 	}
-	
-	
-	
-	
-	
-	
-	
-	
 
 	public LinkedList<Object> generateArcsForXorSplitReturnAsObjectList(BPMNBusinessRuleTask currBrt) {
 		LinkedList<Object> brtCombs = new LinkedList<Object>();
@@ -1480,10 +1464,10 @@ public class API implements Runnable {
 
 				// check if arc already exists
 				VoterForXorArc arcAlreadyGenerated = this.arcAlreadyGenerated(currBrt, arc);
-				if (arcAlreadyGenerated==null) {
+				if (arcAlreadyGenerated == null) {
 					brtCombs.add(arc);
 				} else {
-					
+
 					brtCombs.add(arcAlreadyGenerated);
 					ArcWithCost.id--;
 				}
@@ -1495,32 +1479,40 @@ public class API implements Runnable {
 		return brtCombs;
 
 	}
-	
-	
 
-	public LinkedList<ProcessInstanceWithVoters> goDFSthroughProcessBuildArcsAndGetVoters(boolean localMin, BPMNElement startNode,
-			BPMNElement endNode, BPMNBusinessRuleTask lastFoundBrt,
+	public LinkedList<ProcessInstanceWithVoters> goDFSthroughProcessBuildArcsAndGetVoters(boolean localMin,
+			BPMNElement startNode, BPMNElement endNode, BPMNBusinessRuleTask lastFoundBrt,
 			LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters,
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> votersMap,
 			HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>> requiredUpdates,
 			LinkedList<VoterForXorArc> alreadyTakenVoters, LinkedList<BPMNElement> queue,
 			LinkedList<BPMNElement> parallelGtwQueue, LinkedList<BPMNElement> openSplitStack,
-			LinkedList<BPMNElement> currentPath, LinkedList<LinkedList<BPMNElement>> paths) throws NullPointerException, Exception {
+			LinkedList<BPMNElement> currentPath, LinkedList<LinkedList<BPMNElement>> paths)
+			throws NullPointerException, Exception {
 		// go DFS inside the XOR till corresponding join is found
 		queue.add(startNode);
 
-		
-
 		while (!(queue.isEmpty())) {
+				if(lastFoundBrt==null) {	
+				for(int i = currentPath.size()-1; i>=0; i--) {
+					BPMNElement el = currentPath.get(i);
+					if(el instanceof BPMNBusinessRuleTask) {
+						lastFoundBrt = (BPMNBusinessRuleTask)el;
+					}
+				}
+				
+			}
+			
 			BPMNElement element = queue.poll();
 			currentPath.add(element);
 
+			
+			
 			if (element.getId().equals(endNode.getId())) {
 
 				paths.add(currentPath);
 
-				if (endNode instanceof BPMNGateway
-						&& ((BPMNGateway) element).getPredecessors().size()>=2) {
+				if (endNode instanceof BPMNGateway && ((BPMNGateway) element).getPredecessors().size() >= 2) {
 
 					BPMNGateway joinGtw = (BPMNGateway) element;
 
@@ -1553,9 +1545,10 @@ public class API implements Runnable {
 						}
 
 						for (LinkedList<BPMNElement> newPath : newPaths) {
-							this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, element.getSuccessors().iterator().next(),
-									this.bpmnEnd, lastFoundBrt, processInstancesWithVoters, votersMap, requiredUpdates,
-									alreadyTakenVoters, queue, parallelGtwQueue, openSplitStack, newPath, paths);
+							this.goDFSthroughProcessBuildArcsAndGetVoters(localMin,
+									element.getSuccessors().iterator().next(), this.bpmnEnd, lastFoundBrt,
+									processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters, queue,
+									parallelGtwQueue, openSplitStack, newPath, paths);
 						}
 
 					}
@@ -1586,9 +1579,9 @@ public class API implements Runnable {
 							this.setRequiredUpdatesForArc(voters, pInstance, paths);
 
 							pInstance.addVoterArc(voters);
-							
-							if(localMin) {
-							this.insertIfCheapest(processInstancesWithVoters, pInstance);
+
+							if (localMin) {
+								this.insertIfCheapest(processInstancesWithVoters, pInstance);
 							} else {
 								processInstancesWithVoters.add(pInstance);
 							}
@@ -1632,8 +1625,8 @@ public class API implements Runnable {
 							this.setRequiredUpdatesForArc(currBrtCombArc, newInstance, paths);
 
 							newInstance.addVoterArc(currBrtCombArc);
-							if(localMin) {
-							this.insertIfCheapest(newInstances, newInstance);
+							if (localMin) {
+								this.insertIfCheapest(newInstances, newInstance);
 							} else {
 								newInstances.add(newInstance);
 							}
@@ -1650,7 +1643,7 @@ public class API implements Runnable {
 
 			}
 
-			if (element instanceof BPMNGateway && ((BPMNGateway) element).getSuccessors().size()>=2) {
+			if (element instanceof BPMNGateway && ((BPMNGateway) element).getSuccessors().size() >= 2) {
 				// add the xor split to the openXorStack 1 times for each outgoing paths
 				int amountOfOutgoingPaths = element.getSuccessors().size();
 				int i = 0;
@@ -1661,12 +1654,9 @@ public class API implements Runnable {
 
 			}
 
-		
-
 			for (BPMNElement successor : element.getSuccessors()) {
 
-				if (element instanceof BPMNGateway
-						&& ((BPMNGateway) element).getSuccessors().size()>=2) {
+				if (element instanceof BPMNGateway && ((BPMNGateway) element).getSuccessors().size() >= 2) {
 					// when a split is found - go dfs till the corresponding join is found
 
 					BPMNGateway correspondingJoinGtw = this.getCorrespondingGtw((BPMNGateway) element);
@@ -1674,26 +1664,22 @@ public class API implements Runnable {
 					LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
 					newPath.addAll(currentPath);
 
-					this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, successor, correspondingJoinGtw, lastFoundBrt,
-							processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters, queue,
-							parallelGtwQueue, openSplitStack, newPath, paths);
+					this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, successor, correspondingJoinGtw,
+							lastFoundBrt, processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters,
+							queue, parallelGtwQueue, openSplitStack, newPath, paths);
 				} else {
 
-					
-						queue.add(successor);
-					
+					queue.add(successor);
 
 				}
 
 			}
-	
+
 		}
 
 		return processInstancesWithVoters;
 
 	}
-
-	
 
 	private void insertIfCheapest(LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters,
 			ProcessInstanceWithVoters currInstance) {
@@ -1723,7 +1709,8 @@ public class API implements Runnable {
 		// where key = false: contains all paths where another writer writes to same
 		// dataO between the writerTask and the currentBrt
 
-		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndTargetElement = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(writerTask, targetElement, stack, gtwStack, currentPath, paths);
+		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndTargetElement = CommonFunctionality
+				.allPathsBetweenNodesWithMappedNodes(writerTask, targetElement, stack, gtwStack, currentPath, paths);
 		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> pathMap = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
 		LinkedList<LinkedList<BPMNElement>> effectivePaths = new LinkedList<LinkedList<BPMNElement>>();
 		LinkedList<LinkedList<BPMNElement>> nonEffectivePaths = new LinkedList<LinkedList<BPMNElement>>();
@@ -1766,8 +1753,8 @@ public class API implements Runnable {
 		// dataO
 		// the participants on the path are set to be equal to the chosencombination
 		// given as parameter
-		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndEndEvent = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(startNode,
-				endNode, stack, gtwStack, currentPath, paths);
+		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndEndEvent = CommonFunctionality
+				.allPathsBetweenNodesWithMappedNodes(startNode, endNode, stack, gtwStack, currentPath, paths);
 		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> pathMap = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
 		LinkedList<LinkedList<BPMNElement>> effectivePaths = new LinkedList<LinkedList<BPMNElement>>();
 		LinkedList<LinkedList<BPMNElement>> nonEffectivePaths = new LinkedList<LinkedList<BPMNElement>>();
@@ -1802,9 +1789,9 @@ public class API implements Runnable {
 
 	// Test Method for pathing through the process
 	public void getAllProcessPaths() {
-		LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(this.bpmnStart, this.bpmnEnd,
-				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-				new LinkedList<LinkedList<BPMNElement>>());
+		LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(
+				this.bpmnStart, this.bpmnEnd, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 		int i = 1;
 
 		for (LinkedList<BPMNElement> pathElement : paths) {
@@ -1848,169 +1835,137 @@ public class API implements Runnable {
 		});
 
 	}
-	
-	
-	
-/*
-	public void addVotingTasksToProcess(
-			HashMap<BPMNBusinessRuleTask, HashMap<BPMNDataObject, ArrayList<BPMNTask>>> votersMap,
-			HashMap<BPMNBusinessRuleTask, BPMNParticipant> finalDeciderMap, boolean mapModelBtn) throws IOException {
 
-		int i = 1;
-		Iterator<BPMNBusinessRuleTask> bpmnBusinessRtIterator = votersMap.keySet().iterator();
+	/*
+	 * public void addVotingTasksToProcess( HashMap<BPMNBusinessRuleTask,
+	 * HashMap<BPMNDataObject, ArrayList<BPMNTask>>> votersMap,
+	 * HashMap<BPMNBusinessRuleTask, BPMNParticipant> finalDeciderMap, boolean
+	 * mapModelBtn) throws IOException {
+	 * 
+	 * int i = 1; Iterator<BPMNBusinessRuleTask> bpmnBusinessRtIterator =
+	 * votersMap.keySet().iterator();
+	 * 
+	 * while (bpmnBusinessRtIterator.hasNext()) { BPMNBusinessRuleTask
+	 * bpmnBusinessRt = bpmnBusinessRtIterator.next(); BusinessRuleTask businessRt =
+	 * (BusinessRuleTask) this.getFlowNodeByBPMNNodeId(bpmnBusinessRt.getId());
+	 * HashMap<BPMNDataObject, ArrayList<BPMNTask>> votersMapInner =
+	 * votersMap.get(bpmnBusinessRt); BPMNExclusiveGateway bpmnEx =
+	 * (BPMNExclusiveGateway) bpmnBusinessRt.getSuccessors().iterator().next();
+	 * 
+	 * // builder doesn't work on task (need to be subclasses of task!) // convert
+	 * the task to a user task to prevent error BPMNElement predecessorOfBpmnBrt =
+	 * bpmnBusinessRt.getPredecessors().iterator().next(); if
+	 * (predecessorOfBpmnBrt.getClass() == Mapping.BPMNTask.class) { Task predec =
+	 * (Task) this.getFlowNodeByBPMNNodeId(predecessorOfBpmnBrt.getId()); UserTask
+	 * userTask = modelInstance.newInstance(UserTask.class);
+	 * userTask.setId(predec.getId()); userTask.setName(predec.getName());
+	 * userTask.getDataInputAssociations().addAll(predec.getDataInputAssociations())
+	 * ;
+	 * userTask.getDataOutputAssociations().addAll(predec.getDataOutputAssociations(
+	 * )); predec.replaceWithElement(userTask); }
+	 * 
+	 * // check if there is only one participant selected for each data object of
+	 * the // voting boolean onlyOneTask = true; BPMNTask currentTask =
+	 * votersMapInner.values().iterator().next().iterator().next(); for
+	 * (ArrayList<BPMNTask> taskList : votersMapInner.values()) { if
+	 * (!(taskList.size() == 1 && taskList.contains(currentTask))) { onlyOneTask =
+	 * false; } }
+	 * 
+	 * // Voting system inside of a subprocess if (!mapModelBtn) {
+	 * 
+	 * if (!(onlyOneTask)) { BPMNParallelGateway.increaseVotingTaskCount();
+	 * this.addTasksToVotingSystem(i, businessRt, bpmnEx,
+	 * this.getFlowNodeByBPMNNodeId(bpmnBusinessRt.getPredecessors().iterator().next
+	 * ().getId()) .builder().subProcess().embeddedSubProcess().startEvent(), "PV" +
+	 * BPMNParallelGateway.getVotingTaskCount(), votersMapInner, finalDeciderMap,
+	 * "PV" + BPMNParallelGateway.getVotingTaskCount(),
+	 * BPMNExclusiveGateway.increaseExclusiveGtwCount(), mapModelBtn, onlyOneTask);
+	 * } else { this.addTasksToVotingSystem(i, businessRt, bpmnEx,
+	 * businessRt.builder().moveToNode(bpmnBusinessRt.getPredecessors().iterator().
+	 * next().getId()), "PV" + BPMNParallelGateway.getVotingTaskCount(),
+	 * votersMapInner, finalDeciderMap, "PV" +
+	 * BPMNParallelGateway.getVotingTaskCount(), 0, mapModelBtn, onlyOneTask); } }
+	 * 
+	 * else { // Voting without having a subprocess if (!onlyOneTask) {
+	 * BPMNParallelGateway.increaseVotingTaskCount();
+	 * BPMNExclusiveGateway.increaseExclusiveGtwCount(); }
+	 * this.addTasksToVotingSystem(i, businessRt, bpmnEx,
+	 * businessRt.builder().moveToNode(bpmnBusinessRt.getPredecessors().iterator().
+	 * next().getId()), "PV" + BPMNParallelGateway.getVotingTaskCount(),
+	 * votersMapInner, finalDeciderMap, "PV" +
+	 * BPMNParallelGateway.getVotingTaskCount(),
+	 * BPMNExclusiveGateway.getExclusiveGtwCount(), mapModelBtn, onlyOneTask);
+	 * 
+	 * }
+	 * 
+	 * // Add the new tasks generated via fluent builder API to the corresponding
+	 * lanes // in the xml model // Cant be done with the fluent model builder
+	 * directly! for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
+	 * for (Task task : modelInstance.getModelElementsByType(UserTask.class)) { if
+	 * (l.getName().equals( task.getName().substring(task.getName().indexOf(" ") +
+	 * 1, task.getName().length()))) { // Add necessary information to the voting
+	 * tasks
+	 * 
+	 * if (mapModelBtn && task.getDocumentations().isEmpty()) { Documentation doc =
+	 * modelInstance.newInstance(Documentation.class); StringBuilder sb = new
+	 * StringBuilder();
+	 * 
+	 * // add the decision of the businessruletask to the element documentation of
+	 * the // voting tasks // use the Jackson converter to convert java object into
+	 * json format
+	 * 
+	 * ObjectMapper mapper = new ObjectMapper(); // Convert object to JSON string
+	 * String jsonInString =
+	 * mapper.writeValueAsString(bpmnBusinessRt.getDecisionEvaluation());
+	 * sb.append(jsonInString); // add a false rate for the voting tasks if
+	 * (task.getName().startsWith("VotingTask")) { sb.deleteCharAt(sb.length() - 1);
+	 * sb.append(",\"falseRate\":\"" + bpmnBusinessRt.getFalseRate() + "\"}");
+	 * 
+	 * } doc.setTextContent(sb.toString()); task.getDocumentations().add(doc);
+	 * 
+	 * }
+	 * 
+	 * // Put the voting tasks to the corresponding lanes in the xml model
+	 * FlowNodeRef ref = modelInstance.newInstance(FlowNodeRef.class);
+	 * ref.setTextContent(task.getId()); FlowNode n =
+	 * this.getFlowNodeByBPMNNodeId(task.getId()); if
+	 * (!l.getFlowNodeRefs().contains(n)) { l.addChildElement(ref); }
+	 * 
+	 * } }
+	 * 
+	 * } i++;
+	 * 
+	 * }
+	 * 
+	 * for (BPMNBusinessRuleTask brt : votersMap.keySet()) { BusinessRuleTask b =
+	 * (BusinessRuleTask) this.getFlowNodeByBPMNNodeId(brt.getId());
+	 * this.removeBusinessRuleTask(b); } try { if (mapModelBtn) { this.mapModel(); }
+	 * this.writeChangesToFile("votingAsBpmnElements"); } catch
+	 * (ParserConfigurationException e) { // TODO Auto-generated catch block
+	 * e.printStackTrace(); } catch (SAXException e) { // TODO Auto-generated catch
+	 * block e.printStackTrace(); }
+	 * 
+	 * }
+	 */
 
-		while (bpmnBusinessRtIterator.hasNext()) {
-			BPMNBusinessRuleTask bpmnBusinessRt = bpmnBusinessRtIterator.next();
-			BusinessRuleTask businessRt = (BusinessRuleTask) this.getFlowNodeByBPMNNodeId(bpmnBusinessRt.getId());
-			HashMap<BPMNDataObject, ArrayList<BPMNTask>> votersMapInner = votersMap.get(bpmnBusinessRt);
-			BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) bpmnBusinessRt.getSuccessors().iterator().next();
-
-			// builder doesn't work on task (need to be subclasses of task!)
-			// convert the task to a user task to prevent error
-			BPMNElement predecessorOfBpmnBrt = bpmnBusinessRt.getPredecessors().iterator().next();
-			if (predecessorOfBpmnBrt.getClass() == Mapping.BPMNTask.class) {
-				Task predec = (Task) this.getFlowNodeByBPMNNodeId(predecessorOfBpmnBrt.getId());
-				UserTask userTask = modelInstance.newInstance(UserTask.class);
-				userTask.setId(predec.getId());
-				userTask.setName(predec.getName());
-				userTask.getDataInputAssociations().addAll(predec.getDataInputAssociations());
-				userTask.getDataOutputAssociations().addAll(predec.getDataOutputAssociations());
-				predec.replaceWithElement(userTask);
-			}
-
-			// check if there is only one participant selected for each data object of the
-			// voting
-			boolean onlyOneTask = true;
-			BPMNTask currentTask = votersMapInner.values().iterator().next().iterator().next();
-			for (ArrayList<BPMNTask> taskList : votersMapInner.values()) {
-				if (!(taskList.size() == 1 && taskList.contains(currentTask))) {
-					onlyOneTask = false;
-				}
-			}
-
-			// Voting system inside of a subprocess
-			if (!mapModelBtn) {
-
-				if (!(onlyOneTask)) {
-					BPMNParallelGateway.increaseVotingTaskCount();
-					this.addTasksToVotingSystem(i, businessRt, bpmnEx,
-							this.getFlowNodeByBPMNNodeId(bpmnBusinessRt.getPredecessors().iterator().next().getId())
-									.builder().subProcess().embeddedSubProcess().startEvent(),
-							"PV" + BPMNParallelGateway.getVotingTaskCount(), votersMapInner, finalDeciderMap,
-							"PV" + BPMNParallelGateway.getVotingTaskCount(),
-							BPMNExclusiveGateway.increaseExclusiveGtwCount(), mapModelBtn, onlyOneTask);
-				} else {
-					this.addTasksToVotingSystem(i, businessRt, bpmnEx,
-							businessRt.builder().moveToNode(bpmnBusinessRt.getPredecessors().iterator().next().getId()),
-							"PV" + BPMNParallelGateway.getVotingTaskCount(), votersMapInner, finalDeciderMap,
-							"PV" + BPMNParallelGateway.getVotingTaskCount(), 0, mapModelBtn, onlyOneTask);
-				}
-			}
-
-			else {
-				// Voting without having a subprocess
-				if (!onlyOneTask) {
-					BPMNParallelGateway.increaseVotingTaskCount();
-					BPMNExclusiveGateway.increaseExclusiveGtwCount();
-				}
-				this.addTasksToVotingSystem(i, businessRt, bpmnEx,
-						businessRt.builder().moveToNode(bpmnBusinessRt.getPredecessors().iterator().next().getId()),
-						"PV" + BPMNParallelGateway.getVotingTaskCount(), votersMapInner, finalDeciderMap,
-						"PV" + BPMNParallelGateway.getVotingTaskCount(), BPMNExclusiveGateway.getExclusiveGtwCount(),
-						mapModelBtn, onlyOneTask);
-
-			}
-
-			// Add the new tasks generated via fluent builder API to the corresponding lanes
-			// in the xml model
-			// Cant be done with the fluent model builder directly!
-			for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
-				for (Task task : modelInstance.getModelElementsByType(UserTask.class)) {
-					if (l.getName().equals(
-							task.getName().substring(task.getName().indexOf(" ") + 1, task.getName().length()))) {
-						// Add necessary information to the voting tasks
-
-						if (mapModelBtn && task.getDocumentations().isEmpty()) {
-							Documentation doc = modelInstance.newInstance(Documentation.class);
-							StringBuilder sb = new StringBuilder();
-
-							// add the decision of the businessruletask to the element documentation of the
-							// voting tasks
-							// use the Jackson converter to convert java object into json format
-
-							ObjectMapper mapper = new ObjectMapper();
-							// Convert object to JSON string
-							String jsonInString = mapper.writeValueAsString(bpmnBusinessRt.getDecisionEvaluation());
-							sb.append(jsonInString);
-							// add a false rate for the voting tasks
-							if (task.getName().startsWith("VotingTask")) {
-								sb.deleteCharAt(sb.length() - 1);
-								sb.append(",\"falseRate\":\"" + bpmnBusinessRt.getFalseRate() + "\"}");
-
-							}
-							doc.setTextContent(sb.toString());
-							task.getDocumentations().add(doc);
-
-						}
-
-						// Put the voting tasks to the corresponding lanes in the xml model
-						FlowNodeRef ref = modelInstance.newInstance(FlowNodeRef.class);
-						ref.setTextContent(task.getId());
-						FlowNode n = this.getFlowNodeByBPMNNodeId(task.getId());
-						if (!l.getFlowNodeRefs().contains(n)) {
-							l.addChildElement(ref);
-						}
-
-					}
-				}
-
-			}
-			i++;
-
-		}
-
-		for (BPMNBusinessRuleTask brt : votersMap.keySet()) {
-			BusinessRuleTask b = (BusinessRuleTask) this.getFlowNodeByBPMNNodeId(brt.getId());
-			this.removeBusinessRuleTask(b);
-		}
-		try {
-			if (mapModelBtn) {
-				this.mapModel();
-			}
-			this.writeChangesToFile("votingAsBpmnElements");
-		} catch (ParserConfigurationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SAXException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-	}
-	*/
-	
-	public void addVotingTasksToProcess(int solution, 
-			ProcessInstanceWithVoters pInstance, 
+	public void addVotingTasksToProcess(int solution, ProcessInstanceWithVoters pInstance,
 			BPMNParticipant troubleShooter, boolean mapModelBtn) throws IOException {
 
-		//when there is no default troubleshooter annotated - take a random participant
-		if(troubleShooter==null) {
+		// when there is no default troubleshooter annotated - take a random participant
+		if (troubleShooter == null) {
 			troubleShooter = CommonFunctionality.getRandomItem(this.globalSphere);
 		}
-				
-		
-		
-		
+
 		int i = 1;
-		
+
 		Iterator<BPMNBusinessRuleTask> bpmnBusinessRtIterator = pInstance.getVotersMap().keySet().iterator();
-		
+
 		while (bpmnBusinessRtIterator.hasNext()) {
 			BPMNBusinessRuleTask bpmnBusinessRt = bpmnBusinessRtIterator.next();
 			BusinessRuleTask businessRt = (BusinessRuleTask) this.getFlowNodeByBPMNNodeId(bpmnBusinessRt.getId());
 			LinkedList<BPMNParticipant> votersForBrt = pInstance.getVotersMap().get(bpmnBusinessRt);
 			BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) bpmnBusinessRt.getSuccessors().iterator().next();
-			
+
 			// builder doesn't work on task (need to be subclasses of task!)
 			// convert the task to a user task to prevent error
 			BPMNElement predecessorOfBpmnBrt = bpmnBusinessRt.getPredecessors().iterator().next();
@@ -2027,8 +1982,8 @@ public class API implements Runnable {
 			// check if there is only one participant selected for each data object of the
 			// voting
 			boolean onlyOneTask = false;
-			if(votersForBrt.size()==1) {
-				onlyOneTask=true;
+			if (votersForBrt.size() == 1) {
+				onlyOneTask = true;
 			}
 
 			// Voting system inside of a subprocess
@@ -2039,13 +1994,15 @@ public class API implements Runnable {
 					this.addTasksToVotingSystem(i, businessRt, bpmnEx,
 							this.getFlowNodeByBPMNNodeId(bpmnBusinessRt.getPredecessors().iterator().next().getId())
 									.builder().subProcess().embeddedSubProcess().startEvent(),
-							"PV" + BPMNParallelGateway.getVotingTaskCount(), pInstance.getVotersMap().get(bpmnBusinessRt), troubleShooter,
+							"PV" + BPMNParallelGateway.getVotingTaskCount(),
+							pInstance.getVotersMap().get(bpmnBusinessRt), troubleShooter,
 							"PV" + BPMNParallelGateway.getVotingTaskCount(),
 							BPMNExclusiveGateway.increaseExclusiveGtwCount(), mapModelBtn, onlyOneTask);
 				} else {
 					this.addTasksToVotingSystem(i, businessRt, bpmnEx,
 							businessRt.builder().moveToNode(bpmnBusinessRt.getPredecessors().iterator().next().getId()),
-							"PV" + BPMNParallelGateway.getVotingTaskCount(), pInstance.getVotersMap().get(bpmnBusinessRt), troubleShooter,
+							"PV" + BPMNParallelGateway.getVotingTaskCount(),
+							pInstance.getVotersMap().get(bpmnBusinessRt), troubleShooter,
 							"PV" + BPMNParallelGateway.getVotingTaskCount(), 0, mapModelBtn, onlyOneTask);
 				}
 			}
@@ -2058,21 +2015,21 @@ public class API implements Runnable {
 				}
 				this.addTasksToVotingSystem(i, businessRt, bpmnEx,
 						businessRt.builder().moveToNode(bpmnBusinessRt.getPredecessors().iterator().next().getId()),
-						"PV" + BPMNParallelGateway.getVotingTaskCount(), pInstance.getVotersMap().get(bpmnBusinessRt), troubleShooter,
-						"PV" + BPMNParallelGateway.getVotingTaskCount(), BPMNExclusiveGateway.getExclusiveGtwCount(),
-						mapModelBtn, onlyOneTask);
+						"PV" + BPMNParallelGateway.getVotingTaskCount(), pInstance.getVotersMap().get(bpmnBusinessRt),
+						troubleShooter, "PV" + BPMNParallelGateway.getVotingTaskCount(),
+						BPMNExclusiveGateway.getExclusiveGtwCount(), mapModelBtn, onlyOneTask);
 
 			}
 
 			// Add the new tasks generated via fluent builder API to the corresponding lanes
 			// in the xml model
 			// Cant be done with the fluent model builder directly!
-			
+
 			for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
-				System.out.println("Lane: "+l.getName());
+				System.out.println("Lane: " + l.getName());
 				for (Task task : modelInstance.getModelElementsByType(UserTask.class)) {
-					System.out.println("Task: "+task.getName());
-					if (task.getName().startsWith("VotingTask")&&l.getName().equals(
+					System.out.println("Task: " + task.getName());
+					if (task.getName().startsWith("VotingTask") && l.getName().equals(
 							task.getName().substring(task.getName().indexOf(" ") + 1, task.getName().length()))) {
 						// Add necessary information to the voting tasks
 
@@ -2111,7 +2068,7 @@ public class API implements Runnable {
 				}
 
 			}
-			
+
 			i++;
 
 		}
@@ -2124,7 +2081,7 @@ public class API implements Runnable {
 			if (mapModelBtn) {
 				this.mapModel();
 			}
-			String id = "votingAsConstruct-solution"+solution;
+			String id = "votingAsConstruct-solution" + solution;
 			this.writeChangesToFile(id);
 		} catch (ParserConfigurationException e) {
 			// TODO Auto-generated catch block
@@ -2135,28 +2092,31 @@ public class API implements Runnable {
 		}
 
 	}
-	
-	
-	
-	
-	
-	
 
-	public void annotateModelWithChosenParticipants(LinkedList<ProcessInstanceWithVoters> pInstances) {
+	public void annotateModelWithChosenParticipants(LinkedList<ProcessInstanceWithVoters> pInstances, int upperBoundNewModels) {
 		// call this method after the localMinimumAlgorithm has found the best
 		// solution(s)
-		//for each solution -> generate a new bpmn file
+		// for each solution -> generate a new bpmn file
 		// annotate the participants to the xor-splits
 		// if amount participants generated for voting equals the participants in the
 		// global sphere: mark the xor-split as private
-		// if amount participants needed for voting > participants in the global sphere or if it is marked as public already:
+		// if amount participants needed for voting > participants in the global sphere
+		// or if it is marked as public already:
 		// mark the xor-split as public
-		int i = 1;	
+		if(upperBoundNewModels<=0) {
+			//all instances will be written to files
+			upperBoundNewModels = pInstances.size();
+		} 
+		if(upperBoundNewModels>pInstances.size()) {
+			upperBoundNewModels = pInstances.size();
+		}
 		
-		for (ProcessInstanceWithVoters pInst : pInstances) {
-		
+		int i = 1;
+
+		for (int bound = 0; bound < upperBoundNewModels; bound++) {
+			ProcessInstanceWithVoters pInst = pInstances.get(bound);
 			for (Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> entry : pInst.getVotersMap().entrySet()) {
-				
+
 				ObjectMapper mapper = new ObjectMapper();
 				// Convert object to JSON string
 				StringBuilder sbDecision = new StringBuilder();
@@ -2167,23 +2127,19 @@ public class API implements Runnable {
 				} catch (JsonProcessingException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				}			
-				
-				
+				}
+
 				Documentation doc = modelInstance.newInstance(Documentation.class);
 				doc.setTextContent(sbDecision.toString());
-				BusinessRuleTask brt = (BusinessRuleTask)this.getFlowNodeByBPMNNodeId(entry.getKey().getId());
+				BusinessRuleTask brt = (BusinessRuleTask) this.getFlowNodeByBPMNNodeId(entry.getKey().getId());
 				brt.getDocumentations().add(doc);
-				
-				
-				
-				
+
 				BPMNExclusiveGateway xorSplit = (BPMNExclusiveGateway) entry.getKey().getSuccessors().iterator().next();
 				FlowNode gtw = getFlowNodeByBPMNNodeId(xorSplit.getId());
 				TextAnnotation sphere = null;
 
 				if (xorSplit.getAmountVoters() == this.getGlobalSphereList().size()) {
-					// annotate "private" to the xor-split 
+					// annotate "private" to the xor-split
 					sphere = modelInstance.newInstance(TextAnnotation.class);
 					String textContent = "[Voters] {Private}";
 
@@ -2220,10 +2176,10 @@ public class API implements Runnable {
 					StringBuilder sb = new StringBuilder();
 					sb.append("[Voters]{");
 					for (BPMNParticipant participant : entry.getValue()) {
-						sb.append(participant.getName()+ ", ");
+						sb.append(participant.getName() + ", ");
 					}
 					sb.deleteCharAt(sb.length() - 1);
-					sb.deleteCharAt(sb.length()-1);
+					sb.deleteCharAt(sb.length() - 1);
 					sb.append("}");
 					text.setTextContent(sb.toString());
 
@@ -2256,37 +2212,36 @@ public class API implements Runnable {
 				}
 
 			}
-			
-			for(BusinessRuleTask brt: modelInstance.getModelElementsByType(BusinessRuleTask.class)){
-			Iterator<Association>assocIter = modelInstance.getModelElementsByType(Association.class).iterator();
-			while(assocIter.hasNext()) {	
-			Association a = assocIter.next();
-			for(TextAnnotation txt: modelInstance.getModelElementsByType(TextAnnotation.class)) {
-				if (txt.getTextContent().startsWith("[Decision]") && a.getSource().equals(brt)
-						&& txt.getId().equals(a.getTarget().getId())) {
-					for (BpmnEdge edge : modelInstance.getModelElementsByType(BpmnEdge.class)) {
-						if (edge.getBpmnElement().equals(a)) {
-							edge.getParentElement().removeChildElement(edge);
+
+			for (BusinessRuleTask brt : modelInstance.getModelElementsByType(BusinessRuleTask.class)) {
+				Iterator<Association> assocIter = modelInstance.getModelElementsByType(Association.class).iterator();
+				while (assocIter.hasNext()) {
+					Association a = assocIter.next();
+					for (TextAnnotation txt : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+						if (txt.getTextContent().startsWith("[Decision]") && a.getSource().equals(brt)
+								&& txt.getId().equals(a.getTarget().getId())) {
+							for (BpmnEdge edge : modelInstance.getModelElementsByType(BpmnEdge.class)) {
+								if (edge.getBpmnElement().equals(a)) {
+									edge.getParentElement().removeChildElement(edge);
+								}
+							}
+							a.getParentElement().removeChildElement(a);
+							txt.getParentElement().removeChildElement(txt);
+							for (BpmnShape shape : modelInstance.getModelElementsByType(BpmnShape.class)) {
+								if (shape.getBpmnElement() == null
+										|| shape.getBpmnElement().getId().contentEquals(a.getId())) {
+									shape.getParentElement().removeChildElement(shape);
+								}
+							}
 						}
-					}
-					a.getParentElement().removeChildElement(a);
-					txt.getParentElement().removeChildElement(txt);
-					for (BpmnShape shape : modelInstance.getModelElementsByType(BpmnShape.class)) {
-						if (shape.getBpmnElement() == null || shape.getBpmnElement().getId().contentEquals(a.getId())) {
-							shape.getParentElement().removeChildElement(shape);
-						}
+
 					}
 				}
-			
+
 			}
-			}
-			
-			}
-			
-			
 
 			try {
-				String id = "votingAsAnnotation-solution"+i;
+				String id = "votingAsAnnotation-solution" + i;
 				this.writeChangesToFile(id);
 			} catch (IOException | ParserConfigurationException | SAXException e) {
 				// TODO Auto-generated catch block
@@ -2295,15 +2250,12 @@ public class API implements Runnable {
 			i++;
 		}
 
-		
-		
 	}
-	
+
 	private void addTasksToVotingSystem(int i, BusinessRuleTask brt, BPMNExclusiveGateway bpmnEx,
-			AbstractFlowNodeBuilder builder, String parallelSplit,
-			LinkedList<BPMNParticipant> voters,
-			BPMNParticipant troubleShooter, String parallelJoin, int exclusiveGtwCount,
-			boolean mapModelBtn, boolean onlyOneTask) {
+			AbstractFlowNodeBuilder builder, String parallelSplit, LinkedList<BPMNParticipant> voters,
+			BPMNParticipant troubleShooter, String parallelJoin, int exclusiveGtwCount, boolean mapModelBtn,
+			boolean onlyOneTask) {
 		if (voters.isEmpty()) {
 			System.err.println("No voters selected");
 
@@ -2317,7 +2269,7 @@ public class API implements Runnable {
 		String exclusiveGatewayDeciderJoinId = "";
 		String exclusiveGatewayDeciderName = "";
 
-		Iterator<BPMNParticipant>votersIter = voters.iterator();
+		Iterator<BPMNParticipant> votersIter = voters.iterator();
 		ArrayList<Task> alreadyModelled = new ArrayList<Task>();
 		Set<BPMNDataObject> allBPMNDataObjects = new HashSet<BPMNDataObject>();
 
@@ -2329,8 +2281,8 @@ public class API implements Runnable {
 		// if there is only one user, than simply add one voting task without parallel
 		// and xor splits
 		if (onlyOneTask) {
-			int votingTaskId = BPMNTask.increaseVotingTaskId();			
-			
+			int votingTaskId = BPMNTask.increaseVotingTaskId();
+
 			BPMNParticipant nextParticipant = votersIter.next();
 			String serviceTaskId = "serviceTask_CollectVotes" + i;
 			builder.userTask("Task_votingTask" + votingTaskId).name("VotingTask " + nextParticipant.getName())
@@ -2354,94 +2306,90 @@ public class API implements Runnable {
 					.name(parallelSplit);
 
 			while (votersIter.hasNext()) {
-				
+
 				BPMNParticipant nextParticipant = votersIter.next();
-			
+
 				boolean skip = false;
-				
+
 				for (Task t : alreadyModelled) {
-						if (t.getName().equals("VotingTask " + nextParticipant.getName())) {
-							for (BPMNDataObject dao : allBPMNDataObjects) {
-								this.addDataInputReferencesToVotingTasks(t, dao);
-							}
-							skip = true;
-						}
-					}
-					if (skip == false) {
-						int votingTaskId = BPMNTask.increaseVotingTaskId();
-
-						builder.moveToNode(parallelSplitId).userTask("Task_votingTask" + votingTaskId)
-								.name("VotingTask " + nextParticipant.getName());
-						alreadyModelled.add((Task) this.getFlowNodeByBPMNNodeId("Task_votingTask" + votingTaskId));
+					if (t.getName().equals("VotingTask " + nextParticipant.getName())) {
 						for (BPMNDataObject dao : allBPMNDataObjects) {
-							this.addDataInputReferencesToVotingTasks(
-									(Task) this.getFlowNodeByBPMNNodeId("Task_votingTask" + votingTaskId), dao);
+							this.addDataInputReferencesToVotingTasks(t, dao);
 						}
-
-						if (isSet == false) {
-							builder.moveToNode("Task_votingTask" + votingTaskId).parallelGateway(parallelJoinId)
-									.name(parallelJoin);
-							isSet = true;
-						} else {
-							builder.moveToNode("Task_votingTask" + votingTaskId).connectTo(parallelJoinId);
-						}
-
+						skip = true;
 					}
-					if (!votersIter.hasNext()) {
+				}
+				if (skip == false) {
+					int votingTaskId = BPMNTask.increaseVotingTaskId();
 
-						String serviceTaskId = "serviceTask_CollectVotes" + i;
-						builder.moveToNode(parallelJoinId).serviceTask(serviceTaskId).name("Collect Votes")
-								.exclusiveGateway(exclusiveGatewaySplitId).name(exclusiveGatewayName);
+					builder.moveToNode(parallelSplitId).userTask("Task_votingTask" + votingTaskId)
+							.name("VotingTask " + nextParticipant.getName());
+					alreadyModelled.add((Task) this.getFlowNodeByBPMNNodeId("Task_votingTask" + votingTaskId));
+					for (BPMNDataObject dao : allBPMNDataObjects) {
+						this.addDataInputReferencesToVotingTasks(
+								(Task) this.getFlowNodeByBPMNNodeId("Task_votingTask" + votingTaskId), dao);
+					}
 
-						builder.moveToNode(exclusiveGatewaySplitId).connectTo(exclusiveGatewayJoinId);
-
-						FlowNode flowN = modelInstance.getModelElementById(exclusiveGatewaySplitId);
-						for (SequenceFlow outgoing : flowN.getOutgoing()) {
-							if (outgoing.getTarget()
-									.equals(modelInstance.getModelElementById(exclusiveGatewayJoinId))) {
-								// to avoid overlapping of sequenceflow in diagram
-								outgoing.setName("yes");
-								this.changeWayPoints(outgoing);
-							}
-						}
-
-						this.addInformationToServiceTasks((ServiceTask) this.getFlowNodeByBPMNNodeId(serviceTaskId),
-								(BPMNExclusiveGateway) this.getNodeById(targetGtw.getId()), true);
-
-						// add the gateway for the troubleShooter
-						
-						
-						String votingTaskName = "TroubleShooter " + troubleShooter.getName();
-							
-
-						BPMNExclusiveGateway.increaseExclusiveGtwCount();
-						exclusiveGatewayDeciderSplitId = "EV" + BPMNExclusiveGateway.getExclusiveGtwCount() + "split";
-						exclusiveGatewayDeciderJoinId = "EV" + BPMNExclusiveGateway.getExclusiveGtwCount() + "join";
-						exclusiveGatewayDeciderName = "EV" + BPMNExclusiveGateway.getExclusiveGtwCount();
-						String serviceTaskDeciderId = "serviceTask_CollectVotesDecider" + i;
-						builder.moveToNode(exclusiveGatewaySplitId).exclusiveGateway(exclusiveGatewayDeciderSplitId)
-								.name(exclusiveGatewayDeciderName)
-								.userTask("Task_votingTask" + BPMNTask.increaseVotingTaskId()).name(votingTaskName)
-								.serviceTask(serviceTaskDeciderId).name("Collect Votes")
-								.exclusiveGateway(exclusiveGatewayDeciderJoinId).name(exclusiveGatewayDeciderName);
-						this.addInformationToServiceTasks(
-								(ServiceTask) this.getFlowNodeByBPMNNodeId(serviceTaskDeciderId),
-								(BPMNExclusiveGateway) this.getNodeById(targetGtw.getId()), false);
-
-						for (BPMNDataObject dao : allBPMNDataObjects) {
-							this.addDataInputReferencesToVotingTasks(
-									(Task) this.getFlowNodeByBPMNNodeId("Task_votingTask" + BPMNTask.getVotingTaskId()),
-									dao);
-						}
-
+					if (isSet == false) {
+						builder.moveToNode("Task_votingTask" + votingTaskId).parallelGateway(parallelJoinId)
+								.name(parallelJoin);
+						isSet = true;
 					} else {
-						if (votersIter.hasNext()) {
-							builder.moveToNode(parallelSplitId);
+						builder.moveToNode("Task_votingTask" + votingTaskId).connectTo(parallelJoinId);
+					}
+
+				}
+				if (!votersIter.hasNext()) {
+
+					String serviceTaskId = "serviceTask_CollectVotes" + i;
+					builder.moveToNode(parallelJoinId).serviceTask(serviceTaskId).name("Collect Votes")
+							.exclusiveGateway(exclusiveGatewaySplitId).name(exclusiveGatewayName);
+
+					builder.moveToNode(exclusiveGatewaySplitId).connectTo(exclusiveGatewayJoinId);
+
+					FlowNode flowN = modelInstance.getModelElementById(exclusiveGatewaySplitId);
+					for (SequenceFlow outgoing : flowN.getOutgoing()) {
+						if (outgoing.getTarget().equals(modelInstance.getModelElementById(exclusiveGatewayJoinId))) {
+							// to avoid overlapping of sequenceflow in diagram
+							outgoing.setName("yes");
+							this.changeWayPoints(outgoing);
 						}
 					}
 
-					skip = false;
-				
+					this.addInformationToServiceTasks((ServiceTask) this.getFlowNodeByBPMNNodeId(serviceTaskId),
+							(BPMNExclusiveGateway) this.getNodeById(targetGtw.getId()), true);
+
+					// add the gateway for the troubleShooter
+
+					String votingTaskName = "TroubleShooter " + troubleShooter.getName();
+
+					BPMNExclusiveGateway.increaseExclusiveGtwCount();
+					exclusiveGatewayDeciderSplitId = "EV" + BPMNExclusiveGateway.getExclusiveGtwCount() + "split";
+					exclusiveGatewayDeciderJoinId = "EV" + BPMNExclusiveGateway.getExclusiveGtwCount() + "join";
+					exclusiveGatewayDeciderName = "EV" + BPMNExclusiveGateway.getExclusiveGtwCount();
+					String serviceTaskDeciderId = "serviceTask_CollectVotesDecider" + i;
+					builder.moveToNode(exclusiveGatewaySplitId).exclusiveGateway(exclusiveGatewayDeciderSplitId)
+							.name(exclusiveGatewayDeciderName)
+							.userTask("Task_votingTask" + BPMNTask.increaseVotingTaskId()).name(votingTaskName)
+							.serviceTask(serviceTaskDeciderId).name("Collect Votes")
+							.exclusiveGateway(exclusiveGatewayDeciderJoinId).name(exclusiveGatewayDeciderName);
+					this.addInformationToServiceTasks((ServiceTask) this.getFlowNodeByBPMNNodeId(serviceTaskDeciderId),
+							(BPMNExclusiveGateway) this.getNodeById(targetGtw.getId()), false);
+
+					for (BPMNDataObject dao : allBPMNDataObjects) {
+						this.addDataInputReferencesToVotingTasks(
+								(Task) this.getFlowNodeByBPMNNodeId("Task_votingTask" + BPMNTask.getVotingTaskId()),
+								dao);
+					}
+
+				} else {
+					if (votersIter.hasNext()) {
+						builder.moveToNode(parallelSplitId);
+					}
+				}
+
+				skip = false;
+
 			}
 
 			if (mapModelBtn) {
@@ -2472,11 +2420,6 @@ public class API implements Runnable {
 		}
 
 	}
-
-	
-	
-	
-	
 
 	private void addTasksToVotingSystem(int i, BusinessRuleTask brt, BPMNExclusiveGateway bpmnEx,
 			AbstractFlowNodeBuilder builder, String parallelSplit,
@@ -2660,8 +2603,6 @@ public class API implements Runnable {
 		}
 
 	}
-
-	
 
 	private boolean checkSphereRequirement(BPMNTask lastWriterTask, BPMNDataObject dataO, String sphere,
 			BPMNParticipant reader, LinkedList<LinkedList<BPMNElement>> pathsBetweenLastWriterAndBrt) {
@@ -3003,27 +2944,23 @@ public class API implements Runnable {
 		return this.businessRuleTaskList;
 	}
 
-	public void writeChangesToFile(String attachToFileName) throws IOException, ParserConfigurationException, SAXException {
+	public void writeChangesToFile(String attachToFileName)
+			throws IOException, ParserConfigurationException, SAXException {
 		// validate and write model to file
 
 		Bpmn.validateModel(modelInstance);
-	
+
 		String pathOfProcessFile = process.getParent();
-		String fileName = process.getAbsolutePath().substring(process.getAbsolutePath().lastIndexOf("\\"), process.getAbsolutePath().indexOf(".bpmn"));
-		String fileNameWithAttachToFileName = fileName+"_"+attachToFileName+".bpmn";
+		String fileName = process.getAbsolutePath().substring(process.getAbsolutePath().lastIndexOf("\\"),
+				process.getAbsolutePath().indexOf(".bpmn"));
+		String fileNameWithAttachToFileName = fileName + "_" + attachToFileName + ".bpmn";
 		File file = new File(pathOfProcessFile, fileNameWithAttachToFileName);
 
-		file.getParentFile().mkdirs(); 
-		System.out.println("FileCreated: "+file.createNewFile());
-		
+		file.getParentFile().mkdirs();
+		System.out.println("FileCreated: " + file.createNewFile());
+
 		Bpmn.writeModelToFile(file, modelInstance);
 
-		
-		
-		
-		
-		
-		
 		DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
 		docBuilderFactory.setNamespaceAware(true);
 		DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
@@ -3289,7 +3226,8 @@ public class API implements Runnable {
 
 	public String getSphereForParticipantOnEffectivePathsAfterCurrentBrtWithAlreadyChosenVoters(
 			BPMNBusinessRuleTask currentBrt, BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,
-			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters, String sphereForReader, LinkedList<LinkedList<BPMNElement>>paths) {
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters, String sphereForReader,
+			LinkedList<LinkedList<BPMNElement>> paths) {
 
 		// second step - search from currentBrt to ProcessEnd
 		// if the data that was written by the writerTask will be read by some task
@@ -3297,28 +3235,28 @@ public class API implements Runnable {
 		// WE ARE STILL AT THE POSITION OF THE CURRENTBRT!!!
 
 		// get the effective readers for the writer
-		//only those that have not been visited yet
-		
+		// only those that have not been visited yet
+
 		String sphereForReaderAfterCurrentBrt = sphereForReader;
 
 		for (BPMNElement effectiveReader : ((BPMNTask) writerTask).getEffectiveReaders()) {
 			if (reader.equals(((BPMNTask) effectiveReader).getParticipant())) {
-				boolean alreadyVisited=false;
-				for(LinkedList<BPMNElement>path: paths) {
-					for(BPMNElement pathEl: path) {
-						if(pathEl.equals(effectiveReader)) {
-							alreadyVisited=true;
+				boolean alreadyVisited = false;
+				for (LinkedList<BPMNElement> path : paths) {
+					for (BPMNElement pathEl : path) {
+						if (pathEl.equals(effectiveReader)) {
+							alreadyVisited = true;
 							break;
 						}
 					}
 				}
-				if(alreadyVisited==false) {
-				sphereForReaderAfterCurrentBrt = this.getSphereForEffectiveReaderAfterBrt((BPMNTask) effectiveReader,
-						currentBrt);
-				System.out.println("KEKW: " + ((BPMNTask) writerTask).getName() + ", " + reader.getName() + ", "
-						+ sphereForReaderAfterCurrentBrt);
+				if (alreadyVisited == false) {
+					sphereForReaderAfterCurrentBrt = this
+							.getSphereForEffectiveReaderAfterBrt((BPMNTask) effectiveReader, currentBrt);
+					System.out.println("KEKW: " + ((BPMNTask) writerTask).getName() + ", " + reader.getName() + ", "
+							+ sphereForReaderAfterCurrentBrt);
 				}
-				}
+			}
 
 		}
 
@@ -3618,12 +3556,16 @@ public class API implements Runnable {
 		this.processInstancesWithVoters = processInstancesWithVoters;
 	}
 
-	public LinkedList<ProcessInstanceWithVoters> getCheapestProcessInstancesWithVoters(LinkedList<ProcessInstanceWithVoters>pInstances) {
+	public LinkedList<ProcessInstanceWithVoters> getCheapestProcessInstancesWithVoters(
+			LinkedList<ProcessInstanceWithVoters> pInstances) {
+		if(pInstances==null) {
+			return null;
+		}
 		List<ProcessInstanceWithVoters> allInstSortedByCheapest = pInstances.parallelStream()
 				.sorted((Comparator.comparingDouble(ProcessInstanceWithVoters::getCostForModelInstance)))
 				.collect(Collectors.toList());
-		//allInstSortedByCheapest contains all solutions sorted by cheapest ones
-		
+		// allInstSortedByCheapest contains all solutions sorted by cheapest ones
+
 		LinkedList<ProcessInstanceWithVoters> allCheapestInst = new LinkedList<ProcessInstanceWithVoters>();
 		allCheapestInst.add(allInstSortedByCheapest.get(0));
 
@@ -3662,51 +3604,56 @@ public class API implements Runnable {
 		return null;
 
 	}
-	
+
 	public double getExecutionTimeLocalMinimumAlgorithm() {
 		return this.executionTimeLocalMinAlgorithmInSeconds;
 	}
-	
+
 	public double getExecutionTimeBruteForceAlgorithm() {
 		return this.executionTimeBruteForceAlgorithmInSeconds;
 	}
 
-	
-	
-	
-	public boolean compareResultsOfAlgorithms(LinkedList<ProcessInstanceWithVoters>localMinInstances, LinkedList<ProcessInstanceWithVoters>bruteForceInstances) {
-		int countCheapestSolutionFoundInBruteForceSolutions = 0; 
-		LinkedList<ProcessInstanceWithVoters>cheapestBruteForceSolutions = this.getCheapestProcessInstancesWithVoters(bruteForceInstances);
-		
-		for(ProcessInstanceWithVoters cheapestInstBruteForce: cheapestBruteForceSolutions) {
-			for(ProcessInstanceWithVoters cheapestInstLocalMin: localMinInstances) {
-				if(cheapestInstBruteForce.getCostForModelInstance()==(cheapestInstLocalMin.getCostForModelInstance())) {
-					if(cheapestInstBruteForce.getVotersMap().equals(cheapestInstLocalMin.getVotersMap())){
+	public boolean compareResultsOfAlgorithms(LinkedList<ProcessInstanceWithVoters> localMinInstances,
+			LinkedList<ProcessInstanceWithVoters> bruteForceInstances) {
+		if(localMinInstances == null || bruteForceInstances == null) {
+			return false;
+		}
+		int countCheapestSolutionFoundInBruteForceSolutions = 0;
+		LinkedList<ProcessInstanceWithVoters> cheapestBruteForceSolutions = this
+				.getCheapestProcessInstancesWithVoters(bruteForceInstances);
+
+		for (ProcessInstanceWithVoters cheapestInstBruteForce : cheapestBruteForceSolutions) {
+			for (ProcessInstanceWithVoters cheapestInstLocalMin : localMinInstances) {
+				if (cheapestInstBruteForce
+						.getCostForModelInstance() == (cheapestInstLocalMin.getCostForModelInstance())) {
+					if (cheapestInstBruteForce.getVotersMap().equals(cheapestInstLocalMin.getVotersMap())) {
 						countCheapestSolutionFoundInBruteForceSolutions++;
 					}
-					
+
 				}
-				
+
 			}
-			
+
 		}
-		if(countCheapestSolutionFoundInBruteForceSolutions==localMinInstances.size()&&localMinInstances.size()==cheapestBruteForceSolutions.size()) {
+		if (countCheapestSolutionFoundInBruteForceSolutions == localMinInstances.size()
+				&& localMinInstances.size() == cheapestBruteForceSolutions.size()) {
 			return true;
 		}
-		
+
 		return false;
 	}
-	
-	public LinkedList<LinkedList<BPMNElement>> getPathsWithMappedNodesFromCamundaNodes(LinkedList<LinkedList<FlowNode>>pathsWithCamundaNodes){
-		LinkedList<LinkedList<BPMNElement>>mappedPaths=new LinkedList<LinkedList<BPMNElement>>();
-		
-		for(LinkedList<FlowNode>path: pathsWithCamundaNodes) {
-			LinkedList<BPMNElement>mappedPath = new LinkedList<BPMNElement>();
-			for(FlowNode camundaNode: path) {
+
+	public LinkedList<LinkedList<BPMNElement>> getPathsWithMappedNodesFromCamundaNodes(
+			LinkedList<LinkedList<FlowNode>> pathsWithCamundaNodes) {
+		LinkedList<LinkedList<BPMNElement>> mappedPaths = new LinkedList<LinkedList<BPMNElement>>();
+
+		for (LinkedList<FlowNode> path : pathsWithCamundaNodes) {
+			LinkedList<BPMNElement> mappedPath = new LinkedList<BPMNElement>();
+			for (FlowNode camundaNode : path) {
 				mappedPath.add(this.getNodeById(camundaNode.getId()));
-				
+
 			}
-			
+
 			mappedPaths.add(mappedPath);
 		}
 		return mappedPaths;
@@ -3715,7 +3662,7 @@ public class API implements Runnable {
 	public File getProcessFile() {
 		return this.process;
 	}
-	
+
 	public BpmnModelInstance getModelInstance() {
 		return modelInstance;
 	}
@@ -3737,36 +3684,29 @@ public class API implements Runnable {
 	}
 
 	public void setAlgorithmToPerform(String algorithmToPerform) {
-		this.algorithmToPerform=algorithmToPerform;
+		this.algorithmToPerform = algorithmToPerform;
 	}
+
 	public String getAlgorithmToPerform() {
 		return this.algorithmToPerform;
 	}
-	
-	
+
 	@Override
-	public void run() {
+	public LinkedList<ProcessInstanceWithVoters> call() throws NullPointerException, Exception {
 		// TODO Auto-generated method stub
-		if(this.algorithmToPerform.contentEquals("bruteForce")) {
-			try {
-				this.bruteForceAlgorithm();
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+
+		if (!Thread.currentThread().isInterrupted()) {
+			if (this.algorithmToPerform.contentEquals("bruteForce")) {
+				return this.bruteForceAlgorithm();
+
+			} else if (this.algorithmToPerform.contentEquals("localMin")) {
+				return this.localMinimumAlgorithm();
+
 			}
-		} else if(this.algorithmToPerform.contentEquals("localMin")) {
-			try {
-				this.localMinimumAlgorithm();
-			} catch (NullPointerException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+
+		} else {
+			Thread.currentThread().interrupt();
 		}
-		
+		return null;
 	}
-	
-	
 }

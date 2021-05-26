@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -60,7 +61,7 @@ import org.xml.sax.SAXException;
 
 import functionality.CommonFunctionality;
 
-public class ProcessModelAnnotater implements Runnable{
+public class ProcessModelAnnotater implements Callable{
 	// class takes a process model and annotates it with dataObjects, readers,
 	// writers, etc.
 
@@ -157,20 +158,93 @@ public class ProcessModelAnnotater implements Runnable{
 		 * }
 		 */
 	}
+	
+	
+	
+	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix,
+			List<String> defaultSpheres, int dynamicWriter, int amountWritersOfProcess, int amountReadersOfProcess,
+			int probPublicDecision, int amountParticipantsPerDecision, int amountDataObjectsToCreate, int minDataObjectsPerDecision, int maxDataObjectsPerDecision, int amountParticipantsPerDecisionLowerBound, int amountParticipantsPerDecisionUpperBound,
+			List<String> namesForOutgoingSeqFlowsOfXorSplits, boolean allDataObjectsUniquePerGtw) throws Exception {
+		this.process = new File(pathToFile);
+		modelInstance = Bpmn.readModelFromFile(process);
+		/*
+		 * if(maxDataObjectsPerDecision>countDataObjects.get(1)) { throw new Exception
+		 * ("There can't be more dataObjects for a decision than dataObjects in the model!"
+		 * ); }
+		 * 
+		 * if(maxDataObjectsPerDecision>countDataObjects.get(1)) {
+		 * maxDataObjectsPerDecision=countDataObjects.get(1); }
+		 * 
+		 * if(countDataObjects.get(0)<=0 || countDataObjects.get(1)<=0) { throw new
+		 * Exception("Min or max range for DataObjects to create can not be <= 0"); }
+		 */
 
-	public void connectDataObjectsToBrtsAndTuplesForXorSplits(int maxDataObjectsPerDecision,
+		if (amountWritersOfProcess == 0 || amountReadersOfProcess == 0) {
+			throw new Exception("0 writers and 0 readers specified!");
+		}
+		
+		
+
+		this.pathToFile = pathToFile;
+		this.pathWhereToCreateAnnotatedFile = pathWhereToCreateAnnotatedFile;
+		this.fileNameSuffix = fileNameSuffix;
+		this.idForTask = 1;
+		this.idForBrt = 1;
+		this.dataObjects = new LinkedList<DataObjectReference>();
+		dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
+		this.differentParticipants = new LinkedList<String>();
+		this.stopRequested=false;
+		
+		this.setDifferentParticipants();
+		this.addFlowNodesIfNecessary();
+		this.generateDataObjects(amountDataObjectsToCreate, defaultSpheres);
+		this.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision, maxDataObjectsPerDecision, amountParticipantsPerDecisionLowerBound, amountParticipantsPerDecisionUpperBound, probPublicDecision, allDataObjectsUniquePerGtw);
+		this.addNamesForOutgoingFlowsOfXorSplits(namesForOutgoingSeqFlowsOfXorSplits);
+		this.annotateModelWithFixedAmountOfReadersAndWriters(amountWritersOfProcess, amountReadersOfProcess,
+				dynamicWriter, defaultSpheres);
+
+	}
+
+	
+	
+	public void connectDataObjectsToBrtsAndTuplesForXorSplits(int minDataObjectsPerDecision, int maxDataObjectsPerDecision,
 			int amountParticipantsPerDecisionLowerBound, int amountParticipantsPerDecisionUpperBound,
-			int probPublicDecision){
+			int probPublicDecision, boolean allDataObjectsUniquePerGtw){
 		if (!this.dataObjects.isEmpty()) {
+			LinkedList<DataObjectReference>dataObjectsToChoseFrom = new LinkedList<DataObjectReference>();
+			dataObjectsToChoseFrom.addAll(this.dataObjects);
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
 				if (taskIsBrtFollowedByXorSplit(task)) {
+					if (maxDataObjectsPerDecision <= 0) {
+						int amountDataObjects = modelInstance.getModelElementsByType(DataObjectReference.class).size();
+						if (amountDataObjects == minDataObjectsPerDecision) {
+							maxDataObjectsPerDecision = amountDataObjects;
+						} else if (amountDataObjects > minDataObjectsPerDecision) {
+							maxDataObjectsPerDecision = ThreadLocalRandom.current().nextInt(minDataObjectsPerDecision,
+									amountDataObjects + 1);
+
+						}
+					}
+
+					
 					int upperBoundAnnotatedDataObjects = maxDataObjectsPerDecision;
 					if (maxDataObjectsPerDecision > this.dataObjects.size()) {
 						upperBoundAnnotatedDataObjects = this.dataObjects.size();
 					}
-					int boundedRandomValue = ThreadLocalRandom.current().nextInt(1,
-							(upperBoundAnnotatedDataObjects + 1));
-					this.addRandomDataObjectsForBrt(task, boundedRandomValue);
+					int boundedValue = 0; 
+					if(upperBoundAnnotatedDataObjects==minDataObjectsPerDecision) {
+						boundedValue = upperBoundAnnotatedDataObjects;
+					} else {
+						boundedValue = ThreadLocalRandom.current().nextInt(minDataObjectsPerDecision,
+						(upperBoundAnnotatedDataObjects + 1));
+						
+					}
+				
+					if(allDataObjectsUniquePerGtw) {						
+						dataObjectsToChoseFrom = this.addRandomUniqueDataObjectsForBrt(task, dataObjectsToChoseFrom, boundedValue);
+					} else {					
+					this.addRandomDataObjectsForBrt(task, boundedValue);
+					}
 					this.addTuplesForXorSplits(task, probPublicDecision, amountParticipantsPerDecisionLowerBound,
 							amountParticipantsPerDecisionUpperBound);
 
@@ -245,11 +319,14 @@ public class ProcessModelAnnotater implements Runnable{
 		//amountWriters must be >= dataObjects, since every dataObject will need to be written before it can get read
 		
 		
-		if (!this.dataObjects.isEmpty()) {
+		if (!this.dataObjects.isEmpty()) {			
 			
-			
+			if(amountWriters<this.dataObjects.size()) {
+				throw new Exception("Amount of writers must be >= amount of DataObjects!");
+			}
 			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality.computeRepartitionNumber(amountWriters,
 					this.dataObjects.size(), 1);
+			
 			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
 			LinkedList<Integer>subAmountWriters = subAmountWritersLists.get(randomNum);
 			
@@ -569,7 +646,7 @@ public class ProcessModelAnnotater implements Runnable{
 		int randomSphereCount = ThreadLocalRandom.current().nextInt(0, defaultSpheres.size());
 		String newSphere = defaultSpheres.get(randomSphereCount);
 
-		String textContent = daoR.getName().replaceAll("\\{.*?\\}", newSphere);
+		String textContent = daoR.getName().replaceAll("(?<=\\{).*?(?=\\})", newSphere);
 
 		writerSphere.setTextFormat("text/plain");
 		Text text = modelInstance.newInstance(Text.class);
@@ -753,8 +830,14 @@ public class ProcessModelAnnotater implements Runnable{
 			}
 		}
 		fileNumber++;
-		String annotatedFileName = fileName + "_annotated" + fileNumber + suffixFileName + ".bpmn";
-		File file = CommonFunctionality.createFileWithinDirectory(directoryToStoreAnnotatedModel, annotatedFileName);
+		StringBuilder annotatedFileNameBuilder = new StringBuilder();
+		
+		annotatedFileNameBuilder.append(fileName+"_annotated"+fileNumber);
+		if(!suffixFileName.contentEquals("_annotated")) {
+			annotatedFileNameBuilder.append(suffixFileName);
+		}
+		annotatedFileNameBuilder.append(".bpmn");
+		File file = CommonFunctionality.createFileWithinDirectory(directoryToStoreAnnotatedModel, annotatedFileNameBuilder.toString());
 
 		System.out.println("File path: " + file.getAbsolutePath());
 		Bpmn.writeModelToFile(file, modelInstance);
@@ -1119,9 +1202,43 @@ public class ProcessModelAnnotater implements Runnable{
 		return changeBackToTask;
 
 	}
+	
+	
+	private LinkedList<DataObjectReference> addRandomUniqueDataObjectsForBrt(Task brtTask, LinkedList<DataObjectReference>dataObjectsToChoseFrom, int dataObjectsPerDecision) {
+		LinkedList<DataObjectReference>daoR = new LinkedList<DataObjectReference>();
+		daoR.addAll(dataObjectsToChoseFrom);
+		if (taskIsBrtFollowedByXorSplit(brtTask)) {
+			BusinessRuleTask brt = (BusinessRuleTask) brtTask;
+
+			if (brt.getDataInputAssociations().isEmpty()) {
+				// randomly connect dataObjects till dataObjectsPerDecision is reached
+				int i = 0;				
+				while (i < dataObjectsPerDecision && !dataObjectsToChoseFrom.isEmpty()) {
+					int randomCount = ThreadLocalRandom.current().nextInt(0, dataObjectsToChoseFrom.size());
+					DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
+					Property p1 = modelInstance.newInstance(Property.class);
+					p1.setName("__targetRef_placeholder");
+					brt.addChildElement(p1);
+					dia.setTarget(p1);
+					brt.getDataInputAssociations().add(dia);
+					dia.getSources().add(dataObjectsToChoseFrom.get(randomCount));
+					generateDIElementForReader(dia, getShape(dataObjectsToChoseFrom.get(randomCount).getId()), getShape(brt.getId()));
+					dataObjectsToChoseFrom.remove(dataObjectsToChoseFrom.get(randomCount));
+					i++;
+				}
+			}
+		}
+		
+		return daoR;
+
+	}
+	
+	
+	
 
 	private void addRandomDataObjectsForBrt(Task brtTask, int dataObjectsPerDecision) {
-
+		
+		
 		if (taskIsBrtFollowedByXorSplit(brtTask)) {
 			BusinessRuleTask brt = (BusinessRuleTask) brtTask;
 
@@ -1173,7 +1290,7 @@ public class ProcessModelAnnotater implements Runnable{
 
 			if (insert) {
 				// check if decision will be public
-				int decideIfPublic = ThreadLocalRandom.current().nextInt(0, 101);
+				int decideIfPublic = ThreadLocalRandom.current().nextInt(1, 101);
 
 				TextAnnotation votersAnnotation = modelInstance.newInstance(TextAnnotation.class);
 				StringBuilder textContentBuilder = new StringBuilder();
@@ -1462,6 +1579,82 @@ public class ProcessModelAnnotater implements Runnable{
 		}
 
 	}
+	
+	
+	public void addRandomDecisionsForBrts(int probToTakeAlreadyMappedVariableForDecision) {
+		LinkedList<String>operators = new LinkedList<String>();
+		operators.add("+");
+		operators.add("-");
+		operators.add("*");
+		operators.add("/");
+		
+		String comparisonOperator = "==";
+		//random decisons for testing will always be of form e.g. D1.randomChar operator D2.randomChar == randomInteger
+		HashMap<DataObjectReference, LinkedList<Character>> alreadyMappedVariables = new HashMap<DataObjectReference, LinkedList<Character>>();
+		for(FlowNode f: this.flowNodes) {
+		if (f instanceof ExclusiveGateway) {
+			ExclusiveGateway xor = (ExclusiveGateway) f;
+			if (xor.getOutgoing().size() >= 2) {
+				FlowNode nodeBeforeXorSplit = xor.getIncoming().iterator().next().getSource();
+
+				if ((nodeBeforeXorSplit instanceof BusinessRuleTask)) {
+					BusinessRuleTask currBrt = (BusinessRuleTask) nodeBeforeXorSplit;
+					StringBuilder decisionBuilder = new StringBuilder();
+					decisionBuilder.append("[Decision]{");
+					
+					int dataObjectsPerDecisionLeft = currBrt.getDataOutputAssociations().size();
+					
+					for(DataOutputAssociation doa : currBrt.getDataOutputAssociations()) {
+						ItemAwareElement iae = doa.getTarget();
+						for(DataObjectReference daoR: this.dataObjects) {
+							if(daoR.getId().contentEquals(iae.getId())) {
+								String daoRName = daoR.getName();
+								decisionBuilder.append(daoR.getName().substring(daoRName.indexOf('[')+1, daoRName.indexOf(']')));
+								decisionBuilder.append('.');
+								if(!alreadyMappedVariables.get(daoR).isEmpty()) {
+									int prob = ThreadLocalRandom.current().nextInt(0,100);									
+									if(probToTakeAlreadyMappedVariableForDecision>=prob) {
+										LinkedList<Character>alreadyMapped = alreadyMappedVariables.get(daoR);
+										char randomCharAlreadyMapped = CommonFunctionality.getRandomItem(alreadyMapped);
+										decisionBuilder.append(randomCharAlreadyMapped);
+									}
+									
+								} else {
+								//get a random letter from alphabet
+								char randomChar = Character.MIN_VALUE;
+								do {
+								Random r = new Random();
+								randomChar = (char)(r.nextInt(26) + 'a');
+								}  while(alreadyMappedVariables.get(daoR).contains(randomChar));
+								decisionBuilder.append(randomChar);
+								alreadyMappedVariables.computeIfAbsent(daoR, v -> new LinkedList<Character>()).add(randomChar);
+								}
+								
+								dataObjectsPerDecisionLeft--;
+								
+								if(dataObjectsPerDecisionLeft>0) {
+								//get a random operator from operators
+								String randomOperator = CommonFunctionality.getRandomItem(operators);
+								decisionBuilder.append(randomOperator);
+								}
+								
+								
+							}
+						}
+						
+						
+						
+						
+					}
+					decisionBuilder.append(comparisonOperator);
+					double randomValue = ThreadLocalRandom.current().nextDouble(0, 101);
+					decisionBuilder.append(randomValue);					
+					
+				}
+			}
+		}
+		}
+	}
 
 	private void addReadersAndWritersForDataObjectWithFixedAmounts(int amountWriters, int amountReaders,
 			int dynamicWriter, DataObjectReference dataORef, List<String> defaultSpheresForDynamicWriter,
@@ -1587,28 +1780,26 @@ public class ProcessModelAnnotater implements Runnable{
 
 	}
 	
+	public BpmnModelInstance getModelInstance() {
+		return this.modelInstance;
+	}
 	
 	@Override
-	public void run() {
-		// TODO Auto-generated method stub
-	
+	public File call() throws Exception {
+		// TODO Auto-generated method stub				
+		
+				if(!Thread.currentThread().isInterrupted()) {	
 				
-			try {
-				while(!Thread.interrupted()) {		
 				File f = this.checkCorrectnessAndWriteChangesToFile();
+				
 				if(f!=null) {
-					return;
+					return f;
 				}
+				
+				
 				}
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				System.out.println("Time limit reached!");
-				e.printStackTrace();
-			} 
-			
 		
-		
-		
+		return null;
 		
 	}
 

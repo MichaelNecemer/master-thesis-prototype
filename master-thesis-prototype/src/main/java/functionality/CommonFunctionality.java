@@ -1693,9 +1693,10 @@ public static void increaseSpherePerDataObject(BpmnModelInstance modelInstance, 
 								
 								String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{')+1, tx.getTextContent().indexOf('}'));
 								String[]values = subString.split(",");
-								
+								if(!values[0].contentEquals("Public")) {
 								int currAmountVoters = Integer.parseInt(values[0]);
 								sumAmountVoters+=currAmountVoters;
+								}
 							}
 						}
 					}
@@ -1934,7 +1935,6 @@ public static int binom(int n, int k) {
 	return binom(n-1, k) + binom (n-1, k-1);
 	
 }
-
 
 
 

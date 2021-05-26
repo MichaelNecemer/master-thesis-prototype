@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
@@ -29,7 +31,7 @@ public class ResultsToCSVWriter {
 					CSVWriter.DEFAULT_ESCAPE_CHARACTER, CSVWriter.DEFAULT_LINE_END);
 
 			rows = new ArrayList<>();
-			String[] header = new String[] { "fileName", "pathToFile", "totalAmountSolutions", "amount cheapest solution(s) localMinimumAlgorithm", "amount cheapest solution(s) bruteForce", "costCheapestSolution", "averageCostAllSolutions",
+			String[] header = new String[] { "fileName", "pathToFile", "Exception", "totalAmountSolutions", "amount cheapest solution(s) localMinimumAlgorithm", "amount cheapest solution(s) bruteForce", "costCheapestSolution", "averageCostAllSolutions",
 					"executionTimeLocalMinimumAlogrithm in sec", "executionTimeBruteForce in sec", "deltaExecutionTime in sec", "isCheapestSolutionInBruteForce", "amountPaths", "amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements", "amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum"};
 			this.rows.add(header);
 			
@@ -40,7 +42,7 @@ public class ResultsToCSVWriter {
 		}
 
 	}
-	public void writeResultsOfBothAlgorithmsToCSVFile(API api, LinkedList<ProcessInstanceWithVoters> pInstancesLocalMin, LinkedList<ProcessInstanceWithVoters> pInstancesBruteForce, boolean isCheapestSolutionInBruteForce) {
+	public void writeResultsOfBothAlgorithmsToCSVFile(API api, Exception e, LinkedList<ProcessInstanceWithVoters> pInstancesLocalMin, LinkedList<ProcessInstanceWithVoters> pInstancesBruteForce, boolean isCheapestSolutionInBruteForce) {
 		//call this method after both algorithms ran
 		// compare the execution of both algorithms
 		// write the metadata to a csv file
@@ -49,12 +51,22 @@ public class ResultsToCSVWriter {
 					String fileName = api.getProcessFile().getName();
 
 					// map the cheapest process instances to rows in the csv file
-					double costCheapestSolution =pInstancesLocalMin.get(0).getCostForModelInstance();					
-					int amountCheapestSolutionsLocalMin = pInstancesLocalMin.size();
-					int amountCheapestSolutionsBruteForce = api.getCheapestProcessInstancesWithVoters(pInstancesBruteForce).size();
 					
-					double averageCostAllSolutions = CommonFunctionality.getAverageCostForAllModelInstances(pInstancesBruteForce);
+					String amountCheapestSolutionsLocalMin = null;
+					String costCheapestSolution = null;
+					if(pInstancesLocalMin!=null&&!pInstancesLocalMin.isEmpty()) {
+					costCheapestSolution =pInstancesLocalMin.get(0).getCostForModelInstance()+"";					
+					amountCheapestSolutionsLocalMin = pInstancesLocalMin.size()+"";
+					}
 					
+					String amountCheapestSolutionsBruteForce = null;
+					String averageCostAllSolutions=null;
+					String amountSolutionsBruteForce = null;
+					if(pInstancesBruteForce!=null&&!pInstancesBruteForce.isEmpty()) {
+					amountCheapestSolutionsBruteForce = api.getCheapestProcessInstancesWithVoters(pInstancesBruteForce).size()+"";
+					amountSolutionsBruteForce = pInstancesBruteForce.size()+"";
+					averageCostAllSolutions = CommonFunctionality.getAverageCostForAllModelInstances(pInstancesBruteForce)+"";
+					}
 					
 					
 					StringBuilder readersPerDataObject = new StringBuilder();
@@ -80,8 +92,12 @@ public class ResultsToCSVWriter {
 					}
 					writersPerDataObject.deleteCharAt(writersPerDataObject.length()-1);
 					
-					
-					String[] row = new String[] { fileName, pathToFile, pInstancesBruteForce.size()+"", amountCheapestSolutionsLocalMin+"", amountCheapestSolutionsBruteForce+"", costCheapestSolution + "", averageCostAllSolutions+"",
+					String exceptionName = "";
+					if(e != null) {
+						exceptionName = e.getClass().getCanonicalName();
+					}
+				
+					String[] row = new String[] { fileName, exceptionName, amountSolutionsBruteForce, amountCheapestSolutionsLocalMin, amountCheapestSolutionsBruteForce, costCheapestSolution, averageCostAllSolutions,
 							api.getExecutionTimeLocalMinimumAlgorithm() + "", api.getExecutionTimeBruteForceAlgorithm()+"", api.getExecutionTimeLocalMinimumAlgorithm()-api.getExecutionTimeBruteForceAlgorithm()+"", isCheapestSolutionInBruteForce+"", api.getAllPathsThroughProcess().size()+"", readersPerDataObject.toString(), writersPerDataObject.toString(), CommonFunctionality.getAmountExclusiveGtwSplits(api.getModelInstance())+"", CommonFunctionality.getAmountParallelGtwSplits(api.getModelInstance())+"", CommonFunctionality.getAmountTasks(api.getModelInstance())+"",CommonFunctionality.getAmountElements(api.getModelInstance())+"", CommonFunctionality.getSumAmountVotersOfModel(api.getModelInstance())+"", CommonFunctionality.getAverageAmountVotersOfModel(api.getModelInstance())+"", CommonFunctionality.getGlobalSphere(api.getModelInstance(), api.modelWithLanes())+"", CommonFunctionality.getSphereSumOfModel(api.getModelInstance())+""};
 					
 					this.rows.add(row);

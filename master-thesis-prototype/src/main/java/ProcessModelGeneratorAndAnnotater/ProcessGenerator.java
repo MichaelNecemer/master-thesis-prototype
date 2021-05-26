@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
@@ -36,7 +37,7 @@ import org.xml.sax.SAXException;
 
 import functionality.CommonFunctionality;
 
-public class ProcessGenerator implements Runnable {
+public class ProcessGenerator implements Callable {
 	// generates a new Process Model using the camunda fluent API
 	// model can than be annotated using the ProcessModelAnnotater
 	
@@ -613,29 +614,28 @@ public class ProcessGenerator implements Runnable {
 	}
 
 
+
+
 	@Override
-	public void run() {
-		// TODO Auto-generated method stub	
+	public File call() throws Exception {
+		// TODO Auto-generated method stub
 		
-		try {
-			while(!Thread.interrupted()) {
+			while(!Thread.currentThread().isInterrupted()) {
 			this.goDfs(this.startEvent, null, amountTasksLeft, amountXorsLeft, amountParallelsLeft, this.possibleNodeTypes, new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), nestingDepthFactor);
 			try {
 			File f = writeChangesToFile();
 			if(f!=null) {
-				return;
+				return f;
 			}
-			} catch(Exception e1){
-				System.out.println("Generated Model not valid!");
+			} catch(Exception e){
+				System.out.println("Generated Model not valid! Trying again!");
 				
 			}
 			
 			}
-		} catch(Exception e) {
-			
-			e.printStackTrace();
-		}
 		
+		
+		return null;
 	}
 	
 	
