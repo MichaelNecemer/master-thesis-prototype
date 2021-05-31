@@ -32,8 +32,7 @@ public class BatchFileGenerator {
 
 	static int idCSVFile = 1;
 	static String rootFolder = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup";
-	
-	
+
 	static int timeOutForProcessGeneratorInMin = 2; // 1 min for generating random processes
 	static int timeOutForApiInMin = 1; // 3 min time limit for Api to finish all calculations
 	static int timeOutForProcessModelAnnotaterInMin = 3;
@@ -189,35 +188,36 @@ public class BatchFileGenerator {
 				.getAbsolutePath();
 
 		/*
-		// mixed processes with decisions for adnan and nada
-		List<Integer> dataObjectBoundsMixed = Arrays.asList(1, 4);
-		int dynamicWriterProbMixed = 30;
-		int upperBoundParticipants = 6;
-		String pathToMixedProcessesFolder = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "MixedProcessesFolder")
-				.getAbsolutePath();
-		String pathToAnnotatedProcessesFolder = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToMixedProcessesFolder, "AnnotatedModels").getAbsolutePath();
-		//BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToMixedProcessesFolder, 2,
-			//	upperBoundParticipants, 10, 30, 1, 6, 0, 4, 30);
-		List<Integer> writersOfProcessInPercent = Arrays.asList(10, 20, 30);
-		List<Integer> readersOfProcessInPercent = Arrays.asList(10, 20, 30);
-		int publicDecisionProb = 0;
-		int minDataObjectsPerDecision = 1;
-		int maxDataObjectsPerDecision = -1;
-		BatchFileGenerator.annotateModels(pathToMixedProcessesFolder, pathToAnnotatedProcessesFolder,
-				dataObjectBoundsMixed, defaultSpheres, dynamicWriterProbMixed, writersOfProcessInPercent,
-				readersOfProcessInPercent, 2, upperBoundParticipants, minDataObjectsPerDecision,
-				maxDataObjectsPerDecision, publicDecisionProb);
-		
-		BatchFileGenerator.runLocalMinAndGenerateNewFilesWithAnnotatedSolutions(pathToAnnotatedProcessesFolder, 1);
-		*/
-		
+		 * // mixed processes with decisions for adnan and nada List<Integer>
+		 * dataObjectBoundsMixed = Arrays.asList(1, 4); int dynamicWriterProbMixed = 30;
+		 * int upperBoundParticipants = 6; String pathToMixedProcessesFolder =
+		 * CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation,
+		 * "MixedProcessesFolder") .getAbsolutePath(); String
+		 * pathToAnnotatedProcessesFolder = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToMixedProcessesFolder,
+		 * "AnnotatedModels").getAbsolutePath();
+		 * //BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
+		 * pathToMixedProcessesFolder, 2, // upperBoundParticipants, 10, 30, 1, 6, 0, 4,
+		 * 30); List<Integer> writersOfProcessInPercent = Arrays.asList(10, 20, 30);
+		 * List<Integer> readersOfProcessInPercent = Arrays.asList(10, 20, 30); int
+		 * publicDecisionProb = 0; int minDataObjectsPerDecision = 1; int
+		 * maxDataObjectsPerDecision = -1;
+		 * BatchFileGenerator.annotateModels(pathToMixedProcessesFolder,
+		 * pathToAnnotatedProcessesFolder, dataObjectBoundsMixed, defaultSpheres,
+		 * dynamicWriterProbMixed, writersOfProcessInPercent, readersOfProcessInPercent,
+		 * 2, upperBoundParticipants, minDataObjectsPerDecision,
+		 * maxDataObjectsPerDecision, publicDecisionProb);
+		 * 
+		 * BatchFileGenerator.runLocalMinAndGenerateNewFilesWithAnnotatedSolutions(
+		 * pathToAnnotatedProcessesFolder, 1);
+		 */
+
 		// for each processes folder -> generate 100 random processes
 		// small processes: 2-5 participants, 7-15 tasks, 1-4 xors, 0-2 parallels, 100
 		// processes
-		//BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolder,
-		//2, 5, 7, 15, 1, 4, 0, 2, 100);
+		// BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolder,
+		// 2, 5, 7, 15, 1, 4, 0, 2, 100);
 
 		// medium processes: 6-10 participants, 16-30 tasks, 5-10 xors, 0-6 parallels,
 		// 100 processes
@@ -232,8 +232,9 @@ public class BatchFileGenerator {
 		// each test will be based on the same randomly chosen models
 		LinkedList<File> randomSmallProcesses = BatchFileGenerator.getRandomModelsFromSourceFolder(5,
 				pathToSmallProcessesFolder);
-		//LinkedList<File> randomMediumProcesses = BatchFileGenerator.getRandomModelsFromSourceFolder(5,
-			//	pathToMediumProcessesFolder);
+		// LinkedList<File> randomMediumProcesses =
+		// BatchFileGenerator.getRandomModelsFromSourceFolder(5,
+		// pathToMediumProcessesFolder);
 		// LinkedList<File> randomLargeProcesses =
 		// BatchFileGenerator.getRandomModelsFromSourceFolder(20,
 		// pathToLargeProcessesFolder);
@@ -259,20 +260,21 @@ public class BatchFileGenerator {
 				.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "LargeProcessesAnnotatedFolder")
 				.getAbsolutePath();
 
-		//BatchFileGenerator.performTest2(randomSmallProcesses, pathToSmallProcessesForTest2, dataObjectBoundsSmallProcesses );
+		// BatchFileGenerator.performTest2(randomSmallProcesses,
+		// pathToSmallProcessesForTest2, dataObjectBoundsSmallProcesses );
 		// BatchFileGenerator.performTest2(randomMediumProcesses,
 		// pathToMediumProcessesForTest2, dataObjectBoundsMediumProcesses );
 
 		// perform the algorithms and generate csv file
 		String pathToFolderEval = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test2\\SmallProcessesAnnotatedFolder\\ModelsForEvaluation";
 		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderEval);
-				if (!apiList.isEmpty()) {
-					BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(apiList, 1);
-				} else {
-					System.out.println("No Algorithms have been run successfully on annotated models");
-				}
-				System.out.println("FINISHED!");
-		
+		if (!apiList.isEmpty()) {
+			BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(apiList, 1);
+		} else {
+			System.out.println("No Algorithms have been run successfully on annotated models");
+		}
+		System.out.println("FINISHED!");
+
 		// Test 3 - Measure impact of dataObjects
 		// annotate different dataObject for each decision e.g. 5 decisions - 5
 		// different dataObjects - each decision has 1 different dataObject connected
@@ -290,7 +292,7 @@ public class BatchFileGenerator {
 			LinkedList<String> defaultSpheres, int dynamicWriterProb, List<Integer> writersOfProcessInPercent,
 			List<Integer> readersOfProcessInPercent, int amountParticipantsPerDecisionLowerBound,
 			int amountParticipantsPerDecisionUpperBound, int minDataObjectsPerDecision, int maxDataObjectsPerDecision,
-			int publicDecisionProb)  {
+			int publicDecisionProb) {
 		// iterate through all files in the directory and annotate them
 
 		File dir = new File(pathToFolderWithFilesWithoutAnnotation);
@@ -325,9 +327,9 @@ public class BatchFileGenerator {
 		int coreCount = Runtime.getRuntime().availableProcessors();
 		ExecutorService executor = Executors.newFixedThreadPool(coreCount);
 
-		LinkedList<Future<File>>futures = new LinkedList<Future<File>>();
-		
-		for(int i = 0; i < paths.size(); i++) {
+		LinkedList<Future<File>> futures = new LinkedList<Future<File>>();
+
+		for (int i = 0; i < paths.size(); i++) {
 			String pathToFile = paths.get(i);
 			File currFile = new File(pathToFile);
 			BpmnModelInstance modelInstance = Bpmn.readModelFromFile(currFile);
@@ -352,17 +354,18 @@ public class BatchFileGenerator {
 			int amountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(dataObjectBoundsMixed.get(0),
 					dataObjectBoundsMixed.get(1) + 1);
 			ProcessModelAnnotater p = null;
-			
+
 			try {
-				p = new ProcessModelAnnotater(pathToFile, pathToFolderForStoringAnnotatedModelsFolder,
-						"_annotated", defaultSpheres, dynamicWriterProb, amountWritersOfProcess, amountReadersOfProcess,
-						publicDecisionProb, amountParticipantsPerDecisionLowerBound, amountDataObjectsToCreate,minDataObjectsPerDecision, maxDataObjectsPerDecision,
-						amountParticipantsPerDecisionLowerBound, amountParticipantsPerDecisionUpperBound, defaultNamesSeqFlowsXorSplits, false);
-			
+				p = new ProcessModelAnnotater(pathToFile, pathToFolderForStoringAnnotatedModelsFolder, "_annotated",
+						defaultSpheres, dynamicWriterProb, amountWritersOfProcess, amountReadersOfProcess,
+						publicDecisionProb, amountParticipantsPerDecisionLowerBound, amountDataObjectsToCreate,
+						minDataObjectsPerDecision, maxDataObjectsPerDecision, amountParticipantsPerDecisionLowerBound,
+						amountParticipantsPerDecisionUpperBound, defaultNamesSeqFlowsXorSplits, false);
+
 				Future<File> future = executor.submit(p);
 				futures.add(future);
 				try {
-				future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
+					future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -377,58 +380,54 @@ public class BatchFileGenerator {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 					future.cancel(true);
-				} 
-				
+				}
+
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				//Model not valid
+				// Model not valid
 				i--;
 			}
-			
-						
-			
+
 		}
-		
-		
+
 		executor.shutdown();
 	}
 
 	public static void generateRandomProcessesWithFixedValues(String pathForAddingRandomModels,
 			int maxAmountParticipants, int maxAmountMaxTasks, int maxAmountMaxXorSplits, int maxAmountMaxParallelSplits,
 			int amountProcesses) {
-		
+
 		int coreCount = Runtime.getRuntime().availableProcessors();
 		ExecutorService executor = Executors.newFixedThreadPool(coreCount);
 
-		LinkedList<Future<File>>futures = new LinkedList<Future<File>>();
-		
+		LinkedList<Future<File>> futures = new LinkedList<Future<File>>();
+
 		for (int i = 1; i <= amountProcesses; i++) {
 
 			// will be written to the pathForAddingRandomModels
-			
-					ProcessGenerator pGen;
-					try {
-						pGen = new ProcessGenerator(pathForAddingRandomModels, maxAmountParticipants,
-								maxAmountMaxTasks, maxAmountMaxXorSplits, maxAmountMaxParallelSplits, dynamicWriterProb,
-								readerProb, writerProb, probPublicSphere, nestingDepthFactor, true);
-					
-						Future<File> future = executor.submit(pGen);
-						futures.add(future);
-						
-					} catch (Exception e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-						i--;
-					}					
-					
-					 
-				} 
 
-		for(Future<File>future: futures) {
+			ProcessGenerator pGen;
+			try {
+				pGen = new ProcessGenerator(pathForAddingRandomModels, maxAmountParticipants, maxAmountMaxTasks,
+						maxAmountMaxXorSplits, maxAmountMaxParallelSplits, dynamicWriterProb, readerProb, writerProb,
+						probPublicSphere, nestingDepthFactor, true);
+
+				Future<File> future = executor.submit(pGen);
+				futures.add(future);
+
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				i--;
+			}
+
+		}
+
+		for (Future<File> future : futures) {
 			try {
 				File f = future.get(timeOutForProcessGeneratorInMin, TimeUnit.MINUTES);
-				System.out.println(f.getName()+" deployed successfully");
+				System.out.println(f.getName() + " deployed successfully");
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -440,10 +439,9 @@ public class BatchFileGenerator {
 				e.printStackTrace();
 				future.cancel(true);
 			}
-		
-		
+
 		}
-		
+
 		executor.shutdown();
 
 	}
@@ -543,82 +541,78 @@ public class BatchFileGenerator {
 
 		csvFile.getParentFile().mkdirs();
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
-		
-		
+
 		ExecutorService service = Executors.newFixedThreadPool(threadPools);
-				
+
 		for (int i = 0; i < 3; i++) {
 			API api = apiList.get(i);
 			HashMap<API, HashMap<String, LinkedList<ProcessInstanceWithVoters>>> apiMap = new HashMap<API, HashMap<String, LinkedList<ProcessInstanceWithVoters>>>();
 			HashMap<String, Exception> exceptionPerAlgorithm = new HashMap<String, Exception>();
-			API.setAlgorithmToPerform("bruteForce");		
-			Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureBruteForce = service.submit(api);	
-			HashMap<String, LinkedList<ProcessInstanceWithVoters>>innerMap = new HashMap<String, LinkedList<ProcessInstanceWithVoters>>();	
-				HashMap<String, LinkedList<ProcessInstanceWithVoters>>pInstances = null;
-				Exception exception = null;	
-				try {							
-						pInstances = futureBruteForce.get(timeOutForApiInMin, TimeUnit.MINUTES);
-						innerMap.putAll(pInstances);
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						exception = (InterruptedException)e;
-						e.printStackTrace();
-					} catch (ExecutionException e) {
-						// TODO Auto-generated catch block
-						exception = (ExecutionException)e;
-						e.printStackTrace();
-					} catch (TimeoutException e) {
-						// TODO Auto-generated catch block
-						exception = (TimeoutException)e;
-						e.printStackTrace();
-					} finally {
-						exceptionPerAlgorithm.putIfAbsent("bruteForce", exception);
-						futureBruteForce.cancel(true);
-					}
-								
-				
-				
-				API.setAlgorithmToPerform("localMin");
-				Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureLocalMin = service.submit(api);	
-			
-				HashMap<String, LinkedList<ProcessInstanceWithVoters>>pInstancesLocalMin = null;
-				Exception exceptionLocalMin = null;	
-				try {							
-						pInstances = futureLocalMin.get(timeOutForApiInMin, TimeUnit.MINUTES);
-						innerMap.putAll(pInstances);
-						
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						exceptionLocalMin = (InterruptedException)e;
-						e.printStackTrace();
-					} catch (ExecutionException e) {
-						// TODO Auto-generated catch block
-						exceptionLocalMin = (ExecutionException)e;
-						e.printStackTrace();
-					} catch (TimeoutException e) {
-						// TODO Auto-generated catch block
-						exceptionLocalMin = (TimeoutException)e;
-						e.printStackTrace();
-					} finally {
-						exceptionPerAlgorithm.putIfAbsent("localMin", exceptionLocalMin);
-						futureLocalMin.cancel(true);
-					}
-					
-				
-				apiMap.putIfAbsent(api, innerMap);
-				writer.writeResultsOfBothAlgorithmsToCSVFile(api, apiMap.get(api), exceptionPerAlgorithm, api.compareResultsOfAlgorithms(apiMap.get(api).get("localMin"),apiMap.get(api).get("bruteForce")));
-				
-		}				
-		
+			API.setAlgorithmToPerform("bruteForce");
+			Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureBruteForce = service.submit(api);
+			HashMap<String, LinkedList<ProcessInstanceWithVoters>> innerMap = new HashMap<String, LinkedList<ProcessInstanceWithVoters>>();
+			HashMap<String, LinkedList<ProcessInstanceWithVoters>> pInstances = null;
+			Exception exception = null;
+			try {
+				pInstances = futureBruteForce.get(timeOutForApiInMin, TimeUnit.MINUTES);
+				innerMap.putAll(pInstances);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				exception = (InterruptedException) e;
+				e.printStackTrace();
+			} catch (ExecutionException e) {
+				// TODO Auto-generated catch block
+				exception = (ExecutionException) e;
+				e.printStackTrace();
+			} catch (TimeoutException e) {
+				// TODO Auto-generated catch block
+				exception = (TimeoutException) e;
+				e.printStackTrace();
+			} finally {
+				exceptionPerAlgorithm.putIfAbsent("bruteForce", exception);
+				futureBruteForce.cancel(true);
+			}
+
+			API.setAlgorithmToPerform("localMin");
+			Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureLocalMin = service.submit(api);
+
+			HashMap<String, LinkedList<ProcessInstanceWithVoters>> pInstancesLocalMin = null;
+			Exception exceptionLocalMin = null;
+			try {
+				pInstances = futureLocalMin.get(timeOutForApiInMin, TimeUnit.MINUTES);
+				innerMap.putAll(pInstances);
+
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				exceptionLocalMin = (InterruptedException) e;
+				e.printStackTrace();
+			} catch (ExecutionException e) {
+				// TODO Auto-generated catch block
+				exceptionLocalMin = (ExecutionException) e;
+				e.printStackTrace();
+			} catch (TimeoutException e) {
+				// TODO Auto-generated catch block
+				exceptionLocalMin = (TimeoutException) e;
+				e.printStackTrace();
+			} finally {
+				exceptionPerAlgorithm.putIfAbsent("localMin", exceptionLocalMin);
+				futureLocalMin.cancel(true);
+			}
+
+			apiMap.putIfAbsent(api, innerMap);
+			writer.writeResultsOfBothAlgorithmsToCSVFile(api, apiMap.get(api), exceptionPerAlgorithm,
+					api.compareResultsOfAlgorithms(apiMap.get(api).get("localMin"), apiMap.get(api).get("bruteForce")));
+
+		}
+
 		service.shutdown();
 		writer.writeRowsToCSVAndcloseWriter();
-		
-
 
 	}
 
 	public static void performTest2(int amountRandomProcessesToTakeFromFolder, String pathToSourceFolder,
-			String pathToDestinationFolderForStoringModels, List<Integer> dataObjectBounds, int amountThreadPools) throws Exception {
+			String pathToDestinationFolderForStoringModels, List<Integer> dataObjectBounds, int amountThreadPools)
+			throws Exception {
 
 		File folder = new File(pathToSourceFolder);
 		LinkedList<File> listOfFiles = new LinkedList<File>();
@@ -757,7 +751,8 @@ public class BatchFileGenerator {
 
 	}
 
-	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels, int amountThreadPools) {
+	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels,
+			int amountThreadPools) {
 		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithAnnotatedModels);
 		if (!apiList.isEmpty()) {
 			BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(apiList, amountThreadPools);
@@ -767,26 +762,28 @@ public class BatchFileGenerator {
 
 	}
 
-	public static void runLocalMinAndGenerateNewFilesWithAnnotatedSolutions(String pathToFolderWithAnnotatedModels, int upperBoundNewModels) {
+	public static void runLocalMinAndGenerateNewFilesWithAnnotatedSolutions(String pathToFolderWithAnnotatedModels,
+			int upperBoundNewModels) {
 		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithAnnotatedModels);
 		if (!apiList.isEmpty()) {
 			int coreCount = Runtime.getRuntime().availableProcessors();
 			ExecutorService service = Executors.newFixedThreadPool(coreCount);
-			HashMap<API, Future<LinkedList<ProcessInstanceWithVoters>>>allFuturesMap = new HashMap<API,Future<LinkedList<ProcessInstanceWithVoters>>>();
-			for(API api: apiList) {		
+			HashMap<API, Future<LinkedList<ProcessInstanceWithVoters>>> allFuturesMap = new HashMap<API, Future<LinkedList<ProcessInstanceWithVoters>>>();
+			for (API api : apiList) {
 				api.setAlgorithmToPerform("localMin");
-				//Future<LinkedList<ProcessInstanceWithVoters>> future = service.submit(api);
-				//allFuturesMap.putIfAbsent(api, future);
+				// Future<LinkedList<ProcessInstanceWithVoters>> future = service.submit(api);
+				// allFuturesMap.putIfAbsent(api, future);
 			}
-			
-			for(Entry<API, Future<LinkedList<ProcessInstanceWithVoters>>>entry: allFuturesMap.entrySet()) {
+
+			for (Entry<API, Future<LinkedList<ProcessInstanceWithVoters>>> entry : allFuturesMap.entrySet()) {
 				Future<LinkedList<ProcessInstanceWithVoters>> future = entry.getValue();
 				API api = entry.getKey();
-				LinkedList<ProcessInstanceWithVoters>localMinInst = null;
-				try {					
+				LinkedList<ProcessInstanceWithVoters> localMinInst = null;
+				try {
 					localMinInst = future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
-					CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(api, localMinInst, upperBoundNewModels, "");
-				
+					CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(api, localMinInst,
+							upperBoundNewModels, "");
+
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -801,27 +798,26 @@ public class BatchFileGenerator {
 					future.cancel(true);
 				}
 			}
-				service.shutdown();
-			
+			service.shutdown();
+
 		} else {
 			System.out.println("No Algorithms have been run successfully on annotated models");
 		}
 
 	}
-	
-	
+
 	public static LinkedList<File> getRandomModelsFromSourceFolder(int amountRandomModels, String pathToSourceFolder) {
 		File folder = new File(pathToSourceFolder);
 		LinkedList<File> listOfFiles = new LinkedList<File>();
 		listOfFiles.addAll(Arrays.asList(folder.listFiles()));
 
 		LinkedList<File> randomModelsFromSourceFolder = new LinkedList<File>();
-			for (int i = 0; i < amountRandomModels; i++) {
+		for (int i = 0; i < amountRandomModels; i++) {
 			File randomProcessModelFile = CommonFunctionality.getRandomItem(listOfFiles);
 			randomModelsFromSourceFolder.add(randomProcessModelFile);
 			listOfFiles.remove(randomProcessModelFile);
 		}
-		
+
 		return randomModelsFromSourceFolder;
 	}
 
@@ -830,10 +826,10 @@ public class BatchFileGenerator {
 
 		LinkedList<String> emptySphere = new LinkedList<String>();
 		emptySphere.add("");
-		
+
 		int coreCount = Runtime.getRuntime().availableProcessors();
 		ExecutorService executor = Executors.newFixedThreadPool(coreCount);
-		
+
 		for (int i = 0; i < randomProcesses.size(); i++) {
 			String pathToRandomProcess = randomProcesses.get(i).getAbsolutePath();
 			BpmnModelInstance processModel = Bpmn.readModelFromFile(randomProcesses.get(i));
@@ -843,13 +839,13 @@ public class BatchFileGenerator {
 			int amountRandomCountDataObjectsToCreate = 0;
 			while (modelIsValid == false) {
 				try {
-				ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
-						pathToDestinationFolderForStoringModels, "");
+					ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
+							pathToDestinationFolderForStoringModels, "");
 
-				// randomly generate dataObjects in the range [DataObjects, maxCountDataObjects]
-				amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(dataObjectBounds.get(0),
-						dataObjectBounds.get(1) + 1);
-				
+					// randomly generate dataObjects in the range [DataObjects, maxCountDataObjects]
+					amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(dataObjectBounds.get(0),
+							dataObjectBounds.get(1) + 1);
+
 					// create model with amountRandomCountDataObjects dataObjects, 0 participant
 					// needed for voting and empty string as starting sphere
 					pModel.generateDataObjects(amountRandomCountDataObjectsToCreate, emptySphere);
@@ -866,7 +862,7 @@ public class BatchFileGenerator {
 			for (int writerClass = 0; writerClass < percentageOfWritersClasses.size(); writerClass++) {
 				// for each model -> annotate it with small, medium, large amount of writers
 				BpmnModelInstance newModelInstance = Bpmn.readModelFromFile(newModel);
-								
+
 				int minAmountWriters = newModelInstance.getModelElementsByType(DataObjectReference.class).size();
 
 				int amountWriterTasksInModel = CommonFunctionality.getAmountFromPercentageWithMinimum(amountTasks,
@@ -896,13 +892,12 @@ public class BatchFileGenerator {
 
 					ProcessModelAnnotater modelWithReadersAndWriters;
 					try {
-						modelWithReadersAndWriters = new ProcessModelAnnotater(
-									newModel.getAbsolutePath(), pathToDestinationFolderForStoringModels,
-									suffixBuilder.toString(), emptySphere, 0, amountWriterTasksInModel,
-									amountReaderTasksInModel, 0, 1, amountRandomCountDataObjectsToCreate,
-									defaultNamesSeqFlowsXorSplits);
-						Future<File> future = executor.submit(modelWithReadersAndWriters);					
-						
+						modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(),
+								pathToDestinationFolderForStoringModels, suffixBuilder.toString(), emptySphere, 0,
+								amountWriterTasksInModel, amountReaderTasksInModel, 0, 1,
+								amountRandomCountDataObjectsToCreate, defaultNamesSeqFlowsXorSplits);
+						Future<File> future = executor.submit(modelWithReadersAndWriters);
+
 						try {
 							future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
 						} catch (InterruptedException e) {
@@ -920,17 +915,12 @@ public class BatchFileGenerator {
 							future.cancel(true);
 							e.printStackTrace();
 						}
-					
+
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 						readerClass--;
 					}
-
-					
-					
-					
-					
 
 				}
 			}
