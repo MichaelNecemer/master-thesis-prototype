@@ -1,10 +1,17 @@
 package functionality;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -13,9 +20,11 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -29,26 +38,38 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
+import org.camunda.bpm.model.bpmn.builder.AbstractFlowNodeBuilder;
+import org.camunda.bpm.model.bpmn.impl.instance.FlowNodeRef;
 import org.camunda.bpm.model.bpmn.instance.Association;
 import org.camunda.bpm.model.bpmn.instance.BusinessRuleTask;
+import org.camunda.bpm.model.bpmn.instance.Collaboration;
 import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.DataOutputAssociation;
+import org.camunda.bpm.model.bpmn.instance.Documentation;
 import org.camunda.bpm.model.bpmn.instance.EndEvent;
 import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import org.camunda.bpm.model.bpmn.instance.Gateway;
 import org.camunda.bpm.model.bpmn.instance.ItemAwareElement;
 import org.camunda.bpm.model.bpmn.instance.Lane;
+import org.camunda.bpm.model.bpmn.instance.LaneSet;
 import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
+import org.camunda.bpm.model.bpmn.instance.Process;
+import org.camunda.bpm.model.bpmn.instance.Property;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
+import org.camunda.bpm.model.bpmn.instance.ServiceTask;
 import org.camunda.bpm.model.bpmn.instance.StartEvent;
 import org.camunda.bpm.model.bpmn.instance.Task;
 import org.camunda.bpm.model.bpmn.instance.Text;
 import org.camunda.bpm.model.bpmn.instance.TextAnnotation;
+import org.camunda.bpm.model.bpmn.instance.UserTask;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnEdge;
+import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnPlane;
 import org.camunda.bpm.model.bpmn.instance.bpmndi.BpmnShape;
+import org.camunda.bpm.model.bpmn.instance.dc.Bounds;
 import org.camunda.bpm.model.bpmn.instance.di.Plane;
+import org.camunda.bpm.model.bpmn.instance.di.Shape;
 import org.camunda.bpm.model.bpmn.instance.di.Waypoint;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -56,7 +77,12 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rits.cloning.Cloner;
+
 import Mapping.BPMNBusinessRuleTask;
+import Mapping.BPMNDataObject;
 import Mapping.BPMNElement;
 import Mapping.BPMNEndEvent;
 import Mapping.BPMNExclusiveGateway;
@@ -1548,12 +1574,19 @@ public static void increaseSpherePerDataObject(BpmnModelInstance modelInstance, 
 		Bpmn.validateModel(modelInstance);		
 		
 		int fileNumber = 0;
+		if(fileName.contains(".bpmn")) {
+			fileName = fileName.substring(0, fileName.indexOf(".bpmn"));
+		}
+		if(!suffixName.startsWith("_")) {
+			suffixName = "_"+suffixName;
+		}
 		
 		File dir = new File(directoryToStoreAnnotatedModel);		
 		  File[] directoryListing = dir.listFiles();
+		  boolean increaseFileNumber = false;
 		  if (directoryListing != null) {
 		    for (File child : directoryListing) {	
-		    	if(child.getName().contains(fileName)&&child.getName().contains(".bpmn")) {
+		    	if(child.getName().equals(fileName)&&child.getName().contains(".bpmn")) {
 		    	String nameOfFileInsideDirectory = child.getName().substring(0, child.getName().indexOf(".bpmn"));	
 		    	if(nameOfFileInsideDirectory.contains("_annotated")) {
 		    	Pattern p = Pattern.compile("[0-9]+");
@@ -1562,14 +1595,19 @@ public static void increaseSpherePerDataObject(BpmnModelInstance modelInstance, 
 		    	    int num = Integer.parseInt(m.group());
 		    	    if(num>fileNumber) {
 		    	    	fileNumber = num;
+		    	    	increaseFileNumber = true;
 		    	    }
 		    	}
 		    }
 		    }
 		    }
 		  }
-		 fileNumber++; 
-		String annotatedFileName = fileName+fileNumber+suffixName+".bpmn";
+		  String annotatedFileName = fileName+suffixName+".bpmn";
+		  if(increaseFileNumber) {
+				 fileNumber++; 
+			 annotatedFileName = fileName+fileNumber+suffixName+".bpmn";
+
+		  }
 		File file = CommonFunctionality.createFileWithinDirectory(directoryToStoreAnnotatedModel, annotatedFileName);
 			
 		System.out.println("File path: "+file.getAbsolutePath());
@@ -1938,6 +1976,901 @@ public static int binom(int n, int k) {
 
 
 
+
+public static Object deepCopy(Object object) {
+	try {
+		Cloner cloner = new Cloner();
+		Object clone = cloner.deepClone(object);
+		return clone;
+		
+	} catch (Exception e) {
+		e.printStackTrace();
+		return null;
+	}
+	
+	
+}
+
+
+public static FlowNode getFlowNodeByBPMNNodeId(BpmnModelInstance modelInstance, String id) {
+	for (FlowNode flowNode : modelInstance.getModelElementsByType(FlowNode.class)) {
+		if (flowNode.getId().equals(id)) {
+			return flowNode;
+		}
+	}
+	return null;
+}
+
+
+public static void removeBusinessRuleTask(BusinessRuleTask brt, BpmnModelInstance modelInstance) {
+	SequenceFlow outgoingSeq = brt.getOutgoing().iterator().next();
+	BpmnEdge flowDi = outgoingSeq.getDiagramElement();
+	for (BpmnEdge e : modelInstance.getModelElementsByType(BpmnEdge.class)) {
+		if (e.getId().equals(flowDi.getId())) {
+			e.getParentElement().removeChildElement(e);
+		}
+	}
+
+	outgoingSeq.getParentElement().removeChildElement(outgoingSeq);
+
+	SequenceFlow incomingSeq = brt.getIncoming().iterator().next();
+	BpmnEdge flowDi2 = incomingSeq.getDiagramElement();
+	for (BpmnEdge e : modelInstance.getModelElementsByType(BpmnEdge.class)) {
+		if (e.getId().equals(flowDi2.getId())) {
+			e.getParentElement().removeChildElement(e);
+		}
+	}
+	incomingSeq.getParentElement().removeChildElement(incomingSeq);
+
+	brt.getDataInputAssociations().removeAll(brt.getDataInputAssociations());
+	for (BpmnEdge bpmnE : modelInstance.getModelElementsByType(BpmnEdge.class)) {
+		if (bpmnE.getBpmnElement() == null) {
+			bpmnE.getParentElement().removeChildElement(bpmnE);
+		}
+	}
+	for (TextAnnotation text : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+		for (Association a : modelInstance.getModelElementsByType(Association.class)) {
+
+			if (text.getTextContent().startsWith("[Decision]") && a.getSource().equals(brt)
+					&& text.getId().equals(a.getTarget().getId())) {
+				for (BpmnEdge edge : modelInstance.getModelElementsByType(BpmnEdge.class)) {
+					if (edge.getBpmnElement().equals(a)) {
+						edge.getParentElement().removeChildElement(edge);
+						break;
+					}
+				}
+				a.getParentElement().removeChildElement(a);
+				text.getParentElement().removeChildElement(text);
+			}
+		}
+	}
+
+	brt.getParentElement().removeChildElement(brt);
+
+	for (BpmnShape bpmnS : modelInstance.getModelElementsByType(BpmnShape.class)) {
+		if (bpmnS.getBpmnElement() == null) {
+			bpmnS.getParentElement().removeChildElement(bpmnS);
+		}
+	}
+
+}
+
+
+
+public static void generateNewModelsWithAnnotatedChosenParticipants(API api, LinkedList<ProcessInstanceWithVoters> pInstances, int upperBoundNewModels, String directoryToStoreAnnotatedModels) {
+	// call this method after the localMinimumAlgorithm has found the best
+	// solution(s)
+	// for each solution -> generate a new bpmn file
+	// annotate the participants to the xor-splits
+	// if amount participants generated for voting equals the participants in the
+	// global sphere: mark the xor-split as private
+	// if amount participants needed for voting > participants in the global sphere
+	// or if it is marked as public already:
+	// mark the xor-split as public
+	
+	String fileName = api.getProcessFile().getName();
+	if(directoryToStoreAnnotatedModels == null || directoryToStoreAnnotatedModels.contentEquals("")) {
+		//directory will be the same directory as the process file from the api
+		directoryToStoreAnnotatedModels = api.getProcessFile().getParent();	
+	}
+	
+	if(upperBoundNewModels<=0) {
+		//all instances will be written to files
+		upperBoundNewModels = pInstances.size();
+	} 
+	if(upperBoundNewModels>pInstances.size()) {
+		upperBoundNewModels = pInstances.size();
+	}
+	
+	int i = 1;
+
+	for (int bound = 0; bound < upperBoundNewModels; bound++) {
+		ProcessInstanceWithVoters pInst = pInstances.get(bound);
+		//make a deep copy of the modelInstance to prevent changing the model itself
+		BpmnModelInstance modelInstance = (BpmnModelInstance) CommonFunctionality.deepCopy(api.getModelInstance());
+
+		for (Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> entry : pInst.getVotersMap().entrySet()) {
+			
+			ObjectMapper mapper = new ObjectMapper();
+			// Convert object to JSON string
+			StringBuilder sbDecision = new StringBuilder();
+			String jsonInString;
+			try {
+				jsonInString = mapper.writeValueAsString(entry.getKey().getDecisionEvaluation());
+				sbDecision.append(jsonInString);
+			} catch (JsonProcessingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+			Documentation doc = modelInstance.newInstance(Documentation.class);
+			doc.setTextContent(sbDecision.toString());
+			BusinessRuleTask brt = (BusinessRuleTask) CommonFunctionality.getFlowNodeByBPMNNodeId( modelInstance,entry.getKey().getId());
+			brt.getDocumentations().add(doc);
+
+			BPMNExclusiveGateway xorSplit = (BPMNExclusiveGateway) entry.getKey().getSuccessors().iterator().next();
+			FlowNode gtw = CommonFunctionality.getFlowNodeByBPMNNodeId( modelInstance,xorSplit.getId());
+			TextAnnotation sphere = null;
+
+			if (xorSplit.getAmountVoters() == api.getGlobalSphereList().size()) {
+				// annotate "private" to the xor-split
+				sphere = modelInstance.newInstance(TextAnnotation.class);
+				String textContent = "[Voters] {Private}";
+
+				sphere.setTextFormat("text/plain");
+				Text text = modelInstance.newInstance(Text.class);
+				text.setTextContent(textContent);
+				sphere.setText(text);
+				gtw.getParentElement().addChildElement(sphere);
+
+				// add the shape of the text annotation to the xml file
+				CommonFunctionality.generateShapeForTextAnnotation(modelInstance, sphere, gtw);
+
+			} else if (xorSplit.getAmountVoters() > api.getGlobalSphereList().size()) {
+				// annotate "public" to the xor-split
+				sphere = modelInstance.newInstance(TextAnnotation.class);
+				String textContent = "[Voters] {Public}";
+
+				sphere.setTextFormat("text/plain");
+				Text text = modelInstance.newInstance(Text.class);
+				text.setTextContent(textContent);
+				sphere.setText(text);
+				gtw.getParentElement().addChildElement(sphere);
+
+				// add the shape of the text annotation to the xml file
+				CommonFunctionality.generateShapeForTextAnnotation(modelInstance, sphere, gtw);
+
+			} else {
+				// annotate the chosen Participants to the xor-split that will be the voters
+				sphere = modelInstance.newInstance(TextAnnotation.class);
+				sphere.setTextFormat("text/plain");
+
+				Text text = modelInstance.newInstance(Text.class);
+
+				StringBuilder sb = new StringBuilder();
+				sb.append("[Voters]{");
+				for (BPMNParticipant participant : entry.getValue()) {
+					sb.append(participant.getName() + ", ");
+				}
+				sb.deleteCharAt(sb.length() - 1);
+				sb.deleteCharAt(sb.length() - 1);
+				sb.append("}");
+				text.setTextContent(sb.toString());
+
+				sphere.setText(text);
+				gtw.getParentElement().addChildElement(sphere);
+
+				// add the shape of the text annotation to the xml file
+				CommonFunctionality.generateShapeForTextAnnotation(modelInstance, sphere, gtw);
+
+			}
+
+			if (sphere != null) {
+				Association assoc = modelInstance.newInstance(Association.class);
+				assoc.setSource(gtw);
+				assoc.setTarget(sphere);
+				gtw.getParentElement().addChildElement(assoc);
+				// DI element for the edge
+				BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
+				edge.setBpmnElement(assoc);
+				Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
+				wp1.setX(((Shape) gtw.getDiagramElement()).getBounds().getX() + 10);
+				wp1.setY(((Shape) gtw.getDiagramElement()).getBounds().getY() + 10);
+				Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+				wp2.setX(((Shape) gtw.getDiagramElement()).getBounds().getX() - 50);
+				wp2.setY(((Shape) gtw.getDiagramElement()).getBounds().getY() - 50);
+
+				edge.getWaypoints().add(wp1);
+				edge.getWaypoints().add(wp2);
+				modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
+			}
+
+		}
+
+		for (BusinessRuleTask brt : modelInstance.getModelElementsByType(BusinessRuleTask.class)) {
+			Iterator<Association> assocIter = modelInstance.getModelElementsByType(Association.class).iterator();
+			while (assocIter.hasNext()) {
+				Association a = assocIter.next();
+				for (TextAnnotation txt : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+					if (txt.getTextContent().startsWith("[Decision]") && a.getSource().equals(brt)
+							&& txt.getId().equals(a.getTarget().getId())) {
+						for (BpmnEdge edge : modelInstance.getModelElementsByType(BpmnEdge.class)) {
+							if (edge.getBpmnElement().equals(a)) {
+								edge.getParentElement().removeChildElement(edge);
+							}
+						}
+						a.getParentElement().removeChildElement(a);
+						txt.getParentElement().removeChildElement(txt);
+						for (BpmnShape shape : modelInstance.getModelElementsByType(BpmnShape.class)) {
+							if (shape.getBpmnElement() == null
+									|| shape.getBpmnElement().getId().contentEquals(a.getId())) {
+								shape.getParentElement().removeChildElement(shape);
+							}
+						}
+					}
+
+				}
+			}
+
+		}
+
+		try {
+			String suffix = "votingAsAnnotation-solution" + i;
+			CommonFunctionality.writeChangesToFile(modelInstance, fileName, directoryToStoreAnnotatedModels, suffix);
+			
+		} catch (IOException | ParserConfigurationException | SAXException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		i++;
+	}
+
+}
+
+
+public static void generateShapeForTextAnnotation(BpmnModelInstance modelInstance, TextAnnotation txt, FlowNode ref) {
+	BpmnShape shapeForAnnotation = modelInstance.newInstance(BpmnShape.class);
+	shapeForAnnotation.setBpmnElement(txt);
+	Bounds bounds = modelInstance.newInstance(Bounds.class);
+	bounds.setX(getShape(modelInstance, ref.getId()).getBounds().getX() - 200);
+	bounds.setY(getShape(modelInstance, ref.getId()).getBounds().getY() - 40);
+	bounds.setWidth(284);
+	bounds.setHeight(30);
+	shapeForAnnotation.setBounds(bounds);
+	modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(shapeForAnnotation);
+
+}
+
+
+
+public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedList<ProcessInstanceWithVoters> pInstances, int upperBoundNewModels,
+		String directoryToStoreModels, boolean mapModelBtn) throws IOException {
+	
+	String fileName = api.getProcessFile().getName();
+	if(directoryToStoreModels == null || directoryToStoreModels.contentEquals("")) {
+		//directory will be the same directory as the process file from the api
+		directoryToStoreModels = api.getProcessFile().getParent();	
+	}
+	
+	if(upperBoundNewModels<=0) {
+		//all instances will be written to files
+		upperBoundNewModels = pInstances.size();
+	} 
+	if(upperBoundNewModels>pInstances.size()) {
+		upperBoundNewModels = pInstances.size();
+	}
+	
+	int i = 1;
+	
+	
+	// when there is no default troubleshooter annotated - take a random participant
+	BPMNParticipant troubleShooter = api.getTroubleShooter();
+	if (troubleShooter == null) {
+		troubleShooter = CommonFunctionality.getRandomItem(api.getGlobalSphereList());
+	}
+
+	int j = 1;
+	for (int bound = 0; bound < upperBoundNewModels; bound++) {
+		//make a deep copy of the modelInstance to prevent changing the model itself
+	BpmnModelInstance modelInstance = (BpmnModelInstance) CommonFunctionality.deepCopy(api.getModelInstance());
+	Bpmn.validateModel(modelInstance);
+
+	ProcessInstanceWithVoters pInstance = pInstances.get(bound);
+	Iterator<BPMNBusinessRuleTask> bpmnBusinessRtIterator = pInstance.getVotersMap().keySet().iterator();
+
+	while (bpmnBusinessRtIterator.hasNext()) {
+		BPMNBusinessRuleTask bpmnBusinessRt = bpmnBusinessRtIterator.next();
+		BusinessRuleTask businessRt = (BusinessRuleTask) CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance, bpmnBusinessRt.getId());
+		LinkedList<BPMNParticipant> votersForBrt = pInstance.getVotersMap().get(bpmnBusinessRt);
+		BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) bpmnBusinessRt.getSuccessors().iterator().next();
+
+		// builder doesn't work on task (need to be subclasses of task!)
+		// convert the task to a user task to prevent error
+		BPMNElement predecessorOfBpmnBrt = bpmnBusinessRt.getPredecessors().iterator().next();
+		if (predecessorOfBpmnBrt.getClass() == Mapping.BPMNTask.class) {
+			Task predec = (Task) CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance,predecessorOfBpmnBrt.getId());
+			Bpmn.validateModel(modelInstance);
+			UserTask userTask = modelInstance.newInstance(UserTask.class);
+			userTask.setId(predec.getId().trim());
+			userTask.setName(predec.getName().trim());
+			userTask.getDataInputAssociations().addAll(predec.getDataInputAssociations());
+			userTask.getDataOutputAssociations().addAll(predec.getDataOutputAssociations());
+			userTask.getProperties().addAll(predec.getProperties());
+			predec.replaceWithElement(userTask);
+		}
+
+		// check if there is only one participant selected for each data object of the
+		// voting
+		boolean onlyOneTask = false;
+		if (votersForBrt.size() == 1) {
+			onlyOneTask = true;
+		}
+
+		// Voting system inside of a subprocess
+		if (!mapModelBtn) {
+
+			if (!(onlyOneTask)) {
+				BPMNParallelGateway.increaseVotingTaskCount();
+				CommonFunctionality.addTasksToVotingSystem(api,modelInstance, i, businessRt, bpmnEx,
+						CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance, bpmnBusinessRt.getPredecessors().iterator().next().getId())
+								.builder().subProcess().embeddedSubProcess().startEvent(),
+						"PV" + BPMNParallelGateway.getVotingTaskCount(),
+						pInstance.getVotersMap().get(bpmnBusinessRt), troubleShooter,
+						"PV" + BPMNParallelGateway.getVotingTaskCount(),
+						BPMNExclusiveGateway.increaseExclusiveGtwCount(), mapModelBtn, onlyOneTask);
+			} else {
+				CommonFunctionality.addTasksToVotingSystem(api, modelInstance, i, businessRt, bpmnEx,
+						businessRt.builder().moveToNode(bpmnBusinessRt.getPredecessors().iterator().next().getId()),
+						"PV" + BPMNParallelGateway.getVotingTaskCount(),
+						pInstance.getVotersMap().get(bpmnBusinessRt), troubleShooter,
+						"PV" + BPMNParallelGateway.getVotingTaskCount(), 0, mapModelBtn, onlyOneTask);
+			}
+		}
+
+		else {
+			// Voting without having a subprocess
+			if (!onlyOneTask) {
+				BPMNParallelGateway.increaseVotingTaskCount();
+				BPMNExclusiveGateway.increaseExclusiveGtwCount();
+			}
+			CommonFunctionality.addTasksToVotingSystem(api, modelInstance, i, businessRt, bpmnEx,
+					businessRt.builder().moveToNode(bpmnBusinessRt.getPredecessors().iterator().next().getId()),
+					"PV" + BPMNParallelGateway.getVotingTaskCount(), pInstance.getVotersMap().get(bpmnBusinessRt),
+					troubleShooter, "PV" + BPMNParallelGateway.getVotingTaskCount(),
+					BPMNExclusiveGateway.getExclusiveGtwCount(), mapModelBtn, onlyOneTask);
+
+		}
+
+		// Add the new tasks generated via fluent builder API to the corresponding lanes
+		// in the xml model
+		// Cant be done with the fluent model builder directly!
+
+		for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
+			for (Task task : modelInstance.getModelElementsByType(UserTask.class)) {
+				if (task.getName().startsWith("VotingTask") && l.getName().equals(
+						task.getName().substring(task.getName().indexOf(" ") + 1, task.getName().length()))) {
+					// Add necessary information to the voting tasks
+
+					if (mapModelBtn && task.getDocumentations().isEmpty()) {
+						Documentation doc = modelInstance.newInstance(Documentation.class);
+						StringBuilder sb = new StringBuilder();
+
+						// add the decision of the businessruletask to the element documentation of the
+						// voting tasks
+						// use the Jackson converter to convert java object into json format
+
+						ObjectMapper mapper = new ObjectMapper();
+						// Convert object to JSON string
+						String jsonInString = mapper.writeValueAsString(bpmnBusinessRt.getDecisionEvaluation());
+						sb.append(jsonInString);
+						// add a false rate for the voting tasks
+						if (task.getName().startsWith("VotingTask")) {
+							sb.deleteCharAt(sb.length() - 1);
+							sb.append(",\"falseRate\":\"" + bpmnBusinessRt.getFalseRate() + "\"}");
+
+						}
+						doc.setTextContent(sb.toString());
+						task.getDocumentations().add(doc);
+
+					}
+
+					// Put the voting tasks to the corresponding lanes in the xml model
+					FlowNodeRef ref = modelInstance.newInstance(FlowNodeRef.class);
+					ref.setTextContent(task.getId());
+					FlowNode n = CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance, task.getId());
+					if (!l.getFlowNodeRefs().contains(n)) {
+						l.addChildElement(ref);
+					}
+
+				}
+			}
+
+		}		
+		i++;
+
+	}
+		
+	Iterator<BPMNBusinessRuleTask>chosenPInstIter = pInstance.getVotersMap().keySet().iterator();
+	while(chosenPInstIter.hasNext()) {
+		BPMNBusinessRuleTask brt = chosenPInstIter.next();
+			BusinessRuleTask b = (BusinessRuleTask) CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance, brt.getId());
+			if(b!=null) {
+			CommonFunctionality.removeBusinessRuleTask(b, modelInstance);
+			}			
+	}
+	try {
+		if (mapModelBtn) {
+			CommonFunctionality.mapModel(modelInstance);
+		}
+		String suffix= "votingAsConstruct-solution" + bound;
+		CommonFunctionality.writeChangesToFile(modelInstance, fileName,directoryToStoreModels, suffix);
+	} catch (ParserConfigurationException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	} catch (SAXException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	}
+	j++;
+	}
+
+	
+	
+
+}
+
+private static void addTasksToVotingSystem(API api, BpmnModelInstance modelInstance, int i, BusinessRuleTask brt, BPMNExclusiveGateway bpmnEx,
+		AbstractFlowNodeBuilder builder, String parallelSplit, LinkedList<BPMNParticipant> voters,
+		BPMNParticipant troubleShooter, String parallelJoin, int exclusiveGtwCount, boolean mapModelBtn,
+		boolean onlyOneTask) {
+	if (voters.isEmpty()) {
+		System.err.println("No voters selected");
+
+	}
+
+	// SequenceFlow connecting businessruletask and xor gtw
+	SequenceFlow s = brt.getOutgoing().iterator().next();
+	FlowNode targetGtw = s.getTarget();
+
+	String exclusiveGatewayDeciderSplitId = "";
+	String exclusiveGatewayDeciderJoinId = "";
+	String exclusiveGatewayDeciderName = "";
+
+	Iterator<BPMNParticipant> votersIter = voters.iterator();
+	ArrayList<Task> alreadyModelled = new ArrayList<Task>();
+	Set<BPMNDataObject> allBPMNDataObjects = new HashSet<BPMNDataObject>();
+
+	allBPMNDataObjects.addAll(((BPMNBusinessRuleTask) CommonFunctionality.getNodeById(api.getProcessElements(),brt.getId())).getDataObjects());
+	String parallelSplitId = parallelSplit + "_split";
+	String parallelJoinId = parallelJoin + "_join";
+	boolean isSet = false;
+
+	// if there is only one user, than simply add one voting task without parallel
+	// and xor splits
+	if (onlyOneTask) {
+		int votingTaskId = BPMNTask.increaseVotingTaskId();
+
+		BPMNParticipant nextParticipant = votersIter.next();
+		String serviceTaskId = "serviceTask_CollectVotes" + i;
+		builder.userTask("Task_votingTask" + votingTaskId).name("VotingTask " + nextParticipant.getName())
+				.serviceTask(serviceTaskId).name("Collect Votes").connectTo(targetGtw.getId());
+
+		ServiceTask st = (ServiceTask) CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance, serviceTaskId);
+		st.getOutgoing().iterator().next().getId();
+		CommonFunctionality.addInformationToServiceTasks(modelInstance, st, (BPMNExclusiveGateway) CommonFunctionality.getNodeById(api.getProcessElements(),targetGtw.getId()), false);
+
+		for (BPMNDataObject dao : allBPMNDataObjects) {
+			CommonFunctionality.addDataInputReferencesToVotingTasks(modelInstance,
+					(Task) CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance,"Task_votingTask" + votingTaskId), dao);
+		}
+
+	} else {
+
+		String exclusiveGatewaySplitId = "EV" + exclusiveGtwCount + "_split";
+		String exclusiveGatewayJoinId = "EV" + exclusiveGtwCount + "_join";
+		String exclusiveGatewayName = "EV" + exclusiveGtwCount + "_loop";
+		builder.exclusiveGateway(exclusiveGatewayJoinId).name(exclusiveGatewayName).parallelGateway(parallelSplitId)
+				.name(parallelSplit);
+
+		while (votersIter.hasNext()) {
+
+			BPMNParticipant nextParticipant = votersIter.next();
+
+			boolean skip = false;
+
+			for (Task t : alreadyModelled) {
+				if (t.getName().equals("VotingTask " + nextParticipant.getName())) {
+					for (BPMNDataObject dao : allBPMNDataObjects) {
+						CommonFunctionality.addDataInputReferencesToVotingTasks(modelInstance, t, dao);
+					}
+					skip = true;
+				}
+			}
+			if (skip == false) {
+				int votingTaskId = BPMNTask.increaseVotingTaskId();
+
+				builder.moveToNode(parallelSplitId).userTask("Task_votingTask" + votingTaskId)
+						.name("VotingTask " + nextParticipant.getName());
+				alreadyModelled.add((Task) CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance, "Task_votingTask" + votingTaskId));
+				for (BPMNDataObject dao : allBPMNDataObjects) {
+					CommonFunctionality.addDataInputReferencesToVotingTasks(modelInstance,
+							(Task) CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance, "Task_votingTask" + votingTaskId), dao);
+				}
+
+				if (isSet == false) {
+					builder.moveToNode("Task_votingTask" + votingTaskId).parallelGateway(parallelJoinId)
+							.name(parallelJoin);
+					isSet = true;
+				} else {
+					builder.moveToNode("Task_votingTask" + votingTaskId).connectTo(parallelJoinId);
+				}
+
+			}
+			if (!votersIter.hasNext()) {
+
+				String serviceTaskId = "serviceTask_CollectVotes" + i;
+				builder.moveToNode(parallelJoinId).serviceTask(serviceTaskId).name("Collect Votes")
+						.exclusiveGateway(exclusiveGatewaySplitId).name(exclusiveGatewayName);
+
+				builder.moveToNode(exclusiveGatewaySplitId).connectTo(exclusiveGatewayJoinId);
+
+				FlowNode flowN = modelInstance.getModelElementById(exclusiveGatewaySplitId);
+				for (SequenceFlow outgoing : flowN.getOutgoing()) {
+					if (outgoing.getTarget().equals(modelInstance.getModelElementById(exclusiveGatewayJoinId))) {
+						// to avoid overlapping of sequenceflow in diagram
+						outgoing.setName("yes");
+						CommonFunctionality.changeWayPoints(modelInstance, outgoing);
+					}
+				}
+
+				CommonFunctionality.addInformationToServiceTasks(modelInstance, (ServiceTask) CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance, serviceTaskId),
+						(BPMNExclusiveGateway) CommonFunctionality.getNodeById(api.getProcessElements(),targetGtw.getId()), true);
+
+				// add the gateway for the troubleShooter
+
+				String votingTaskName = "TroubleShooter " + troubleShooter.getName();
+
+				BPMNExclusiveGateway.increaseExclusiveGtwCount();
+				exclusiveGatewayDeciderSplitId = "EV" + BPMNExclusiveGateway.getExclusiveGtwCount() + "split";
+				exclusiveGatewayDeciderJoinId = "EV" + BPMNExclusiveGateway.getExclusiveGtwCount() + "join";
+				exclusiveGatewayDeciderName = "EV" + BPMNExclusiveGateway.getExclusiveGtwCount();
+				String serviceTaskDeciderId = "serviceTask_CollectVotesDecider" + i;
+				builder.moveToNode(exclusiveGatewaySplitId).exclusiveGateway(exclusiveGatewayDeciderSplitId)
+						.name(exclusiveGatewayDeciderName)
+						.userTask("Task_votingTask" + BPMNTask.increaseVotingTaskId()).name(votingTaskName)
+						.serviceTask(serviceTaskDeciderId).name("Collect Votes")
+						.exclusiveGateway(exclusiveGatewayDeciderJoinId).name(exclusiveGatewayDeciderName);
+				CommonFunctionality.addInformationToServiceTasks(modelInstance, (ServiceTask) CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance, serviceTaskDeciderId),
+						(BPMNExclusiveGateway) CommonFunctionality.getNodeById(api.getProcessElements(),targetGtw.getId()), false);
+
+				for (BPMNDataObject dao : allBPMNDataObjects) {
+					CommonFunctionality.addDataInputReferencesToVotingTasks(modelInstance, 
+							(Task) CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance, "Task_votingTask" + BPMNTask.getVotingTaskId()),
+							dao);
+				}
+
+			} else {
+				if (votersIter.hasNext()) {
+					builder.moveToNode(parallelSplitId);
+				}
+			}
+
+			skip = false;
+
+		}
+
+		if (mapModelBtn) {
+			builder.moveToNode(exclusiveGatewayDeciderJoinId).connectTo(targetGtw.getId());
+			builder.moveToNode(exclusiveGatewayDeciderSplitId).connectTo(exclusiveGatewayDeciderJoinId);
+
+		}
+
+		else if (!mapModelBtn) {
+
+			builder.moveToNode(exclusiveGatewayDeciderJoinId).endEvent("endEventWithInSubProcess" + i).name("")
+					.subProcessDone().connectTo(targetGtw.getId());
+			builder.moveToNode(exclusiveGatewayDeciderSplitId).connectTo(exclusiveGatewayDeciderJoinId);
+		}
+
+		FlowNode flowNo = modelInstance.getModelElementById(exclusiveGatewayDeciderSplitId);
+		SequenceFlow incomingSeq = flowNo.getIncoming().iterator().next();
+		incomingSeq.setName("no");
+		for (SequenceFlow outgoingSeq : flowNo.getOutgoing()) {
+			if (outgoingSeq.getTarget() instanceof UserTask) {
+				outgoingSeq.setName("yes");
+			} else {
+				outgoingSeq.setName("no");
+				CommonFunctionality.changeWayPoints(modelInstance, outgoingSeq);
+			}
+		}
+
+	}
+
+}
+
+public static BPMNElement getNodeById(List<BPMNElement> processElements, String id) {
+	for (BPMNElement e : processElements) {
+		if (e.getId().equals(id)) {
+			return e;
+		}
+	}
+	return null;
+}
+
+public static void mapModel(BpmnModelInstance modelInstance) {
+
+	Iterator<Lane> laneIter = modelInstance.getModelElementsByType(Lane.class).iterator();
+	while (laneIter.hasNext()) {
+		Lane nextLane = laneIter.next();
+		for (FlowNode flowNode : nextLane.getFlowNodeRefs()) {
+			for (TextAnnotation txt : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+				for (Association a : modelInstance.getModelElementsByType(Association.class)) {
+					if (flowNode instanceof ExclusiveGateway) {
+						// remove XOR-Annotations for the amount of participants needed
+						// remove Decision-Annotations for BusinessRuleTasks
+
+						if ((txt.getTextContent().startsWith("[Voters]")
+								|| txt.getTextContent().startsWith("[Decision]")) && a.getSource().equals(flowNode)
+								&& txt.getId().equals(a.getTarget().getId())) {
+							for (BpmnEdge edge : modelInstance.getModelElementsByType(BpmnEdge.class)) {
+								if (edge.getBpmnElement().equals(a)) {
+									edge.getParentElement().removeChildElement(edge);
+								}
+							}
+							a.getParentElement().removeChildElement(a);
+							txt.getParentElement().removeChildElement(txt);
+
+						}
+					}
+				}
+			}
+			if (flowNode instanceof Task) {
+				if (!(flowNode instanceof ServiceTask && flowNode.getName().equals("Collect Votes"))) {
+					if (flowNode.getName().startsWith("VotingTask")) {
+						flowNode.setAttributeValue("name", "VotingTask [" + nextLane.getName() + "]");
+					} else if (flowNode.getName().startsWith("TroubleShooter")) {
+						flowNode.setAttributeValue("name", "TroubleShooter [" + nextLane.getName() + "]");
+					} else {
+						flowNode.setAttributeValue("name", flowNode.getName() + " [" + nextLane.getName() + "]");
+					}
+				}
+			}
+		}
+		nextLane.getParentElement().removeChildElement(nextLane);
+
+	}
+
+	// remove collaboration
+	for (Collaboration cr : modelInstance.getModelElementsByType(Collaboration.class)) {
+		cr.getParentElement().removeChildElement(cr);
+	}
+
+	// remove laneSet
+	for (LaneSet ls : modelInstance.getModelElementsByType(LaneSet.class)) {
+		ls.getParentElement().removeChildElement(ls);
+	}
+
+	// remove remaining bpmndi elements
+	for (BpmnShape shape : modelInstance.getModelElementsByType(BpmnShape.class)) {
+		if (shape.getBpmnElement() == null) {
+			shape.getParentElement().removeChildElement(shape);
+		}
+	}
+
+	for (BpmnPlane lane : modelInstance.getModelElementsByType(BpmnPlane.class)) {
+		if (lane.getBpmnElement() == null) {
+			lane.setBpmnElement(modelInstance.getModelElementsByType(Process.class).iterator().next());
+		}
+	}
+
+}
+
+public static void addInformationToServiceTasks(BpmnModelInstance modelInstance, ServiceTask st, BPMNExclusiveGateway xor, boolean votingTask) {
+	st.setCamundaType("external");
+	st.setCamundaTopic("voting");
+	Documentation dataObjectDocu = modelInstance.newInstance(Documentation.class);
+	StringBuilder sb = new StringBuilder();
+	if (votingTask) {
+		sb.append("{\"gateway\":\"" + st.getOutgoing().iterator().next().getTarget().getName() + "\"");
+		sb.append(",\"sameDecision\":" + "\"" + xor.getVotersSameChoice() + "\"" + ",\"loops\":" + "\""
+				+ xor.getAmountLoops() + "\"");
+	} else {
+		sb.append("{\"gateway\":\"" + xor.getName() + "\"");
+	}
+	sb.append("}");
+	dataObjectDocu.setTextContent(sb.toString());
+	st.getDocumentations().add(dataObjectDocu);
+}
+
+
+
+private static void addDataInputReferencesToVotingTasks(BpmnModelInstance modelInstance, Task task, BPMNDataObject dataObject) {
+	boolean alreadyModelled = false;
+	// check whether there is already a DataInputAssociation between the task and
+	// the dataObject
+	for (DataInputAssociation di : task.getDataInputAssociations()) {
+		for (ItemAwareElement item : di.getSources()) {
+			if (item.getAttributeValue("dataObjectRef").equals(dataObject.getId())) {
+				alreadyModelled = true;
+			}
+		}
+	}
+
+	if (task.getDataInputAssociations().isEmpty() || alreadyModelled == false) {
+		DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
+
+		Property p1 = modelInstance.newInstance(Property.class);
+		p1.setName("__targetRef_placeholder");
+
+		task.addChildElement(p1);
+		dia.setTarget(p1);
+		task.getDataInputAssociations().add(dia);
+
+		double xDataObject = 0;
+		double yDataObject = 0;
+		double xTask = 0;
+		double yTask = 0;
+		for (DataObjectReference d1 : modelInstance.getModelElementsByType(DataObjectReference.class)) {
+			if (dataObject.getId().equals(d1.getAttributeValue("dataObjectRef"))) {
+				dia.getSources().add(d1);
+
+				for (BpmnShape shape : modelInstance.getModelElementsByType(BpmnShape.class)) {
+					if (shape.getBpmnElement().getId().equals(d1.getId())) {
+						xDataObject = shape.getBounds().getX() + (shape.getBounds().getWidth() / 2);
+						yDataObject = (shape.getBounds().getY() + shape.getBounds().getHeight());
+
+					}
+					if (shape.getBpmnElement().getId().equals(task.getId())) {
+						xTask = shape.getBounds().getX();
+						yTask = shape.getBounds().getY();
+					}
+
+				}
+			}
+		}
+
+		BpmnEdge e = modelInstance.newInstance(BpmnEdge.class);
+		e.setBpmnElement(dia);
+		Waypoint wp = modelInstance.newInstance(Waypoint.class);
+		// Waypoints for the source -> the Data Object
+		wp.setX(xDataObject);
+		wp.setY(yDataObject);
+		e.addChildElement(wp);
+
+		// Waypoint for the target -> the Task that has the Data Input
+		Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+
+		wp2.setX(xTask);
+		wp2.setY(yTask);
+		e.addChildElement(wp2);
+
+		// e.getParentElement().addChildElement(e);
+		modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(e);
+	}
+
+}
+
+public static void changeWayPoints(BpmnModelInstance modelInstance, SequenceFlow seqFlow) {
+	BpmnEdge edge = seqFlow.getDiagramElement();
+	Object[] wpArray = edge.getWaypoints().toArray();
+	Waypoint wp1 = (Waypoint) wpArray[0];
+	Waypoint wp2 = (Waypoint) wpArray[1];
+	Collection<Waypoint> collWp = new ArrayList<Waypoint>();
+	Waypoint wpToBeInserted1 = modelInstance.newInstance(Waypoint.class);
+	Waypoint wpToBeInserted2 = modelInstance.newInstance(Waypoint.class);
+	Waypoint wpToBeInserted3 = modelInstance.newInstance(Waypoint.class);
+	Waypoint wpToBeInserted4 = modelInstance.newInstance(Waypoint.class);
+
+	if (wp1.getX() > wp2.getX()) {
+		double wpX = (wp1.getX() - 25.0);
+		double wpY = (wp1.getY() - 25.0);
+		wpToBeInserted1.setX(wpX);
+		wpToBeInserted1.setY((wpY));
+		wpToBeInserted2.setX(wpX);
+		wpToBeInserted2.setY((wpY - 61.0));
+		double wp2X = (wp2.getX() + 25.0);
+		double wp2Y = (wp2.getY() - 25.0);
+		wpToBeInserted4.setX(wp2X);
+		wpToBeInserted4.setY((wp2Y));
+		wpToBeInserted3.setX(wp2X);
+		wpToBeInserted3.setY((wp2Y - 61.0));
+	} else {
+		Waypoint wp3 = (Waypoint) wpArray[2];
+		wpToBeInserted1.setX(wp1.getX());
+		wpToBeInserted1.setY((wp1.getY()));
+		wpToBeInserted2.setX(wp1.getX());
+		wpToBeInserted2.setY((wp1.getY() + 61.0));
+		wpToBeInserted3.setX((wp3.getX() + 25.0));
+		wpToBeInserted3.setY((wp1.getY() + 61.0));
+		wpToBeInserted4.setX(wp3.getX() + 25.0);
+		wpToBeInserted4.setY(wp1.getY());
+	}
+	collWp.add(wpToBeInserted1);
+	collWp.add(wpToBeInserted2);
+	collWp.add(wpToBeInserted3);
+	collWp.add(wpToBeInserted4);
+	edge.getWaypoints().removeAll(edge.getWaypoints());
+	edge.getWaypoints().addAll(collWp);
+
+}
+
+public static boolean compareResultsOfAlgorithmsForDifferentAPIs(LinkedList<ProcessInstanceWithVoters> localMinInstances,
+		LinkedList<ProcessInstanceWithVoters> bruteForceInstances) {
+	if(localMinInstances == null || bruteForceInstances == null) {
+		return false;
+	}
+	int countCheapestSolutionFoundInBruteForceSolutions = 0;
+	LinkedList<ProcessInstanceWithVoters> cheapestBruteForceSolutions = CommonFunctionality
+			.getCheapestProcessInstancesWithVoters(bruteForceInstances);
+
+	for (ProcessInstanceWithVoters cheapestInstBruteForce : cheapestBruteForceSolutions) {
+		for (ProcessInstanceWithVoters cheapestInstLocalMin : localMinInstances) {
+			if (cheapestInstBruteForce
+					.getCostForModelInstance() == (cheapestInstLocalMin.getCostForModelInstance())) {
+				for(Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>bruteForceEntry: cheapestInstBruteForce.getVotersMap().entrySet()) {
+					for(Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>localMinEntry: cheapestInstLocalMin.getVotersMap().entrySet()) {
+						if(bruteForceEntry.getKey().getId().contentEquals(localMinEntry.getKey().getId())) {
+							int size = bruteForceEntry.getValue().size();
+							int entryEqual = 0;
+							for(BPMNParticipant bruteForcePart: bruteForceEntry.getValue()) {
+								for(BPMNParticipant localMinPart: localMinEntry.getValue()) {
+									if(bruteForcePart.getId().contentEquals(localMinPart.getId())) {
+										entryEqual++;
+									}
+									
+								}								
+							}
+							if(entryEqual==size) {
+								countCheapestSolutionFoundInBruteForceSolutions++;
+							}
+							
+						}
+					
+					
+				
+				}
+				
+				
+			}
+
+		}
+
+	}
+	}
+	if (countCheapestSolutionFoundInBruteForceSolutions == localMinInstances.size()
+			&& localMinInstances.size() == cheapestBruteForceSolutions.size()) {
+		return true;
+	}
+
+	return false;
+}
+
+
+
+public static LinkedList<ProcessInstanceWithVoters> getCheapestProcessInstancesWithVoters(
+		LinkedList<ProcessInstanceWithVoters> pInstances) {
+	if(pInstances==null) {
+		return null;
+	}
+	List<ProcessInstanceWithVoters> allInstSortedByCheapest = pInstances.parallelStream()
+			.sorted((Comparator.comparingDouble(ProcessInstanceWithVoters::getCostForModelInstance)))
+			.collect(Collectors.toList());
+	// allInstSortedByCheapest contains all solutions sorted by cheapest ones
+
+	LinkedList<ProcessInstanceWithVoters> allCheapestInst = new LinkedList<ProcessInstanceWithVoters>();
+	allCheapestInst.add(allInstSortedByCheapest.get(0));
+
+	for (int i = 1; i < allInstSortedByCheapest.size(); i++) {
+		ProcessInstanceWithVoters currInst = allInstSortedByCheapest.get(i);
+		if (allCheapestInst.getFirst().getCostForModelInstance() == currInst.getCostForModelInstance()) {
+			allCheapestInst.add(currInst);
+		} else {
+			return allCheapestInst;
+		}
+	}
+
+	return allCheapestInst;
+}
 
 
 }

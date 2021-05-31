@@ -61,7 +61,7 @@ import org.xml.sax.SAXException;
 
 import functionality.CommonFunctionality;
 
-public class ProcessModelAnnotater implements Callable{
+public class ProcessModelAnnotater implements Callable<File>{
 	// class takes a process model and annotates it with dataObjects, readers,
 	// writers, etc.
 

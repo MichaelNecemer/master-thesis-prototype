@@ -41,6 +41,13 @@
   
 
   <dependencies>
+  <!--  https://mvnrepository.com/artifact/io.github.kostaskougios/cloning -->
+  	<dependency>
+  	<groupId>io.github.kostaskougios</groupId>
+  	<artifactId>cloning</artifactId>
+  	<version>1.10.3</version>	
+  	</dependency>
+  
     <dependency>
       <!-- process engine, needs to be 'provided' because it's already a shared library in the container -->
       <groupId>org.camunda.bpm</groupId>

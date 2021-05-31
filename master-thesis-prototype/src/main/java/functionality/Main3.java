@@ -166,14 +166,13 @@ public class Main3 {
 		System.out.println("Amount of solutions found with localMinimumAlgorithm: "+pInstances.size());
 		System.out.println("Cheapest Heuristic Search Instances: ");
 		
-		for(ProcessInstanceWithVoters pInstance:pInstances) {
-			
-		
+		for(ProcessInstanceWithVoters pInstance:pInstances) {		
 		pInstance.printProcessInstance();
 		}
 		
-		a2.annotateModelWithChosenParticipants(pInstances, 2);
+		CommonFunctionality.generateNewModelsWithVotersAsBpmnConstruct(a2, pInstances, 3, "", true);
 		
+		//CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(a2, pInstances, 3, "");
 		
 		for(ProcessInstanceWithVoters pInstance: pInstances) {
 			JPanel dataPanel = new JPanel();
@@ -208,7 +207,7 @@ public class Main3 {
 	try {
 		bruteForceSolutions = a2.bruteForceAlgorithm();
 		System.out.println("Solutions found with BruteForce: "+bruteForceSolutions.size());
-		System.out.println("Cheapest brute Force solutions: "+a2.getCheapestProcessInstancesWithVoters(bruteForceSolutions).size());
+		System.out.println("Cheapest brute Force solutions: "+CommonFunctionality.getCheapestProcessInstancesWithVoters(bruteForceSolutions).size());
 		
 		
 		

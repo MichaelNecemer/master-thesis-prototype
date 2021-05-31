@@ -188,6 +188,7 @@ public class BatchFileGenerator {
 				.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "LargeProcessesFolder")
 				.getAbsolutePath();
 
+		/*
 		// mixed processes with decisions for adnan and nada
 		List<Integer> dataObjectBoundsMixed = Arrays.asList(1, 4);
 		int dynamicWriterProbMixed = 30;
@@ -204,19 +205,19 @@ public class BatchFileGenerator {
 		int publicDecisionProb = 0;
 		int minDataObjectsPerDecision = 1;
 		int maxDataObjectsPerDecision = -1;
-		/*BatchFileGenerator.annotateModels(pathToMixedProcessesFolder, pathToAnnotatedProcessesFolder,
+		BatchFileGenerator.annotateModels(pathToMixedProcessesFolder, pathToAnnotatedProcessesFolder,
 				dataObjectBoundsMixed, defaultSpheres, dynamicWriterProbMixed, writersOfProcessInPercent,
 				readersOfProcessInPercent, 2, upperBoundParticipants, minDataObjectsPerDecision,
 				maxDataObjectsPerDecision, publicDecisionProb);
-		*/
-		//BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(pathToAnnotatedProcessesFolder);
+		
 		BatchFileGenerator.runLocalMinAndGenerateNewFilesWithAnnotatedSolutions(pathToAnnotatedProcessesFolder, 1);
+		*/
 		
 		// for each processes folder -> generate 100 random processes
 		// small processes: 2-5 participants, 7-15 tasks, 1-4 xors, 0-2 parallels, 100
 		// processes
-		// BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolder,
-		// 2, 5, 7, 15, 1, 4, 0, 2, 100);
+		//BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolder,
+		//2, 5, 7, 15, 1, 4, 0, 2, 100);
 
 		// medium processes: 6-10 participants, 16-30 tasks, 5-10 xors, 0-6 parallels,
 		// 100 processes
@@ -229,10 +230,10 @@ public class BatchFileGenerator {
 		// 11, 15, 31, 60, 11, 15, 0, 9, 100);
 
 		// each test will be based on the same randomly chosen models
-		LinkedList<File> randomSmallProcesses = BatchFileGenerator.getRandomModelsFromSourceFolder(20,
+		LinkedList<File> randomSmallProcesses = BatchFileGenerator.getRandomModelsFromSourceFolder(5,
 				pathToSmallProcessesFolder);
-		LinkedList<File> randomMediumProcesses = BatchFileGenerator.getRandomModelsFromSourceFolder(5,
-				pathToMediumProcessesFolder);
+		//LinkedList<File> randomMediumProcesses = BatchFileGenerator.getRandomModelsFromSourceFolder(5,
+			//	pathToMediumProcessesFolder);
 		// LinkedList<File> randomLargeProcesses =
 		// BatchFileGenerator.getRandomModelsFromSourceFolder(20,
 		// pathToLargeProcessesFolder);
@@ -244,7 +245,6 @@ public class BatchFileGenerator {
 		// add dataObjects with global sphere and 1 voter per decision
 		// add readers/writers combinations - generate new models (9 new models for
 		// each)
-
 		// increase the amount of voters needed for decisions till the global sphere of
 		// that process is reached on all xors
 		// increase privity requirements to next stricter sphere for all dataObjects
@@ -259,14 +259,20 @@ public class BatchFileGenerator {
 				.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "LargeProcessesAnnotatedFolder")
 				.getAbsolutePath();
 
-		// BatchFileGenerator.performTest1(randomSmallProcesses,
-		// pathToSmallProcessesForTest2, dataObjectBoundsSmallProcesses );
+		//BatchFileGenerator.performTest2(randomSmallProcesses, pathToSmallProcessesForTest2, dataObjectBoundsSmallProcesses );
 		// BatchFileGenerator.performTest2(randomMediumProcesses,
 		// pathToMediumProcessesForTest2, dataObjectBoundsMediumProcesses );
 
-		// BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV("C:\\Users\\Micha\\OneDrive\\Desktop\\TestModels");
-		// BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV("C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test1\\MediumProcessesAnnotatedFolder\\ModelsForEvaluation");
-
+		// perform the algorithms and generate csv file
+		String pathToFolderEval = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test2\\SmallProcessesAnnotatedFolder\\ModelsForEvaluation";
+		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderEval);
+				if (!apiList.isEmpty()) {
+					BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(apiList, 1);
+				} else {
+					System.out.println("No Algorithms have been run successfully on annotated models");
+				}
+				System.out.println("FINISHED!");
+		
 		// Test 3 - Measure impact of dataObjects
 		// annotate different dataObject for each decision e.g. 5 decisions - 5
 		// different dataObjects - each decision has 1 different dataObject connected
@@ -513,7 +519,7 @@ public class BatchFileGenerator {
 		return apiList;
 	}
 
-	private static void addInformationToCSVFile(LinkedList<API> apiList) {
+	private static void runAlgorithmsAndWriteResultsToCSV(LinkedList<API> apiList, int threadPools) {
 		// write the results to a csv file
 
 		String fileNameForResults = "resultsOfAlgorithm" + idCSVFile + ".csv";
@@ -538,76 +544,81 @@ public class BatchFileGenerator {
 		csvFile.getParentFile().mkdirs();
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		
-		int coreCount = Runtime.getRuntime().availableProcessors();
-		ExecutorService service = Executors.newFixedThreadPool(coreCount);
-		LinkedList<Future<LinkedList<ProcessInstanceWithVoters>>>allFutures = new LinkedList<Future<LinkedList<ProcessInstanceWithVoters>>>();
-		HashMap<API, LinkedList<Future<LinkedList<ProcessInstanceWithVoters>>>> apiMapWithFutures = new HashMap<API, LinkedList<Future<LinkedList<ProcessInstanceWithVoters>>>>();
 		
-		for (int i = 0; i < 1; i++) {
+		ExecutorService service = Executors.newFixedThreadPool(threadPools);
+				
+		for (int i = 0; i < 3; i++) {
 			API api = apiList.get(i);
-			LinkedList<Future<LinkedList<ProcessInstanceWithVoters>>>currFutureList = new LinkedList<Future<LinkedList<ProcessInstanceWithVoters>>>();
-				api.setAlgorithmToPerform("bruteForce");		
-				Future<LinkedList<ProcessInstanceWithVoters>> future = service.submit(api);	
-				allFutures.add(future);	
-				currFutureList.add(future);
-				api.setAlgorithmToPerform("localMin");
-				Future<LinkedList<ProcessInstanceWithVoters>> future2 = service.submit(api);	
-				allFutures.add(future2);
-				currFutureList.add(future2);
-				apiMapWithFutures.putIfAbsent(api, currFutureList);
-		}
-		
-		for(Entry<API, LinkedList<Future<LinkedList<ProcessInstanceWithVoters>>>> entry: apiMapWithFutures.entrySet()) {
-			API api = entry.getKey();
-			LinkedList<ProcessInstanceWithVoters> localMinInst = null;
-			LinkedList<ProcessInstanceWithVoters> bruteForceInst = null;
-			Exception eToReturn = null;
-			for(Future<LinkedList<ProcessInstanceWithVoters>> currFuture: entry.getValue()) {
-				LinkedList<ProcessInstanceWithVoters>pInstances = null;
-				try {
-					pInstances = currFuture.get(timeOutForApiInMin, TimeUnit.MINUTES);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-					eToReturn = (InterruptedException)e;
-					currFuture.cancel(true);
-
-				} catch (ExecutionException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-					eToReturn = (ExecutionException)e;
-					currFuture.cancel(true);
-
-				} catch (TimeoutException e) {
-					// TODO Auto-generated catch block
-					System.out.println("TimeOut: "+timeOutForApiInMin +" have passed!");
-					e.printStackTrace();
-					eToReturn = (TimeoutException)e;
-					currFuture.cancel(true);
-
-				} finally {
-					if(api.getAlgorithmToPerform().contentEquals("bruteForce")) {
-						bruteForceInst = pInstances;
-					} else if(api.getAlgorithmToPerform().contentEquals("localMin")) {
-						localMinInst = pInstances;
+			HashMap<API, HashMap<String, LinkedList<ProcessInstanceWithVoters>>> apiMap = new HashMap<API, HashMap<String, LinkedList<ProcessInstanceWithVoters>>>();
+			HashMap<String, Exception> exceptionPerAlgorithm = new HashMap<String, Exception>();
+			API.setAlgorithmToPerform("bruteForce");		
+			Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureBruteForce = service.submit(api);	
+			HashMap<String, LinkedList<ProcessInstanceWithVoters>>innerMap = new HashMap<String, LinkedList<ProcessInstanceWithVoters>>();	
+				HashMap<String, LinkedList<ProcessInstanceWithVoters>>pInstances = null;
+				Exception exception = null;	
+				try {							
+						pInstances = futureBruteForce.get(timeOutForApiInMin, TimeUnit.MINUTES);
+						innerMap.putAll(pInstances);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						exception = (InterruptedException)e;
+						e.printStackTrace();
+					} catch (ExecutionException e) {
+						// TODO Auto-generated catch block
+						exception = (ExecutionException)e;
+						e.printStackTrace();
+					} catch (TimeoutException e) {
+						// TODO Auto-generated catch block
+						exception = (TimeoutException)e;
+						e.printStackTrace();
+					} finally {
+						exceptionPerAlgorithm.putIfAbsent("bruteForce", exception);
+						futureBruteForce.cancel(true);
 					}
-				}
-							
-			}
+								
+				
+				
+				API.setAlgorithmToPerform("localMin");
+				Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureLocalMin = service.submit(api);	
 			
-			writer.writeResultsOfBothAlgorithmsToCSVFile(api, eToReturn, localMinInst, bruteForceInst,
-			api.compareResultsOfAlgorithms(localMinInst, bruteForceInst));
-			
-			
+				HashMap<String, LinkedList<ProcessInstanceWithVoters>>pInstancesLocalMin = null;
+				Exception exceptionLocalMin = null;	
+				try {							
+						pInstances = futureLocalMin.get(timeOutForApiInMin, TimeUnit.MINUTES);
+						innerMap.putAll(pInstances);
+						
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						exceptionLocalMin = (InterruptedException)e;
+						e.printStackTrace();
+					} catch (ExecutionException e) {
+						// TODO Auto-generated catch block
+						exceptionLocalMin = (ExecutionException)e;
+						e.printStackTrace();
+					} catch (TimeoutException e) {
+						// TODO Auto-generated catch block
+						exceptionLocalMin = (TimeoutException)e;
+						e.printStackTrace();
+					} finally {
+						exceptionPerAlgorithm.putIfAbsent("localMin", exceptionLocalMin);
+						futureLocalMin.cancel(true);
+					}
+					
+				
+				apiMap.putIfAbsent(api, innerMap);
+				writer.writeResultsOfBothAlgorithmsToCSVFile(api, apiMap.get(api), exceptionPerAlgorithm, api.compareResultsOfAlgorithms(apiMap.get(api).get("localMin"),apiMap.get(api).get("bruteForce")));
+				
+		}				
 		
-		
-		}
+		service.shutdown();
 		writer.writeRowsToCSVAndcloseWriter();
+		
+
 
 	}
 
 	public static void performTest2(int amountRandomProcessesToTakeFromFolder, String pathToSourceFolder,
-			String pathToDestinationFolderForStoringModels, List<Integer> dataObjectBounds) throws Exception {
+			String pathToDestinationFolderForStoringModels, List<Integer> dataObjectBounds, int amountThreadPools) throws Exception {
 
 		File folder = new File(pathToSourceFolder);
 		LinkedList<File> listOfFiles = new LinkedList<File>();
@@ -739,17 +750,17 @@ public class BatchFileGenerator {
 		// perform the algorithms and generate csv file
 		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithSpheres);
 		if (!apiList.isEmpty()) {
-			BatchFileGenerator.addInformationToCSVFile(apiList);
+			BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(apiList, amountThreadPools);
 		} else {
 			System.out.println("No Algorithms have been run successfully on annotated models");
 		}
 
 	}
 
-	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels) {
+	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels, int amountThreadPools) {
 		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithAnnotatedModels);
 		if (!apiList.isEmpty()) {
-			BatchFileGenerator.addInformationToCSVFile(apiList);
+			BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(apiList, amountThreadPools);
 		} else {
 			System.out.println("No Algorithms have been run successfully on annotated models");
 		}
@@ -764,8 +775,8 @@ public class BatchFileGenerator {
 			HashMap<API, Future<LinkedList<ProcessInstanceWithVoters>>>allFuturesMap = new HashMap<API,Future<LinkedList<ProcessInstanceWithVoters>>>();
 			for(API api: apiList) {		
 				api.setAlgorithmToPerform("localMin");
-				Future<LinkedList<ProcessInstanceWithVoters>> future = service.submit(api);
-				allFuturesMap.putIfAbsent(api, future);
+				//Future<LinkedList<ProcessInstanceWithVoters>> future = service.submit(api);
+				//allFuturesMap.putIfAbsent(api, future);
 			}
 			
 			for(Entry<API, Future<LinkedList<ProcessInstanceWithVoters>>>entry: allFuturesMap.entrySet()) {
@@ -774,7 +785,7 @@ public class BatchFileGenerator {
 				LinkedList<ProcessInstanceWithVoters>localMinInst = null;
 				try {					
 					localMinInst = future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
-					api.annotateModelWithChosenParticipants(localMinInst, upperBoundNewModels);
+					CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(api, localMinInst, upperBoundNewModels, "");
 				
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
@@ -805,22 +816,24 @@ public class BatchFileGenerator {
 		listOfFiles.addAll(Arrays.asList(folder.listFiles()));
 
 		LinkedList<File> randomModelsFromSourceFolder = new LinkedList<File>();
-
-		for (int i = 0; i < amountRandomModels; i++) {
+			for (int i = 0; i < amountRandomModels; i++) {
 			File randomProcessModelFile = CommonFunctionality.getRandomItem(listOfFiles);
 			randomModelsFromSourceFolder.add(randomProcessModelFile);
 			listOfFiles.remove(randomProcessModelFile);
 		}
-
+		
 		return randomModelsFromSourceFolder;
 	}
 
 	public static void performTest2(LinkedList<File> randomProcesses, String pathToDestinationFolderForStoringModels,
-			List<Integer> dataObjectBounds) throws Exception {
+			List<Integer> dataObjectBounds, int amountThreadPools) {
 
 		LinkedList<String> emptySphere = new LinkedList<String>();
 		emptySphere.add("");
-
+		
+		int coreCount = Runtime.getRuntime().availableProcessors();
+		ExecutorService executor = Executors.newFixedThreadPool(coreCount);
+		
 		for (int i = 0; i < randomProcesses.size(); i++) {
 			String pathToRandomProcess = randomProcesses.get(i).getAbsolutePath();
 			BpmnModelInstance processModel = Bpmn.readModelFromFile(randomProcesses.get(i));
@@ -829,13 +842,14 @@ public class BatchFileGenerator {
 			boolean modelIsValid = false;
 			int amountRandomCountDataObjectsToCreate = 0;
 			while (modelIsValid == false) {
+				try {
 				ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
 						pathToDestinationFolderForStoringModels, "");
 
 				// randomly generate dataObjects in the range [DataObjects, maxCountDataObjects]
 				amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(dataObjectBounds.get(0),
 						dataObjectBounds.get(1) + 1);
-				try {
+				
 					// create model with amountRandomCountDataObjects dataObjects, 0 participant
 					// needed for voting and empty string as starting sphere
 					pModel.generateDataObjects(amountRandomCountDataObjectsToCreate, emptySphere);
@@ -852,6 +866,7 @@ public class BatchFileGenerator {
 			for (int writerClass = 0; writerClass < percentageOfWritersClasses.size(); writerClass++) {
 				// for each model -> annotate it with small, medium, large amount of writers
 				BpmnModelInstance newModelInstance = Bpmn.readModelFromFile(newModel);
+								
 				int minAmountWriters = newModelInstance.getModelElementsByType(DataObjectReference.class).size();
 
 				int amountWriterTasksInModel = CommonFunctionality.getAmountFromPercentageWithMinimum(amountTasks,
@@ -879,40 +894,49 @@ public class BatchFileGenerator {
 						suffixBuilder.append("lR");
 					}
 
-					boolean correctModel = false;
-					ExecutorService executor = Executors.newSingleThreadExecutor();
-					while (correctModel == false) {
-						ProcessModelAnnotater modelWithReadersAndWriters = new ProcessModelAnnotater(
-								newModel.getAbsolutePath(), pathToDestinationFolderForStoringModels,
-								suffixBuilder.toString(), emptySphere, 0, amountWriterTasksInModel,
-								amountReaderTasksInModel, 0, 1, amountRandomCountDataObjectsToCreate,
-								defaultNamesSeqFlowsXorSplits);
-
-						Future future = executor.submit(modelWithReadersAndWriters);
-						future.get(20, TimeUnit.SECONDS);
+					ProcessModelAnnotater modelWithReadersAndWriters;
+					try {
+						modelWithReadersAndWriters = new ProcessModelAnnotater(
+									newModel.getAbsolutePath(), pathToDestinationFolderForStoringModels,
+									suffixBuilder.toString(), emptySphere, 0, amountWriterTasksInModel,
+									amountReaderTasksInModel, 0, 1, amountRandomCountDataObjectsToCreate,
+									defaultNamesSeqFlowsXorSplits);
+						Future<File> future = executor.submit(modelWithReadersAndWriters);					
+						
 						try {
-
-							// modelWithReadersAndWriters.checkCorrectnessAndWriteChangesToFile();
-
-							correctModel = true;
-
-						} catch (Exception e) {
-
+							future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							future.cancel(true);
 							e.printStackTrace();
+							readerClass--;
+						} catch (ExecutionException e) {
+							// TODO Auto-generated catch block
 							System.err.println(e.getMessage());
 							future.cancel(true);
-							executor.shutdown();
-
-							// try annotating model again with same values
+							readerClass--;
+						} catch (TimeoutException e) {
+							// TODO Auto-generated catch block
+							future.cancel(true);
+							e.printStackTrace();
 						}
-
+					
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+						readerClass--;
 					}
+
+					
+					
+					
+					
 
 				}
 			}
 
 		}
-
+		executor.shutdown();
 		// for each model that has been generated with 0 participants per decision and
 		// empty sphere annotated for each dataObject
 		// -> generate new ones where voters is increased by 1 on each model till
@@ -965,7 +989,7 @@ public class BatchFileGenerator {
 		// perform the algorithms and generate csv file
 		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithModelsForEvaluation);
 		if (!apiList.isEmpty()) {
-			BatchFileGenerator.addInformationToCSVFile(apiList);
+			BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(apiList, amountThreadPools);
 		} else {
 			System.out.println("No Algorithms have been run successfully on annotated models");
 		}
