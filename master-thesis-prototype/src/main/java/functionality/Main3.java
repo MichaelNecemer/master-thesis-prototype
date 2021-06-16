@@ -64,8 +64,7 @@ public class Main3 {
 	//String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test2\\SmallProcessesAnnotatedFolder\\Spheres\\randomProcessModel84_annotated1_annotated92lWmR_Static1.bpmn";
-	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches3.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\ProcessesWithoutAnnotation\\MixedProcessesFolder\\AnnotatedModels\\randomProcessModel4_annotated1.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches3.bpmn";
 		JFrame frame = new JFrame(pathToFile);
 	frame.setVisible(true);
 	
@@ -170,7 +169,7 @@ public class Main3 {
 		pInstance.printProcessInstance();
 		}
 		
-		CommonFunctionality.generateNewModelsWithVotersAsBpmnConstruct(a2, pInstances, 3, "", true);
+		//CommonFunctionality.generateNewModelsWithVotersAsBpmnConstruct(a2, pInstances, 3, "", true);
 		
 		//CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(a2, pInstances, 3, "");
 		

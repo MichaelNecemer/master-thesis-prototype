@@ -1769,13 +1769,15 @@ public static double getAverageAmountVotersOfModel(BpmnModelInstance modelInstan
 		
 			}
 	}
+		if(amountGtws==0) {
+			return 0;
+		}
 		return ((double)sumAmountVoters/amountGtws);
 	}
 	
 	
 	
 public static double getSphereSumOfModel(BpmnModelInstance modelInstance) {
-		//global = 1, ....,  Strong-Dynamic = 4
 	//a higher value will be a model with more strict decisions
 		double sumSpheres = 0; 
 		double amountBrts = 0; 
@@ -1794,19 +1796,18 @@ public static double getSphereSumOfModel(BpmnModelInstance modelInstance) {
 												String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{')+1, tx.getTextContent().indexOf('}'));
 											
 															if(subString.contentEquals("Strong-Dynamic")) {
-																sumSpheres+=4;
+																sumSpheres+=3;
 															}
 															else if(subString.contentEquals("Weak-Dynamic")) {
-																sumSpheres+=3;
-															} 
-															else if(subString.contentEquals("Static")) {
 																sumSpheres+=2;
 															} 
-																else if(subString.contentEquals("Global")) {
+															else if(subString.contentEquals("Static")) {
 																sumSpheres+=1;
-															}  
-																else if(subString.contentEquals("Public")) {
-																	sumSpheres+=0;
+															} 
+																else if(subString.contentEquals("Global")) {
+																sumSpheres+=0;
+															 
+																
 														}
 												}
 										}
@@ -1848,6 +1849,10 @@ public static int getAmountTasks(BpmnModelInstance modelInstance) {
 
 public static int calculatePossibleCombinationsForProcess(BpmnModelInstance modelInstance, boolean modelWithLanes) {
 	int combinations = 1;
+	if(modelInstance.getModelElementsByType(ExclusiveGateway.class).size()==0) {
+		return 0;
+	}
+	
 	
 	int amountParticipants = CommonFunctionality.getGlobalSphere(modelInstance, modelWithLanes);
 	
@@ -2799,6 +2804,10 @@ public static boolean compareResultsOfAlgorithmsForDifferentAPIs(LinkedList<Proc
 	if(localMinInstances == null || bruteForceInstances == null) {
 		return false;
 	}
+	if(localMinInstances.isEmpty() || bruteForceInstances.isEmpty()) {
+		return false;
+	}
+	
 	int countCheapestSolutionFoundInBruteForceSolutions = 0;
 	LinkedList<ProcessInstanceWithVoters> cheapestBruteForceSolutions = CommonFunctionality
 			.getCheapestProcessInstancesWithVoters(bruteForceInstances);
@@ -2871,6 +2880,114 @@ public static LinkedList<ProcessInstanceWithVoters> getCheapestProcessInstancesW
 
 	return allCheapestInst;
 }
+
+
+public static void substituteOneDataObjectAndWriteModels(BpmnModelInstance modelInstance, DataObjectReference substitute,String fileName, String directoryToStore){
+	//choose a dataObject from a decision and substitute it
+	//if decision already has the substitute -> remove the random dataObject
+	//generate new model on each iteration
+	
+	
+	Collection<BusinessRuleTask>brtList = modelInstance.getModelElementsByType(BusinessRuleTask.class);
+	
+	Iterator<BusinessRuleTask>brtIter = brtList.iterator();
+	ItemAwareElement iaeSubstitute = null;
+	for(ItemAwareElement iae: modelInstance.getModelElementsByType(ItemAwareElement.class)) {
+		DataObjectReference daoR = CommonFunctionality.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
+		if(daoR.getId().equals(substitute.getId())) {
+			iaeSubstitute = iae;
+			break;
+		}
+	}
+	
+	while(brtIter.hasNext()) {
+		BusinessRuleTask brt = brtIter.next();
+		boolean substituteAnnotatedAlready = false;
+		LinkedList<DataObjectReference> toRemove = new LinkedList<DataObjectReference>();
+		for(DataInputAssociation dia: brt.getDataInputAssociations()) {
+			for(ItemAwareElement iae: dia.getSources()) {
+				DataObjectReference daoR = CommonFunctionality.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
+				if(daoR.getId().equals(substitute.getId())) {
+					substituteAnnotatedAlready=true;
+				} else {
+					toRemove.add(daoR);
+				}
+							
+			}		
+		}
+		
+		int iteration = 0;
+
+			while(!toRemove.isEmpty()) {
+		
+			//choose random dataObject to remove
+			DataObjectReference daoRToBeRemoved = CommonFunctionality.getRandomItem(toRemove);
+			Iterator<DataInputAssociation>diaIter = brt.getDataInputAssociations().iterator();
+			while(diaIter.hasNext()) {
+				DataInputAssociation dia = diaIter.next();
+				for(ItemAwareElement iae: dia.getSources()) {
+					DataObjectReference daoR = CommonFunctionality.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
+					if(daoR.getId().equals(daoRToBeRemoved.getId())) {
+						BpmnShape diaShape = CommonFunctionality.getShape(modelInstance,dia.getId());
+						diaShape.getParentElement().removeChildElement(diaShape);
+						diaIter.remove();
+					}
+				}
+			}
+			
+			BpmnShape shape =CommonFunctionality.getShape(modelInstance, daoRToBeRemoved.getId());
+			shape.getParentElement().removeChildElement(shape);			
+			daoRToBeRemoved.getParentElement().removeChildElement(daoRToBeRemoved);
+			
+			if(substituteAnnotatedAlready==false) {
+				//connect the substitute
+				DataInputAssociation diaToConnect = modelInstance.newInstance(DataInputAssociation.class);
+				Property p1 = modelInstance.newInstance(Property.class);
+				p1.setName("__targetRef_placeholder");
+				brt.addChildElement(p1);
+				diaToConnect.setTarget(p1);
+				brt.getDataInputAssociations().add(diaToConnect);
+				diaToConnect.getSources().add(substitute);
+				CommonFunctionality.generateDIElementForReader(modelInstance, diaToConnect, CommonFunctionality.getShape(modelInstance, substitute.getId()), CommonFunctionality.getShape(modelInstance, brt.getId()));
+			}
+			iteration++;
+			try {
+				CommonFunctionality.writeChangesToFile(modelInstance, fileName, directoryToStore, iteration+"");
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ParserConfigurationException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (SAXException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	}
+	}
+		
+}
+
+
+private static void generateDIElementForReader(BpmnModelInstance modelInstance, DataInputAssociation dia, BpmnShape daoR, BpmnShape readerTaskShape) {
+	BpmnEdge e = modelInstance.newInstance(BpmnEdge.class);
+	e.setBpmnElement(dia);
+	Waypoint wp = modelInstance.newInstance(Waypoint.class);
+	// Waypoints for the source -> the Data Object
+	wp.setX(daoR.getBounds().getX());
+	wp.setY(daoR.getBounds().getY());
+	e.addChildElement(wp);
+
+	// Waypoint for the target -> the Task that has the Data Input
+	Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+
+	wp2.setX(readerTaskShape.getBounds().getX());
+	wp2.setY(readerTaskShape.getBounds().getY());
+	e.addChildElement(wp2);
+
+	modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(e);
+}
+
 
 
 }

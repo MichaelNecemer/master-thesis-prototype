@@ -390,9 +390,7 @@ public class ProcessModelAnnotater implements Callable<File>{
 
 			}
 
-		} else {
-			throw new Exception("No dataObjects connected to the model!");
-		}
+		} 
 	
 	}
 	/*
@@ -1791,11 +1789,7 @@ public class ProcessModelAnnotater implements Callable<File>{
 				if(!Thread.currentThread().isInterrupted()) {	
 				
 				File f = this.checkCorrectnessAndWriteChangesToFile();
-				
-				if(f!=null) {
-					return f;
-				}
-				
+				return f;
 				
 				}
 		

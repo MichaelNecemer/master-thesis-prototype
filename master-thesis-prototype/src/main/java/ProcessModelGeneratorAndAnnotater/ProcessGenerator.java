@@ -71,7 +71,7 @@ public class ProcessGenerator implements Callable {
 	
 
 	public ProcessGenerator(String directoryToStore, int amountParticipants, int amountTasksLeft, int amountXorsLeft,
-			int amountParallelsLeft, int probTask, int probXorGtw, int probParallelGtw, int probJoinGtw, int nestingDepthFactor, boolean modelWithXorSplit) throws Exception {
+			int amountParallelsLeft, int probTask, int probXorGtw, int probParallelGtw, int probJoinGtw, int nestingDepthFactor) throws Exception {
 		// process model will have 1 StartEvent and 1 EndEvent
 		this.participantNames = new LinkedList<String>();
 		for (int i = 0; i < amountParticipants; i++) {
@@ -107,26 +107,15 @@ public class ProcessGenerator implements Callable {
 		taskProbArray[0] = 0;
 		taskProbArray[1] = probTask - 1;
 		
-		for(int i = 0; i < taskProbArray.length; i++) {
-			System.out.println(taskProbArray[i]);
-		}
 
 		xorProbArray = new int[2];
 		xorProbArray[0] = probTask;
 		xorProbArray[1] = (probTask + probXorGtw - 1);
 		
-		for(int i = 0; i < xorProbArray.length; i++) {
-			System.out.println(xorProbArray[i]);
-		}
-
 		parallelProbArray = new int[2];
 		parallelProbArray[0] = (probTask + probXorGtw);
 		parallelProbArray[1] = (probTask + probXorGtw + probParallelGtw - 1);
-		
-		for(int i = 0; i < parallelProbArray.length; i++) {
-			System.out.println(parallelProbArray[i]);
-		}
-
+	
 
 		this.modelInstance = Bpmn.createProcess("Process_"+run).startEvent("startEvent_1").done();
 		this.startEvent = (FlowNode) modelInstance.getModelElementById("startEvent_1");
@@ -218,12 +207,13 @@ public class ProcessGenerator implements Callable {
 
 		
 	
-		System.out.println("RUN"+run++);
+		//System.out.println("RUN"+run++);
+		/*
 		for(SequenceFlow f: modelInstance.getModelElementsByType(SequenceFlow.class)) {
 			System.out.println("Sflow: "+f.getId()+", "+f.getSource().getId()+", "+f.getTarget().getId());
 	
 		}
-		
+		*/
 		
 		if(addedNode instanceof Gateway && addedNode.getId().contains("_split")) {
 			queue.add(addedNode);
@@ -269,11 +259,11 @@ public class ProcessGenerator implements Callable {
 				}
 			} else {
 				currentNode.builder().endEvent().id("endEvent_1").name("endEvent_1");
-				System.out.println("RUN"+run++);
+				/*
 				for(SequenceFlow f: modelInstance.getModelElementsByType(SequenceFlow.class)) {
 					System.out.println("Sflow: "+f.getDiagramElement().getId()+", "+f.getSource().getId()+", "+f.getTarget().getId());
 					
-				}
+				}*/
 			}
 				return;
 			
@@ -361,7 +351,6 @@ public class ProcessGenerator implements Callable {
 		
 		if(addJoin) {
 			//add a join to the last opened split
-			System.out.println("Add join to currentBranch");			
 			String joinName = lastOpenedSplit.getName();
 			String joinId = joinName+"_join";
 			if(modelInstance.getModelElementById(joinId)==null) {
