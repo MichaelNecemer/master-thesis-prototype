@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -61,7 +63,7 @@ import org.xml.sax.SAXException;
 
 import functionality.CommonFunctionality;
 
-public class ProcessModelAnnotater implements Callable<File>{
+public class ProcessModelAnnotater implements Callable<File> {
 	// class takes a process model and annotates it with dataObjects, readers,
 	// writers, etc.
 
@@ -91,8 +93,8 @@ public class ProcessModelAnnotater implements Callable<File>{
 		this.idForBrt = 1;
 		this.dataObjects = new LinkedList<DataObjectReference>();
 		this.differentParticipants = new LinkedList<String>();
-		this.stopRequested=false;
-		
+		this.stopRequested = false;
+
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 	}
@@ -118,8 +120,6 @@ public class ProcessModelAnnotater implements Callable<File>{
 		if (amountWritersOfProcess == 0 || amountReadersOfProcess == 0) {
 			throw new Exception("0 writers and 0 readers specified!");
 		}
-		
-		
 
 		this.pathToFile = pathToFile;
 		this.pathWhereToCreateAnnotatedFile = pathWhereToCreateAnnotatedFile;
@@ -129,8 +129,8 @@ public class ProcessModelAnnotater implements Callable<File>{
 		this.dataObjects = new LinkedList<DataObjectReference>();
 		dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
 		this.differentParticipants = new LinkedList<String>();
-		this.stopRequested=false;
-		if(amountWritersOfProcess<this.dataObjects.size()) {
+		this.stopRequested = false;
+		if (amountWritersOfProcess < this.dataObjects.size()) {
 			throw new Exception("Amount of writers must be >= amount of DataObjects!");
 		}
 		this.setDifferentParticipants();
@@ -158,13 +158,13 @@ public class ProcessModelAnnotater implements Callable<File>{
 		 * }
 		 */
 	}
-	
-	
-	
+
 	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix,
 			List<String> defaultSpheres, int dynamicWriter, int amountWritersOfProcess, int amountReadersOfProcess,
-			int probPublicDecision, int amountParticipantsPerDecision, int amountDataObjectsToCreate, int minDataObjectsPerDecision, int maxDataObjectsPerDecision, int amountParticipantsPerDecisionLowerBound, int amountParticipantsPerDecisionUpperBound,
-			List<String> namesForOutgoingSeqFlowsOfXorSplits, boolean allDataObjectsUniquePerGtw) throws Exception {
+			int probPublicDecision, int amountParticipantsPerDecision, int amountDataObjectsToCreate,
+			int minDataObjectsPerDecision, int maxDataObjectsPerDecision, int amountParticipantsPerDecisionLowerBound,
+			int amountParticipantsPerDecisionUpperBound, List<String> namesForOutgoingSeqFlowsOfXorSplits,
+			boolean allDataObjectsUniquePerGtw) throws Exception {
 		this.process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);
 		/*
@@ -182,8 +182,6 @@ public class ProcessModelAnnotater implements Callable<File>{
 		if (amountWritersOfProcess == 0 || amountReadersOfProcess == 0) {
 			throw new Exception("0 writers and 0 readers specified!");
 		}
-		
-		
 
 		this.pathToFile = pathToFile;
 		this.pathWhereToCreateAnnotatedFile = pathWhereToCreateAnnotatedFile;
@@ -193,25 +191,25 @@ public class ProcessModelAnnotater implements Callable<File>{
 		this.dataObjects = new LinkedList<DataObjectReference>();
 		dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
 		this.differentParticipants = new LinkedList<String>();
-		this.stopRequested=false;
-		
+		this.stopRequested = false;
+
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 		this.generateDataObjects(amountDataObjectsToCreate, defaultSpheres);
-		this.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision, maxDataObjectsPerDecision, amountParticipantsPerDecisionLowerBound, amountParticipantsPerDecisionUpperBound, probPublicDecision, allDataObjectsUniquePerGtw);
+		this.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision, maxDataObjectsPerDecision,
+				amountParticipantsPerDecisionLowerBound, amountParticipantsPerDecisionUpperBound, probPublicDecision,
+				allDataObjectsUniquePerGtw);
 		this.addNamesForOutgoingFlowsOfXorSplits(namesForOutgoingSeqFlowsOfXorSplits);
 		this.annotateModelWithFixedAmountOfReadersAndWriters(amountWritersOfProcess, amountReadersOfProcess,
 				dynamicWriter, defaultSpheres);
 
 	}
 
-	
-	
-	public void connectDataObjectsToBrtsAndTuplesForXorSplits(int minDataObjectsPerDecision, int maxDataObjectsPerDecision,
-			int amountParticipantsPerDecisionLowerBound, int amountParticipantsPerDecisionUpperBound,
-			int probPublicDecision, boolean allDataObjectsUniquePerGtw){
+	public void connectDataObjectsToBrtsAndTuplesForXorSplits(int minDataObjectsPerDecision,
+			int maxDataObjectsPerDecision, int amountParticipantsPerDecisionLowerBound,
+			int amountParticipantsPerDecisionUpperBound, int probPublicDecision, boolean allDataObjectsUniquePerGtw) {
 		if (!this.dataObjects.isEmpty()) {
-			LinkedList<DataObjectReference>dataObjectsToChoseFrom = new LinkedList<DataObjectReference>();
+			LinkedList<DataObjectReference> dataObjectsToChoseFrom = new LinkedList<DataObjectReference>();
 			dataObjectsToChoseFrom.addAll(this.dataObjects);
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
 				if (taskIsBrtFollowedByXorSplit(task)) {
@@ -226,24 +224,24 @@ public class ProcessModelAnnotater implements Callable<File>{
 						}
 					}
 
-					
 					int upperBoundAnnotatedDataObjects = maxDataObjectsPerDecision;
 					if (maxDataObjectsPerDecision > this.dataObjects.size()) {
 						upperBoundAnnotatedDataObjects = this.dataObjects.size();
 					}
-					int boundedValue = 0; 
-					if(upperBoundAnnotatedDataObjects==minDataObjectsPerDecision) {
+					int boundedValue = 0;
+					if (upperBoundAnnotatedDataObjects == minDataObjectsPerDecision) {
 						boundedValue = upperBoundAnnotatedDataObjects;
 					} else {
 						boundedValue = ThreadLocalRandom.current().nextInt(minDataObjectsPerDecision,
-						(upperBoundAnnotatedDataObjects + 1));
-						
+								(upperBoundAnnotatedDataObjects + 1));
+
 					}
-				
-					if(allDataObjectsUniquePerGtw) {						
-						dataObjectsToChoseFrom = this.addRandomUniqueDataObjectsForBrt(task, dataObjectsToChoseFrom, boundedValue);
-					} else {					
-					this.addRandomDataObjectsForBrt(task, boundedValue);
+
+					if (allDataObjectsUniquePerGtw) {
+						dataObjectsToChoseFrom = this.addRandomUniqueDataObjectsForBrt(task, dataObjectsToChoseFrom,
+								boundedValue);
+					} else {
+						this.addRandomDataObjectsForBrt(task, boundedValue);
 					}
 					this.addTuplesForXorSplits(task, probPublicDecision, amountParticipantsPerDecisionLowerBound,
 							amountParticipantsPerDecisionUpperBound);
@@ -251,7 +249,7 @@ public class ProcessModelAnnotater implements Callable<File>{
 				}
 
 			}
-		} 
+		}
 	}
 
 	public File checkCorrectnessAndWriteChangesToFile() throws Exception {
@@ -314,30 +312,27 @@ public class ProcessModelAnnotater implements Callable<File>{
 			List<String> defaultSpheresForDynamicWriter) throws Exception {
 		// amountWriters and amountReaders is for whole process
 		// randomly generate subAmounts for each dataObject
-		// get each dataObject -> insert a writer for it 
+		// get each dataObject -> insert a writer for it
 		// if it is needed for a decision -> writer must be on path to the brt!
-		//amountWriters must be >= dataObjects, since every dataObject will need to be written before it can get read
-		
-		
-		if (!this.dataObjects.isEmpty()) {			
-			
-			if(amountWriters<this.dataObjects.size()) {
+		// amountWriters must be >= dataObjects, since every dataObject will need to be
+		// written before it can get read
+
+		if (!this.dataObjects.isEmpty()) {
+
+			if (amountWriters < this.dataObjects.size()) {
 				throw new Exception("Amount of writers must be >= amount of DataObjects!");
 			}
-			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality.computeRepartitionNumber(amountWriters,
-					this.dataObjects.size(), 1);
-			
-			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
-			LinkedList<Integer>subAmountWriters = subAmountWritersLists.get(randomNum);
-			
-			List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders,
-					this.dataObjects.size(), 0);
-			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
-			LinkedList<Integer>subAmountReaders= subAmountReadersLists.get(randomNum2);
+			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality
+					.computeRepartitionNumber(amountWriters, this.dataObjects.size(), 1);
 
-			
-			
-			
+			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
+			LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
+
+			List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality
+					.computeRepartitionNumber(amountReaders, this.dataObjects.size(), 0);
+			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
+			LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
+
 			Task firstBrt = null;
 			LinkedList<Task> tasksBeforeBrt = new LinkedList<Task>();
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
@@ -345,9 +340,12 @@ public class ProcessModelAnnotater implements Callable<File>{
 					LinkedList<Task> tasksBefore = new LinkedList<Task>();
 					boolean firstBrtBool = true;
 					int connectedDataObjects = task.getDataInputAssociations().size();
-					LinkedList<LinkedList<FlowNode>> pathsBetweenStartAndTask = CommonFunctionality.getAllPathsBetweenNodes(modelInstance, modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
-							task, new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(), new LinkedList<LinkedList<FlowNode>>());
-							
+					LinkedList<LinkedList<FlowNode>> pathsBetweenStartAndTask = CommonFunctionality
+							.getAllPathsBetweenNodes(modelInstance,
+									modelInstance.getModelElementsByType(StartEvent.class).iterator().next(), task,
+									new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(),
+									new LinkedList<LinkedList<FlowNode>>(), new LinkedList<LinkedList<FlowNode>>());
+
 					for (LinkedList<FlowNode> subPath : pathsBetweenStartAndTask) {
 						for (FlowNode f : subPath) {
 							if (f instanceof ExclusiveGateway) {
@@ -367,31 +365,29 @@ public class ProcessModelAnnotater implements Callable<File>{
 
 			}
 
-			if (firstBrt != null && !tasksBeforeBrt.isEmpty()) {				
+			if (firstBrt != null && !tasksBeforeBrt.isEmpty()) {
 				for (int i = 0; i < dataObjects.size(); i++) {
 					Task writerBeforeFirstDecision = CommonFunctionality.getRandomItem(tasksBeforeBrt);
 
-					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i), subAmountReaders.get(i),
-							dynamicWriter, dataObjects.get(i), defaultSpheresForDynamicWriter,
+					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i),
+							subAmountReaders.get(i), dynamicWriter, dataObjects.get(i), defaultSpheresForDynamicWriter,
 							writerBeforeFirstDecision);
 				}
 
 			}
 
-			
 			else {
-							
-				
+
 				for (int i = 0; i < dataObjects.size(); i++) {
-					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i), subAmountReaders.get(i),
-							dynamicWriter, dataObjects.get(i), defaultSpheresForDynamicWriter,
+					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i),
+							subAmountReaders.get(i), dynamicWriter, dataObjects.get(i), defaultSpheresForDynamicWriter,
 							null);
 				}
 
 			}
 
-		} 
-	
+		}
+
 	}
 	/*
 	 * public void
@@ -829,13 +825,14 @@ public class ProcessModelAnnotater implements Callable<File>{
 		}
 		fileNumber++;
 		StringBuilder annotatedFileNameBuilder = new StringBuilder();
-		
-		annotatedFileNameBuilder.append(fileName+"_annotated"+fileNumber);
-		if(!suffixFileName.contentEquals("_annotated")) {
+
+		annotatedFileNameBuilder.append(fileName + "_annotated" + fileNumber);
+		if (!suffixFileName.contentEquals("_annotated")) {
 			annotatedFileNameBuilder.append(suffixFileName);
 		}
 		annotatedFileNameBuilder.append(".bpmn");
-		File file = CommonFunctionality.createFileWithinDirectory(directoryToStoreAnnotatedModel, annotatedFileNameBuilder.toString());
+		File file = CommonFunctionality.createFileWithinDirectory(directoryToStoreAnnotatedModel,
+				annotatedFileNameBuilder.toString());
 
 		System.out.println("File path: " + file.getAbsolutePath());
 		Bpmn.writeModelToFile(file, modelInstance);
@@ -1200,17 +1197,17 @@ public class ProcessModelAnnotater implements Callable<File>{
 		return changeBackToTask;
 
 	}
-	
-	
-	private LinkedList<DataObjectReference> addRandomUniqueDataObjectsForBrt(Task brtTask, LinkedList<DataObjectReference>dataObjectsToChoseFrom, int dataObjectsPerDecision) {
-		LinkedList<DataObjectReference>daoR = new LinkedList<DataObjectReference>();
+
+	private LinkedList<DataObjectReference> addRandomUniqueDataObjectsForBrt(Task brtTask,
+			LinkedList<DataObjectReference> dataObjectsToChoseFrom, int dataObjectsPerDecision) {
+		LinkedList<DataObjectReference> daoR = new LinkedList<DataObjectReference>();
 		daoR.addAll(dataObjectsToChoseFrom);
 		if (taskIsBrtFollowedByXorSplit(brtTask)) {
 			BusinessRuleTask brt = (BusinessRuleTask) brtTask;
 
 			if (brt.getDataInputAssociations().isEmpty()) {
 				// randomly connect dataObjects till dataObjectsPerDecision is reached
-				int i = 0;				
+				int i = 0;
 				while (i < dataObjectsPerDecision && !dataObjectsToChoseFrom.isEmpty()) {
 					int randomCount = ThreadLocalRandom.current().nextInt(0, dataObjectsToChoseFrom.size());
 					DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
@@ -1220,23 +1217,20 @@ public class ProcessModelAnnotater implements Callable<File>{
 					dia.setTarget(p1);
 					brt.getDataInputAssociations().add(dia);
 					dia.getSources().add(dataObjectsToChoseFrom.get(randomCount));
-					generateDIElementForReader(dia, getShape(dataObjectsToChoseFrom.get(randomCount).getId()), getShape(brt.getId()));
+					generateDIElementForReader(dia, getShape(dataObjectsToChoseFrom.get(randomCount).getId()),
+							getShape(brt.getId()));
 					dataObjectsToChoseFrom.remove(dataObjectsToChoseFrom.get(randomCount));
 					i++;
 				}
 			}
 		}
-		
+
 		return daoR;
 
 	}
-	
-	
-	
 
 	private void addRandomDataObjectsForBrt(Task brtTask, int dataObjectsPerDecision) {
-		
-		
+
 		if (taskIsBrtFollowedByXorSplit(brtTask)) {
 			BusinessRuleTask brt = (BusinessRuleTask) brtTask;
 
@@ -1577,80 +1571,79 @@ public class ProcessModelAnnotater implements Callable<File>{
 		}
 
 	}
-	
-	
+
 	public void addRandomDecisionsForBrts(int probToTakeAlreadyMappedVariableForDecision) {
-		LinkedList<String>operators = new LinkedList<String>();
+		LinkedList<String> operators = new LinkedList<String>();
 		operators.add("+");
 		operators.add("-");
 		operators.add("*");
 		operators.add("/");
-		
-		String comparisonOperator = "==";
-		//random decisons for testing will always be of form e.g. D1.randomChar operator D2.randomChar == randomInteger
-		HashMap<DataObjectReference, LinkedList<Character>> alreadyMappedVariables = new HashMap<DataObjectReference, LinkedList<Character>>();
-		for(FlowNode f: this.flowNodes) {
-		if (f instanceof ExclusiveGateway) {
-			ExclusiveGateway xor = (ExclusiveGateway) f;
-			if (xor.getOutgoing().size() >= 2) {
-				FlowNode nodeBeforeXorSplit = xor.getIncoming().iterator().next().getSource();
 
-				if ((nodeBeforeXorSplit instanceof BusinessRuleTask)) {
-					BusinessRuleTask currBrt = (BusinessRuleTask) nodeBeforeXorSplit;
-					StringBuilder decisionBuilder = new StringBuilder();
-					decisionBuilder.append("[Decision]{");
-					
-					int dataObjectsPerDecisionLeft = currBrt.getDataOutputAssociations().size();
-					
-					for(DataOutputAssociation doa : currBrt.getDataOutputAssociations()) {
-						ItemAwareElement iae = doa.getTarget();
-						for(DataObjectReference daoR: this.dataObjects) {
-							if(daoR.getId().contentEquals(iae.getId())) {
-								String daoRName = daoR.getName();
-								decisionBuilder.append(daoR.getName().substring(daoRName.indexOf('[')+1, daoRName.indexOf(']')));
-								decisionBuilder.append('.');
-								if(!alreadyMappedVariables.get(daoR).isEmpty()) {
-									int prob = ThreadLocalRandom.current().nextInt(0,100);									
-									if(probToTakeAlreadyMappedVariableForDecision>=prob) {
-										LinkedList<Character>alreadyMapped = alreadyMappedVariables.get(daoR);
-										char randomCharAlreadyMapped = CommonFunctionality.getRandomItem(alreadyMapped);
-										decisionBuilder.append(randomCharAlreadyMapped);
+		String comparisonOperator = "==";
+		// random decisons for testing will always be of form e.g. D1.randomChar
+		// operator D2.randomChar == randomInteger
+		HashMap<DataObjectReference, LinkedList<Character>> alreadyMappedVariables = new HashMap<DataObjectReference, LinkedList<Character>>();
+		for (FlowNode f : this.flowNodes) {
+			if (f instanceof ExclusiveGateway) {
+				ExclusiveGateway xor = (ExclusiveGateway) f;
+				if (xor.getOutgoing().size() >= 2) {
+					FlowNode nodeBeforeXorSplit = xor.getIncoming().iterator().next().getSource();
+
+					if ((nodeBeforeXorSplit instanceof BusinessRuleTask)) {
+						BusinessRuleTask currBrt = (BusinessRuleTask) nodeBeforeXorSplit;
+						StringBuilder decisionBuilder = new StringBuilder();
+						decisionBuilder.append("[Decision]{");
+
+						int dataObjectsPerDecisionLeft = currBrt.getDataOutputAssociations().size();
+
+						for (DataOutputAssociation doa : currBrt.getDataOutputAssociations()) {
+							ItemAwareElement iae = doa.getTarget();
+							for (DataObjectReference daoR : this.dataObjects) {
+								if (daoR.getId().contentEquals(iae.getId())) {
+									String daoRName = daoR.getName();
+									decisionBuilder.append(
+											daoR.getName().substring(daoRName.indexOf('[') + 1, daoRName.indexOf(']')));
+									decisionBuilder.append('.');
+									if (!alreadyMappedVariables.get(daoR).isEmpty()) {
+										int prob = ThreadLocalRandom.current().nextInt(0, 100);
+										if (probToTakeAlreadyMappedVariableForDecision >= prob) {
+											LinkedList<Character> alreadyMapped = alreadyMappedVariables.get(daoR);
+											char randomCharAlreadyMapped = CommonFunctionality
+													.getRandomItem(alreadyMapped);
+											decisionBuilder.append(randomCharAlreadyMapped);
+										}
+
+									} else {
+										// get a random letter from alphabet
+										char randomChar = Character.MIN_VALUE;
+										do {
+											Random r = new Random();
+											randomChar = (char) (r.nextInt(26) + 'a');
+										} while (alreadyMappedVariables.get(daoR).contains(randomChar));
+										decisionBuilder.append(randomChar);
+										alreadyMappedVariables.computeIfAbsent(daoR, v -> new LinkedList<Character>())
+												.add(randomChar);
 									}
-									
-								} else {
-								//get a random letter from alphabet
-								char randomChar = Character.MIN_VALUE;
-								do {
-								Random r = new Random();
-								randomChar = (char)(r.nextInt(26) + 'a');
-								}  while(alreadyMappedVariables.get(daoR).contains(randomChar));
-								decisionBuilder.append(randomChar);
-								alreadyMappedVariables.computeIfAbsent(daoR, v -> new LinkedList<Character>()).add(randomChar);
+
+									dataObjectsPerDecisionLeft--;
+
+									if (dataObjectsPerDecisionLeft > 0) {
+										// get a random operator from operators
+										String randomOperator = CommonFunctionality.getRandomItem(operators);
+										decisionBuilder.append(randomOperator);
+									}
+
 								}
-								
-								dataObjectsPerDecisionLeft--;
-								
-								if(dataObjectsPerDecisionLeft>0) {
-								//get a random operator from operators
-								String randomOperator = CommonFunctionality.getRandomItem(operators);
-								decisionBuilder.append(randomOperator);
-								}
-								
-								
 							}
+
 						}
-						
-						
-						
-						
+						decisionBuilder.append(comparisonOperator);
+						double randomValue = ThreadLocalRandom.current().nextDouble(0, 101);
+						decisionBuilder.append(randomValue);
+
 					}
-					decisionBuilder.append(comparisonOperator);
-					double randomValue = ThreadLocalRandom.current().nextDouble(0, 101);
-					decisionBuilder.append(randomValue);					
-					
 				}
 			}
-		}
 		}
 	}
 
@@ -1660,7 +1653,8 @@ public class ProcessModelAnnotater implements Callable<File>{
 		// iterate through all tasks of the process and assign readers and writers
 		// if task is a writer - add the dynamic writer sphere if necessary
 		// task can only be either reader or writer to a specific dataObject
-		// if amountWriters == 0 -> need to connect the writerBeforeDecision if it is not null
+		// if amountWriters == 0 -> need to connect the writerBeforeDecision if it is
+		// not null
 
 		int i = 0;
 		int j = 0;
@@ -1672,7 +1666,7 @@ public class ProcessModelAnnotater implements Callable<File>{
 			// get a random flowNode and try making it a writer
 			Task task = null;
 			boolean inFrontOfDecision = false;
-			if (writerTaskInFrontOfDecisionChosen == false && writerBeforeDecision!=null) {
+			if (writerTaskInFrontOfDecisionChosen == false && writerBeforeDecision != null) {
 				task = writerBeforeDecision;
 				inFrontOfDecision = true;
 			} else {
@@ -1758,6 +1752,92 @@ public class ProcessModelAnnotater implements Callable<File>{
 
 	}
 
+	public void addExcludeParticipantConstraints(int probabilityForGatewayToHaveConstraint,
+			int lowerBoundAmountParticipantsToExclude, int upperBoundAmountParticipantsToExclude) throws Exception {
+		// upperBoundAmountParticipantsToExclude is the difference between the amount of
+		// needed voters and the global Sphere
+		// e.g. global sphere = 5, 3 people needed -> 2 is the max amount of
+		// participants to exclude
+		// the decision taker himself can not be excluded
+		if (lowerBoundAmountParticipantsToExclude < 1) {
+			lowerBoundAmountParticipantsToExclude = 1;
+		}
+
+		for (ExclusiveGateway gtw : this.modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+			int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
+			if (probabilityForGatewayToHaveConstraint >= randomInt) {
+				BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
+				String decisionTakerName = brtBeforeGtw.getName();
+				LinkedList<String> participantsToChooseFrom = this.differentParticipants;
+
+				// remove the decision taker from the list
+				for (String part : participantsToChooseFrom) {
+					if (decisionTakerName.contains(part)) {
+						participantsToChooseFrom.remove(part);
+						break;
+					}
+
+				}
+
+				if (!participantsToChooseFrom.isEmpty()) {
+
+					for (TextAnnotation tx : this.modelInstance.getModelElementsByType(TextAnnotation.class)) {
+						for (Association assoc : this.modelInstance.getModelElementsByType(Association.class)) {
+							if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+								if (tx.getTextContent().startsWith("[Voters]")) {
+
+									String[] data = tx.getTextContent().split(",");
+									int amountVotersNeeded = Integer.parseInt(data[0]);
+									if (upperBoundAmountParticipantsToExclude > amountVotersNeeded) {
+										upperBoundAmountParticipantsToExclude = amountVotersNeeded;
+									}
+
+									if (upperBoundAmountParticipantsToExclude < lowerBoundAmountParticipantsToExclude) {
+										throw new Exception("upperbound can not be < lowerbound!");
+									}
+
+									int randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
+											lowerBoundAmountParticipantsToExclude,
+											upperBoundAmountParticipantsToExclude + 1);
+									
+									
+									Collections.shuffle(participantsToChooseFrom);
+									Iterator<String> partIter = participantsToChooseFrom.iterator();
+
+									for(int i = 0; i < randomAmountConstraintsForGtw; i++) {
+										if(partIter.hasNext()) {
+										String currPart = partIter.next();
+										String currPartWithoutBrackets = currPart.replace("[", "{").replace("]","}");
+										
+										
+										String excludeParticipantConstraint = "[Constraint]"+currPartWithoutBrackets;
+										TextAnnotation constraintAnnotation = modelInstance.newInstance(TextAnnotation.class);
+									
+										constraintAnnotation.setTextFormat("text/plain");
+										Text text = this.modelInstance.newInstance(Text.class);
+										text.setTextContent(excludeParticipantConstraint);
+										constraintAnnotation.setText(text);
+										gtw.getParentElement().addChildElement(constraintAnnotation);
+
+										// add the shape of the text annotation to the xml file
+										DataInputAssociation dia = brtBeforeGtw.getDataInputAssociations().iterator().next();
+										
+										generateShapeForTextAnnotation(constraintAnnotation, CommonFunctionality.getDataObjectReferenceForItemAwareElement(this.modelInstance, dia.getTarget()));
+										partIter.remove();
+										}
+									}
+
+								}
+							}
+
+						}
+					}
+				}
+			}
+		}
+
+	}
+
 	public void addNamesForOutgoingFlowsOfXorSplits(List<String> namesForOutgoingSeqFlowsOfXorSplits) {
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getOutgoing().size() == 2 && gtw.getIncoming().size() == 1) {
@@ -1777,24 +1857,24 @@ public class ProcessModelAnnotater implements Callable<File>{
 		}
 
 	}
-	
+
 	public BpmnModelInstance getModelInstance() {
 		return this.modelInstance;
 	}
-	
+
 	@Override
 	public File call() throws Exception {
-		// TODO Auto-generated method stub				
-		
-				if(!Thread.currentThread().isInterrupted()) {	
-				
-				File f = this.checkCorrectnessAndWriteChangesToFile();
-				return f;
-				
-				}
-		
+		// TODO Auto-generated method stub
+
+		if (!Thread.currentThread().isInterrupted()) {
+
+			File f = this.checkCorrectnessAndWriteChangesToFile();
+			return f;
+
+		}
+
 		return null;
-		
+
 	}
 
 }

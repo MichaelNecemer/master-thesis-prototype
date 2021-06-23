@@ -31,8 +31,8 @@ public class ResultsToCSVWriter {
 					CSVWriter.DEFAULT_ESCAPE_CHARACTER, CSVWriter.DEFAULT_LINE_END);
 
 			rows = new ArrayList<>();
-			String[] header = new String[] { "fileName", "pathToFile", "exceptionLocalMin", "exceptionBruteForce", "totalAmountSolutions", "solution(s) bruteForce", "solution(s) localMinimumAlgorithm", "amount cheapest solution(s) bruteForce", "costCheapestSolution", "averageCostAllSolutions",
-					"executionTimeLocalMinimumAlogrithm in sec", "executionTimeBruteForce in sec", "deltaExecutionTime in sec", "isCheapestSolutionInBruteForce", "amountPaths", "amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements", "amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum"};
+			String[] header = new String[] { "fileName", "pathToFile", "exceptionLocalMin", "exceptionBruteForce", "exceptionLocalMinWithLimit", "totalAmountSolutions", "solution(s) bruteForce", "solution(s) localMinimumAlgorithm", "solution(s) localMinimumAlgorithmWithLimit", "amount cheapest solution(s) bruteForce", "costCheapestSolutionBruteForce", "costCheapestSolutionLocalMin", "costCheapestSolutionLocalMinWithLimit", "averageCostAllBruteForceSolutions",
+					"executionTimeLocalMinimumAlogrithm in sec", "executionTimeLocalMinWithLimit in sec","executionTimeBruteForce in sec",  "deltaExecutionTime in sec (localMin - bruteForce)", "deltaExecutionTime in sec (localMinWithLimit - bruteForce)", "isCheapestSolutionOfLocalMinInBruteForce", "isCheapestSolutionOfLocalMinWithLimitInBruteForce", "amountPaths", "amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements", "amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum"};
 			this.rows.add(header);
 			
 			
@@ -180,7 +180,7 @@ public class ResultsToCSVWriter {
 	
 	
 	
-	public void writeResultsOfBothAlgorithmsToCSVFile(API bruteForceApi, API localMinApi, HashMap<String, LinkedList<ProcessInstanceWithVoters>> algorithmMap, HashMap<String,Exception> exceptionPerAlgorithm, boolean isCheapestSolutionInBruteForce) {
+	public void writeResultsOfAlgorithmsToCSVFile(API bruteForceApi, API localMinApi, API localMinWithLimitApi, HashMap<String, LinkedList<ProcessInstanceWithVoters>> algorithmMap, HashMap<String,Exception> exceptionPerAlgorithm, String isCheapestSolutionInBruteForce, String isCheapestSolutionWithLimitInBruteForce) {
 		//call this method after algorithms ran
 		// compare the execution of algorithms
 		// write the metadata to a csv file
@@ -190,49 +190,74 @@ public class ResultsToCSVWriter {
 		
 		LinkedList<ProcessInstanceWithVoters>pInstancesLocalMin = null;
 		LinkedList<ProcessInstanceWithVoters>pInstancesBruteForce = null;
+		LinkedList<ProcessInstanceWithVoters>pInstancesLocalMinWithLimit = null;
 		String localMinAlgorithmTime = "null";
 		String bruteForceAlgorithmTime = "null";
-		String timeDifference = "null";
+		String localMinWithLimitAlgorithmTime = "null";
+		String timeDifferenceLocalMinBruteForce = "null";
+		String timeDifferenceLocalMinWithLimitBruteForce = "null";
 		
-		if(algorithmMap.get("localMin")!=null&&localMinApi!=null) {
-			pInstancesLocalMin = algorithmMap.get("localMin");
+		if(algorithmMap.get(localMinApi.getAlgorithmToPerform())!=null) {
+			pInstancesLocalMin = algorithmMap.get(localMinApi.getAlgorithmToPerform());
 			localMinAlgorithmTime = localMinApi.getExecutionTimeLocalMinimumAlgorithm()+"";
 		}
 				
-		if(algorithmMap.get("bruteForce")!=null) {
-			pInstancesBruteForce = algorithmMap.get("bruteForce");
+		if(algorithmMap.get(bruteForceApi.getAlgorithmToPerform())!=null) {
+			pInstancesBruteForce = algorithmMap.get(bruteForceApi.getAlgorithmToPerform());
 			bruteForceAlgorithmTime = bruteForceApi.getExecutionTimeBruteForceAlgorithm()+"";
 		}
-				
+		
+		if(algorithmMap.get(localMinWithLimitApi.getAlgorithmToPerform())!=null) {
+			pInstancesLocalMinWithLimit = algorithmMap.get(localMinWithLimitApi.getAlgorithmToPerform());
+			localMinWithLimitAlgorithmTime = localMinWithLimitApi.getExecutionTimeLocalMinimumAlgorithmWithLimit()+"";
+		}
+		
+		
 			
-			
-			if(!(localMinAlgorithmTime.contentEquals("null")&&bruteForceAlgorithmTime.contentEquals("null"))) {
-				timeDifference = (Double.parseDouble(localMinAlgorithmTime)-Double.parseDouble(bruteForceAlgorithmTime))+"";
+			if((!localMinAlgorithmTime.contentEquals("null"))&&(!bruteForceAlgorithmTime.contentEquals("null"))) {
+				timeDifferenceLocalMinBruteForce = (Double.parseDouble(localMinAlgorithmTime)-Double.parseDouble(bruteForceAlgorithmTime))+"";
 			}
+			
+			if((!localMinWithLimitAlgorithmTime.contentEquals("null"))&&(!bruteForceAlgorithmTime.contentEquals("null"))) {
+				timeDifferenceLocalMinWithLimitBruteForce = (Double.parseDouble(localMinWithLimitAlgorithmTime)-Double.parseDouble(bruteForceAlgorithmTime))+"";
+			}
+
 
 					// map the cheapest process instances to rows in the csv file
 					
 					String amountCheapestSolutionsLocalMin = "null";
-					String costCheapestSolution = "null";
+					String costCheapestSolutionLocalMin = "null";
 					if(pInstancesLocalMin!=null&&!pInstancesLocalMin.isEmpty()) {
-					costCheapestSolution =pInstancesLocalMin.get(0).getCostForModelInstance()+"";					
+					costCheapestSolutionLocalMin =pInstancesLocalMin.get(0).getCostForModelInstance()+"";					
 					amountCheapestSolutionsLocalMin = pInstancesLocalMin.size()+"";
 					}
 					
 					String amountCheapestSolutionsBruteForce = "null";
 					String averageCostAllSolutions="null";
 					String amountSolutionsBruteForce = "null";
+					String costCheapestSolutionBruteForce = "null";
 					if(pInstancesBruteForce!=null&&!pInstancesBruteForce.isEmpty()) {
 					LinkedList<ProcessInstanceWithVoters>cheapestBruteForceInst = 	CommonFunctionality.getCheapestProcessInstancesWithVoters(pInstancesBruteForce);
 					amountCheapestSolutionsBruteForce = cheapestBruteForceInst.size()+"";
 					amountSolutionsBruteForce = pInstancesBruteForce.size()+"";
 					averageCostAllSolutions = CommonFunctionality.getAverageCostForAllModelInstances(pInstancesBruteForce)+"";
-					if(costCheapestSolution.contentEquals("null")) {
-						costCheapestSolution =cheapestBruteForceInst.get(0).getCostForModelInstance()+"";					
+					
+						costCheapestSolutionBruteForce =cheapestBruteForceInst.get(0).getCostForModelInstance()+"";					
 
-					}
+					
 					
 					}
+					
+					String amountCheapestSolutionsLocalMinWithLimit = "null";
+					String costCheapestSolutionLocalMinWithLimit = "null";
+					if(pInstancesLocalMinWithLimit!=null&&!pInstancesLocalMinWithLimit.isEmpty()) {
+						costCheapestSolutionLocalMinWithLimit =pInstancesLocalMinWithLimit.get(0).getCostForModelInstance()+"";					
+						amountCheapestSolutionsLocalMinWithLimit = pInstancesLocalMinWithLimit.size()+"";
+						
+					}
+					
+					
+					
 					
 					
 					StringBuilder readersPerDataObject = new StringBuilder();
@@ -295,9 +320,15 @@ public class ResultsToCSVWriter {
 					if(exceptionPerAlgorithm.get("bruteForce")!=null) {
 						exceptionNameBruteForce = exceptionPerAlgorithm.get("bruteForce").getClass().getCanonicalName();
 					}
-				
-					String[] row = new String[] { fileName, pathToFile, exceptionNameLocalMin, exceptionNameBruteForce, amountSolutions, amountSolutionsBruteForce, amountCheapestSolutionsLocalMin, amountCheapestSolutionsBruteForce, costCheapestSolution, averageCostAllSolutions,
-							localMinAlgorithmTime, bruteForceAlgorithmTime, timeDifference, isCheapestSolutionInBruteForce+"", allPathsThroughProcess, readersPerDataObject.toString(), writersPerDataObject.toString(), amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks, amountElements,sumAmountVotersOfModel, averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel};
+					
+					String exceptionNameLocalMinWithLimit = "null";
+					if(exceptionPerAlgorithm.get(localMinWithLimitApi.getAlgorithmToPerform()) != null) {
+						exceptionNameLocalMinWithLimit = exceptionPerAlgorithm.get(localMinWithLimitApi.getAlgorithmToPerform()).getClass().getCanonicalName();
+					} 
+					
+					
+					String[] row = new String[] { fileName, pathToFile, exceptionNameLocalMin, exceptionNameBruteForce, exceptionNameLocalMinWithLimit, amountSolutions, amountSolutionsBruteForce,  amountCheapestSolutionsLocalMin, amountCheapestSolutionsLocalMinWithLimit, amountCheapestSolutionsBruteForce, costCheapestSolutionBruteForce, costCheapestSolutionLocalMin, costCheapestSolutionLocalMinWithLimit, averageCostAllSolutions,
+							localMinAlgorithmTime, localMinWithLimitAlgorithmTime, bruteForceAlgorithmTime, timeDifferenceLocalMinBruteForce, timeDifferenceLocalMinWithLimitBruteForce,isCheapestSolutionInBruteForce,isCheapestSolutionWithLimitInBruteForce, allPathsThroughProcess, readersPerDataObject.toString(), writersPerDataObject.toString(), amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks, amountElements,sumAmountVotersOfModel, averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel};
 					
 					this.rows.add(row);	
 					

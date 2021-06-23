@@ -109,8 +109,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 		System.out.println("API for: " + process.getName());
 		CommonFunctionality.isCorrectModel(modelInstance);
-		readersMap = CommonFunctionality.getReadersForDataObjects(modelInstance);
-		writersMap = CommonFunctionality.getWritersForDataObjects(modelInstance);
+		this.readersMap = CommonFunctionality.getReadersForDataObjects(modelInstance);
+		this.writersMap = CommonFunctionality.getWritersForDataObjects(modelInstance);
 
 		this.mapAndCompute();
 
@@ -158,8 +158,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 		this.mapDataObjects();
 
-		this.createDataObjectAsssociatons();
 		this.computeGlobalSphere();
+		this.createDataObjectAsssociatons();
 		this.mapDefaultTroubleShooter();
 		this.setAllEffectivePathsForWriters();
 
@@ -538,7 +538,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			}
 
 		}
-		System.out.println("Local Minimum Algorithm wiht Limit "
+		System.out.println("Local Minimum Algorithm with Limit "
 				+ upperBoundSolutionsPerIteration+" generating all cheapest process instances: ");
 		long startTime = System.nanoTime();
 		LinkedList<ProcessInstanceWithVoters> cheapestCombinationsWithLimit = this.goDFSthroughProcessBuildArcsAndGetVoters(true, upperBoundSolutionsPerIteration,
@@ -1131,7 +1131,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	// map the annotated amount of needed voters to the BPMNExclusiveGateways
 	// map the sphere connected to the gateway
-	private void mapSphereAnnotations(BPMNExclusiveGateway gtw) {
+	private void mapAnnotations(BPMNExclusiveGateway gtw) {
 		for (TextAnnotation text : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 			for (Association a : modelInstance.getModelElementsByType(Association.class)) {
 				if (a.getAttributeValue("sourceRef").equals(gtw.getId())
@@ -1152,14 +1152,22 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 					} else if (str.contains("[Sphere]")) {
 						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 						gtw.setSphere(subStr);
-					} else if (str.contains("[Constraints]")) {
-						if (str.contains(",")) {
-							gtw.setConstraints(str.split(","));
-						} else {
-							String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
-							gtw.setConstraints(new String[] { subStr });
+					} else if (str.contains("[ExcludeParticipantConstraint]")) {
+							String partName = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
+							
+							for(BPMNParticipant p: this.globalSphere) {
+								if(p.getName().contentEquals(partName)) {
+									ExcludeParticipantConstraint epc = new ExcludeParticipantConstraint(p);
+									gtw.getConstraints().add(epc);
+									break;
+								}
+								
+								
+							}
+							
+							
 
-						}
+						
 
 					}
 
@@ -1202,7 +1210,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			}
 
 			for (ExclusiveGateway xor : this.modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
-				this.mapSphereAnnotations((BPMNExclusiveGateway) this.getNodeById(xor.getId()));
+				this.mapAnnotations((BPMNExclusiveGateway) this.getNodeById(xor.getId()));
 			}
 
 			for (BusinessRuleTask brt : this.modelInstance.getModelElementsByType(BusinessRuleTask.class)) {
@@ -1444,14 +1452,28 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
-	public LinkedList<VoterForXorArc> generateArcsForXorSplit(BPMNBusinessRuleTask currBrt) {
+	public LinkedList<VoterForXorArc> generateArcsForXorSplitWithConstraint(BPMNBusinessRuleTask currBrt) {
 		LinkedList<VoterForXorArc> brtCombs = new LinkedList<VoterForXorArc>();
 
 		if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
 			BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
 			// get all the possible combinations of participants for the brt
+			// consider the constraints e.g. participants may be excluded
+			LinkedList<BPMNParticipant>participantsToCombine = this.globalSphere;
+			
+			//exclude the participants due to constraints
+			for(Constraint constraint: bpmnEx.getConstraints()) {
+				if(constraint instanceof ExcludeParticipantConstraint) {
+					BPMNParticipant partToRemove = ((ExcludeParticipantConstraint)constraint).getParticipantToExclude();
+					participantsToCombine.remove(partToRemove);					
+				}
+				
+			}
+			
+			
+			
 			if (currBrt.getCombinations().isEmpty()) {
-				LinkedList<LinkedList<BPMNParticipant>> list = Combination.getPermutations(this.globalSphere,
+				LinkedList<LinkedList<BPMNParticipant>> list = Combination.getPermutations(participantsToCombine,
 						bpmnEx.getAmountVoters());
 				currBrt.getCombinations().putIfAbsent(currBrt, list);
 			}
@@ -1604,7 +1626,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 				if (currBrt.getVoterArcs().isEmpty()) {
 					// when brt is found and arcs havent been generated
-					arcsForCurrBrt = generateArcsForXorSplit(currBrt);
+					arcsForCurrBrt = generateArcsForXorSplitWithConstraint(currBrt);
 					currBrt.setVoterArcs(arcsForCurrBrt);
 
 					// check if there has been already a brt before
@@ -1618,7 +1640,11 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 							pInstance.addVoterArc(voters);
 
 							if (localMin) {
-								this.insertIfCheapest(processInstancesWithVoters, pInstance);
+								//when bound == 0 -> get all cheapest instances
+								
+									this.insertIfCheapestWithBound(processInstancesWithVoters, pInstance, bound);
+								
+								
 							} else {
 								processInstancesWithVoters.add(pInstance);
 							}
@@ -1669,20 +1695,9 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 							if (localMin) {
 								//when bound == 0 -> get all cheapest instances
 								//else e.g. bound == 3 -> get the first 3 cheapest instances
-								if(bound==0) {
-									this.insertIfCheapest(newInstances, newInstance);
-								} else {
-									if(newInstances.size()<bound) {
-										this.insertIfCheapest(newInstances, newInstance);
-										
-										if(newInstances.size()==bound) {
-											//maximum amount of solutions found for this iteration
-											break;
-										}
-										
-									}
+															
+							this.insertIfCheapestWithBound(newInstances, newInstance, bound);
 									
-								}
 								
 							} else {
 								newInstances.add(newInstance);
@@ -1739,8 +1754,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
-	private void insertIfCheapest(LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters,
-			ProcessInstanceWithVoters currInstance) throws InterruptedException {
+	private void insertIfCheapestWithBound(LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters,
+			ProcessInstanceWithVoters currInstance, int bound) throws InterruptedException {
 		if(Thread.currentThread().isInterrupted()) {
 			System.err.println("Interrupted" +Thread.currentThread().getName());
 			throw new InterruptedException();
@@ -1758,7 +1773,10 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				processInstancesWithVoters.add(currInstance);
 			} else if (currInstance.getCostForModelInstance() == processInstancesWithVoters.getFirst()
 					.getCostForModelInstance()) {
+				//only insert if bound not reached!
+				if(processInstancesWithVoters.size()<bound) {
 				processInstancesWithVoters.add(currInstance);
+				}
 			}
 		}
 
@@ -2788,6 +2806,16 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		return this.executionTimeMap.get(key);		
 	}
 
+	public double getExecutionTimeLocalMinimumAlgorithmWithLimit() {
+		if(this.getAlgorithmToPerform().contains("localMinWithLimit")) {
+			return this.executionTimeMap.get(this.getAlgorithmToPerform());
+		} else {
+			return -1;
+		}
+		
+	}
+	
+	
 	public double getExecutionTimeLocalMinimumAlgorithm() {
 		return this.executionTimeMap.get("localMin");
 	}
@@ -2881,6 +2909,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	@Override
 	public HashMap<String, LinkedList<ProcessInstanceWithVoters>> call() throws NullPointerException, InterruptedException, Exception {
 		// TODO Auto-generated method stub
+		System.out.println("Call algorithm for: "+this.process.getAbsolutePath());
 		HashMap<String, LinkedList<ProcessInstanceWithVoters>> mapToReturn = new HashMap<String, LinkedList<ProcessInstanceWithVoters>>();
 			if (this.algorithmToPerform.contentEquals("bruteForce")) {
 				LinkedList<ProcessInstanceWithVoters> pInstBruteForce = this.bruteForceAlgorithm();

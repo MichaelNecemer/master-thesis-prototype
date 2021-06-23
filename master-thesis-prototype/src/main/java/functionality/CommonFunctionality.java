@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1275,19 +1276,6 @@ public static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mod
 	
 	
 
-	
-	public static void setTimeout(Runnable runnable, int delay){
-	    new Thread(() -> {
-	        try {
-	            Thread.sleep(delay);
-	            runnable.run();
-	        }
-	        catch (Exception e){
-	            System.err.println(e);
-	        }
-	    }).start();
-	}
-	
 	public static String getNextStricterSphere(String sphere) {
 		sphere.trim();
 		if(sphere.contentEquals("Public")) {
@@ -1328,6 +1316,36 @@ public static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mod
 			return modelInstance.getModelElementsByType(Lane.class).size();			
 		}
 		
+	}
+	
+	
+	
+	public static LinkedList<String> getGlobalSphereList(BpmnModelInstance modelInstance, boolean modelWithLanes) {	
+		
+		LinkedList<String>participants = new LinkedList<String>();
+
+		if(!modelWithLanes) {
+			//if the model is without lanes -> the participants must be extracted from the task name 
+		for (Task task : modelInstance.getModelElementsByType(Task.class)) {
+				
+				
+			String participantName = task.getName().substring(task.getName().indexOf("[")+1, task.getName().indexOf("]"));
+			if(!participants.contains(participantName)) {
+				participants.add(participantName);
+			}
+				
+			}
+		} else {
+			// model is with lanes 
+			for(Lane l: modelInstance.getModelElementsByType(Lane.class)) {
+				participants.add(l.getName());
+			}
+			
+			
+			
+		}
+		return participants;
+
 	}
 	
 public static void generateNewModelAndIncreaseVotersForEachDataObject(String pathToFile, int increaseBy) {
@@ -2799,23 +2817,40 @@ public static void changeWayPoints(BpmnModelInstance modelInstance, SequenceFlow
 
 }
 
-public static boolean compareResultsOfAlgorithmsForDifferentAPIs(LinkedList<ProcessInstanceWithVoters> localMinInstances,
-		LinkedList<ProcessInstanceWithVoters> bruteForceInstances) {
+public static String compareResultsOfAlgorithmsForDifferentAPIs(LinkedList<ProcessInstanceWithVoters> localMinInstances,
+		LinkedList<ProcessInstanceWithVoters> bruteForceInstances, int boundForComparisons) {
+	
+	try {
 	if(localMinInstances == null || bruteForceInstances == null) {
-		return false;
+		return "null";
 	}
 	if(localMinInstances.isEmpty() || bruteForceInstances.isEmpty()) {
-		return false;
+		return "null";
 	}
-	
+		
 	int countCheapestSolutionFoundInBruteForceSolutions = 0;
 	LinkedList<ProcessInstanceWithVoters> cheapestBruteForceSolutions = CommonFunctionality
 			.getCheapestProcessInstancesWithVoters(bruteForceInstances);
+	
+	//to avoid very long taking comparisons -> only check if boundForComparisons is reached
+	if((localMinInstances.size()*cheapestBruteForceSolutions.size())>boundForComparisons) {
+		
+		if(cheapestBruteForceSolutions.get(0).getCostForModelInstance()==localMinInstances.get(0).getCostForModelInstance()) {
+			return "true";
+		
+		} else {
+			return "false";
+		}
+		
+		
+	}
+	
 
-	for (ProcessInstanceWithVoters cheapestInstBruteForce : cheapestBruteForceSolutions) {
-		for (ProcessInstanceWithVoters cheapestInstLocalMin : localMinInstances) {
+		for (ProcessInstanceWithVoters cheapestInstBruteForce : cheapestBruteForceSolutions) {
+			for (ProcessInstanceWithVoters cheapestInstLocalMin : localMinInstances) {
 			if (cheapestInstBruteForce
 					.getCostForModelInstance() == (cheapestInstLocalMin.getCostForModelInstance())) {
+				boolean count = true;
 				for(Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>bruteForceEntry: cheapestInstBruteForce.getVotersMap().entrySet()) {
 					for(Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>localMinEntry: cheapestInstLocalMin.getVotersMap().entrySet()) {
 						if(bruteForceEntry.getKey().getId().contentEquals(localMinEntry.getKey().getId())) {
@@ -2829,8 +2864,8 @@ public static boolean compareResultsOfAlgorithmsForDifferentAPIs(LinkedList<Proc
 									
 								}								
 							}
-							if(entryEqual==size) {
-								countCheapestSolutionFoundInBruteForceSolutions++;
+							if(entryEqual!=size) {
+								count=false;
 							}
 							
 						}
@@ -2841,17 +2876,29 @@ public static boolean compareResultsOfAlgorithmsForDifferentAPIs(LinkedList<Proc
 				
 				
 			}
+				if(count) {
+					countCheapestSolutionFoundInBruteForceSolutions++;
+					if(countCheapestSolutionFoundInBruteForceSolutions==localMinInstances.size()) {
+						return "true";						
+					}
+				}
 
 		}
 
 	}
+		
 	}
-	if (countCheapestSolutionFoundInBruteForceSolutions == localMinInstances.size()
-			&& localMinInstances.size() == cheapestBruteForceSolutions.size()) {
-		return true;
+	
+	if (countCheapestSolutionFoundInBruteForceSolutions == localMinInstances.size()) {
+		return "true";
+	}  else {
+		System.out.println("CountCheapestSolutionFoundInBruteForce"+countCheapestSolutionFoundInBruteForceSolutions+", "+localMinInstances.size());
+		return "false";
+	}
+	} catch(NullPointerException ex) {
+		return "null";
 	}
 
-	return false;
 }
 
 
@@ -2881,24 +2928,95 @@ public static LinkedList<ProcessInstanceWithVoters> getCheapestProcessInstancesW
 	return allCheapestInst;
 }
 
+public static void generateNewModelsUntilGlobalSphereReached(File model,int globalSphereLowerBound,  int amountNewProcessesToCreatePerIteration,  String directoryToStore) {
+	
+	String fileNameWithoutExtension = model.getName().replace(".bpmn", "").trim();
+	BpmnModelInstance modelInstance = Bpmn.readModelFromFile(model);
+	int globalSphereUpperBound = modelInstance.getModelElementsByType(Task.class).size();
+	
+	
+	
+	while(globalSphereLowerBound<=globalSphereUpperBound) {
+		//globalSphereLowerBound = amount of different participants for this model
+		//globalSphereLowerBound e.g. 3 -> create amountNewProcessesToCreatePerIteration new Models where all tasks of the model have one of the 3 participants connected
+		
+		for(int iteration = 0; iteration < amountNewProcessesToCreatePerIteration; iteration++) {
+			String suffix = "lb"+globalSphereLowerBound+"ub"+globalSphereUpperBound+"iter"+iteration;	
+			LinkedList<String>participantNames = new LinkedList<String>();
+			for(int i = 1; i <=globalSphereLowerBound; i++) {
+				String participantName = "Participant_"+i;
+				participantNames.add(participantName);
+			}
+					
+			BpmnModelInstance cloneModel = (BpmnModelInstance) CommonFunctionality.deepCopy(modelInstance);
+			LinkedList<Task>tasksToChooseFrom = new LinkedList<Task>();
+					tasksToChooseFrom.addAll(cloneModel.getModelElementsByType(Task.class));
+			Collections.shuffle(tasksToChooseFrom);
+					
+					
+			Iterator<Task>taskIter = tasksToChooseFrom.iterator();
+			LinkedList<String>participantsNeededToBeChosen = new LinkedList<String>();
+			participantsNeededToBeChosen.addAll(participantNames);
+			
+			
+			while(taskIter.hasNext()) {
+				Task currTask = taskIter.next();
+				String currTaskName = currTask.getName();
 
-public static void substituteOneDataObjectAndWriteModels(BpmnModelInstance modelInstance, DataObjectReference substitute,String fileName, String directoryToStore){
+				Iterator<String>participantIter =participantsNeededToBeChosen.iterator();
+				if(participantIter.hasNext()) {
+					//first assign the participant once to a task to match the globalSphereLowerBound
+				String newParticipant = participantIter.next();					
+				 String newTaskName = currTaskName.replaceAll("(?<=\\[).*?(?=\\])", newParticipant);
+				 currTask.setName(newTaskName);
+				 
+				 participantIter.remove();
+				 
+				} else {
+					//choose a random participant
+					String newParticipant = CommonFunctionality.getRandomItem(participantNames);
+					String newTaskName = currTaskName.replaceAll("(?<=\\[).*?(?=\\])", newParticipant);
+					currTask.setName(newTaskName);
+					
+				}
+							
+			}
+					
+			try {
+				CommonFunctionality.writeChangesToFile(cloneModel, fileNameWithoutExtension, directoryToStore, suffix);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ParserConfigurationException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (SAXException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+		}
+		
+		globalSphereLowerBound++;
+		
+	}
+	
+	
+	
+}
+
+
+
+
+public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnModelInstance modelInstance, DataObjectReference substitute,String fileName, String directoryToStore){
 	//choose a dataObject from a decision and substitute it
 	//if decision already has the substitute -> remove the random dataObject
-	//generate new model on each iteration
-	
+	//generate new model on each iteration	
 	
 	Collection<BusinessRuleTask>brtList = modelInstance.getModelElementsByType(BusinessRuleTask.class);
 	
 	Iterator<BusinessRuleTask>brtIter = brtList.iterator();
-	ItemAwareElement iaeSubstitute = null;
-	for(ItemAwareElement iae: modelInstance.getModelElementsByType(ItemAwareElement.class)) {
-		DataObjectReference daoR = CommonFunctionality.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
-		if(daoR.getId().equals(substitute.getId())) {
-			iaeSubstitute = iae;
-			break;
-		}
-	}
+	
 	
 	while(brtIter.hasNext()) {
 		BusinessRuleTask brt = brtIter.next();
@@ -2988,6 +3106,102 @@ private static void generateDIElementForReader(BpmnModelInstance modelInstance, 
 	modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(e);
 }
 
+
+
+
+public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName, int probabilityForGatewayToHaveConstraint,
+		int lowerBoundAmountParticipantsToExclude, int upperBoundAmountParticipantsToExclude, boolean alwaysMaxConstrained,  boolean modelWithLanes, String directoryToStore) throws Exception {
+	// upperBoundAmountParticipantsToExclude is the difference between the amount of
+	// needed voters and the global Sphere
+	// e.g. global sphere = 5, 3 people needed -> 2 is the max amount of
+	// participants to exclude
+	// the decision taker himself can not be excluded
+	if(lowerBoundAmountParticipantsToExclude < 1) {
+		lowerBoundAmountParticipantsToExclude = 1;
+	}
+
+	for (ExclusiveGateway gtw :modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+		if(gtw.getIncoming().size()==1) {
+		int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
+		if (probabilityForGatewayToHaveConstraint >= randomInt) {
+			BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
+			String decisionTakerName = brtBeforeGtw.getName();
+			LinkedList<String> participantsToChooseFrom = CommonFunctionality.getGlobalSphereList(modelInstance, modelWithLanes);
+			int globalSphereSize = participantsToChooseFrom.size();
+			
+			// remove the decision taker from the list
+			for (String part : participantsToChooseFrom) {
+				if (decisionTakerName.contains(part)) {
+					participantsToChooseFrom.remove(part);
+					break;
+				}
+
+			}
+
+			if (!participantsToChooseFrom.isEmpty()) {
+
+				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+							if (tx.getTextContent().startsWith("[Voters]")) {
+
+								String[] data = tx.getTextContent().split(",");
+								int amountVotersNeeded = Integer.parseInt(data[0]);
+								int randomAmountConstraintsForGtw = 0;
+								if (upperBoundAmountParticipantsToExclude > amountVotersNeeded) {
+									upperBoundAmountParticipantsToExclude = amountVotersNeeded;
+								}
+								
+								
+								if (upperBoundAmountParticipantsToExclude < lowerBoundAmountParticipantsToExclude) {
+									throw new Exception("upperbound can not be < lowerbound!");
+								}
+
+							
+								
+								if(alwaysMaxConstrained) {
+									randomAmountConstraintsForGtw = globalSphereSize - amountVotersNeeded;									
+								} else {
+									randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
+											lowerBoundAmountParticipantsToExclude,
+											upperBoundAmountParticipantsToExclude + 1);
+								}
+								
+															
+								Collections.shuffle(participantsToChooseFrom);
+								Iterator<String> partIter = participantsToChooseFrom.iterator();
+
+								for(int i = 0; i < randomAmountConstraintsForGtw; i++) {
+									if(partIter.hasNext()) {
+									String currPart = partIter.next();
+									String currPartWithoutBrackets = currPart.replace("[", "{").replace("]","}");
+									
+									
+									String excludeParticipantConstraint = "[Constraint]"+currPartWithoutBrackets;
+									TextAnnotation constraintAnnotation = modelInstance.newInstance(TextAnnotation.class);
+								
+									constraintAnnotation.setTextFormat("text/plain");
+									Text text = modelInstance.newInstance(Text.class);
+									text.setTextContent(excludeParticipantConstraint);
+									constraintAnnotation.setText(text);
+									gtw.getParentElement().addChildElement(constraintAnnotation);
+				
+									CommonFunctionality.generateShapeForTextAnnotation(modelInstance, constraintAnnotation, brtBeforeGtw);
+									partIter.remove();
+									}
+								}
+
+							}
+						}
+
+					}
+				}
+			}
+		}
+	}
+	}
+	CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, "constrained");
+}
 
 
 }

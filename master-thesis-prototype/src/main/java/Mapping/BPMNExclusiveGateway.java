@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 
+import functionality.Constraint;
+
 //Exclusive Gateways are binary
 public class BPMNExclusiveGateway extends BPMNGateway{
 	
@@ -13,7 +15,7 @@ public class BPMNExclusiveGateway extends BPMNGateway{
 	private int amountLoops;
 	private String sphere;
 	private static int exclusiveGtwCount = 0;
-	private String[] constraints; 
+	private LinkedList<Constraint> constraints; 
 	//contains all incoming ArcWithCost from all branches into the xor-split
 	private LinkedList<LinkedList<ArcWithCost>> incomingArcsWithCostAllBranches;
 		
@@ -26,6 +28,7 @@ public class BPMNExclusiveGateway extends BPMNGateway{
 		//by default the sphere is global
 		this.sphere="Global";
 		//by default there are no constraints 
+		this.constraints=new LinkedList<Constraint>();
 		this.incomingArcsWithCostAllBranches=new LinkedList<LinkedList<ArcWithCost>>();
 		
 	}
@@ -104,10 +107,8 @@ public class BPMNExclusiveGateway extends BPMNGateway{
 	public String getSphere() {
 		return this.sphere;
 	}
-	public void setConstraints(String[]constraints) {
-		this.constraints=constraints;
-	}
-	public String[] getConstraints(){
+	
+	public LinkedList<Constraint> getConstraints(){
 		return this.constraints;
 	}
 	

@@ -205,15 +205,7 @@ public class ProcessGenerator implements Callable {
 			}
 			addedNode = modelInstance.getModelElementById(nextConstructToBeAdded.getId());
 
-		
 	
-		//System.out.println("RUN"+run++);
-		/*
-		for(SequenceFlow f: modelInstance.getModelElementsByType(SequenceFlow.class)) {
-			System.out.println("Sflow: "+f.getId()+", "+f.getSource().getId()+", "+f.getTarget().getId());
-	
-		}
-		*/
 		
 		if(addedNode instanceof Gateway && addedNode.getId().contains("_split")) {
 			queue.add(addedNode);
@@ -259,11 +251,6 @@ public class ProcessGenerator implements Callable {
 				}
 			} else {
 				currentNode.builder().endEvent().id("endEvent_1").name("endEvent_1");
-				/*
-				for(SequenceFlow f: modelInstance.getModelElementsByType(SequenceFlow.class)) {
-					System.out.println("Sflow: "+f.getDiagramElement().getId()+", "+f.getSource().getId()+", "+f.getTarget().getId());
-					
-				}*/
 			}
 				return;
 			
