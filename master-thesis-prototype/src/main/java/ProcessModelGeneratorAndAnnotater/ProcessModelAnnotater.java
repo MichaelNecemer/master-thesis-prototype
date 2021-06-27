@@ -161,7 +161,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix,
 			List<String> defaultSpheres, int dynamicWriter, int amountWritersOfProcess, int amountReadersOfProcess,
-			int probPublicDecision, int amountParticipantsPerDecision, int amountDataObjectsToCreate,
+			int probPublicDecision,  int amountDataObjectsToCreate,
 			int minDataObjectsPerDecision, int maxDataObjectsPerDecision, int amountParticipantsPerDecisionLowerBound,
 			int amountParticipantsPerDecisionUpperBound, List<String> namesForOutgoingSeqFlowsOfXorSplits,
 			boolean allDataObjectsUniquePerGtw) throws Exception {
@@ -196,10 +196,13 @@ public class ProcessModelAnnotater implements Callable<File> {
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 		this.generateDataObjects(amountDataObjectsToCreate, defaultSpheres);
+
 		this.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision, maxDataObjectsPerDecision,
 				amountParticipantsPerDecisionLowerBound, amountParticipantsPerDecisionUpperBound, probPublicDecision,
 				allDataObjectsUniquePerGtw);
+
 		this.addNamesForOutgoingFlowsOfXorSplits(namesForOutgoingSeqFlowsOfXorSplits);
+
 		this.annotateModelWithFixedAmountOfReadersAndWriters(amountWritersOfProcess, amountReadersOfProcess,
 				dynamicWriter, defaultSpheres);
 
@@ -318,18 +321,22 @@ public class ProcessModelAnnotater implements Callable<File> {
 		// written before it can get read
 
 		if (!this.dataObjects.isEmpty()) {
-
 			if (amountWriters < this.dataObjects.size()) {
 				throw new Exception("Amount of writers must be >= amount of DataObjects!");
 			}
+			
 			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality
 					.computeRepartitionNumber(amountWriters, this.dataObjects.size(), 1);
-
 			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
 			LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
-
-			List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality
-					.computeRepartitionNumber(amountReaders, this.dataObjects.size(), 0);
+			List<LinkedList<Integer>> subAmountReadersLists = null;
+			if(amountReaders==this.dataObjects.size()) {
+				subAmountReadersLists = CommonFunctionality
+						.computeRepartitionNumber(amountReaders, this.dataObjects.size(), 0);
+			} else {
+			subAmountReadersLists = CommonFunctionality
+					.computeRepartitionNumber(amountReaders, this.dataObjects.size(), 1);
+			}
 			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
 			LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
 
@@ -345,7 +352,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 									modelInstance.getModelElementsByType(StartEvent.class).iterator().next(), task,
 									new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(),
 									new LinkedList<LinkedList<FlowNode>>(), new LinkedList<LinkedList<FlowNode>>());
-
+					System.out.println("CHECK3");	
 					for (LinkedList<FlowNode> subPath : pathsBetweenStartAndTask) {
 						for (FlowNode f : subPath) {
 							if (f instanceof ExclusiveGateway) {
@@ -1209,17 +1216,17 @@ public class ProcessModelAnnotater implements Callable<File> {
 				// randomly connect dataObjects till dataObjectsPerDecision is reached
 				int i = 0;
 				while (i < dataObjectsPerDecision && !dataObjectsToChoseFrom.isEmpty()) {
-					int randomCount = ThreadLocalRandom.current().nextInt(0, dataObjectsToChoseFrom.size());
+					int randomCount = ThreadLocalRandom.current().nextInt(0, daoR.size());
 					DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
 					Property p1 = modelInstance.newInstance(Property.class);
 					p1.setName("__targetRef_placeholder");
 					brt.addChildElement(p1);
 					dia.setTarget(p1);
 					brt.getDataInputAssociations().add(dia);
-					dia.getSources().add(dataObjectsToChoseFrom.get(randomCount));
-					generateDIElementForReader(dia, getShape(dataObjectsToChoseFrom.get(randomCount).getId()),
+					dia.getSources().add(daoR.get(randomCount));
+					generateDIElementForReader(dia, getShape(daoR.get(randomCount).getId()),
 							getShape(brt.getId()));
-					dataObjectsToChoseFrom.remove(dataObjectsToChoseFrom.get(randomCount));
+					daoR.remove(daoR.get(randomCount));
 					i++;
 				}
 			}
@@ -1867,7 +1874,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		// TODO Auto-generated method stub
 
 		if (!Thread.currentThread().isInterrupted()) {
-
+			
 			File f = this.checkCorrectnessAndWriteChangesToFile();
 			return f;
 

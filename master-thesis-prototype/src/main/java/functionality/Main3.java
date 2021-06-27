@@ -62,9 +62,13 @@ public class Main3 {
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel5_annotated.bpmn";
 	//String pathToFile = "C\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn";
 	//String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2.bpmn";
+	//String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2withGlobalTask.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test.bpmn";
-	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test2\\SmallProcessesAnnotatedFolder\\Spheres\\randomProcessModel84_annotated1_annotated92lWmR_Static1.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches3.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches3.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test2\\MediumProcessesAnnotatedFolder\\ModelsForEvaluation\\randomProcessModel103_annotated1_annotated112lWlR_Strong-Dynamic_voters1.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\ConstraintTest\\MediumModels\\randomProcessModel108_annotated1_annotated112mWsR_Strong-Dynamic_voters3_alwMaxConstrained.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test2\\SmallProcessesAnnotatedFolder\\ModelsForEvaluation\\randomProcessModel10_annotated1_annotated19lWlR_Weak-Dynamic_voters3.bpmn";
+		
 		JFrame frame = new JFrame(pathToFile);
 	frame.setVisible(true);
 	
@@ -80,7 +84,7 @@ public class Main3 {
 	
 	
 	try {
-		//ProcessGenerator g= new ProcessGenerator(pathForAddingRandomModels,4000, 15, 20, 40, 18,50,30,20,20,5);
+		//ProcesGenerator g= new ProcessGenerator(pathForAddingRandomModels,4000, 15, 20, 40, 18,50,30,20,20,5);
 	
 
 	
@@ -159,11 +163,10 @@ public class Main3 {
 	
 	
 	//use local minimum Algorithm to find cheapest combinations
-	LinkedList<ProcessInstanceWithVoters> pInstances;
+	LinkedList<ProcessInstanceWithVoters> pInstances = null;
 	try {
 		pInstances = a2.localMinimumAlgorithm();
 		System.out.println("Amount of solutions found with localMinimumAlgorithm: "+pInstances.size());
-		System.out.println("Cheapest Heuristic Search Instances: ");
 		
 		for(ProcessInstanceWithVoters pInstance:pInstances) {		
 		pInstance.printProcessInstance();
@@ -202,12 +205,14 @@ public class Main3 {
 		e1.printStackTrace();
 	}
 	
-	LinkedList<ProcessInstanceWithVoters> bruteForceSolutions;
+	LinkedList<ProcessInstanceWithVoters> bruteForceSolutions = null;
 	try {
 		bruteForceSolutions = a2.bruteForceAlgorithm();
 		System.out.println("Solutions found with BruteForce: "+bruteForceSolutions.size());
 		System.out.println("Cheapest brute Force solutions: "+CommonFunctionality.getCheapestProcessInstancesWithVoters(bruteForceSolutions).size());
-		
+		for(ProcessInstanceWithVoters pInstance:CommonFunctionality.getCheapestProcessInstancesWithVoters(bruteForceSolutions)) {		
+			pInstance.printProcessInstance();
+			}
 		
 		
 	} catch (NullPointerException e) {
@@ -218,7 +223,10 @@ public class Main3 {
 		e.printStackTrace();
 	}
 	
+	
 
+	System.out.println("Compare:" +CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstances, bruteForceSolutions, 1000000));
+	
 	
 	
 	

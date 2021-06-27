@@ -8,11 +8,17 @@ public class BPMNParticipant {
 	
 	private String id;
 	private String name;
+	private String nameWithoutBrackets;
 	
 	public BPMNParticipant(String id, String name) {
 		this.id = id;
 		this.name = name;
-	}
+		if(name.contains("[")&&name.contains("]")) {
+		this.nameWithoutBrackets=name.substring(name.indexOf('[')+1, name.indexOf(']'));
+		} else {
+			this.nameWithoutBrackets=name;
+		}
+		}
 
 	public String getId() {
 		return id;
@@ -28,6 +34,10 @@ public class BPMNParticipant {
 
 	public void setName(String name) {
 		this.name = name;
+	}
+	
+	public String getNameWithoutBrackets() {
+		return this.nameWithoutBrackets;
 	}
 	
 	public void printParticipant() {

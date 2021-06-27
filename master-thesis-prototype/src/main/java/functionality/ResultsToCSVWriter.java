@@ -16,6 +16,7 @@ import org.camunda.bpm.model.bpmn.instance.FlowNode;
 
 import com.opencsv.CSVWriter;
 
+import Mapping.BPMNBusinessRuleTask;
 import Mapping.BPMNParticipant;
 import Mapping.ProcessInstanceWithVoters;
 import Mapping.VoterForXorArc;
@@ -31,8 +32,8 @@ public class ResultsToCSVWriter {
 					CSVWriter.DEFAULT_ESCAPE_CHARACTER, CSVWriter.DEFAULT_LINE_END);
 
 			rows = new ArrayList<>();
-			String[] header = new String[] { "fileName", "pathToFile", "exceptionLocalMin", "exceptionBruteForce", "exceptionLocalMinWithLimit", "totalAmountSolutions", "solution(s) bruteForce", "solution(s) localMinimumAlgorithm", "solution(s) localMinimumAlgorithmWithLimit", "amount cheapest solution(s) bruteForce", "costCheapestSolutionBruteForce", "costCheapestSolutionLocalMin", "costCheapestSolutionLocalMinWithLimit", "averageCostAllBruteForceSolutions",
-					"executionTimeLocalMinimumAlogrithm in sec", "executionTimeLocalMinWithLimit in sec","executionTimeBruteForce in sec",  "deltaExecutionTime in sec (localMin - bruteForce)", "deltaExecutionTime in sec (localMinWithLimit - bruteForce)", "isCheapestSolutionOfLocalMinInBruteForce", "isCheapestSolutionOfLocalMinWithLimitInBruteForce", "amountPaths", "amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements", "amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum"};
+			String[] header = new String[] { "fileName", "pathToFile", "exceptionLocalMin", "exceptionBruteForce", "exceptionLocalMinWithLimit", "totalAmountSolutionsWithoutConstraints", "solution(s) bruteForce", "solution(s) localMinimumAlgorithm", "solution(s) localMinimumAlgorithmWithLimit", "amount cheapest solution(s) bruteForce", "costCheapestSolutionBruteForce", "costCheapestSolutionLocalMin", "costCheapestSolutionLocalMinWithLimit", "averageCostAllBruteForceSolutions",
+					"executionTimeLocalMinimumAlogrithm in sec", "executionTimeLocalMinWithLimit in sec","executionTimeBruteForce in sec",  "deltaExecutionTime in sec (localMin - bruteForce)", "deltaExecutionTime in sec (localMinWithLimit - bruteForce)", "isCheapestSolutionOfLocalMinInBruteForce", "isCheapestSolutionOfLocalMinWithLimitInBruteForce", "amountPaths", "amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements", "amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum", "dependentBrts"};
 			this.rows.add(header);
 			
 			
@@ -262,6 +263,7 @@ public class ResultsToCSVWriter {
 					
 					StringBuilder readersPerDataObject = new StringBuilder();
 					StringBuilder writersPerDataObject = new StringBuilder();
+					StringBuilder dependentBrts = new StringBuilder();
 					String allPathsThroughProcess = "null";
 					String amountExclusiveGtwSplits = "null";
 					String amountParallelGtwSplits = "null";
@@ -310,6 +312,19 @@ public class ResultsToCSVWriter {
 					if(writersPerDataObject.length()>0) {
 					writersPerDataObject.deleteCharAt(writersPerDataObject.length()-1);
 					}
+					
+					
+					boolean dependentBrtsInProcess = false;
+					for(BPMNBusinessRuleTask brt: bruteForceApi.getBusinessRuleTasks()) {
+						if(!brt.getPotentiallyDependentBrts().isEmpty()) {
+							dependentBrtsInProcess=true;
+							break;
+						}
+					}
+					
+					dependentBrts.append(dependentBrtsInProcess+"");
+					
+					
 					} 
 					
 					String exceptionNameLocalMin = "null";
@@ -328,7 +343,7 @@ public class ResultsToCSVWriter {
 					
 					
 					String[] row = new String[] { fileName, pathToFile, exceptionNameLocalMin, exceptionNameBruteForce, exceptionNameLocalMinWithLimit, amountSolutions, amountSolutionsBruteForce,  amountCheapestSolutionsLocalMin, amountCheapestSolutionsLocalMinWithLimit, amountCheapestSolutionsBruteForce, costCheapestSolutionBruteForce, costCheapestSolutionLocalMin, costCheapestSolutionLocalMinWithLimit, averageCostAllSolutions,
-							localMinAlgorithmTime, localMinWithLimitAlgorithmTime, bruteForceAlgorithmTime, timeDifferenceLocalMinBruteForce, timeDifferenceLocalMinWithLimitBruteForce,isCheapestSolutionInBruteForce,isCheapestSolutionWithLimitInBruteForce, allPathsThroughProcess, readersPerDataObject.toString(), writersPerDataObject.toString(), amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks, amountElements,sumAmountVotersOfModel, averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel};
+							localMinAlgorithmTime, localMinWithLimitAlgorithmTime, bruteForceAlgorithmTime, timeDifferenceLocalMinBruteForce, timeDifferenceLocalMinWithLimitBruteForce,isCheapestSolutionInBruteForce,isCheapestSolutionWithLimitInBruteForce, allPathsThroughProcess, readersPerDataObject.toString(), writersPerDataObject.toString(), amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks, amountElements,sumAmountVotersOfModel, averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, dependentBrts.toString()};
 					
 					this.rows.add(row);	
 					

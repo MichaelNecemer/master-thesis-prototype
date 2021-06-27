@@ -94,10 +94,10 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		if (cost.size() != 4) {
 			throw new Exception("Not exactly 4 cost parameters in the list!");
 		}
-		process = new File(pathToFile);
-		modelInstance = Bpmn.readModelFromFile(process);
-		startEvent = modelInstance.getModelElementsByType(StartEvent.class);
-		endEvent = modelInstance.getModelElementsByType(EndEvent.class);
+		this.process = new File(pathToFile);
+		this.modelInstance = Bpmn.readModelFromFile(process);
+		this.startEvent = modelInstance.getModelElementsByType(StartEvent.class);
+		this.endEvent = modelInstance.getModelElementsByType(EndEvent.class);
 
 		this.costForAddingReaderAfterBrt = costForAddingReaderAfterBrt;
 		this.costForAddingToGlobalSphere = cost.get(0);
@@ -113,21 +113,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		this.writersMap = CommonFunctionality.getWritersForDataObjects(modelInstance);
 
 		this.mapAndCompute();
-
-		/*
-		 * LinkedList<LinkedList<FlowNode>>pathsBetweenNodes =
-		 * CommonFunctionality.getAllPaths(modelInstance,
-		 * modelInstance.getModelElementById(
-		 * "manualTask_050fe99b-6b0b-4e56-a714-edd58cd171d2"),
-		 * modelInstance.getModelElementById("task_1"), new LinkedList<FlowNode>(), new
-		 * LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new
-		 * LinkedList<LinkedList<FlowNode>>(), new LinkedList<LinkedList<FlowNode>>(),
-		 * modelInstance.getModelElementById("task_1")); int i = 0;
-		 * for(LinkedList<FlowNode>l: pathsBetweenNodes) {
-		 * System.out.println("Path: "+i); for(FlowNode f: l) {
-		 * System.out.println(f.getName()); } i++; }
-		 */
-
+		
+		this.setDependentBrts();
 		this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
 				modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
 				modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), new LinkedList<FlowNode>(),
@@ -169,9 +156,13 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			for (BPMNDataObject dataO : brt.getDataObjects()) {
 				ArrayList<BPMNTask> lastWritersForDataO = this.getLastWriterListForDataObject(brt, dataO,
 						new ArrayList<BPMNTask>(), new LinkedList<BPMNElement>());
+				for(BPMNTask t: lastWritersForDataO) {
+				}
 				brt.getLastWriterList().putIfAbsent(dataO, lastWritersForDataO);
 			}
 		}
+		
+	
 
 	}
 
@@ -467,9 +458,10 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 							RequiredUpdate reqUpdate = new RequiredUpdate(lastWriter, dataO, currentBrt,
 									alreadyChosenVoters, reader, spheres, update, weight, cost);
-							reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(this
-									.calculateWeightingForLastWriter(lastWriter, this.bpmnStart, dataO, currentBrt));
-							
+							double weighting = this
+									.calculateWeightingForLastWriter(lastWriter, this.bpmnStart, dataO, currentBrt);
+							reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(weighting);
+							//reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(1);
 							currInst.getListOfRequiredUpdates().add(reqUpdate);
 
 							// add additional cost for adding a reader as voter who reads data after the brt
@@ -524,7 +516,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 	
-	public LinkedList<ProcessInstanceWithVoters> localMinimumAlgorithmWithLimit(int upperBoundSolutionsPerIteration)
+	public synchronized LinkedList<ProcessInstanceWithVoters> localMinimumAlgorithmWithLimit(int upperBoundSolutionsPerIteration)
 			throws NullPointerException, InterruptedException, Exception {
 		// at each businessRuleTask in front of a xor-split:
 		// generate all possible combinations of voters - calculate cost and only take
@@ -560,7 +552,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	
 	
 
-	public LinkedList<ProcessInstanceWithVoters> localMinimumAlgorithm()
+	public synchronized LinkedList<ProcessInstanceWithVoters> localMinimumAlgorithm()
 			throws NullPointerException, InterruptedException, Exception {
 		// at each businessRuleTask in front of a xor-split:
 		// generate all possible combinations of voters - calculate cost and only take
@@ -592,7 +584,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		
 	}
 
-	public LinkedList<ProcessInstanceWithVoters> bruteForceAlgorithm()
+	public synchronized LinkedList<ProcessInstanceWithVoters> bruteForceAlgorithm()
 			throws NullPointerException, InterruptedException, Exception {
 		// generate all possible combinations of voters for all brts of the process
 		// calculate the cost for each one and return all of them
@@ -626,11 +618,13 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 		double foundCurrentLastWriterCount = 0;
 		LinkedList<LinkedList<BPMNElement>> paths = this.getPathsWithMappedNodesFromCamundaNodes(CommonFunctionality
-				.getAllPathsBetweenNodes(modelInstance, modelInstance.getModelElementById(start.getId()),
-						modelInstance.getModelElementById(brt.getId()), new LinkedList<FlowNode>(),
+				.getAllPathsBetweenNodes(this.modelInstance, this.modelInstance.getModelElementById(start.getId()),
+						this.modelInstance.getModelElementById(brt.getId()), new LinkedList<FlowNode>(),
 						new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(),
 						new LinkedList<LinkedList<FlowNode>>()));
 
+		
+		
 		for (LinkedList<BPMNElement> pathList : paths) {
 
 			for (int i = pathList.size() - 1; i > 0; i--) {
@@ -650,8 +644,11 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			}
 
 		}
+		
+		
+		double amount = (double) Math.round(foundCurrentLastWriterCount / paths.size() * 100) / 100;
 
-		return ((double) foundCurrentLastWriterCount / paths.size());
+		return amount;
 
 	}
 
@@ -1156,7 +1153,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 							String partName = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 							
 							for(BPMNParticipant p: this.globalSphere) {
-								if(p.getName().contentEquals(partName)) {
+								if(p.getNameWithoutBrackets().contentEquals(partName)) {
 									ExcludeParticipantConstraint epc = new ExcludeParticipantConstraint(p);
 									gtw.getConstraints().add(epc);
 									break;
@@ -1297,10 +1294,9 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	public ArrayList<BPMNTask> getLastWriterListForDataObject(BPMNBusinessRuleTask brt, BPMNDataObject data,
 			ArrayList<BPMNTask> lastWriterList, LinkedList<BPMNElement> queue) {
 		queue.addAll(brt.getPredecessorsSorted());
-
 		while (!(queue.isEmpty())) {
 			BPMNElement element = queue.poll();
-
+			
 			// if the element is a writer who has been already found, than skip it
 			if (lastWriterList.contains(element)) {
 				element = queue.poll();
@@ -1317,10 +1313,15 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				for (BPMNDataObject dataO : brt.getDataObjects()) {
 					if (dataO.equals(data) && dataO.getWriters().contains(currentLastWriterCandidate)) {
 						// if a writer is found who is already in the list - return the list
-						if (lastWriterList.contains(currentLastWriterCandidate)) {
+						
+						if(!lastWriterList.contains(currentLastWriterCandidate)) {
+						lastWriterList.add(currentLastWriterCandidate);						
+						} 
+						
+						if(!currentLastWriterCandidate.hasLabel()) {
 							return lastWriterList;
 						} else {
-							// check if last added writer is on the same branch as the
+							// check if last added writer is not on the same branch as the
 							// currentLastWriterCandidate
 							// if so, add it and return the list
 							if (!lastWriterList.isEmpty()) {
@@ -1331,7 +1332,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 								}
 							}
 
-							lastWriterList.add(currentLastWriterCandidate);
 
 							// when the found writers labels don't match with the labels of the brt
 							// check other paths for possible last writers too
@@ -1367,12 +1367,37 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		if (firstEl.getLabels().size() != secondEl.getLabels().size()) {
 			return false;
 		}
-
-		if (firstEl.getLabelsWithoutOutCome().equals(secondEl.getLabelsWithoutOutCome())) {
-			return true;
-		} else {
+		if(firstEl.getLabels().isEmpty()&&secondEl.getLabels().isEmpty()) {
 			return false;
 		}
+		
+		ArrayList<Label>firstElLabelsWithoutLast = new ArrayList<Label>();
+		for(int i = 0; i < firstEl.getLabels().size()-1; i++) {
+			firstElLabelsWithoutLast.add(firstEl.getLabels().get(i));
+		}
+		
+		ArrayList<Label>secondElLabelsWithoutLast = new ArrayList<Label>();
+		for(int i = 0; i < secondEl.getLabels().size()-1; i++) {
+			secondElLabelsWithoutLast.add(secondEl.getLabels().get(i));
+		}
+
+		if(firstElLabelsWithoutLast.equals(secondElLabelsWithoutLast)) {
+			//last label must be in other branch
+			Label firstElLastLabel = firstEl.getLabels().get(firstEl.getLabels().size()-1);
+			Label secondElLastLabel  = secondEl.getLabels().get(secondEl.getLabels().size()-1);
+			if(firstElLastLabel.getName().contentEquals(secondElLastLabel.getName())) {
+				if(firstElLastLabel.getOutcome().contentEquals(secondElLastLabel.getOutcome())) {
+					//same branch
+					return false;
+				} else {
+					return true;
+				}
+				
+			}
+			
+		}
+		
+		return true;
 	}
 
 	public BPMNElement getLastElementOnLaneBeforeCurrentNode(BPMNTask currentNode, BPMNParticipant participant) {
@@ -1452,14 +1477,15 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
-	public LinkedList<VoterForXorArc> generateArcsForXorSplitWithConstraint(BPMNBusinessRuleTask currBrt) {
+	public synchronized LinkedList<VoterForXorArc> generateArcsForXorSplitWithConstraint(BPMNBusinessRuleTask currBrt) {
 		LinkedList<VoterForXorArc> brtCombs = new LinkedList<VoterForXorArc>();
 
 		if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
 			BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
 			// get all the possible combinations of participants for the brt
 			// consider the constraints e.g. participants may be excluded
-			LinkedList<BPMNParticipant>participantsToCombine = this.globalSphere;
+			LinkedList<BPMNParticipant>participantsToCombine = new LinkedList<BPMNParticipant>();
+			participantsToCombine.addAll(this.globalSphere);
 			
 			//exclude the participants due to constraints
 			for(Constraint constraint: bpmnEx.getConstraints()) {
@@ -1543,9 +1569,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			throws NullPointerException, InterruptedException, Exception {
 		// go DFS inside the XOR till corresponding join is found
 		
-		
+		try {
 		queue.add(startNode);
-		
 		
 		while (!(queue.isEmpty())) {
 			if(Thread.currentThread().isInterrupted()) {
@@ -1634,7 +1659,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						for (VoterForXorArc voters : arcsForCurrBrt) {
 							// generate a new possible processInstance
 							ProcessInstanceWithVoters pInstance = new ProcessInstanceWithVoters();
-
 							this.setRequiredUpdatesForArc(voters, pInstance, paths);
 
 							pInstance.addVoterArc(voters);
@@ -1673,6 +1697,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						// existing process instances
 						Collection<List<Object>> combs = Combination.permutations(toCombine);
 						ProcessInstanceWithVoters.setProcessID(0);
+												
 						for (List list : combs) {
 							if(Thread.currentThread().isInterrupted()) {
 								System.err.println("Interrupted" +Thread.currentThread().getName());
@@ -1688,7 +1713,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 							}
 							newInstance.getListOfRequiredUpdates().addAll(currInst.getListOfRequiredUpdates());
 							newInstance.setCostForModelInstance(currInst.getCostForModelInstance());
-
 							this.setRequiredUpdatesForArc(currBrtCombArc, newInstance, paths);
 
 							newInstance.addVoterArc(currBrtCombArc);
@@ -1750,7 +1774,9 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		}
 		
 		return processInstancesWithVoters;
-		
+		} catch(Exception e) {
+			throw new Exception("Exception in goDFS!");
+		}
 
 	}
 
@@ -1774,8 +1800,12 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			} else if (currInstance.getCostForModelInstance() == processInstancesWithVoters.getFirst()
 					.getCostForModelInstance()) {
 				//only insert if bound not reached!
+				if(bound==0) {
+					processInstancesWithVoters.add(currInstance);
+				} else {
 				if(processInstancesWithVoters.size()<bound) {
 				processInstancesWithVoters.add(currInstance);
+				}
 				}
 			}
 		}
@@ -1825,6 +1855,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
+	
+	
 	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> allEffectivePathsForWriters(BPMNDataObject dataO,
 			BPMNElement writerTask, BPMNElement startNode, BPMNElement endNode, LinkedList<BPMNElement> stack,
 			LinkedList<BPMNElement> gtwStack, LinkedList<BPMNElement> currentPath,
@@ -1869,25 +1901,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
-	// Test Method for pathing through the process
-	public void getAllProcessPaths() {
-		LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(
-				this.bpmnStart, this.bpmnEnd, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
-		int i = 1;
 
-		for (LinkedList<BPMNElement> pathElement : paths) {
-			for (BPMNElement el : pathElement) {
-				el.printElement();
-
-			}
-			i++;
-		}
-
-		// this.getLastWriterForDataObject(this.getNodeById("Task_1imtmva"),
-		// ((BPMNTask)this.getNodeById("Task_1imtmva")).getDataObjects().iterator().next()).printElement();
-
-	}
 
 	public BPMNElement getNodeById(String id) {
 		for (BPMNElement e : this.processElements) {
@@ -2480,6 +2494,44 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		// only those that have not been visited yet
 
 		String sphereForReaderAfterCurrentBrt = sphereForReader;
+		
+		
+		if(((BPMNTask)writerTask).getEffectivePaths().get(true).isEmpty()){
+			//need to check if there may be subpaths with the reader on it and no writer in between
+			for(LinkedList<BPMNElement> path: ((BPMNTask)writerTask).getEffectivePaths().get(false)) {
+				BPMNTask otherReader = null;
+				for(BPMNElement el: path) {
+					if(el instanceof BPMNTask) {
+						BPMNTask task = (BPMNTask)el;
+						if(!task.getParticipant().equals(reader)) {
+							if(dataO.getWriters().contains(task)) {
+								if(!task.equals(writerTask)) {
+									break;
+								}
+							}
+							
+						}
+						
+						
+						
+						if(task.getParticipant().equals(reader)&&dataO.getReaders().contains(task)&&(!task.equals(writerTask))) {
+							//another reader to the dataObject found
+							otherReader = task;
+							break;
+						}
+					}
+					
+				}
+				if(otherReader!=null) {
+					sphereForReaderAfterCurrentBrt = this
+							.getSphereForEffectiveReaderAfterBrt((BPMNTask) otherReader, currentBrt);
+				}
+				
+				
+			}
+			
+			
+		} else {
 
 		for (BPMNElement effectiveReader : ((BPMNTask) writerTask).getEffectiveReaders()) {
 			if (reader.equals(((BPMNTask) effectiveReader).getParticipant())) {
@@ -2499,7 +2551,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			}
 
 		}
-
+		}
 		return sphereForReaderAfterCurrentBrt;
 
 	}
@@ -2907,7 +2959,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	}
 
 	@Override
-	public HashMap<String, LinkedList<ProcessInstanceWithVoters>> call() throws NullPointerException, InterruptedException, Exception {
+	public synchronized HashMap<String, LinkedList<ProcessInstanceWithVoters>> call() throws NullPointerException, InterruptedException, Exception {
 		// TODO Auto-generated method stub
 		System.out.println("Call algorithm for: "+this.process.getAbsolutePath());
 		HashMap<String, LinkedList<ProcessInstanceWithVoters>> mapToReturn = new HashMap<String, LinkedList<ProcessInstanceWithVoters>>();

@@ -45,6 +45,7 @@ import org.camunda.bpm.model.bpmn.instance.Association;
 import org.camunda.bpm.model.bpmn.instance.BusinessRuleTask;
 import org.camunda.bpm.model.bpmn.instance.Collaboration;
 import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
+import org.camunda.bpm.model.bpmn.instance.DataObject;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.DataOutputAssociation;
 import org.camunda.bpm.model.bpmn.instance.Documentation;
@@ -305,29 +306,13 @@ public class CommonFunctionality {
 
 	public static DataObjectReference getDataObjectReferenceForItemAwareElement(BpmnModelInstance modelInstance,
 			ItemAwareElement iae) {
-		for (Task task : modelInstance.getModelElementsByType(Task.class)) {
-			for (DataInputAssociation dia : task.getDataInputAssociations()) {
-				if (dia.getTarget().equals(iae)) {
-					for (DataObjectReference daoR : modelInstance.getModelElementsByType(DataObjectReference.class)) {
-						for (ItemAwareElement currIae : dia.getSources()) {
-							if (currIae.getId().contentEquals(daoR.getId())) {
-								return daoR;
-							}
-						}
-
-					}
-				}
+		
+		for(DataObjectReference daoR:modelInstance.getModelElementsByType(DataObjectReference.class)) {
+			if(daoR.getId().contentEquals(iae.getId())) {
+				return daoR;
 			}
-			for (DataOutputAssociation dao : task.getDataOutputAssociations()) {
-				for (DataObjectReference daoR : modelInstance.getModelElementsByType(DataObjectReference.class)) {
-					if (dao.getTarget().getId().contentEquals(daoR.getId())) {
-						return daoR;
-					}
-				}
-			}
-
 		}
-
+		
 		return null;
 
 	}
@@ -591,9 +576,17 @@ public class CommonFunctionality {
 
 		LinkedList<LinkedList<FlowNode>> combinedPaths = new LinkedList<LinkedList<FlowNode>>();
 		HashMap<SequenceFlow, LinkedList<LinkedList<FlowNode>>> map = new HashMap<SequenceFlow, LinkedList<LinkedList<FlowNode>>>();
-		String pJoinId = pSplit.getName() + "_join";
-		FlowNode pJoin = modelInstance.getModelElementById(pJoinId);
-
+		FlowNode pJoin = null;
+		try {
+			pJoin = CommonFunctionality.getCorrespondingGtw(modelInstance, pSplit);
+		} catch (NullPointerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		for (LinkedList<FlowNode> path : parallelBranches) {
 			for (int i = 0; i < path.size(); i++) {
 				FlowNode node = path.get(i);
@@ -661,12 +654,37 @@ public class CommonFunctionality {
 		Iterator<LinkedList<FlowNode>> subPathsIter = subPaths.iterator();
 		while(subPathsIter.hasNext()) {
 			LinkedList<FlowNode>subPath = subPathsIter.next();
-			if(!subPath.getLast().equals(endNode)&&!(subPath.contains(endNode))) {				
+			if((!subPath.getLast().equals(endNode))&&(!subPath.contains(endNode))) {				
 				subPathsIter.remove();				
+			} 
+			
+			else if((!subPath.getLast().equals(endNode))&&subPath.contains(endNode)) {
+				Iterator<FlowNode>subPathNodeIter = subPath.iterator();
+				boolean remove = false;
+				while(subPathNodeIter.hasNext()) {
+					FlowNode currNode = subPathNodeIter.next();
+					if(remove) {
+						subPathNodeIter.remove();
+						
+					}
+					
+					if(currNode.equals(endNode)) {
+						remove = true;
+					}
+					
+					
+				}
+				
 			}
 			
 		}
-		return subPaths;
+		
+		
+		Set<LinkedList<FlowNode>>set = new HashSet<LinkedList<FlowNode>>(subPaths);
+		LinkedList<LinkedList<FlowNode>> noDups = new LinkedList<LinkedList<FlowNode>>(set);
+
+		
+		return noDups;
 	}
 	
 	
@@ -879,17 +897,15 @@ public static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mod
 						// -> check if each path containing the corresponding split of the
 						// parallelJoinGtw has the joinGtw as last element!
 						// else there are paths inside the branch that are not a fully built yet
-
-						String idOfSplit = joinGtw.getName() + "_split";
-						FlowNode splitGtw = modelInstance.getModelElementById(idOfSplit);
-
+						FlowNode correspondingSplit = CommonFunctionality.getCorrespondingGtw(modelInstance, joinGtw);
+						
 						LinkedList<LinkedList<FlowNode>> pathsToCombine = new LinkedList<LinkedList<FlowNode>>();
 						LinkedList<LinkedList<FlowNode>> pathsNotFullyBuilt = new LinkedList<LinkedList<FlowNode>>();
 
 						for (LinkedList<FlowNode> path : paths) {
-							if (path.contains(splitGtw) && path.getLast().equals(joinGtw)) {
+							if (path.contains(correspondingSplit) && path.getLast().equals(joinGtw)) {
 								pathsToCombine.add(path);
-							} else if (path.contains(splitGtw) && !path.getLast().equals(joinGtw)) {
+							} else if (path.contains(correspondingSplit) && !path.getLast().equals(joinGtw)) {
 								pathsNotFullyBuilt.add(path);
 							}
 
@@ -3028,7 +3044,9 @@ public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnMode
 				if(daoR.getId().equals(substitute.getId())) {
 					substituteAnnotatedAlready=true;
 				} else {
+					if(!toRemove.contains(daoR)) {
 					toRemove.add(daoR);
+					}
 				}
 							
 			}		
@@ -3046,42 +3064,93 @@ public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnMode
 				for(ItemAwareElement iae: dia.getSources()) {
 					DataObjectReference daoR = CommonFunctionality.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
 					if(daoR.getId().equals(daoRToBeRemoved.getId())) {
-						BpmnShape diaShape = CommonFunctionality.getShape(modelInstance,dia.getId());
-						diaShape.getParentElement().removeChildElement(diaShape);
-						diaIter.remove();
+						brt.getDataInputAssociations().remove(dia);
+						for (BpmnEdge bpmnE : modelInstance.getModelElementsByType(BpmnEdge.class)) {
+							if (bpmnE.getBpmnElement() == null) {
+								bpmnE.getParentElement().removeChildElement(bpmnE);
+							}
+						}
+
+						
+						//iterate through all tasks that have the dataObject connected
+						//remove the dataObjectReference
+						LinkedList<Task>taskWithInputAssocRemoved = new LinkedList<Task>();
+						LinkedList<Task>taskWithOutputAssocRemoved = new LinkedList<Task>();
+						for(Task task: modelInstance.getModelElementsByType(Task.class)) {
+							for(DataInputAssociation taskDia: task.getDataInputAssociations()) {
+								for(ItemAwareElement taskIae: taskDia.getSources()) {
+									if(taskIae.getId().contentEquals(daoRToBeRemoved.getId())) {
+										if(CommonFunctionality.removeTaskAsReaderFromDataObject(modelInstance, task, taskIae)) {
+											taskWithInputAssocRemoved.add(task);
+										}
+										
+									}
+								}
+							}
+							for(DataOutputAssociation taskDao: task.getDataOutputAssociations()) {
+								ItemAwareElement taskIae = taskDao.getTarget();
+								if(taskIae.getId().contentEquals(daoRToBeRemoved.getId())) {
+									if(CommonFunctionality.removeTaskAsWriterForDataObject(modelInstance, task, taskIae)) {
+										taskWithOutputAssocRemoved.add(task);
+									}
+								}
+							}
+						}
+						
+						
+						if(substituteAnnotatedAlready==false) {
+							//connect the substitute 
+							DataInputAssociation diaToConnect = modelInstance.newInstance(DataInputAssociation.class);
+							Property p1 = modelInstance.newInstance(Property.class);
+							p1.setName("__targetRef_placeholder");
+							brt.addChildElement(p1);
+							diaToConnect.setTarget(p1);
+							brt.getDataInputAssociations().add(diaToConnect);
+							diaToConnect.getSources().add(substitute);
+							CommonFunctionality.generateDIElementForReader(modelInstance, diaToConnect, CommonFunctionality.getShape(modelInstance, substitute.getId()), CommonFunctionality.getShape(modelInstance, brt.getId()));
+							
+							for(Task t: taskWithInputAssocRemoved) {
+								DataInputAssociation toConnect = modelInstance.newInstance(DataInputAssociation.class);
+								Property p2 = modelInstance.newInstance(Property.class);
+								p2.setName("__targetRef_placeholder");
+								t.addChildElement(p2);
+								toConnect.setTarget(p2);
+								t.getDataInputAssociations().add(toConnect);
+								toConnect.getSources().add(substitute);
+								CommonFunctionality.generateDIElementForReader(modelInstance, toConnect, CommonFunctionality.getShape(modelInstance, substitute.getId()), CommonFunctionality.getShape(modelInstance, t.getId()));
+
+							
+							}
+						
+						}
+						
+						
+						BpmnShape shape =CommonFunctionality.getShape(modelInstance, daoRToBeRemoved.getId());
+						shape.getParentElement().removeChildElement(shape);		
+						//daoRToBeRemoved.getParentElement().removeChildElement(daoRToBeRemoved);
+						iteration++;
+
+						try {
+							CommonFunctionality.writeChangesToFile(modelInstance, fileName, directoryToStore, iteration+"");
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (ParserConfigurationException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (SAXException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						
 					}
 				}
 			}
 			
-			BpmnShape shape =CommonFunctionality.getShape(modelInstance, daoRToBeRemoved.getId());
-			shape.getParentElement().removeChildElement(shape);			
-			daoRToBeRemoved.getParentElement().removeChildElement(daoRToBeRemoved);
+		
+						}
 			
-			if(substituteAnnotatedAlready==false) {
-				//connect the substitute
-				DataInputAssociation diaToConnect = modelInstance.newInstance(DataInputAssociation.class);
-				Property p1 = modelInstance.newInstance(Property.class);
-				p1.setName("__targetRef_placeholder");
-				brt.addChildElement(p1);
-				diaToConnect.setTarget(p1);
-				brt.getDataInputAssociations().add(diaToConnect);
-				diaToConnect.getSources().add(substitute);
-				CommonFunctionality.generateDIElementForReader(modelInstance, diaToConnect, CommonFunctionality.getShape(modelInstance, substitute.getId()), CommonFunctionality.getShape(modelInstance, brt.getId()));
-			}
-			iteration++;
-			try {
-				CommonFunctionality.writeChangesToFile(modelInstance, fileName, directoryToStore, iteration+"");
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (ParserConfigurationException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (SAXException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-	}
+	
 	}
 		
 }
@@ -3110,12 +3179,14 @@ private static void generateDIElementForReader(BpmnModelInstance modelInstance, 
 
 
 public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName, int probabilityForGatewayToHaveConstraint,
-		int lowerBoundAmountParticipantsToExclude, int upperBoundAmountParticipantsToExclude, boolean alwaysMaxConstrained,  boolean modelWithLanes, String directoryToStore) throws Exception {
+		int lowerBoundAmountParticipantsToExclude,  boolean alwaysMaxConstrained,  boolean modelWithLanes, String directoryToStore) throws Exception {
 	// upperBoundAmountParticipantsToExclude is the difference between the amount of
 	// needed voters and the global Sphere
 	// e.g. global sphere = 5, 3 people needed -> 2 is the max amount of
 	// participants to exclude
 	// the decision taker himself can not be excluded
+	
+	boolean constraintInserted = false;
 	if(lowerBoundAmountParticipantsToExclude < 1) {
 		lowerBoundAmountParticipantsToExclude = 1;
 	}
@@ -3144,27 +3215,20 @@ public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance mod
 					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
 							if (tx.getTextContent().startsWith("[Voters]")) {
+								String subStr = tx.getTextContent().substring(tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
 
-								String[] data = tx.getTextContent().split(",");
+								String[] data = subStr.split(",");
 								int amountVotersNeeded = Integer.parseInt(data[0]);
 								int randomAmountConstraintsForGtw = 0;
-								if (upperBoundAmountParticipantsToExclude > amountVotersNeeded) {
-									upperBoundAmountParticipantsToExclude = amountVotersNeeded;
-								}
 								
-								
-								if (upperBoundAmountParticipantsToExclude < lowerBoundAmountParticipantsToExclude) {
-									throw new Exception("upperbound can not be < lowerbound!");
-								}
-
-							
-								
+										
 								if(alwaysMaxConstrained) {
 									randomAmountConstraintsForGtw = globalSphereSize - amountVotersNeeded;									
 								} else {
+									int maxConstraint = globalSphereSize - amountVotersNeeded;	
 									randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
 											lowerBoundAmountParticipantsToExclude,
-											upperBoundAmountParticipantsToExclude + 1);
+											maxConstraint + 1);
 								}
 								
 															
@@ -3174,10 +3238,8 @@ public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance mod
 								for(int i = 0; i < randomAmountConstraintsForGtw; i++) {
 									if(partIter.hasNext()) {
 									String currPart = partIter.next();
-									String currPartWithoutBrackets = currPart.replace("[", "{").replace("]","}");
 									
-									
-									String excludeParticipantConstraint = "[Constraint]"+currPartWithoutBrackets;
+									String excludeParticipantConstraint = "[ExcludeParticipantConstraint] {"+currPart+"}";
 									TextAnnotation constraintAnnotation = modelInstance.newInstance(TextAnnotation.class);
 								
 									constraintAnnotation.setTextFormat("text/plain");
@@ -3187,7 +3249,28 @@ public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance mod
 									gtw.getParentElement().addChildElement(constraintAnnotation);
 				
 									CommonFunctionality.generateShapeForTextAnnotation(modelInstance, constraintAnnotation, brtBeforeGtw);
+									
+									Association association = modelInstance.newInstance(Association.class);
+									association.setSource(gtw);
+									association.setTarget(constraintAnnotation);
+									gtw.getParentElement().addChildElement(association);
+									
+									
+									BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
+									edge.setBpmnElement(association);
+									Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
+									wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+									wp1.setY(gtw.getDiagramElement().getBounds().getY());
+									Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+									wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+									wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
+
+									edge.getWaypoints().add(wp1);
+									edge.getWaypoints().add(wp2);
+									modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
+									constraintInserted = true;
 									partIter.remove();
+									
 									}
 								}
 
@@ -3200,7 +3283,15 @@ public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance mod
 		}
 	}
 	}
-	CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, "constrained");
+	if(constraintInserted) {
+		String suffix = "";
+	if(alwaysMaxConstrained) {
+		suffix = "alwMaxConstrained";
+	} else if(!alwaysMaxConstrained){
+		suffix = "constrained";
+	} 
+	CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, suffix);
+	}
 }
 
 
