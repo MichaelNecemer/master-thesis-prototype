@@ -53,7 +53,7 @@ import Mapping.DecisionEvaluation;
 import Mapping.InfixToPostfix;
 import Mapping.Label;
 import Mapping.ProcessInstanceWithVoters;
-import Mapping.RequiredUpdate;
+import Mapping.RequiredUpgrade;
 import Mapping.VoterForXorArc;
 
 //Class that uses the camunda model API to interact with the process model directly without parsing the XML first to e.g. DOM Object
@@ -260,16 +260,16 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
-	private void setRequiredUpdatesForArc(VoterForXorArc arcToBeAdded, ProcessInstanceWithVoters currInst ,
+	private void setRequiredUpgradeForArc (VoterForXorArc arcToBeAdded, ProcessInstanceWithVoters currInst ,
 			LinkedList<LinkedList<BPMNElement>> paths) throws NullPointerException, InterruptedException, Exception {
-
+	
 		// get all the participants of the current process instance and check which
 		// updates
 		// would be necessary for arcToBeAdded
 		HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters = currInst.getVotersMap();
 		BPMNBusinessRuleTask brtToBeAdded = arcToBeAdded.getBrt();
 		HashMap<BPMNDataObject, LinkedList<BPMNParticipant>> addToStaticSphereMap = new HashMap<BPMNDataObject, LinkedList<BPMNParticipant>>();
-			for(RequiredUpdate reqUpdate: currInst.getListOfRequiredUpdates()) {
+			for(RequiredUpgrade reqUpdate: currInst.getListOfRequiredUpdates()) {
 				if(Thread.currentThread().isInterrupted()) {
 					System.err.println("Interrupted! " +Thread.currentThread().getName());
 					throw new InterruptedException();
@@ -289,15 +289,9 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				
 			
 			}
-			
-			
+				
 		
-		
-		
-		if (arcToBeAdded.getBrt() instanceof BPMNBusinessRuleTask) {
-			BPMNBusinessRuleTask currentBrt = (BPMNBusinessRuleTask) arcToBeAdded.getBrt();
-
-			HashMap<BPMNDataObject, ArrayList<BPMNTask>> lastWriters = currentBrt.getLastWriterList();
+			HashMap<BPMNDataObject, ArrayList<BPMNTask>> lastWriters = brtToBeAdded.getLastWriterList();
 			for (Entry<BPMNDataObject, ArrayList<BPMNTask>> entry : lastWriters.entrySet()) {
 				for (BPMNTask lastWriter : entry.getValue()) {
 					BPMNDataObject dataO = entry.getKey();
@@ -315,7 +309,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 						// get sphere for reader between lastWriter and currentBrt
 						String sphereForReaderBeforeBrt = this
-								.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(currentBrt, lastWriter,
+								.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brtToBeAdded, lastWriter,
 										dataO, readerParticipant, alreadyChosenVoters);
 						sphereList.add(sphereForReaderBeforeBrt);
 						String sphereForReader = sphereForReaderBeforeBrt;
@@ -332,7 +326,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 							if (this.atLeastInSphere(sphereForReaderBeforeBrt, requiredSphereOfWriter) == false) {
 								String sphereForReaderAfterBrt = this
 										.getSphereForParticipantOnEffectivePathsAfterCurrentBrtWithAlreadyChosenVoters(
-												currentBrt, lastWriter, dataO, readerParticipant, alreadyChosenVoters,
+												brtToBeAdded, lastWriter, dataO, readerParticipant, alreadyChosenVoters,
 												sphereForReaderBeforeBrt, paths);
 								// check if the sphere for reader after brt has been "upgraded" e.g. from static
 								// to WD
@@ -456,10 +450,10 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						if (update != "") {
 							LinkedList<String> spheres = sphereMap.get(reader);
 
-							RequiredUpdate reqUpdate = new RequiredUpdate(lastWriter, dataO, currentBrt,
+							RequiredUpgrade reqUpdate = new RequiredUpgrade(lastWriter, dataO, brtToBeAdded,
 									alreadyChosenVoters, reader, spheres, update, weight, cost);
 							double weighting = this
-									.calculateWeightingForLastWriter(lastWriter, this.bpmnStart, dataO, currentBrt);
+									.calculateWeightingForLastWriter(lastWriter, this.bpmnStart, dataO, brtToBeAdded);
 							reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(weighting);
 							//reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(1);
 							currInst.getListOfRequiredUpdates().add(reqUpdate);
@@ -476,9 +470,9 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 							// cost will be multiplied with the weighting of the last writer and the
 							// weighting of the brt
 							double weightingOfCurrentBrt = 1;
-							if (!currentBrt.getLabels().isEmpty()) {
+							if (!brtToBeAdded.getLabels().isEmpty()) {
 								// since process is block structured -> there are 2 paths for each xor-split
-								weightingOfCurrentBrt = weightingOfCurrentBrt / (currentBrt.getLabels().size() * 2);
+								weightingOfCurrentBrt = weightingOfCurrentBrt / (brtToBeAdded.getLabels().size() * 2);
 							}
 
 							currInstCost += (cost * reqUpdate.getWeightingOfLastWriterToWriteDataForBrt()
@@ -496,7 +490,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				}
 
 			}
-		}
+		
 		
 		
 		//remove the added participants from the static spheres again
@@ -510,9 +504,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			
 			
 		}
-		
-		
-		
 
 	}
 	
@@ -536,7 +527,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		LinkedList<ProcessInstanceWithVoters> cheapestCombinationsWithLimit = this.goDFSthroughProcessBuildArcsAndGetVoters(true, upperBoundSolutionsPerIteration,
 				this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
-				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>(), new LinkedList<VoterForXorArc>(),
+				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>>(), new LinkedList<VoterForXorArc>(),
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 		long stopTime = System.nanoTime();
@@ -571,7 +562,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		LinkedList<ProcessInstanceWithVoters> cheapestCombinations = this.goDFSthroughProcessBuildArcsAndGetVoters(true,0,
 				this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
-				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>(), new LinkedList<VoterForXorArc>(),
+				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>>(), new LinkedList<VoterForXorArc>(),
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 		long stopTime = System.nanoTime();
@@ -602,7 +593,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		LinkedList<ProcessInstanceWithVoters> pInstances = this.goDFSthroughProcessBuildArcsAndGetVoters(false,0,
 				this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
-				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>(), new LinkedList<VoterForXorArc>(),
+				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>>(), new LinkedList<VoterForXorArc>(),
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
 		long stopTime = System.nanoTime();
@@ -1477,7 +1468,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
-	public synchronized LinkedList<VoterForXorArc> generateArcsForXorSplitWithConstraint(BPMNBusinessRuleTask currBrt) {
+	public synchronized LinkedList<VoterForXorArc> generateArcsForXorSplitWithConstraints(BPMNBusinessRuleTask currBrt) {
 		LinkedList<VoterForXorArc> brtCombs = new LinkedList<VoterForXorArc>();
 
 		if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
@@ -1562,7 +1553,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			BPMNElement startNode, BPMNElement endNode, BPMNBusinessRuleTask lastFoundBrt,
 			LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters,
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> votersMap,
-			HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>> requiredUpdates,
+			HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>> requiredUpdates,
 			LinkedList<VoterForXorArc> alreadyTakenVoters, LinkedList<BPMNElement> queue,
 			LinkedList<BPMNElement> parallelGtwQueue, LinkedList<BPMNElement> openSplitStack,
 			LinkedList<BPMNElement> currentPath, LinkedList<LinkedList<BPMNElement>> paths)
@@ -1650,8 +1641,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				LinkedList<VoterForXorArc> arcsForCurrBrt = null;
 
 				if (currBrt.getVoterArcs().isEmpty()) {
-					// when brt is found and arcs havent been generated
-					arcsForCurrBrt = generateArcsForXorSplitWithConstraint(currBrt);
+					// when brt is found and arcs have not been generated
+					arcsForCurrBrt = generateArcsForXorSplitWithConstraints(currBrt);
 					currBrt.setVoterArcs(arcsForCurrBrt);
 
 					// check if there has been already a brt before
@@ -1659,7 +1650,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						for (VoterForXorArc voters : arcsForCurrBrt) {
 							// generate a new possible processInstance
 							ProcessInstanceWithVoters pInstance = new ProcessInstanceWithVoters();
-							this.setRequiredUpdatesForArc(voters, pInstance, paths);
+							this.setRequiredUpgradeForArc(voters, pInstance, paths);
 
 							pInstance.addVoterArc(voters);
 
@@ -1713,7 +1704,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 							}
 							newInstance.getListOfRequiredUpdates().addAll(currInst.getListOfRequiredUpdates());
 							newInstance.setCostForModelInstance(currInst.getCostForModelInstance());
-							this.setRequiredUpdatesForArc(currBrtCombArc, newInstance, paths);
+							this.setRequiredUpgradeForArc(currBrtCombArc, newInstance, paths);
 
 							newInstance.addVoterArc(currBrtCombArc);
 							if (localMin) {

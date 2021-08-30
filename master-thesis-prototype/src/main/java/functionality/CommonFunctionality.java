@@ -94,7 +94,7 @@ import Mapping.BPMNParticipant;
 import Mapping.BPMNTask;
 import Mapping.Combination;
 import Mapping.ProcessInstanceWithVoters;
-import Mapping.RequiredUpdate;
+import Mapping.RequiredUpgrade;
 import Mapping.VoterForXorArc;
 import ProcessModelGeneratorAndAnnotater.LockedBranch;
 import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
@@ -424,14 +424,14 @@ public class CommonFunctionality {
 			ItemAwareElement iae) {
 		boolean removed = false;
 		for (DataOutputAssociation dao : task.getDataOutputAssociations()) {
-			for (ItemAwareElement currIae : dao.getSources()) {
+			ItemAwareElement currIae = dao.getTarget();
 				if (currIae.getId().equals(iae.getId())) {
 					BpmnEdge edgeToBeRemoved = getEdge(modelInstance, dao.getId());
 					removed = task.getDataOutputAssociations().remove(dao);
 					task.removeChildElement(dao);
 					edgeToBeRemoved.getParentElement().removeChildElement(edgeToBeRemoved);
+					return removed;
 				}
-			}
 
 		}
 
@@ -449,6 +449,7 @@ public class CommonFunctionality {
 					removed = task.getDataInputAssociations().remove(dia);
 					task.removeChildElement(dia);
 					edgeToBeRemoved.getParentElement().removeChildElement(edgeToBeRemoved);
+					return removed;
 				}
 			}
 
@@ -3030,18 +3031,18 @@ public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnMode
 	//generate new model on each iteration	
 	
 	Collection<BusinessRuleTask>brtList = modelInstance.getModelElementsByType(BusinessRuleTask.class);
-	
 	Iterator<BusinessRuleTask>brtIter = brtList.iterator();
-	
+	System.out.println(substitute.getName());
 	
 	while(brtIter.hasNext()) {
 		BusinessRuleTask brt = brtIter.next();
+		System.out.println("brt: "+brt.getName());
 		boolean substituteAnnotatedAlready = false;
 		LinkedList<DataObjectReference> toRemove = new LinkedList<DataObjectReference>();
 		for(DataInputAssociation dia: brt.getDataInputAssociations()) {
 			for(ItemAwareElement iae: dia.getSources()) {
 				DataObjectReference daoR = CommonFunctionality.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
-				if(daoR.getId().equals(substitute.getId())) {
+				if(daoR.getId().equals(substitute.getId())) {				
 					substituteAnnotatedAlready=true;
 				} else {
 					if(!toRemove.contains(daoR)) {
@@ -3059,6 +3060,7 @@ public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnMode
 			//choose random dataObject to remove
 			DataObjectReference daoRToBeRemoved = CommonFunctionality.getRandomItem(toRemove);
 			Iterator<DataInputAssociation>diaIter = brt.getDataInputAssociations().iterator();
+			System.out.println("To Remove: "+daoRToBeRemoved.getName());
 			while(diaIter.hasNext()) {
 				DataInputAssociation dia = diaIter.next();
 				for(ItemAwareElement iae: dia.getSources()) {
@@ -3077,6 +3079,7 @@ public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnMode
 						LinkedList<Task>taskWithInputAssocRemoved = new LinkedList<Task>();
 						LinkedList<Task>taskWithOutputAssocRemoved = new LinkedList<Task>();
 						for(Task task: modelInstance.getModelElementsByType(Task.class)) {
+							System.out.println("Task: "+task.getName());
 							for(DataInputAssociation taskDia: task.getDataInputAssociations()) {
 								for(ItemAwareElement taskIae: taskDia.getSources()) {
 									if(taskIae.getId().contentEquals(daoRToBeRemoved.getId())) {
@@ -3131,7 +3134,7 @@ public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnMode
 						iteration++;
 
 						try {
-							CommonFunctionality.writeChangesToFile(modelInstance, fileName, directoryToStore, iteration+"");
+							CommonFunctionality.writeChangesToFile(modelInstance, fileName, directoryToStore, "substituteIter"+iteration);
 						} catch (IOException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -3152,6 +3155,9 @@ public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnMode
 			
 	
 	}
+	
+
+	
 		
 }
 
@@ -3226,9 +3232,14 @@ public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance mod
 									randomAmountConstraintsForGtw = globalSphereSize - amountVotersNeeded;									
 								} else {
 									int maxConstraint = globalSphereSize - amountVotersNeeded;	
+									
+									if(lowerBoundAmountParticipantsToExclude==maxConstraint) {
+										randomAmountConstraintsForGtw = lowerBoundAmountParticipantsToExclude;
+									} else {
 									randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
 											lowerBoundAmountParticipantsToExclude,
 											maxConstraint + 1);
+									}
 								}
 								
 															

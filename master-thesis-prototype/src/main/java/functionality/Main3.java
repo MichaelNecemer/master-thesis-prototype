@@ -27,7 +27,7 @@ import Mapping.BPMNExclusiveGateway;
 import Mapping.BPMNParticipant;
 import Mapping.BPMNTask;
 import Mapping.ProcessInstanceWithVoters;
-import Mapping.RequiredUpdate;
+import Mapping.RequiredUpgrade;
 import Mapping.VoterForXorArc;
 import ProcessModelGeneratorAndAnnotater.ProcessGenerator;
 import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
@@ -62,12 +62,12 @@ public class Main3 {
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel5_annotated.bpmn";
 	//String pathToFile = "C\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn";
 	//String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2.bpmn";
-	//String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2withGlobalTask.bpmn";
+	String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2withGlobalTask.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches3.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test2\\MediumProcessesAnnotatedFolder\\ModelsForEvaluation\\randomProcessModel103_annotated1_annotated112lWlR_Strong-Dynamic_voters1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\ConstraintTest\\MediumModels\\randomProcessModel108_annotated1_annotated112mWsR_Strong-Dynamic_voters3_alwMaxConstrained.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test2\\SmallProcessesAnnotatedFolder\\ModelsForEvaluation\\randomProcessModel10_annotated1_annotated19lWlR_Weak-Dynamic_voters3.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test2\\SmallProcessesAnnotatedFolder\\ModelsForEvaluation\\randomProcessModel10_annotated1_annotated19lWlR_Weak-Dynamic_voters3.bpmn";
 		
 		JFrame frame = new JFrame(pathToFile);
 	frame.setVisible(true);
@@ -224,6 +224,16 @@ public class Main3 {
 	}
 	
 	
+
+	try {
+		CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(a2, pInstances, 1, a2.getProcessFile().getParent());
+
+		//CommonFunctionality.generateNewModelsWithVotersAsBpmnConstruct(a2, bruteForceSolutions, 1, "", true);
+	} catch (Exception e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	}
+
 
 	System.out.println("Compare:" +CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstances, bruteForceSolutions, 1000000));
 	

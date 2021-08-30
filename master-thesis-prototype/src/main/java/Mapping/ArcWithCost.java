@@ -36,7 +36,7 @@ public class ArcWithCost{
 	
 	
 	
-	private LinkedList<RequiredUpdate> requiredUpdates;
+	private LinkedList<RequiredUpgrade> requiredUpdates;
 
 	
 	public ArcWithCost(BPMNBusinessRuleTask brt, BPMNExclusiveGateway xorSplit, LinkedList<ArcWithCost>preceedingArcs, LinkedList<BPMNParticipant>chosenCombinationOfParticipants) {
@@ -48,7 +48,7 @@ public class ArcWithCost{
 		this.preceedingArcs=preceedingArcs;
 		this.isLeaf=false;
 		this.idOfArc=++id;
-		this.requiredUpdates=new LinkedList<RequiredUpdate>();
+		this.requiredUpdates=new LinkedList<RequiredUpgrade>();
 	}
 	
 	
@@ -56,7 +56,7 @@ public class ArcWithCost{
 
 
 
-	public LinkedList<RequiredUpdate> getRequiredUpdates() {
+	public LinkedList<RequiredUpgrade> getRequiredUpdates() {
 		return requiredUpdates;
 	}
 
@@ -65,7 +65,7 @@ public class ArcWithCost{
 
 
 
-	public void setRequiredUpdates(LinkedList<RequiredUpdate> requiredUpdates) {
+	public void setRequiredUpdates(LinkedList<RequiredUpgrade> requiredUpdates) {
 		this.requiredUpdates = requiredUpdates;
 	}
 

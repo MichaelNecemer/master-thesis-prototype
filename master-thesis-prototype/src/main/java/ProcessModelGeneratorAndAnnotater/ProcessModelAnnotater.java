@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadLocalRandom;
@@ -161,8 +162,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix,
 			List<String> defaultSpheres, int dynamicWriter, int amountWritersOfProcess, int amountReadersOfProcess,
-			int probPublicDecision,  int amountDataObjectsToCreate,
-			int minDataObjectsPerDecision, int maxDataObjectsPerDecision, int amountParticipantsPerDecisionLowerBound,
+			int probPublicDecision, int amountDataObjectsToCreate, int minDataObjectsPerDecision,
+			int maxDataObjectsPerDecision, int amountParticipantsPerDecisionLowerBound,
 			int amountParticipantsPerDecisionUpperBound, List<String> namesForOutgoingSeqFlowsOfXorSplits,
 			boolean allDataObjectsUniquePerGtw) throws Exception {
 		this.process = new File(pathToFile);
@@ -324,73 +325,121 @@ public class ProcessModelAnnotater implements Callable<File> {
 			if (amountWriters < this.dataObjects.size()) {
 				throw new Exception("Amount of writers must be >= amount of DataObjects!");
 			}
-			
+
 			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality
 					.computeRepartitionNumber(amountWriters, this.dataObjects.size(), 1);
 			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
 			LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
 			List<LinkedList<Integer>> subAmountReadersLists = null;
-			if(amountReaders==this.dataObjects.size()) {
-				subAmountReadersLists = CommonFunctionality
-						.computeRepartitionNumber(amountReaders, this.dataObjects.size(), 0);
+			if (amountReaders <= this.dataObjects.size()) {
+				subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders,
+						this.dataObjects.size(), 0);
 			} else {
-			subAmountReadersLists = CommonFunctionality
-					.computeRepartitionNumber(amountReaders, this.dataObjects.size(), 1);
+				subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders,
+						this.dataObjects.size(), 1);
 			}
 			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
 			LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
 
-			Task firstBrt = null;
-			LinkedList<Task> tasksBeforeBrt = new LinkedList<Task>();
+			HashMap<BusinessRuleTask, LinkedList<Task>> possibleWritersBeforeBrt = new HashMap<BusinessRuleTask, LinkedList<Task>>();
+			List<Task> taskList = new LinkedList<Task>();
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
+				taskList.add(task);
 				if (ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(task)) {
-					LinkedList<Task> tasksBefore = new LinkedList<Task>();
-					boolean firstBrtBool = true;
-					int connectedDataObjects = task.getDataInputAssociations().size();
-					LinkedList<LinkedList<FlowNode>> pathsBetweenStartAndTask = CommonFunctionality
-							.getAllPathsBetweenNodes(modelInstance,
-									modelInstance.getModelElementsByType(StartEvent.class).iterator().next(), task,
+					LinkedList<Task> tasksBeforeBrt = new LinkedList<Task>();
+					LinkedList<LinkedList<FlowNode>> pathsBetweenStartAndBrt = CommonFunctionality
+							.getAllPathsBetweenNodes(this.modelInstance,
+									this.modelInstance.getModelElementsByType(StartEvent.class).iterator().next(), task,
 									new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(),
 									new LinkedList<LinkedList<FlowNode>>(), new LinkedList<LinkedList<FlowNode>>());
-					System.out.println("CHECK3");	
-					for (LinkedList<FlowNode> subPath : pathsBetweenStartAndTask) {
+					for (LinkedList<FlowNode> subPath : pathsBetweenStartAndBrt) {
+						LinkedList<ExclusiveGateway> exclGtwStack = new LinkedList<ExclusiveGateway>();
+						LinkedList<ParallelGateway> paraGtwStack = new LinkedList<ParallelGateway>();
+
 						for (FlowNode f : subPath) {
 							if (f instanceof ExclusiveGateway) {
-								firstBrtBool = false;
+								ExclusiveGateway ex = (ExclusiveGateway) f;
+								if (f.getOutgoing().size() == 2) {
+									exclGtwStack.push(ex);
+								} else if (f.getIncoming().size() == 2) {
+									exclGtwStack.pollLast();
+								}
 							}
+
+							if (f instanceof ParallelGateway) {
+								ParallelGateway pa = (ParallelGateway) f;
+								if (f.getOutgoing().size() == 2) {
+									paraGtwStack.push(pa);
+								} else if (f.getIncoming().size() == 2) {
+									paraGtwStack.pollLast();
+								}
+							}
+
 							if (f instanceof Task && !ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(f)) {
-								tasksBefore.add((Task) f);
+								// possible lastWriters must be unconditional and in front of the brt
+								// because they may get read in the other branch of the brt too
+								// if brt is inside a parallel branch -> last writer can be in the same branch
+								// before the brt
+								// since there can not be a reader/writer to same data object in the other
+								// branch (brt is a reader!)
+
+								boolean insert = true;
+								if (exclGtwStack.isEmpty() && paraGtwStack.isEmpty()) {
+									// f is unconditional and on path to brt
+									// insert = true;
+								} else if (!exclGtwStack.isEmpty()) {
+									// f is conditional -> can not be a lastWriter
+									insert = false;
+								} else if (exclGtwStack.isEmpty() && !paraGtwStack.isEmpty()) {
+									// task has to be in same branch as brt!
+									LinkedList<LinkedList<FlowNode>> pathsBetweenTaskAndBrt = CommonFunctionality
+											.getAllPathsBetweenNodes(this.modelInstance, f, task,
+													new LinkedList<FlowNode>(), new LinkedList<FlowNode>(),
+													new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(),
+													new LinkedList<LinkedList<FlowNode>>());
+									for (LinkedList<FlowNode> subPathFromTaskToBrt : pathsBetweenTaskAndBrt) {
+										for (FlowNode fNode : subPathFromTaskToBrt) {
+											if (fNode instanceof ParallelGateway) {
+												insert = false;
+												break;
+											}
+										}
+									}
+
+								}
+
+								if (insert && !tasksBeforeBrt.contains(f)) {
+									tasksBeforeBrt.add((Task) f);
+								}
 							}
+
 						}
 					}
-					if (firstBrtBool) {
-						firstBrt = task;
-						tasksBeforeBrt.addAll(tasksBefore);
-						break;
+					possibleWritersBeforeBrt.putIfAbsent((BusinessRuleTask) task, tasksBeforeBrt);
+				}
+			}
+										
+			if (!possibleWritersBeforeBrt.isEmpty()) {
+
+				for (Entry<BusinessRuleTask, LinkedList<Task>> entry : possibleWritersBeforeBrt.entrySet()) {
+					for (int i = 0; i < dataObjects.size(); i++) {
+
+						Task writerBeforeDecision = CommonFunctionality.getRandomItem(entry.getValue());
+
+						this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i),
+								subAmountReaders.get(i), dynamicWriter, dataObjects.get(i),
+								defaultSpheresForDynamicWriter, writerBeforeDecision);
 					}
 				}
-
-			}
-
-			if (firstBrt != null && !tasksBeforeBrt.isEmpty()) {
+			} else {
+				// there is no brt inserted
+				// choose a random task
 				for (int i = 0; i < dataObjects.size(); i++) {
-					Task writerBeforeFirstDecision = CommonFunctionality.getRandomItem(tasksBeforeBrt);
-
+					Task writerBeforeDecision = CommonFunctionality.getRandomItem(taskList);
 					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i),
 							subAmountReaders.get(i), dynamicWriter, dataObjects.get(i), defaultSpheresForDynamicWriter,
-							writerBeforeFirstDecision);
+							writerBeforeDecision);
 				}
-
-			}
-
-			else {
-
-				for (int i = 0; i < dataObjects.size(); i++) {
-					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i),
-							subAmountReaders.get(i), dynamicWriter, dataObjects.get(i), defaultSpheresForDynamicWriter,
-							null);
-				}
-
 			}
 
 		}
@@ -1224,8 +1273,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 					dia.setTarget(p1);
 					brt.getDataInputAssociations().add(dia);
 					dia.getSources().add(daoR.get(randomCount));
-					generateDIElementForReader(dia, getShape(daoR.get(randomCount).getId()),
-							getShape(brt.getId()));
+					generateDIElementForReader(dia, getShape(daoR.get(randomCount).getId()), getShape(brt.getId()));
 					daoR.remove(daoR.get(randomCount));
 					i++;
 				}
@@ -1385,6 +1433,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 				} else if (successor instanceof ParallelGateway && successor.getOutgoing().size() >= 2) {
 					// either: insert a task in before the parallel split
 					// or: check if on each branch there is a task before the brt
+					// in this implementation: insert a task
 					System.out.println(
 							"First Node after Start Event is a Parallel-Split - insert a task in front of it!");
 					this.insertTaskAfterNode(f, successor, modelWithLanes);
@@ -1680,7 +1729,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 				task = CommonFunctionality.getRandomItem(allAvailableTasks);
 			}
 			if (!taskIsBrtFollowedByXorSplit(task)) {
-				// task will be a writer to the dataObject if it is not a Brt followed by a xor
+				// task will be a writer to the dataObject if it is not a brt followed by a xor
 				// split or a reader/writer to the dataObject already
 				// businessRuleTasks right before xor-splits can not be writers
 				boolean toBeInserted = true;
@@ -1806,31 +1855,35 @@ public class ProcessModelAnnotater implements Callable<File> {
 									int randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
 											lowerBoundAmountParticipantsToExclude,
 											upperBoundAmountParticipantsToExclude + 1);
-									
-									
+
 									Collections.shuffle(participantsToChooseFrom);
 									Iterator<String> partIter = participantsToChooseFrom.iterator();
 
-									for(int i = 0; i < randomAmountConstraintsForGtw; i++) {
-										if(partIter.hasNext()) {
-										String currPart = partIter.next();
-										String currPartWithoutBrackets = currPart.replace("[", "{").replace("]","}");
-										
-										
-										String excludeParticipantConstraint = "[Constraint]"+currPartWithoutBrackets;
-										TextAnnotation constraintAnnotation = modelInstance.newInstance(TextAnnotation.class);
-									
-										constraintAnnotation.setTextFormat("text/plain");
-										Text text = this.modelInstance.newInstance(Text.class);
-										text.setTextContent(excludeParticipantConstraint);
-										constraintAnnotation.setText(text);
-										gtw.getParentElement().addChildElement(constraintAnnotation);
+									for (int i = 0; i < randomAmountConstraintsForGtw; i++) {
+										if (partIter.hasNext()) {
+											String currPart = partIter.next();
+											String currPartWithoutBrackets = currPart.replace("[", "{").replace("]",
+													"}");
 
-										// add the shape of the text annotation to the xml file
-										DataInputAssociation dia = brtBeforeGtw.getDataInputAssociations().iterator().next();
-										
-										generateShapeForTextAnnotation(constraintAnnotation, CommonFunctionality.getDataObjectReferenceForItemAwareElement(this.modelInstance, dia.getTarget()));
-										partIter.remove();
+											String excludeParticipantConstraint = "[Constraint]"
+													+ currPartWithoutBrackets;
+											TextAnnotation constraintAnnotation = modelInstance
+													.newInstance(TextAnnotation.class);
+
+											constraintAnnotation.setTextFormat("text/plain");
+											Text text = this.modelInstance.newInstance(Text.class);
+											text.setTextContent(excludeParticipantConstraint);
+											constraintAnnotation.setText(text);
+											gtw.getParentElement().addChildElement(constraintAnnotation);
+
+											// add the shape of the text annotation to the xml file
+											DataInputAssociation dia = brtBeforeGtw.getDataInputAssociations()
+													.iterator().next();
+
+											generateShapeForTextAnnotation(constraintAnnotation,
+													CommonFunctionality.getDataObjectReferenceForItemAwareElement(
+															this.modelInstance, dia.getTarget()));
+											partIter.remove();
 										}
 									}
 
@@ -1874,7 +1927,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		// TODO Auto-generated method stub
 
 		if (!Thread.currentThread().isInterrupted()) {
-			
+
 			File f = this.checkCorrectnessAndWriteChangesToFile();
 			return f;
 

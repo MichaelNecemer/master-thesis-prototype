@@ -11,30 +11,30 @@ public class ProcessInstanceWithVoters {
 	private static int processID;
 	private int processInstanceID;
 	private HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> votersMap;
-	private HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>requiredUpdates;
+	private HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>>requiredUpgrades;
 	private double costForModelInstance;
 	private LinkedList<VoterForXorArc>listOfArcs;
-	private LinkedList<RequiredUpdate>listOfRequiredUpdates;
+	private LinkedList<RequiredUpgrade>listOfRequiredUpgrades;
 	
 	public ProcessInstanceWithVoters() {
 		this.processInstanceID=++processID;
 		this.votersMap = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
-		this.requiredUpdates = new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>>();
+		this.requiredUpgrades = new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>>();
 		this.listOfArcs = new LinkedList<VoterForXorArc>();
-		this.listOfRequiredUpdates=new LinkedList<RequiredUpdate>();
+		this.listOfRequiredUpgrades=new LinkedList<RequiredUpgrade>();
 		this.costForModelInstance=0;
 	}
 	
 	
 	
-	public LinkedList<RequiredUpdate> getListOfRequiredUpdates() {
-		return listOfRequiredUpdates;
+	public LinkedList<RequiredUpgrade> getListOfRequiredUpdates() {
+		return listOfRequiredUpgrades;
 	}
 
 
 
-	public void setListOfRequiredUpdates(LinkedList<RequiredUpdate> listOfRequiredUpdates) {
-		this.listOfRequiredUpdates = listOfRequiredUpdates;
+	public void setListOfRequiredUpgrades (LinkedList<RequiredUpgrade> listOfRequiredUpgrades) {
+		this.listOfRequiredUpgrades = listOfRequiredUpgrades;
 	}
 
 
@@ -76,13 +76,13 @@ public class ProcessInstanceWithVoters {
 	}
 
 
-	public HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>> getRequiredUpdates() {
-		return requiredUpdates;
+	public HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>> getRequiredUpdates() {
+		return requiredUpgrades;
 	}
 
 
-	public void setRequiredUpdates(HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpdate>> requiredUpdates) {
-		this.requiredUpdates = requiredUpdates;
+	public void setRequiredUpdates(HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>> requiredUpdates) {
+		this.requiredUpgrades = requiredUpdates;
 	}
 
 	public void addVotersToBrt(BPMNBusinessRuleTask brt, LinkedList<BPMNParticipant>voters) {
@@ -95,9 +95,9 @@ public class ProcessInstanceWithVoters {
 		System.out.println("Cost for ProcessInstance: "+this.costForModelInstance);
 		for(VoterForXorArc arc: this.getListOfArcs()) {
 			arc.printArc();
-			for(RequiredUpdate update: this.listOfRequiredUpdates) {
+			for(RequiredUpgrade update: this.listOfRequiredUpgrades) {
 				if(update.getCurrentBrt().equals(arc.getBrt())) {
-				update.printUpdate();
+				update.printUpgrade();
 				}
 			}
 		}
