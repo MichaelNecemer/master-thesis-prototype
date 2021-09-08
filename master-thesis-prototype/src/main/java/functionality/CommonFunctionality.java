@@ -108,9 +108,9 @@ public class CommonFunctionality {
 		if (!CommonFunctionality.checkIfOnlyOneStartEventAndEventEvent(modelInstance)) {
 			throw new Exception("Model must have exactly 1 Start and 1 End Event");
 		} 
-		if(!CommonFunctionality.isModelValid(modelInstance)) {
-			throw new Exception("Model is not valid!");
-		}
+		
+		CommonFunctionality.isModelValid(modelInstance);
+		
 		if(!CommonFunctionality.isModelBlockStructured(modelInstance)) {
 			throw new Exception("Model must be block structured!");
 		}
@@ -737,7 +737,7 @@ public static boolean isModelValid(BpmnModelInstance modelInstance) throws NullP
 						}
 						if(writerOnPath==false) {
 							System.err.println("Not a writer before every reader!");
-							return false; 
+							throw new Exception("Not a writer before every reader!");
 						}
 			
 					}
@@ -790,11 +790,11 @@ public static boolean isModelValid(BpmnModelInstance modelInstance) throws NullP
 														ItemAwareElement iae = dao.getTarget();
 														if(CommonFunctionality.isReaderForDataObject((Task)subPathNode, iae)==true) {
 															//subPathNode is reader in other parallel branch than currTask
-															return false;															
+															throw new Exception("Invalid reader: "+subPathNode.getName()+ "and writer "+currTask.getName()+" dependencies due to parallel branching!");															
 														}
 														if(CommonFunctionality.isWriterForDataObject((Task)subPathNode, iae)==true) {
 															//subPathNode is writer in other parallel branch than currTask
-															return false;															
+															throw new Exception("Invalid writer: "+subPathNode.getName()+ "and writer "+currTask.getName()+" dependencies due to parallel branching!");															
 														}
 													
 													}
@@ -2303,12 +2303,8 @@ public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedLis
 	int i = 1;
 	
 	
-	// when there is no default troubleshooter annotated - take a random participant
 	BPMNParticipant troubleShooter = api.getTroubleShooter();
-	if (troubleShooter == null) {
-		troubleShooter = CommonFunctionality.getRandomItem(api.getGlobalSphereList());
-	}
-
+	
 	int j = 1;
 	for (int bound = 0; bound < upperBoundNewModels; bound++) {
 		//make a deep copy of the modelInstance to prevent changing the model itself

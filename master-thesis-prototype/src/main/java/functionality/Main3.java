@@ -81,8 +81,7 @@ public class Main3 {
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	double costForAddingReaderAfterBrt = 0.0;
 	String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop";
-	
-	
+		
 	try {
 		//ProcesGenerator g= new ProcessGenerator(pathForAddingRandomModels,4000, 15, 20, 40, 18,50,30,20,20,5);
 	

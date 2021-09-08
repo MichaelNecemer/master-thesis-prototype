@@ -1047,17 +1047,18 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	}
 
 	private void mapDefaultTroubleShooter() {
+		if (globalSphere.isEmpty()) {
+			this.computeGlobalSphere();
+		}
 		for (TextAnnotation text : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 
 			String str = text.getTextContent();
 			String troubleshooter = "";
-
+			
 			if (str.toLowerCase().contains(("Default").toLowerCase())
 					&& str.toLowerCase().contains(("[Troubleshooter]").toLowerCase())) {
 				troubleshooter = str.substring(str.indexOf('{') + 1, str.indexOf('}')).trim();
-				if (globalSphere.isEmpty()) {
-					this.computeGlobalSphere();
-				}
+				
 				for (BPMNParticipant part : this.globalSphere) {
 					if (part.getName().contentEquals(troubleshooter)) {
 						this.troubleShooter = part;
@@ -1065,8 +1066,17 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 					}
 				}
 
-			}
+			} 
+			
+				
 		}
+		
+		//when there is no default troubleShooter -> randomly choose one from the global sphere
+		if (this.troubleShooter == null) {
+			this.troubleShooter = CommonFunctionality.getRandomItem(this.getGlobalSphereList());
+		}
+
+	
 
 	}
 
