@@ -2438,7 +2438,7 @@ public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedLis
 		if (mapModelBtn) {
 			CommonFunctionality.mapModel(modelInstance);
 		}
-		String suffix= "votingAsConstruct-solution" + bound;
+		String suffix= "votingAsConstruct-solution" + j;
 		CommonFunctionality.writeChangesToFile(modelInstance, fileName,directoryToStoreModels, suffix);
 	} catch (ParserConfigurationException e) {
 		// TODO Auto-generated catch block
@@ -2844,10 +2844,15 @@ public static String compareResultsOfAlgorithmsForDifferentAPIs(LinkedList<Proce
 	int countCheapestSolutionFoundInBruteForceSolutions = 0;
 	LinkedList<ProcessInstanceWithVoters> cheapestBruteForceSolutions = CommonFunctionality
 			.getCheapestProcessInstancesWithVoters(bruteForceInstances);
-	
-	//to avoid very long taking comparisons -> only check if boundForComparisons is reached
-	if((localMinInstances.size()*cheapestBruteForceSolutions.size())>boundForComparisons) {
+	boolean compareAll = false;
+	if(boundForComparisons <= 0) {
+		//compare each localMinInstance to each bruteForceInstance
+		compareAll = true;
 		
+	}
+	
+	if(compareAll==false) {	
+		//only check if the cheapest solutions have the same cost
 		if(cheapestBruteForceSolutions.get(0).getCostForModelInstance()==localMinInstances.get(0).getCostForModelInstance()) {
 			return "true";
 		
@@ -2855,10 +2860,8 @@ public static String compareResultsOfAlgorithmsForDifferentAPIs(LinkedList<Proce
 			return "false";
 		}
 		
-		
-	}
-	
-
+	} else {
+		//check if the cheapest bruteForce solutions contain all localMin solutions
 		for (ProcessInstanceWithVoters cheapestInstBruteForce : cheapestBruteForceSolutions) {
 			for (ProcessInstanceWithVoters cheapestInstLocalMin : localMinInstances) {
 			if (cheapestInstBruteForce
@@ -2901,7 +2904,7 @@ public static String compareResultsOfAlgorithmsForDifferentAPIs(LinkedList<Proce
 	}
 		
 	}
-	
+	}
 	if (countCheapestSolutionFoundInBruteForceSolutions == localMinInstances.size()) {
 		return "true";
 	}  else {

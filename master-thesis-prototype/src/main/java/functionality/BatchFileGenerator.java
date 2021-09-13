@@ -275,7 +275,7 @@ public class BatchFileGenerator {
 		  int  maxDataObjectsPerDecisionTest5 = 4;
 		  List<Integer> writersOfProcessInPercent = Arrays.asList(10, 20, 30);
 		  List<Integer> readersOfProcessInPercent = Arrays.asList(10, 20, 30); 
-		  int upperBoundLocalMinWithLimit = 1;
+		  int upperBoundlocalMinWithBound = 1;
 		  int amountThreads = 1;
 		  
 		  
@@ -285,7 +285,7 @@ public class BatchFileGenerator {
 		  .fileWithDirectoryAssurance(pathToRealWorldProcesses,
 		  "AnnotatedModels").getAbsolutePath();
 		  
-		//BatchFileGenerator.performTestWithRealWorldProcesses(pathToRealWorldProcesses, pathToAnnotatedProcessesFolder, dynamicWriterProb, upperBoundParticipants, lowerBoundTasks, upperBoundTasks, upperBoundXorGtws, upperBoundParallelGtws, amountProcesses, minDataObjectsPerDecisionTest5, maxDataObjectsPerDecisionTest5, dataObjectBoundsRealWorld, writersOfProcessInPercent, readersOfProcessInPercent, upperBoundLocalMinWithLimit, amountThreads);
+		//BatchFileGenerator.performTestWithRealWorldProcesses(pathToRealWorldProcesses, pathToAnnotatedProcessesFolder, dynamicWriterProb, upperBoundParticipants, lowerBoundTasks, upperBoundTasks, upperBoundXorGtws, upperBoundParallelGtws, amountProcesses, minDataObjectsPerDecisionTest5, maxDataObjectsPerDecisionTest5, dataObjectBoundsRealWorld, writersOfProcessInPercent, readersOfProcessInPercent, upperBoundlocalMinWithBound, amountThreads);
 		
 		
 		System.out.println("Everything finished!");
@@ -293,7 +293,7 @@ public class BatchFileGenerator {
 
 	
 	public static void performTestWithRealWorldProcesses(String pathWhereToCreateProcessesWithoutAnnotation, String pathWhereToCreateAnnotatedProcesses,  int dynamicWriterProb, int upperBoundParticipants, int lowerBoundTasks, int upperBoundTasks, int upperBoundXorGtws, int upperBoundParallelGtws,
-	  int amountProcesses, int minDataObjectsPerDecision, int  maxDataObjectsPerDecision, List<Integer> dataObjectBoundsRealWorld, List<Integer> writersOfProcessInPercent, List<Integer> readersOfProcessInPercent, int upperBoundLocalMinWithLimit, int amountThreads) {
+	  int amountProcesses, int minDataObjectsPerDecision, int  maxDataObjectsPerDecision, List<Integer> dataObjectBoundsRealWorld, List<Integer> writersOfProcessInPercent, List<Integer> readersOfProcessInPercent, int upperBoundlocalMinWithBound, int amountThreads) {
 		  BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
 				  pathWhereToCreateProcessesWithoutAnnotation, 2,  upperBoundParticipants, lowerBoundTasks, upperBoundTasks, 1, upperBoundXorGtws, 0, upperBoundParallelGtws,
 		 amountProcesses); 
@@ -310,7 +310,7 @@ public class BatchFileGenerator {
 		  ExecutorService service = Executors.newFixedThreadPool(amountThreads);
 		  File csv = BatchFileGenerator.createNewCSVFile(pathWhereToCreateAnnotatedProcesses, "real-world-processes");
 		  ResultsToCSVWriter writer = new ResultsToCSVWriter(csv);
-		 BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(pathWhereToCreateAnnotatedProcesses, upperBoundLocalMinWithLimit, publicDecisionProb, writer, service);
+		 BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(pathWhereToCreateAnnotatedProcesses, upperBoundlocalMinWithBound, publicDecisionProb, writer, service);
 		  writer.writeRowsToCSVAndcloseWriter();
 		  service.shutdownNow();
 		  
@@ -609,7 +609,7 @@ public class BatchFileGenerator {
 		localMinApi.setAlgorithmToPerform("localMin");
 		
 		
-		String localMinWithMaxSolutions = "localMinWithLimit"+limitForLocalMin;
+		String localMinWithMaxSolutions = "localMinWithBound"+limitForLocalMin;
 		API localMinWithMaxSolutionsApi = (API)CommonFunctionality.deepCopy(api);
 		localMinWithMaxSolutionsApi.setAlgorithmToPerform(localMinWithMaxSolutions);
 		
@@ -719,14 +719,14 @@ public class BatchFileGenerator {
 				isCheapestSolutionOfLocalMinInBruteForce = CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstancesLocalMin.get("localMin"), pInstancesBruteForce.get("bruteForce"), boundForComparisons);
 
 			}
-		String isCheapestSolutionOfLocalMinWithLimitInBruteForce = "null";
+		String isCheapestSolutionOflocalMinWithBoundInBruteForce = "null";
 		 if(pInstancesLocalMinWithMaxSolutions!=null&&pInstancesBruteForce!=null) {
-			 isCheapestSolutionOfLocalMinWithLimitInBruteForce =	CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstancesLocalMinWithMaxSolutions.get(localMinWithMaxSolutions), pInstancesBruteForce.get("bruteForce"), boundForComparisons);
+			 isCheapestSolutionOflocalMinWithBoundInBruteForce =	CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstancesLocalMinWithMaxSolutions.get(localMinWithMaxSolutions), pInstancesBruteForce.get("bruteForce"), boundForComparisons);
 
 		 }
 				
 
-		writer.writeResultsOfAlgorithmsToCSVFile(bruteForceApi, localMinApi, localMinWithMaxSolutionsApi, algorithmMap, exceptionPerAlgorithm, isCheapestSolutionOfLocalMinInBruteForce, isCheapestSolutionOfLocalMinWithLimitInBruteForce);
+		writer.writeResultsOfAlgorithmsToCSVFile(bruteForceApi, localMinApi, localMinWithMaxSolutionsApi, algorithmMap, exceptionPerAlgorithm, isCheapestSolutionOfLocalMinInBruteForce, isCheapestSolutionOflocalMinWithBoundInBruteForce);
 		
 		}
 		
@@ -1121,12 +1121,12 @@ public class BatchFileGenerator {
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		HashMap<String, Integer>timeOutMap = new HashMap<String, Integer>();
 		
-		String localMinWithLimit = "localMinWithLimit"+upperBoundSolutionsForLocalMinWithBound;
+		String localMinWithBound = "localMinWithBound"+upperBoundSolutionsForLocalMinWithBound;
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 		do {
 			timeOutMap.put("bruteForce", 0);
 			timeOutMap.put("localMin",0);
-			timeOutMap.put(localMinWithLimit,0);
+			timeOutMap.put(localMinWithBound,0);
 			
 			int amountDataObjectsToCreate = amountDecisionsToStart;
 			System.out.println("Generate models with " + amountDecisionsToStart + " decisions!");
@@ -1199,7 +1199,7 @@ public class BatchFileGenerator {
 					+ ", timeOutsLocalMin: " + timeOutMap.get("localMin") );
 			amountDecisionsToStart++;			
 			
-		} while (timeOutMap.get("bruteForce") < amountProcessesPerIteration || timeOutMap.get("localMin") < amountProcessesPerIteration ||timeOutMap.get(localMinWithLimit)<amountProcessesPerIteration);
+		} while (timeOutMap.get("bruteForce") < amountProcessesPerIteration || timeOutMap.get("localMin") < amountProcessesPerIteration ||timeOutMap.get(localMinWithBound)<amountProcessesPerIteration);
 
 		executor.shutdownNow();
 
@@ -1225,7 +1225,7 @@ public class BatchFileGenerator {
 		
 		
 		
-		String localMinWithLimit = "localMinWithLimit"+upperBoundSolutionsForLocalMin;
+		String localMinWithBound = "localMinWithBound"+upperBoundSolutionsForLocalMin;
 		// map annotated models
 		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(directoryToStore);
 
@@ -1236,16 +1236,16 @@ public class BatchFileGenerator {
 
 			timeOutMap.put("bruteForce", 0);
 			timeOutMap.put("localMin",0);
-			timeOutMap.put(localMinWithLimit,0);
+			timeOutMap.put(localMinWithBound,0);
 					
 		timeOutMap = BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, upperBoundSolutionsForLocalMin, boundForComparisons, timeOutMap, writer, executor);
 			
 		
 	
 		System.out.println("timeOutsBruteForce: " + timeOutMap.get("bruteForce")
-				+ ", timeOutsLocalMin: " + timeOutMap.get("localMin") +", timeOuts"+localMinWithLimit+": "+timeOutMap.get(localMinWithLimit) );
+				+ ", timeOutsLocalMin: " + timeOutMap.get("localMin") +", timeOuts"+localMinWithBound+": "+timeOutMap.get(localMinWithBound) );
 		
-		if(timeOutMap.get("bruteForce") == 1 && timeOutMap.get("localMin") ==1 && timeOutMap.get(localMinWithLimit)==1) {
+		if(timeOutMap.get("bruteForce") == 1 && timeOutMap.get("localMin") ==1 && timeOutMap.get(localMinWithBound)==1) {
 			break;
 		}
 		}

@@ -533,7 +533,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		long stopTime = System.nanoTime();
 		long executionTime = stopTime - startTime;
 		double executionTimelocalMinAlgorithmWithLimitInSeconds = (double) executionTime / 1000000000;
-		String key = "localMinWithLimit"+upperBoundSolutionsPerIteration;
+		String key = "localMinWithBound"+upperBoundSolutionsPerIteration;
 		this.executionTimeMap.put(key, executionTimelocalMinAlgorithmWithLimitInSeconds);
 
 		
@@ -2855,12 +2855,12 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	}
 	
 	public double getExecutionTimeLocalMinimumAlgorithmWithLimit(int limitPerIteration) {
-		String key = "localMinWithLimit"+limitPerIteration;
+		String key = "localMinWithBound"+limitPerIteration;
 		return this.executionTimeMap.get(key);		
 	}
 
 	public double getExecutionTimeLocalMinimumAlgorithmWithLimit() {
-		if(this.getAlgorithmToPerform().contains("localMinWithLimit")) {
+		if(this.getAlgorithmToPerform().contains("localMinWithBound")) {
 			return this.executionTimeMap.get(this.getAlgorithmToPerform());
 		} else {
 			return -1;
@@ -2974,11 +2974,11 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				mapToReturn.putIfAbsent("localMin", pInstLocalMin);
 				return mapToReturn;
 
-			} else if(this.algorithmToPerform.contains("localMinWithLimit")) {
+			} else if(this.algorithmToPerform.contains("localMinWithBound")) {
 				String limit = this.algorithmToPerform;
 				int limitPerIteration = Integer.parseInt(limit.replaceAll("\\D+","").trim());
-				LinkedList<ProcessInstanceWithVoters> pInstLocalMinWithLimit = this.localMinimumAlgorithmWithLimit(limitPerIteration);
-				mapToReturn.putIfAbsent(this.algorithmToPerform, pInstLocalMinWithLimit);
+				LinkedList<ProcessInstanceWithVoters> pInstLocalMinWithBound = this.localMinimumAlgorithmWithLimit(limitPerIteration);
+				mapToReturn.putIfAbsent(this.algorithmToPerform, pInstLocalMinWithBound);
 				return mapToReturn;				
 			}
 
