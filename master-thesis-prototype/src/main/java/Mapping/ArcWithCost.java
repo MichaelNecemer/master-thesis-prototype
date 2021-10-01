@@ -2,8 +2,6 @@ package Mapping;
 
 import java.util.LinkedList;
 
-import functionality.API;
-
 //Class holding all necessary Information regarding costs and dependencies between BusinessRuleTasks in the process
 public class ArcWithCost{
 	//The current Arc object holds list to all preceeding arcs -> uniquely identifiable	

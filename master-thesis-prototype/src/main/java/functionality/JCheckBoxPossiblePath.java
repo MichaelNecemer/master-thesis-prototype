@@ -1,6 +1,5 @@
 package functionality;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
 
 import javax.swing.JCheckBox;

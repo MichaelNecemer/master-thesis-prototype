@@ -1,25 +1,13 @@
 package myUnitTests;
 
-import static org.junit.Assert.*;
-
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 
 import org.junit.Assert;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
-import Mapping.BPMNBusinessRuleTask;
-import Mapping.BPMNDataObject;
-import Mapping.BPMNElement;
-import Mapping.BPMNExclusiveGateway;
-import Mapping.BPMNParticipant;
-import Mapping.BPMNTask;
-import Mapping.Combination;
 import functionality.API;
 
 

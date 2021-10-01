@@ -1,13 +1,8 @@
 package functionality;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,7 +40,6 @@ import org.camunda.bpm.model.bpmn.instance.Association;
 import org.camunda.bpm.model.bpmn.instance.BusinessRuleTask;
 import org.camunda.bpm.model.bpmn.instance.Collaboration;
 import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
-import org.camunda.bpm.model.bpmn.instance.DataObject;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.DataOutputAssociation;
 import org.camunda.bpm.model.bpmn.instance.Documentation;
@@ -86,18 +80,12 @@ import com.rits.cloning.Cloner;
 import Mapping.BPMNBusinessRuleTask;
 import Mapping.BPMNDataObject;
 import Mapping.BPMNElement;
-import Mapping.BPMNEndEvent;
 import Mapping.BPMNExclusiveGateway;
-import Mapping.BPMNGateway;
 import Mapping.BPMNParallelGateway;
 import Mapping.BPMNParticipant;
 import Mapping.BPMNTask;
-import Mapping.Combination;
 import Mapping.ProcessInstanceWithVoters;
 import Mapping.RequiredUpgrade;
-import Mapping.VoterForXorArc;
-import ProcessModelGeneratorAndAnnotater.LockedBranch;
-import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
 
 public class CommonFunctionality {
 
@@ -1314,10 +1302,10 @@ public static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mod
 	
 	public static int getGlobalSphere(BpmnModelInstance modelInstance, boolean modelWithLanes) {	
 		
-		
+		LinkedList<String>participants = new LinkedList<String>();
+
 		if(!modelWithLanes) {
 			//if the model is without lanes -> the participants must be extracted from the task name 
-			LinkedList<String>participants = new LinkedList<String>();
 		for (Task task : modelInstance.getModelElementsByType(Task.class)) {
 				
 				
@@ -1327,15 +1315,22 @@ public static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mod
 			}
 				
 			}
-			return participants.size();
 		} else {
 			// model is with lanes 
-			return modelInstance.getModelElementsByType(Lane.class).size();			
+			for(Lane l: modelInstance.getModelElementsByType(Lane.class)) {
+				for(FlowNode nodeOnLane: l.getFlowNodeRefs()) {
+					if(nodeOnLane instanceof Task && !participants.contains(l.getName())) {
+						participants.add(l.getName());
+					}
+				}
+			}
 		}
-		
+		return participants.size();
 	}
 	
 	
+
+		
 	
 	public static LinkedList<String> getGlobalSphereList(BpmnModelInstance modelInstance, boolean modelWithLanes) {	
 		
@@ -1354,8 +1349,13 @@ public static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mod
 			}
 		} else {
 			// model is with lanes 
+			//only add the lane to global sphere if there is a task on it
 			for(Lane l: modelInstance.getModelElementsByType(Lane.class)) {
-				participants.add(l.getName());
+				for(FlowNode nodeOnLane: l.getFlowNodeRefs()) {
+					if(nodeOnLane instanceof Task && !participants.contains(l.getName())) {
+						participants.add(l.getName());
+					}
+				}
 			}
 			
 			
@@ -2284,7 +2284,7 @@ public static void generateShapeForTextAnnotation(BpmnModelInstance modelInstanc
 
 
 public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedList<ProcessInstanceWithVoters> pInstances, int upperBoundNewModels,
-		String directoryToStoreModels, boolean mapModelBtn) throws IOException {
+		String directoryToStoreModels, boolean votingAsSubProcess, boolean mapModel) throws IOException {
 	
 	String fileName = api.getProcessFile().getName();
 	if(directoryToStoreModels == null || directoryToStoreModels.contentEquals("")) {
@@ -2343,7 +2343,7 @@ public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedLis
 		}
 
 		// Voting system inside of a subprocess
-		if (!mapModelBtn) {
+		if (votingAsSubProcess) {
 
 			if (!(onlyOneTask)) {
 				BPMNParallelGateway.increaseVotingTaskCount();
@@ -2353,13 +2353,13 @@ public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedLis
 						"PV" + BPMNParallelGateway.getVotingTaskCount(),
 						pInstance.getVotersMap().get(bpmnBusinessRt), troubleShooter,
 						"PV" + BPMNParallelGateway.getVotingTaskCount(),
-						BPMNExclusiveGateway.increaseExclusiveGtwCount(), mapModelBtn, onlyOneTask);
+						BPMNExclusiveGateway.increaseExclusiveGtwCount(), votingAsSubProcess, onlyOneTask);
 			} else {
 				CommonFunctionality.addTasksToVotingSystem(api, modelInstance, i, businessRt, bpmnEx,
 						businessRt.builder().moveToNode(bpmnBusinessRt.getPredecessors().iterator().next().getId()),
 						"PV" + BPMNParallelGateway.getVotingTaskCount(),
 						pInstance.getVotersMap().get(bpmnBusinessRt), troubleShooter,
-						"PV" + BPMNParallelGateway.getVotingTaskCount(), 0, mapModelBtn, onlyOneTask);
+						"PV" + BPMNParallelGateway.getVotingTaskCount(), 0, votingAsSubProcess,onlyOneTask);
 			}
 		}
 
@@ -2373,7 +2373,7 @@ public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedLis
 					businessRt.builder().moveToNode(bpmnBusinessRt.getPredecessors().iterator().next().getId()),
 					"PV" + BPMNParallelGateway.getVotingTaskCount(), pInstance.getVotersMap().get(bpmnBusinessRt),
 					troubleShooter, "PV" + BPMNParallelGateway.getVotingTaskCount(),
-					BPMNExclusiveGateway.getExclusiveGtwCount(), mapModelBtn, onlyOneTask);
+					BPMNExclusiveGateway.getExclusiveGtwCount(), votingAsSubProcess,  onlyOneTask);
 
 		}
 
@@ -2387,7 +2387,7 @@ public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedLis
 						task.getName().substring(task.getName().indexOf(" ") + 1, task.getName().length()))) {
 					// Add necessary information to the voting tasks
 
-					if (mapModelBtn && task.getDocumentations().isEmpty()) {
+					if (mapModel && task.getDocumentations().isEmpty()) {
 						Documentation doc = modelInstance.newInstance(Documentation.class);
 						StringBuilder sb = new StringBuilder();
 
@@ -2435,7 +2435,8 @@ public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedLis
 			}			
 	}
 	try {
-		if (mapModelBtn) {
+		if (mapModel) {
+			//convert pools and lanes 
 			CommonFunctionality.mapModel(modelInstance);
 		}
 		String suffix= "votingAsConstruct-solution" + j;
@@ -2457,7 +2458,7 @@ public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedLis
 
 private static void addTasksToVotingSystem(API api, BpmnModelInstance modelInstance, int i, BusinessRuleTask brt, BPMNExclusiveGateway bpmnEx,
 		AbstractFlowNodeBuilder builder, String parallelSplit, LinkedList<BPMNParticipant> voters,
-		BPMNParticipant troubleShooter, String parallelJoin, int exclusiveGtwCount, boolean mapModelBtn,
+		BPMNParticipant troubleShooter, String parallelJoin, int exclusiveGtwCount, boolean votingAsSubProcess,
 		boolean onlyOneTask) {
 	if (voters.isEmpty()) {
 		System.err.println("No voters selected");
@@ -2595,13 +2596,13 @@ private static void addTasksToVotingSystem(API api, BpmnModelInstance modelInsta
 
 		}
 
-		if (mapModelBtn) {
+		if (!votingAsSubProcess) {
 			builder.moveToNode(exclusiveGatewayDeciderJoinId).connectTo(targetGtw.getId());
 			builder.moveToNode(exclusiveGatewayDeciderSplitId).connectTo(exclusiveGatewayDeciderJoinId);
 
 		}
 
-		else if (!mapModelBtn) {
+		else if (votingAsSubProcess) {
 
 			builder.moveToNode(exclusiveGatewayDeciderJoinId).endEvent("endEventWithInSubProcess" + i).name("")
 					.subProcessDone().connectTo(targetGtw.getId());
@@ -3303,6 +3304,12 @@ public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance mod
 	CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, suffix);
 	}
 }
+
+
+
+		
+	
+
 
 
 }

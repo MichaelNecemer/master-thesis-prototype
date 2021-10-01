@@ -16,11 +16,11 @@ public class BPMNDataObject {
 	private String dataObjectReference;
 	
 	
-	private List<BPMNElement> readers;
-	private List<BPMNElement> writers;
-	private List<BPMNParticipant> staticSphere;
-	private List<BPMNParticipant> readerParticipants;
-	private List<BPMNParticipant> writerParticipants;
+	private LinkedList<BPMNElement> readers;
+	private LinkedList<BPMNElement> writers;
+	private LinkedList<BPMNParticipant> staticSphere;
+	private LinkedList<BPMNParticipant> readerParticipants;
+	private LinkedList<BPMNParticipant> writerParticipants;
 	
 	public BPMNDataObject(String id, String name, String dataObjectReference) {
 		this.id = id;
@@ -44,7 +44,7 @@ public class BPMNDataObject {
 
 
 
-	public void setReaderParticipants(List<BPMNParticipant> readerParticipants) {
+	public void setReaderParticipants(LinkedList<BPMNParticipant> readerParticipants) {
 		this.readerParticipants = readerParticipants;
 	}
 
@@ -56,7 +56,7 @@ public class BPMNDataObject {
 
 
 
-	public void setWriterParticipants(List<BPMNParticipant> writerParticipants) {
+	public void setWriterParticipants(LinkedList<BPMNParticipant> writerParticipants) {
 		this.writerParticipants = writerParticipants;
 	}
 
@@ -129,7 +129,7 @@ public class BPMNDataObject {
 
 
 
-	public void setReaders(List<BPMNElement> readers) {
+	public void setReaders(LinkedList<BPMNElement> readers) {
 		this.readers = readers;
 	}
 
@@ -141,7 +141,7 @@ public class BPMNDataObject {
 
 
 
-	public void setWriters(List<BPMNElement> writers) {
+	public void setWriters(LinkedList<BPMNElement> writers) {
 		this.writers = writers;
 	}
 
@@ -189,13 +189,20 @@ public class BPMNDataObject {
 
 
 
-	public List<BPMNParticipant> getStaticSphere() {
+	public LinkedList <BPMNParticipant> getStaticSphere() {
+		return staticSphere;
+	}
+
+	public LinkedList<BPMNElement> getStaticSphereElements(){
+		LinkedList<BPMNElement> staticSphere = new LinkedList<BPMNElement>();
+		staticSphere.addAll(this.readers);
+		staticSphere.addAll(this.writers);
 		return staticSphere;
 	}
 
 
 
-	public void setStaticSphere(ArrayList<BPMNParticipant> staticSphere) {
+	public void setStaticSphere(LinkedList<BPMNParticipant> staticSphere) {
 		this.staticSphere = staticSphere;
 	}
 	

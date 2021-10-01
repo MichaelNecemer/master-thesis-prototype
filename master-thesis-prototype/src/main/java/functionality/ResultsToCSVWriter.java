@@ -8,8 +8,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
@@ -17,9 +15,7 @@ import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import com.opencsv.CSVWriter;
 
 import Mapping.BPMNBusinessRuleTask;
-import Mapping.BPMNParticipant;
 import Mapping.ProcessInstanceWithVoters;
-import Mapping.VoterForXorArc;
 
 public class ResultsToCSVWriter {
 

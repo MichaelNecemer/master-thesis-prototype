@@ -2,13 +2,10 @@ package Mapping;
 
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
 
 public class RequiredUpgrade {
 	
-	//ArcWithCost contain a list of required updates for the participants that may vote
-	
+
 	private static int id;
 	private BPMNTask lastWriter;
 	private BPMNDataObject dataO;
@@ -16,32 +13,32 @@ public class RequiredUpgrade {
 	private HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosen;
 	private BPMNParticipant currentParticipant;
 	private LinkedList<String> spheresOfCurrPart;
-	private String update;
-	private int updateId;
+	private String upgrade;
+	private int upgradeId;
 	//on how many paths the lastWriter writes the Data
 	private double weightingOfLastWriterToWriteDataForBrt;
-	private double costForUpdate;
+	private double costForUpgrade;
 	
 	
-	public RequiredUpgrade(BPMNTask lastWriter, BPMNDataObject dataO, BPMNBusinessRuleTask currentBrt, HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters, BPMNParticipant currentParticipant, LinkedList<String> spheresOfCurrPart, String update,double weightingOfLastWriterToWriteDataForBrt, double costForUpdate){
+	public RequiredUpgrade(BPMNTask lastWriter, BPMNDataObject dataO, BPMNBusinessRuleTask currentBrt, HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters, BPMNParticipant currentParticipant, LinkedList<String> spheresOfCurrPart, String upgrade,double weightingOfLastWriterToWriteDataForBrt, double costForUpgrade){
 	this.lastWriter=lastWriter;
 	this.dataO=dataO;
 	this.currentBrt=currentBrt;
 	this.alreadyChosen=alreadyChosenVoters;
 	this.currentParticipant=currentParticipant;	
 	this.spheresOfCurrPart=spheresOfCurrPart;
-	this.update=update;
+	this.upgrade=upgrade;
 	this.weightingOfLastWriterToWriteDataForBrt=weightingOfLastWriterToWriteDataForBrt;
-	this.updateId=++id;
-	this.costForUpdate=costForUpdate;
+	this.upgradeId=++id;
+	this.costForUpgrade=costForUpgrade;
 	}	
 	
 	public void printUpgrade() {		
-		System.out.println("UPDATE "+this.updateId+": "+currentParticipant.getName()+" needs an "+this.update+" update when "+lastWriter.getName()+" ("+lastWriter.getParticipant().getName()+") "+"writes to "+dataO.getName()+" for "+currentBrt.getName() +" with weighting "+this.weightingOfLastWriterToWriteDataForBrt);
+		System.out.println("UPDATE "+this.upgradeId+": "+currentParticipant.getName()+" needs an "+this.upgrade+" update when "+lastWriter.getName()+" ("+lastWriter.getParticipant().getName()+") "+"writes to "+dataO.getName()+" for "+currentBrt.getName() +" with weighting "+this.weightingOfLastWriterToWriteDataForBrt);
 		if(spheresOfCurrPart.size()==2) {
 			System.out.println("Search successfully extended! Search to "+this.currentBrt.getName()+" -> ("+this.spheresOfCurrPart.get(0)+"); Search After "+this.currentBrt.getName()+" -> ("+this.spheresOfCurrPart.get(1)+")!");
 		}
-		System.out.println("COST: "+this.costForUpdate);
+		System.out.println("COST: "+this.costForUpgrade);
 	}
 
 	public double getWeightingOfLastWriterToWriteDataForBrt() {
@@ -53,11 +50,11 @@ public class RequiredUpgrade {
 	}
 
 	public double getCostForUpdate() {
-		return costForUpdate;
+		return costForUpgrade;
 	}
 
 	public void setCostForUpdate(double costForUpdate) {
-		this.costForUpdate = costForUpdate;
+		this.costForUpgrade = costForUpdate;
 	}
 	public BPMNParticipant getCurrentParticipant() {
 		return currentParticipant;
@@ -90,16 +87,16 @@ public class RequiredUpgrade {
 		this.alreadyChosen = alreadyChosen;
 	}
 	public String getUpdate() {
-		return update;
+		return upgrade;
 	}
 	public void setUpdate(String update) {
-		this.update = update;
+		this.upgrade = update;
 	}
 	public int getUpdateId() {
-		return updateId;
+		return upgradeId;
 	}
 	public void setUpdateId(int updateId) {
-		this.updateId = updateId;
+		this.upgradeId = updateId;
 	}
 	
 	

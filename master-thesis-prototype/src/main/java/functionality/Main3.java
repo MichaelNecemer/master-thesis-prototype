@@ -2,35 +2,24 @@ package functionality;
 
 import java.awt.Color;
 import java.awt.GridLayout;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map.Entry;
 
 import javax.swing.BoxLayout;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 
-import Mapping.BPMNBusinessRuleTask;
 import Mapping.BPMNDataObject;
 import Mapping.BPMNExclusiveGateway;
 import Mapping.BPMNParticipant;
-import Mapping.BPMNTask;
 import Mapping.ProcessInstanceWithVoters;
-import Mapping.RequiredUpgrade;
 import Mapping.VoterForXorArc;
-import ProcessModelGeneratorAndAnnotater.ProcessGenerator;
-import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
 
 public class Main3 {
 	
@@ -62,7 +51,10 @@ public class Main3 {
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel5_annotated.bpmn";
 	//String pathToFile = "C\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel2.bpmn";
 	//String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2.bpmn";
-	String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2withGlobalTask.bpmn";
+	
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches1.bpmn";
+		
+		//String pathToFile =	 "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2withGlobalTask.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsIn2branches3.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test2\\MediumProcessesAnnotatedFolder\\ModelsForEvaluation\\randomProcessModel103_annotated1_annotated112lWlR_Strong-Dynamic_voters1.bpmn";
@@ -162,6 +154,7 @@ public class Main3 {
 	
 	
 	//use local minimum Algorithm to find cheapest combinations
+	/*
 	LinkedList<ProcessInstanceWithVoters> pInstances = null;
 	try {
 		pInstances = a2.localMinimumAlgorithm();
@@ -203,7 +196,7 @@ public class Main3 {
 		// TODO Auto-generated catch block
 		e1.printStackTrace();
 	}
-	
+	*/
 	LinkedList<ProcessInstanceWithVoters> bruteForceSolutions = null;
 	try {
 		bruteForceSolutions = a2.bruteForceAlgorithm();
@@ -225,7 +218,7 @@ public class Main3 {
 	
 
 	try {
-		CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(a2, pInstances, 1, a2.getProcessFile().getParent());
+	//	CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(a2, pInstances, 1, a2.getProcessFile().getParent());
 
 		//CommonFunctionality.generateNewModelsWithVotersAsBpmnConstruct(a2, bruteForceSolutions, 1, "", true);
 	} catch (Exception e) {
@@ -234,7 +227,7 @@ public class Main3 {
 	}
 
 
-	System.out.println("Compare:" +CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstances, bruteForceSolutions, 1000000));
+	//System.out.println("Compare:" +CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstances, bruteForceSolutions, 1000000));
 	
 	
 	

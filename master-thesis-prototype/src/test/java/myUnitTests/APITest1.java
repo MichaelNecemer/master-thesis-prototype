@@ -1,7 +1,5 @@
 package myUnitTests;
 
-import static org.junit.Assert.*;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -16,12 +14,10 @@ import org.junit.runners.MethodSorters;
 import Mapping.BPMNBusinessRuleTask;
 import Mapping.BPMNDataObject;
 import Mapping.BPMNElement;
-import Mapping.BPMNExclusiveGateway;
 import Mapping.BPMNParticipant;
 import Mapping.BPMNTask;
-import Mapping.Combination;
 import functionality.API;
-
+/*
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class APITest1 {
 	ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
@@ -114,24 +110,25 @@ public class APITest1 {
 	}
 
 	@Test
-	public void testEffectivePathsFromWriter1ToEnd() {
+	public void testEffectivePathsFromWriter1DIToEnd() {
 
 		try {
 			API a2 = new API(pathToFile, cost, costForAddingReaderAfterBrt);
 			LinkedList<LinkedList<BPMNElement>> expectedEffectivePathsWriter1 = new LinkedList<LinkedList<BPMNElement>>();
 			LinkedList<BPMNElement> path1 = new LinkedList<BPMNElement>();
+			path1.add(a2.getNodeById("Task_0p11bp0"));
 			path1.add(a2.getNodeById("Task_00qdu1v"));
 			path1.add(a2.getNodeById("BusinessRuleTask_1qnt4kf"));
 			path1.add(a2.getNodeById("ExclusiveGateway_1ns7t33"));
 			path1.add(a2.getNodeById("Task_0fng24x"));
 			path1.add(a2.getNodeById("Task_0hy8xp7"));
 			path1.add(a2.getNodeById("ExclusiveGateway_1jeju3n"));
-			path1.add(a2.getNodeById("Task_1bnxv6s"));
 			path1.add(a2.getNodeById("ExclusiveGateway_1toqjx8"));
 			path1.add(a2.getNodeById("ExclusiveGateway_1omk1f4"));
 			path1.add(a2.getNodeById("EndEvent_0nbsfat"));
 
 			LinkedList<BPMNElement> path2 = new LinkedList<BPMNElement>();
+			path2.add(a2.getNodeById("Task_0p11bp0"));
 			path2.add(a2.getNodeById("Task_00qdu1v"));
 			path2.add(a2.getNodeById("BusinessRuleTask_1qnt4kf"));
 			path2.add(a2.getNodeById("ExclusiveGateway_1ns7t33"));
@@ -146,7 +143,7 @@ public class APITest1 {
 			expectedEffectivePathsWriter1.add(path1);
 			expectedEffectivePathsWriter1.add(path2);
 
-			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_00qdu1v");
+			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_0p11bp0");
 			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
 
 			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> list = a2.allEffectivePathsForWriters(dataO,
@@ -165,7 +162,7 @@ public class APITest1 {
 	}
 
 	@Test
-	public void testEffectivePathsFromWriter2ToEnd() {
+	public void testEffectivePathsFromWriter2GPToEnd() {
 
 		try {
 			API a2 = new API(pathToFile, cost, costForAddingReaderAfterBrt);
@@ -214,7 +211,7 @@ public class APITest1 {
 
 		try {
 			API a2 = new API(pathToFile, cost, costForAddingReaderAfterBrt);
-			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_00qdu1v");
+			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_0p11bp0");
 			BPMNBusinessRuleTask brt1 = (BPMNBusinessRuleTask) a2.getNodeById("BusinessRuleTask_1qnt4kf");
 			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
 			BPMNParticipant readerDI = new BPMNParticipant("Lane_190r1hy", "DI");
@@ -224,7 +221,7 @@ public class APITest1 {
 
 			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt1, writerTask,
 					dataO, readerDI, new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
-			Assert.assertEquals("Static", sphereForDI);
+			Assert.assertEquals("Strong-Dynamic", sphereForDI);
 			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt1, writerTask,
 					dataO, readerGP, new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>());
 			Assert.assertEquals("Static", sphereForGP);
@@ -247,7 +244,7 @@ public class APITest1 {
 
 		try {
 			API a2 = new API(pathToFile, cost, costForAddingReaderAfterBrt);
-			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_00qdu1v");
+			BPMNTask writerTask = (BPMNTask) a2.getNodeById("Task_0p11bp0");
 			BPMNBusinessRuleTask brt3 = (BPMNBusinessRuleTask) a2.getNodeById("Task_0hy8xp7");
 			BPMNDataObject dataO = writerTask.getDataObjects().get(0);
 
@@ -257,6 +254,7 @@ public class APITest1 {
 			BPMNParticipant readerIC = new BPMNParticipant("Lane_0m888yn", "IC");
 
 			// consider the GP has already been chosen as the voter for brt1!!!
+			// therefore RS is in public sphere
 
 			// Let the voter for Brt1 be the GP
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoterGP = new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>();
@@ -268,10 +266,10 @@ public class APITest1 {
 			Assert.assertEquals("Strong-Dynamic", sphereForGP);
 			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask,
 					dataO, readerDI, alreadyChosenVoterGP);
-			Assert.assertEquals("Static", sphereForDI);
+			Assert.assertEquals("Strong-Dynamic", sphereForDI);
 			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask,
 					dataO, readerRS, alreadyChosenVoterGP);
-			Assert.assertEquals("Strong-Dynamic", sphereForRS);
+			Assert.assertEquals("Public", sphereForRS);
 			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask,
 					dataO, readerIC, alreadyChosenVoterGP);
 			Assert.assertEquals("Strong-Dynamic", sphereForIC);
@@ -385,7 +383,7 @@ public class APITest1 {
 			Assert.assertEquals("Static", sphereForGP);
 			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask,
 					dataO, readerDI, alreadyChosenVoterRS);
-			Assert.assertEquals("Static", sphereForDI);
+			Assert.assertEquals("Weak-Dynamic", sphereForDI);
 			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt3, writerTask,
 					dataO, readerRS, alreadyChosenVoterRS);
 			Assert.assertEquals("Strong-Dynamic", sphereForRS);
@@ -431,7 +429,7 @@ public class APITest1 {
 			Assert.assertEquals("Weak-Dynamic", sphereForDI);
 			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask,
 					dataO, readerRS, alreadyChosenVoterGP);
-			Assert.assertEquals("Static", sphereForRS);
+			Assert.assertEquals("Public", sphereForRS);
 			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask,
 					dataO, readerIC, alreadyChosenVoterGP);
 			Assert.assertEquals("Static", sphereForIC);
@@ -467,12 +465,12 @@ public class APITest1 {
 			String sphereForGP = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask,
 					dataO, readerGP, alreadyChosenVoterDI);
 			Assert.assertEquals("Strong-Dynamic", sphereForGP);
-			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask,
+			String sphereForDI = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVotersAndExtendedSearch(brt2, writerTask,
 					dataO, readerDI, alreadyChosenVoterDI);
 			Assert.assertEquals("Weak-Dynamic", sphereForDI);
 			String sphereForRS = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask,
 					dataO, readerRS, alreadyChosenVoterDI);
-			Assert.assertEquals("Static", sphereForRS);
+			Assert.assertEquals("Public", sphereForRS);
 			String sphereForIC = a2.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(brt2, writerTask,
 					dataO, readerIC, alreadyChosenVoterDI);
 			Assert.assertEquals("Static", sphereForIC);
@@ -566,4 +564,4 @@ public class APITest1 {
 
 	}
 
-}
+}*/

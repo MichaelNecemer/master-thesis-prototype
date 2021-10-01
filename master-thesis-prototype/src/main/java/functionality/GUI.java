@@ -1,7 +1,5 @@
 package functionality;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -10,13 +8,16 @@ import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,18 +38,12 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
-import javax.swing.JRadioButton;
+import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.NumberFormatter;
 
-import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
-import org.camunda.bpm.model.bpmn.instance.FlowNode;
-
-import Mapping.BPMNDataObject;
 import Mapping.BPMNElement;
 import Mapping.BPMNExclusiveGateway;
-import Mapping.BPMNGateway;
-import Mapping.BPMNParticipant;
 import Mapping.ProcessInstanceWithVoters;
 
 public class GUI {
@@ -71,6 +66,8 @@ public class GUI {
 	static JLabel localMinWithBoundLabel;
 	static JButton runButton;
 	static JCheckBox votingAsConstructBox;
+	static JCheckBox subProcessBox;
+	static JCheckBox mapModelBox;
 	static JCheckBox votingAsAnnotationBox;
 	static JButton saveButton;
 	static String directoryToStoreModels;
@@ -91,7 +88,7 @@ public class GUI {
 
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+		// TODO Auto-generated method stub		
 		menu.add(openFileItem);
 		menu.add(saveFileItem);
 		mb.add(menu);
@@ -126,6 +123,7 @@ public class GUI {
 						
 						frame.getContentPane().remove(leftPanel);
 						leftPanel = new JPanel();
+						leftPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 						leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.PAGE_AXIS));
 
 						try {
@@ -266,6 +264,7 @@ public class GUI {
 							
 							frame.getContentPane().remove(rightPanel);
 							rightPanel = new JPanel();
+							rightPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 							rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.PAGE_AXIS));
 							rightPanel.add(new JLabel("Enter max amount new models to be stored (0... all models):"));
 							
@@ -275,13 +274,50 @@ public class GUI {
 							rightPanel.add(jFormattedTextField2);
 							
 							votingAsConstructBox = new JCheckBox("VotingAsConstruct", true);
+							votingAsConstructBox.addActionListener(new ActionListener() {
+
+								@Override
+								public void actionPerformed(ActionEvent e) {
+									// TODO Auto-generated method stub
+									subProcessBox.setSelected(false);
+									subProcessBox.setEnabled(true);
+									mapModelBox.setSelected(false);
+									mapModelBox.setEnabled(true);
+								}
+								
+							});
 							votingAsAnnotationBox = new JCheckBox("VotingAsAnnotation", false);
+							votingAsAnnotationBox.addActionListener(new ActionListener() {
+
+								@Override
+								public void actionPerformed(ActionEvent arg0) {
+									// TODO Auto-generated method stub
+									if(votingAsAnnotationBox.isSelected()) {
+										subProcessBox.setSelected(false);
+										subProcessBox.setEnabled(false);
+										mapModelBox.setSelected(false);
+										mapModelBox.setEnabled(false);
+									}
+								}
+								
+							});
+							subProcessBox = new JCheckBox("VotingAsSubProcess", false);
+							subProcessBox.setBorder(new EmptyBorder(0,20,0,0));
+							mapModelBox = new JCheckBox ("MapModel", false);
+							rightPanel.add(Box.createRigidArea(verticalSpacingBetweenComponents));
+							mapModelBox.setBorder(new EmptyBorder(0,20,0,0));
+
 							ButtonGroup jCheckBoxGroupSettings = new ButtonGroup();
 							jCheckBoxGroupSettings.add(votingAsAnnotationBox);
 							jCheckBoxGroupSettings.add(votingAsConstructBox);
-
+							
 							rightPanel.add(compareResultsAgainstBruteForce);
 							rightPanel.add(votingAsConstructBox);
+
+							rightPanel.add(subProcessBox);
+							rightPanel.add(mapModelBox);
+							
+							
 							rightPanel.add(votingAsAnnotationBox);
 							
 							rightPanel.add(new JLabel("Enter timeout for algorithms in seconds:"));
@@ -366,16 +402,27 @@ public class GUI {
 										exception= (TimeoutException)e;
 										future.cancel(true);
 									} 
-									
 									if(exception != null) {
 										leftPanel.add(new JLabel("Exception: " + exception.getMessage()));
+										frame.pack();
 									}
 									
 									if(pInstances.get(selectedAlgorithm)!=null) {
 										leftPanel.add(new JLabel("RESULTS: "));
-										leftPanel.add(new JLabel(selectedAlgorithm+": "+ pInstances.get(selectedAlgorithm).size()+" cheapest solutions"));
-										leftPanel.add(new JLabel("Cost of cheapest solution(s): "+pInstances.get(selectedAlgorithm).getFirst().getCostForModelInstance()));
-									}	
+										LinkedList<ProcessInstanceWithVoters> cheapestInst = null;
+										if(selectedAlgorithm.contentEquals("bruteForce")) {
+											cheapestInst = CommonFunctionality.getCheapestProcessInstancesWithVoters(pInstances.get(selectedAlgorithm));
+											leftPanel.add(new JLabel("BruteForce sum amount solution(s): " +pInstances.get(selectedAlgorithm).size()));
+										} else {
+											cheapestInst = pInstances.get(selectedAlgorithm);
+										}
+										if(cheapestInst!=null) {
+										leftPanel.add(new JLabel(selectedAlgorithm+": "+ cheapestInst.size()+" cheapest solutions"));
+										leftPanel.add(new JLabel("Cost of cheapest solution(s): "+cheapestInst.getFirst().getCostForModelInstance()));
+										} else {
+											leftPanel.add(new JLabel("No solutions found!!!"));
+										}
+										} 
 									
 									//check if comparison against bruteforce is selected
 									if(selectedAlgorithm.contentEquals("localMin")||selectedAlgorithm.contains("localMinWithBound")) {
@@ -413,12 +460,8 @@ public class GUI {
 											leftPanel.add(new JLabel("bruteForce: "+pInstancesBruteForce.get("bruteForce").size()+" solution(s)"));
 											LinkedList<ProcessInstanceWithVoters>cheapestBruteForceInstances = CommonFunctionality.getCheapestProcessInstancesWithVoters(pInstancesBruteForce.get("bruteForce"));
 											leftPanel.add(new JLabel("Cost of cheapest solution(s): "+cheapestBruteForceInstances.getFirst().getCostForModelInstance()));
-
 											leftPanel.add(new JLabel("Cheapest solution(s) found:  "+comparison));
-										
-										
-										
-										
+																			
 										}
 										executor.shutdownNow();
 									}	
@@ -426,7 +469,8 @@ public class GUI {
 									//check whether voting as construct or as annotation is selected
 									if(votingAsConstructBox.isSelected()) {
 										try {
-											CommonFunctionality.generateNewModelsWithVotersAsBpmnConstruct(api, pInstances.get(selectedAlgorithm), amountModelsToCreate, directoryToStoreModels, true);
+											//check whether or not voting should be inside subprocess and whether or not it should be mapped 										
+											CommonFunctionality.generateNewModelsWithVotersAsBpmnConstruct(api, pInstances.get(selectedAlgorithm), amountModelsToCreate, directoryToStoreModels, subProcessBox.isSelected(), mapModelBox.isSelected());
 										} catch (IOException e) {
 											// TODO Auto-generated catch block
 											rightPanel.add(new JLabel("IO Exception: "+e.getMessage()));
@@ -489,10 +533,7 @@ public class GUI {
 				
 			
 		});
-		
-		
-		//pathToInputFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\diagram_2_annotated.bpmn";
-		
+				
 		
 	}
 }

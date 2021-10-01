@@ -1,6 +1,7 @@
 package myUnitTests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,7 +20,7 @@ import Mapping.BPMNElement;
 import Mapping.BPMNParticipant;
 import Mapping.BPMNTask;
 import functionality.API;
-
+/*
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class APITest2 {
 	ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
@@ -580,4 +581,4 @@ public class APITest2 {
 
 	}
 
-}
+}*/

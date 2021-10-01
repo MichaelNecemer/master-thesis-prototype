@@ -1,10 +1,7 @@
 package Mapping;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.apache.ibatis.javassist.compiler.ast.Pair;
 
 public class DecisionEvaluation {
 	

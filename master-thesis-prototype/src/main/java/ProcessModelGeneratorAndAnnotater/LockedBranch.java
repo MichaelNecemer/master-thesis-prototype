@@ -5,7 +5,6 @@ import java.util.LinkedList;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import org.camunda.bpm.model.bpmn.instance.ItemAwareElement;
 import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
-import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
 
 public class LockedBranch {
 	//when a writer is found inside a parallel branch -> readers and writers inside the other branch for a specific dataObject will be removed
