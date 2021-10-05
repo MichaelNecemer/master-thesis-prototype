@@ -74,6 +74,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	private BPMNEndEvent bpmnEnd;
 	private ArrayList<BPMNDataObject> dataObjects = new ArrayList<BPMNDataObject>();
 	private ArrayList<BPMNElement> processElements = new ArrayList<BPMNElement>();
+	private LinkedList<BPMNParticipant>allParticipants = new LinkedList<BPMNParticipant>();
 	private LinkedList<BPMNParticipant> globalSphere = new LinkedList<BPMNParticipant>();
 	private LinkedList<BPMNElement>globalSphereTasks;
 	private ArrayList<BPMNBusinessRuleTask> businessRuleTaskList = new ArrayList<BPMNBusinessRuleTask>();
@@ -889,6 +890,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		if (this.modelWithLanes) {
 			for (Lane l : this.modelInstance.getModelElementsByType(Lane.class)) {
 				BPMNParticipant lanePart = new BPMNParticipant(l.getId(), l.getName().trim());
+				this.allParticipants.add(lanePart);
 				for (FlowNode flowNode : l.getFlowNodeRefs()) {
 					for (BPMNElement t : this.processElements) {
 						if (t instanceof BPMNTask && flowNode.getId().equals(t.getId())) {
@@ -907,8 +909,20 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 					if (t instanceof BPMNTask && task.getId().equals(t.getId())) {
 						String participantName = task.getName().substring(task.getName().indexOf("["),
 								task.getName().indexOf("]") + 1);
-						BPMNParticipant participant = new BPMNParticipant(participantName, participantName);
-						((BPMNTask) t).setParticipant(participant);
+						boolean partAlreadyMapped = false;
+						for(BPMNParticipant part: this.allParticipants) {
+							if(part.getName().contentEquals(participantName)) {
+								((BPMNTask) t).setParticipant(part);
+								partAlreadyMapped = true;
+								break;
+							}
+						}
+						if(!partAlreadyMapped) {
+							BPMNParticipant participant = new BPMNParticipant(participantName, participantName);
+							((BPMNTask) t).setParticipant(participant);
+							this.allParticipants.add(participant);
+						}
+						
 					}
 				}
 			}
@@ -1157,13 +1171,26 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 								
 								
 							}
-							
-							
-
-						
-
+					
+					} else if(str.contains("[MandatoryParticipantConstraint]")) {
+						String partName = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
+						boolean partAlreadyMapped = false;
+						for(BPMNParticipant p: this.allParticipants) {
+							if(p.getNameWithoutBrackets().contentEquals(partName)) {
+								MandatoryParticipantConstraint mpc = new MandatoryParticipantConstraint(p);
+								gtw.getConstraints().add(mpc);
+								partAlreadyMapped = true;
+								break;
+							}							
+						}
+						if(!partAlreadyMapped) {
+							BPMNParticipant part = new BPMNParticipant(partName, partName);	
+							this.allParticipants.add(part);
+							MandatoryParticipantConstraint mpc = new MandatoryParticipantConstraint(part);
+							gtw.getConstraints().add(mpc);
+						}
 					}
-
+					
 				}
 			}
 		}
@@ -1480,17 +1507,22 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
 			BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
 			// get all the possible combinations of participants for the brt
-			// consider the constraints e.g. participants may be excluded
+			// consider the constraints e.g. participants may be excluded or mandatory
 			LinkedList<BPMNParticipant>participantsToCombine = new LinkedList<BPMNParticipant>();
-			participantsToCombine.addAll(this.globalSphere);
+			participantsToCombine.addAll(this.allParticipants);
+			LinkedList<BPMNParticipant>mandatoryParticipants = new LinkedList<BPMNParticipant>();
 			
-			//exclude the participants due to constraints
 			for(Constraint constraint: bpmnEx.getConstraints()) {
 				if(constraint instanceof ExcludeParticipantConstraint) {
+					//exclude the participants due to constraints
 					BPMNParticipant partToRemove = ((ExcludeParticipantConstraint)constraint).getParticipantToExclude();
 					participantsToCombine.remove(partToRemove);					
+				} else if(constraint instanceof MandatoryParticipantConstraint)		{
+					BPMNParticipant mandatoryPart = ((MandatoryParticipantConstraint)constraint).getMandatoryParticipant();
+					if(!mandatoryParticipants.contains(mandatoryPart)) {
+						mandatoryParticipants.add(mandatoryPart);
+					}
 				}
-				
 			}
 			
 			
@@ -1498,6 +1530,13 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			if (currBrt.getCombinations().isEmpty()) {
 				LinkedList<LinkedList<BPMNParticipant>> list = Combination.getPermutations(participantsToCombine,
 						bpmnEx.getAmountVoters());
+				Iterator<LinkedList<BPMNParticipant>>listIter = list.iterator();
+				while(listIter.hasNext()) {
+					LinkedList<BPMNParticipant>partList = listIter.next();
+					if(!partList.containsAll(mandatoryParticipants)) {
+						listIter.remove();
+					}
+				}							
 				currBrt.getCombinations().putIfAbsent(currBrt, list);
 			}
 

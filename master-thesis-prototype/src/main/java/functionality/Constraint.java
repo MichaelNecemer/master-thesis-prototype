@@ -6,10 +6,11 @@ public class Constraint {
 	private int id; 
 	
 	public Constraint() {
-		this.id=constraintId++;
-		
-		
-		
+		this.id=constraintId++;		
+	}
+	
+	public int getId() {
+		return this.id;
 	}
 	
 }

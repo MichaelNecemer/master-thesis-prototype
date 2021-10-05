@@ -8,7 +8,9 @@ import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -37,6 +39,7 @@ import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -58,6 +61,9 @@ public class GUI {
 	static JCheckBox jrbBruteForce;
 	static JCheckBox jrbLocalMinimum;
 	static JCheckBox jrbLocalMinimumWithBound;
+	static JLabel openingModelsLabel;
+	static JLabel saveModelsLabel;
+	static JFormattedTextField jFormattedTextFieldCost;
 	static JFormattedTextField jFormattedTextField1;
 	static JFormattedTextField jFormattedTextField2;
 	static JFormattedTextField jFormattedTextField3;
@@ -70,11 +76,11 @@ public class GUI {
 	static JCheckBox mapModelBox;
 	static JCheckBox votingAsAnnotationBox;
 	static JButton saveButton;
-	static String directoryToStoreModels;
-	static Dimension verticalSpacingBetweenComponents = new Dimension(0,10);
+	static Dimension verticalSpacingBetweenComponents = new Dimension(0, 10);
 	static JMenuBar mb = new JMenuBar();
 	static JMenuItem openFileItem = new JMenuItem("Open .bpmn file");
 	static JMenuItem saveFileItem = new JMenuItem("Save files in directory");
+	static JMenuItem editDefaultSettingsItem = new JMenuItem("Settings");
 	static JMenu menu = new JMenu("Menu");
 	static JFrame frame;
 	static JFileChooser openFileChooser;
@@ -83,31 +89,265 @@ public class GUI {
 	static FileNameExtensionFilter filter = new FileNameExtensionFilter("bpmn files", "bpmn");
 	static JPanel leftPanel = new JPanel();
 	static JPanel rightPanel = new JPanel();
-	static File openFileChooserLastDirectory;
-	static File saveFileChooserLastDirectory;
+	static String defaultDirectoryForOpeningModels;
+	static String defaultDirectoryForStoringModels;
+	static File configFile = new File("src/main/resources/configGUI.properties");
+	static Properties props = new Properties();
+	static FileReader reader;
 
-
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub		
+	public static void main(String[] args) throws IOException {
+		// TODO Auto-generated method stub
 		menu.add(openFileItem);
-		menu.add(saveFileItem);
+		menu.add(editDefaultSettingsItem);
 		mb.add(menu);
 		frame = new JFrame("GUI");
 		frame.setLayout(new GridLayout(1, 0, 40, 30));
 		frame.setVisible(true);
 
-		frame.setJMenuBar(mb);  
+		frame.setJMenuBar(mb);
 		frame.pack();
-		 
+
+		if (configFile == null) {
+			String dirName = "src/main/resources";
+			String fileName = "configGUI.properties";
+			File dir = new File(dirName);
+			configFile = new File(dir, fileName);
+		}
+		try {
+			reader = new FileReader(configFile);
+			props.load(reader);
+			reader.close();
+			if (props.isEmpty() || (!(props.containsKey("costForUpgradingSpheres")
+					&& props.containsKey("defaultDirectoryForOpeningModels")
+					&& props.containsKey("defaultDirectoryForStoringModels")))) {
+				props.setProperty("costForUpgradingSpheres", "");
+				props.setProperty("defaultDirectoryForOpeningModels", "");
+				props.setProperty("defaultDirectoryForStoringModels", "");
+				props.store(new FileOutputStream(configFile), null);
+			}
+
+		} catch (FileNotFoundException e3) {
+			// TODO Auto-generated catch block
+			e3.printStackTrace();
+		}
+
+		editDefaultSettingsItem.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				// read the config file with default values in src/main/resources
+				// to change the default values - edit the file directly or open the config in
+				// GUI application
+				try {
+					frame.getContentPane().remove(leftPanel);
+					frame.getContentPane().remove(rightPanel);
+
+					leftPanel = new JPanel();
+					leftPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+					leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.PAGE_AXIS));
+
+					// display the default settings
+					leftPanel.add(new JLabel("Cost for upgrading spheres: "));
+					jFormattedTextFieldCost = new JFormattedTextField();
+					String costForUpgradingSpheresAsString = props.getProperty("costForUpgradingSpheres");
+					if (!costForUpgradingSpheresAsString.isEmpty()) {
+						String[] spheresArr = costForUpgradingSpheresAsString.split(",");
+						ArrayList<Double> spheresAsDouble = new ArrayList<Double>();
+						for (String str : spheresArr) {
+							spheresAsDouble.add(Double.parseDouble(str));
+						}
+						if (spheresAsDouble.size() == 4) {
+							costForUpgradingSpheres = spheresAsDouble;
+						}
+
+					} else {
+						// ask user for default values
+						String defaultCost = JOptionPane.showInputDialog(
+								"Add 4 comma separated numbers as cost for sphere upgrades! (Public->Global, Global->Static, Static->Weak-Dynamic, Weak-Dynamic->Strong-Dynamic");
+						defaultCost.trim();
+						String[] defaultCostArr = defaultCost.split(",");
+						ArrayList<Double> cost = new ArrayList<Double>();
+						for (String str : defaultCostArr) {
+							cost.add((Double.parseDouble(str)));
+						}
+						if (cost.size() == 4) {
+							props.setProperty("costForUpgradingSpheres", defaultCost);
+							costForUpgradingSpheres = cost;
+							costForUpgradingSpheresAsString = defaultCost;
+						}
+
+						try {
+							props.store(new FileOutputStream(configFile), null);
+							reader = new FileReader(configFile);
+							props.load(reader);
+							reader.close();
+						} catch (FileNotFoundException e1) {
+							// TODO Auto-generated catch block
+							e1.printStackTrace();
+						} catch (IOException e1) {
+							// TODO Auto-generated catch block
+							e1.printStackTrace();
+						}
+					}
+					jFormattedTextFieldCost.setText(costForUpgradingSpheresAsString);
+					leftPanel.add(jFormattedTextFieldCost);
+					leftPanel.add(Box.createRigidArea(verticalSpacingBetweenComponents));
+
+					defaultDirectoryForOpeningModels = props.getProperty("defaultDirectoryForOpeningModels");
+					openingModelsLabel = new JLabel(
+							"Default directory for opening models: " + defaultDirectoryForOpeningModels);
+					leftPanel.add(openingModelsLabel);
+					File defaultDirectoryForOpeningModelsFile = new File(defaultDirectoryForOpeningModels);
+					JButton searchFolderButton = new JButton("Search folder...");
+					searchFolderButton.addActionListener(new ActionListener() {
+
+						@Override
+						public void actionPerformed(ActionEvent arg0) {
+							// TODO Auto-generated method stub
+							openFileChooser = new JFileChooser();
+							// TODO Auto-generated method stub
+							openFileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+							if (defaultDirectoryForOpeningModelsFile != null) {
+								openFileChooser.setCurrentDirectory(defaultDirectoryForOpeningModelsFile);
+							}
+
+							if (openFileChooser.showSaveDialog(openFileChooser) == JFileChooser.APPROVE_OPTION) {
+								defaultDirectoryForOpeningModels = openFileChooser.getSelectedFile().getAbsolutePath();
+								openingModelsLabel.setText(
+										"Default directory for opening models: " + defaultDirectoryForOpeningModels);
+								frame.pack();
+							}
+						}
+
+					});
+					leftPanel.add(searchFolderButton);
+					leftPanel.add(Box.createRigidArea(verticalSpacingBetweenComponents));
+
+					defaultDirectoryForStoringModels = props.getProperty("defaultDirectoryForStoringModels");
+					saveModelsLabel = new JLabel(
+							"Default directory for storing models: " + defaultDirectoryForStoringModels);
+					leftPanel.add(saveModelsLabel);
+					File defaultDirectoryForStoringModelsFile = new File(defaultDirectoryForStoringModels);
+					JButton searchFolderButton2 = new JButton("Search folder...");
+					leftPanel.add(searchFolderButton2);
+					searchFolderButton2.addActionListener(new ActionListener() {
+
+						@Override
+						public void actionPerformed(ActionEvent arg0) {
+							// TODO Auto-generated method stub
+							saveFileChooser = new JFileChooser();
+							// TODO Auto-generated method stub
+							saveFileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+							if (defaultDirectoryForStoringModelsFile != null) {
+								saveFileChooser.setCurrentDirectory(defaultDirectoryForStoringModelsFile);
+							}
+
+							if (saveFileChooser.showSaveDialog(saveFileChooser) == JFileChooser.APPROVE_OPTION) {
+								defaultDirectoryForStoringModels = saveFileChooser.getSelectedFile().getAbsolutePath();
+								saveModelsLabel.setText(
+										"Default directory for saving models: " + defaultDirectoryForStoringModels);
+								frame.pack();
+							}
+						}
+
+					});
+					leftPanel.add(Box.createRigidArea(verticalSpacingBetweenComponents));
+
+					JButton saveSettingsButton = new JButton("SAVE SETTINGS");
+					saveSettingsButton.addActionListener(new ActionListener() {
+
+						@Override
+						public void actionPerformed(ActionEvent e) {
+							// TODO Auto-generated method stub
+							props.setProperty("costForUpgradingSpheres", jFormattedTextFieldCost.getText());
+							props.setProperty("defaultDirectoryForOpeningModels", defaultDirectoryForOpeningModels);
+							props.setProperty("defaultDirectoryForStoringModels", defaultDirectoryForStoringModels);
+							try {
+								props.store(new FileOutputStream(configFile), null);
+								reader = new FileReader(configFile);
+								props.load(reader);
+								reader.close();
+								openingModelsLabel.setText("Default directory for opening models: "
+										+ props.getProperty("defaultDirectoryForOpeningModels"));
+								saveModelsLabel.setText("Default directory for storing models: "
+										+ props.getProperty("defaultDirectoryForStoringModels"));
+								String costForUpgradeString = props.getProperty("costForUpgradingSpheres");
+								String[] costForUpgradeArr = costForUpgradeString.split(",");
+								ArrayList<Double> costForUpgrade = new ArrayList<Double>();
+								for (String str : costForUpgradeArr) {
+									costForUpgrade.add(Double.parseDouble(str));
+								}
+								costForUpgradingSpheres = costForUpgrade;
+								defaultDirectoryForOpeningModels = props
+										.getProperty("defaultDirectoryForOpeningModels");
+								defaultDirectoryForStoringModels = props
+										.getProperty("defaultDirectoryForStoringModels");
+								frame.pack();
+							} catch (FileNotFoundException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							} catch (IOException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							}
+						}
+
+					});
+					leftPanel.add(saveSettingsButton);
+					frame.add(leftPanel);
+					frame.pack();
+
+					reader.close();
+				} catch (FileNotFoundException ex) {
+					// file does not exist
+				} catch (IOException ex) {
+					// I/O error
+
+				}
+
+			}
+
+		});
+
 		openFileItem.addActionListener(new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				// TODO Auto-generated method stub
-				
+
 				openFileChooser = new JFileChooser();
-				if(openFileChooserLastDirectory!=null) {
-					openFileChooser.setCurrentDirectory(openFileChooserLastDirectory);
+				File defaultDirectoryForOpeningModelsFile = null;
+				boolean insertDefaultValues = false;
+
+				try {
+					defaultDirectoryForOpeningModelsFile = new File(
+							props.getProperty("defaultDirectoryForOpeningModels"));
+					if (!defaultDirectoryForOpeningModelsFile.exists()) {
+						insertDefaultValues = true;
+					}
+
+					String cost = props.getProperty("costForUpgradingSpheres");
+					if (cost.isEmpty()) {
+						cost = JOptionPane.showInputDialog("Add 4 comma separated values as cost for sphere upgrades!");
+					}
+					cost.trim();
+					String[] defaultCostArr = cost.split(",");
+					ArrayList<Double> costList = new ArrayList<Double>();
+					for (String str : defaultCostArr) {
+						costList.add((Double.parseDouble(str)));
+					}
+					if (costList.size() == 4) {
+						props.setProperty("costForUpgradingSpheres", cost);
+						costForUpgradingSpheres = costList;
+					}
+
+				} catch (Exception ex) {
+					leftPanel.add(new JLabel("Default directory for file can not be null"));
+				}
+				if (defaultDirectoryForOpeningModelsFile != null) {
+					openFileChooser.setCurrentDirectory(defaultDirectoryForOpeningModelsFile);
+
 				}
 				openFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 				openFileChooser.setFileFilter(filter);
@@ -115,12 +355,29 @@ public class GUI {
 				if (check == JFileChooser.APPROVE_OPTION) {
 					pathToInputFile = openFileChooser.getSelectedFile().getAbsolutePath();
 					String fileName = openFileChooser.getSelectedFile().getName();
-					frame.setTitle("GUI for: "+fileName);
-					openFileChooserLastDirectory = openFileChooser.getCurrentDirectory();
+					frame.setTitle("GUI for: " + fileName);
+					if (insertDefaultValues) {
+						// set default properties
+						String directoryOfInputFile = openFileChooser.getCurrentDirectory().getAbsolutePath();
+						System.out.print(directoryOfInputFile);
+						props.setProperty("defaultDirectoryForOpeningModels", directoryOfInputFile);
+						props.setProperty("defaultDirectoryForStoringModels", directoryOfInputFile);
+					}
+
+					try {
+						props.store(new FileOutputStream(configFile), null);
+						reader = new FileReader(configFile);
+						props.load(reader);
+						reader.close();
+					} catch (FileNotFoundException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
 					frame.pack();
 					if (!pathToInputFile.isEmpty()) {
-						directoryToStoreModels = "";
-						
 						frame.getContentPane().remove(leftPanel);
 						leftPanel = new JPanel();
 						leftPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -129,7 +386,8 @@ public class GUI {
 						try {
 							api = new API(pathToInputFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
 							leftPanel.add(new JLabel("Troubleshooter: " + api.getTroubleShooter().getName()));
-							leftPanel.add(new JLabel("Paths through process: " + api.getAllPathsThroughProcess().size()));
+							leftPanel.add(
+									new JLabel("Paths through process: " + api.getAllPathsThroughProcess().size()));
 							int sumConstraints = 0;
 							for (BPMNElement element : api.getProcessElements()) {
 								if (element instanceof BPMNExclusiveGateway) {
@@ -166,10 +424,11 @@ public class GUI {
 								@Override
 								public void itemStateChanged(ItemEvent e) {
 									// TODO Auto-generated method stub
-									if (e.getStateChange() == ItemEvent.SELECTED || e.getStateChange() == ItemEvent.DESELECTED) {
+									if (e.getStateChange() == ItemEvent.SELECTED
+											|| e.getStateChange() == ItemEvent.DESELECTED) {
 										compareResultsAgainstBruteForce.setEnabled(true);
 										compareResultsAgainstBruteForce.setSelected(jrbLocalMinimum.isSelected());
-									
+
 									}
 
 								}
@@ -177,54 +436,51 @@ public class GUI {
 							});
 
 							jrbLocalMinimumWithBound = new JCheckBox("LocalMinimumWithBound", false);
-							
+
 							NumberFormat format = NumberFormat.getIntegerInstance();
 							format.setGroupingUsed(false);
-							
-							//minimum 1 is allowed for the field
+
+							// minimum 1 is allowed for the field
 							NumberFormatter numberFormatter1 = new NumberFormatter(format);
 							numberFormatter1.setValueClass(Integer.class);
-							numberFormatter1.setAllowsInvalid(false); 
+							numberFormatter1.setAllowsInvalid(false);
 							numberFormatter1.setMinimum(1);
 							numberFormatter1.setCommitsOnValidEdit(true);
-							
-							
+
 							NumberFormat format2 = NumberFormat.getIntegerInstance();
 							format.setGroupingUsed(false);
-							
-							//minimum 0 is allowed for the field
+
+							// minimum 0 is allowed for the field
 							NumberFormatter numberFormatter2 = new NumberFormatter(format2);
 							numberFormatter2.setValueClass(Integer.class);
-							numberFormatter2.setAllowsInvalid(false); 
+							numberFormatter2.setAllowsInvalid(false);
 							numberFormatter2.setMinimum(0);
 							numberFormatter2.setCommitsOnValidEdit(true);
-
 
 							jFormattedTextField1 = new JFormattedTextField(numberFormatter1);
 							jFormattedTextField1.setMaximumSize(dimension);
 							jFormattedTextField1.setEnabled(false);
-							
+
 							jrbLocalMinimumWithBound.addItemListener(new ItemListener() {
 
 								@Override
 								public void itemStateChanged(ItemEvent e) {
 									// TODO Auto-generated method stub
-									if (e.getStateChange() == ItemEvent.SELECTED ) {
+									if (e.getStateChange() == ItemEvent.SELECTED) {
 										compareResultsAgainstBruteForce.setEnabled(true);
 										compareResultsAgainstBruteForce.setSelected(true);
 										localMinWithBoundLabel.setVisible(true);
 										jFormattedTextField1.setVisible(true);
 										jFormattedTextField1.setEnabled(true);
 										frame.pack();
-									} else if(e.getStateChange() == ItemEvent.DESELECTED) {
+									} else if (e.getStateChange() == ItemEvent.DESELECTED) {
 										compareResultsAgainstBruteForce.setSelected(false);
 										localMinWithBoundLabel.setVisible(false);
 										jFormattedTextField1.setEnabled(false);
 										jFormattedTextField1.setVisible(false);
 										frame.pack();
-										}
-									
-									
+									}
+
 								}
 
 							});
@@ -248,7 +504,7 @@ public class GUI {
 							jCheckBoxGroup.add(jrbBruteForce);
 							jCheckBoxGroup.add(jrbLocalMinimum);
 							jCheckBoxGroup.add(jrbLocalMinimumWithBound);
-							
+
 							leftPanel.add(jrbBruteForce);
 							leftPanel.add(jrbLocalMinimum);
 							leftPanel.add(jrbLocalMinimumWithBound);
@@ -257,22 +513,21 @@ public class GUI {
 							localMinWithBoundLabel.setVisible(false);
 
 							leftPanel.add(jFormattedTextField1);
-							jFormattedTextField1.setVisible(false);			
+							jFormattedTextField1.setVisible(false);
 
 							frame.add(leftPanel);
 
-							
 							frame.getContentPane().remove(rightPanel);
 							rightPanel = new JPanel();
 							rightPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 							rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.PAGE_AXIS));
 							rightPanel.add(new JLabel("Enter max amount new models to be stored (0... all models):"));
-							
+
 							jFormattedTextField2 = new JFormattedTextField(numberFormatter2);
 							jFormattedTextField2.setText("0");
 							jFormattedTextField2.setMaximumSize(dimension);
 							rightPanel.add(jFormattedTextField2);
-							
+
 							votingAsConstructBox = new JCheckBox("VotingAsConstruct", true);
 							votingAsConstructBox.addActionListener(new ActionListener() {
 
@@ -284,7 +539,7 @@ public class GUI {
 									mapModelBox.setSelected(false);
 									mapModelBox.setEnabled(true);
 								}
-								
+
 							});
 							votingAsAnnotationBox = new JCheckBox("VotingAsAnnotation", false);
 							votingAsAnnotationBox.addActionListener(new ActionListener() {
@@ -292,248 +547,237 @@ public class GUI {
 								@Override
 								public void actionPerformed(ActionEvent arg0) {
 									// TODO Auto-generated method stub
-									if(votingAsAnnotationBox.isSelected()) {
+									if (votingAsAnnotationBox.isSelected()) {
 										subProcessBox.setSelected(false);
 										subProcessBox.setEnabled(false);
 										mapModelBox.setSelected(false);
 										mapModelBox.setEnabled(false);
 									}
 								}
-								
+
 							});
 							subProcessBox = new JCheckBox("VotingAsSubProcess", false);
-							subProcessBox.setBorder(new EmptyBorder(0,20,0,0));
-							mapModelBox = new JCheckBox ("MapModel", false);
+							subProcessBox.setBorder(new EmptyBorder(0, 20, 0, 0));
+							mapModelBox = new JCheckBox("MapModel", false);
 							rightPanel.add(Box.createRigidArea(verticalSpacingBetweenComponents));
-							mapModelBox.setBorder(new EmptyBorder(0,20,0,0));
+							mapModelBox.setBorder(new EmptyBorder(0, 20, 0, 0));
 
 							ButtonGroup jCheckBoxGroupSettings = new ButtonGroup();
 							jCheckBoxGroupSettings.add(votingAsAnnotationBox);
 							jCheckBoxGroupSettings.add(votingAsConstructBox);
-							
+
 							rightPanel.add(compareResultsAgainstBruteForce);
 							rightPanel.add(votingAsConstructBox);
 
 							rightPanel.add(subProcessBox);
 							rightPanel.add(mapModelBox);
-							
-							
+
 							rightPanel.add(votingAsAnnotationBox);
-							
+
 							rightPanel.add(new JLabel("Enter timeout for algorithms in seconds:"));
-							
-							
+
 							jFormattedTextField3 = new JFormattedTextField(numberFormatter1);
 							jFormattedTextField3.setText("30");
 							jFormattedTextField3.setMaximumSize(dimension);
 
-							rightPanel.add(jFormattedTextField3);		
-							
+							rightPanel.add(jFormattedTextField3);
+
 							rightPanel.add(new JLabel("Enter amount of threads used for computing solutions:"));
-											
+
 							jFormattedTextField4 = new JFormattedTextField(numberFormatter1);
 							jFormattedTextField4.setText("1");
 							jFormattedTextField4.setMaximumSize(dimension);
 
-							rightPanel.add(jFormattedTextField4);	
-							
+							rightPanel.add(jFormattedTextField4);
+
 							rightPanel.add(Box.createRigidArea(verticalSpacingBetweenComponents));
-							
+
 							runButton = new JButton("RUN");
 							runButton.addActionListener(new ActionListener() {
 
 								@Override
 								public void actionPerformed(ActionEvent ae) {
 									// TODO Auto-generated method stub
-									//check if results need to be compared against bruteForce algorithm
+									// check if results need to be compared against bruteForce algorithm
 									API api2 = null;
-									if(compareResultsAgainstBruteForce.isSelected()) {
+									if (compareResultsAgainstBruteForce.isSelected()) {
 										api2 = (API) CommonFunctionality.deepCopy(api);
 									}
-									
+
 									// read amount of models to create
 									int amountModelsToCreate = Integer.parseInt(jFormattedTextField2.getText());
-								
-									// read timeout value 
+
+									// read timeout value
 									int timeout = Integer.parseInt(jFormattedTextField3.getText());
-									
-									// read number of threads value	(must not be <= 0)	
+
+									// read number of threads value (must not be <= 0)
 									int threads = Integer.parseInt(jFormattedTextField4.getText());
 									ExecutorService executor = Executors.newFixedThreadPool(threads);
-									
+
 									String selectedAlgorithm = "";
 									HashMap<String, LinkedList<ProcessInstanceWithVoters>> pInstances = null;
 
-									Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> future = executor.submit(api);
-									Exception exception = null;						
-									
-									if(jrbBruteForce.isSelected()) {
-										selectedAlgorithm = "bruteForce";						
-										
-									} else if(jrbLocalMinimum.isSelected()) {
+									Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> future = executor
+											.submit(api);
+									Exception exception = null;
+
+									if (jrbBruteForce.isSelected()) {
+										selectedAlgorithm = "bruteForce";
+
+									} else if (jrbLocalMinimum.isSelected()) {
 										selectedAlgorithm = "localMin";
-										
-										
-										
-									} else if(jrbLocalMinimumWithBound.isSelected()) {
-										//read the bound value 
+
+									} else if (jrbLocalMinimumWithBound.isSelected()) {
+										// read the bound value
 										int bound = Integer.parseInt(jFormattedTextField1.getText());
-										selectedAlgorithm = "localMinWithBound"+bound;
+										selectedAlgorithm = "localMinWithBound" + bound;
 									} else {
 										leftPanel.add(new JLabel("Error: " + "no algorithm selected!"));
 										frame.add(leftPanel);
 									}
-									
-									
+
 									try {
 										api.setAlgorithmToPerform(selectedAlgorithm);
 										pInstances = future.get(timeout, TimeUnit.SECONDS);
 										future.cancel(true);
 									} catch (InterruptedException e) {
 										// TODO Auto-generated catch block
-										exception = (InterruptedException)e;
+										exception = (InterruptedException) e;
 										future.cancel(true);
 									} catch (ExecutionException e) {
 										// TODO Auto-generated catch block
-										exception = (ExecutionException)e;
+										exception = (ExecutionException) e;
 										future.cancel(true);
 									} catch (TimeoutException e) {
 										// TODO Auto-generated catch block
-										exception= (TimeoutException)e;
+										exception = (TimeoutException) e;
 										future.cancel(true);
-									} 
-									if(exception != null) {
+									}
+									if (exception != null) {
 										leftPanel.add(new JLabel("Exception: " + exception.getMessage()));
 										frame.pack();
 									}
-									
-									if(pInstances.get(selectedAlgorithm)!=null) {
+
+									if (pInstances.get(selectedAlgorithm) != null) {
 										leftPanel.add(new JLabel("RESULTS: "));
 										LinkedList<ProcessInstanceWithVoters> cheapestInst = null;
-										if(selectedAlgorithm.contentEquals("bruteForce")) {
-											cheapestInst = CommonFunctionality.getCheapestProcessInstancesWithVoters(pInstances.get(selectedAlgorithm));
-											leftPanel.add(new JLabel("BruteForce sum amount solution(s): " +pInstances.get(selectedAlgorithm).size()));
+										if (selectedAlgorithm.contentEquals("bruteForce")) {
+											cheapestInst = CommonFunctionality.getCheapestProcessInstancesWithVoters(
+													pInstances.get(selectedAlgorithm));
+											leftPanel.add(new JLabel("BruteForce sum amount solution(s): "
+													+ pInstances.get(selectedAlgorithm).size()));
 										} else {
 											cheapestInst = pInstances.get(selectedAlgorithm);
 										}
-										if(cheapestInst!=null) {
-										leftPanel.add(new JLabel(selectedAlgorithm+": "+ cheapestInst.size()+" cheapest solutions"));
-										leftPanel.add(new JLabel("Cost of cheapest solution(s): "+cheapestInst.getFirst().getCostForModelInstance()));
+										if (cheapestInst != null) {
+											leftPanel.add(new JLabel(selectedAlgorithm + ": " + cheapestInst.size()
+													+ " cheapest solutions"));
+											leftPanel.add(new JLabel("Cost of cheapest solution(s): "
+													+ cheapestInst.getFirst().getCostForModelInstance()));
 										} else {
 											leftPanel.add(new JLabel("No solutions found!!!"));
 										}
-										} 
-									
-									//check if comparison against bruteforce is selected
-									if(selectedAlgorithm.contentEquals("localMin")||selectedAlgorithm.contains("localMinWithBound")) {
-										if(compareResultsAgainstBruteForce.isSelected()&&api2!=null) {
+									}
+									leftPanel.add(new JLabel("Model(s) stored in: "
+											+ props.getProperty("defaultDirectoryForStoringModels")));
+
+									// check if comparison against bruteforce is selected
+									if (selectedAlgorithm.contentEquals("localMin")
+											|| selectedAlgorithm.contains("localMinWithBound")) {
+										if (compareResultsAgainstBruteForce.isSelected() && api2 != null) {
 											HashMap<String, LinkedList<ProcessInstanceWithVoters>> pInstancesBruteForce = null;
 
-											Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureBruteForce = executor.submit(api2);
-											Exception exceptionBruteForce = null;						
-											
-							
+											Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureBruteForce = executor
+													.submit(api2);
+											Exception exceptionBruteForce = null;
+
 											try {
 												api2.setAlgorithmToPerform("bruteForce");
 												pInstancesBruteForce = futureBruteForce.get(timeout, TimeUnit.SECONDS);
 												futureBruteForce.cancel(true);
 											} catch (InterruptedException e) {
 												// TODO Auto-generated catch block
-												exceptionBruteForce = (InterruptedException)e;
+												exceptionBruteForce = (InterruptedException) e;
 												futureBruteForce.cancel(true);
 											} catch (ExecutionException e) {
 												// TODO Auto-generated catch block
-												exceptionBruteForce = (ExecutionException)e;
+												exceptionBruteForce = (ExecutionException) e;
 												futureBruteForce.cancel(true);
 											} catch (TimeoutException e) {
 												// TODO Auto-generated catch block
-												exceptionBruteForce= (TimeoutException)e;
+												exceptionBruteForce = (TimeoutException) e;
 												futureBruteForce.cancel(true);
-											} 
-											
-											if(exceptionBruteForce != null) {
-												leftPanel.add(new JLabel("Exception: " + exceptionBruteForce.getMessage()));
 											}
-											
-																			
-											String comparison = CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstances.get(selectedAlgorithm), pInstancesBruteForce.get("bruteForce"), 1000000);
-											leftPanel.add(new JLabel("bruteForce: "+pInstancesBruteForce.get("bruteForce").size()+" solution(s)"));
-											LinkedList<ProcessInstanceWithVoters>cheapestBruteForceInstances = CommonFunctionality.getCheapestProcessInstancesWithVoters(pInstancesBruteForce.get("bruteForce"));
-											leftPanel.add(new JLabel("Cost of cheapest solution(s): "+cheapestBruteForceInstances.getFirst().getCostForModelInstance()));
-											leftPanel.add(new JLabel("Cheapest solution(s) found:  "+comparison));
-																			
+
+											if (exceptionBruteForce != null) {
+												leftPanel.add(
+														new JLabel("Exception: " + exceptionBruteForce.getMessage()));
+											}
+
+											String comparison = CommonFunctionality
+													.compareResultsOfAlgorithmsForDifferentAPIs(
+															pInstances.get(selectedAlgorithm),
+															pInstancesBruteForce.get("bruteForce"), 1000000);
+											leftPanel.add(new JLabel("bruteForce: "
+													+ pInstancesBruteForce.get("bruteForce").size() + " solution(s)"));
+											LinkedList<ProcessInstanceWithVoters> cheapestBruteForceInstances = CommonFunctionality
+													.getCheapestProcessInstancesWithVoters(
+															pInstancesBruteForce.get("bruteForce"));
+											leftPanel.add(new JLabel(
+													"Cost of cheapest solution(s): " + cheapestBruteForceInstances
+															.getFirst().getCostForModelInstance()));
+											leftPanel.add(new JLabel("Cheapest solution(s) found:  " + comparison));
 										}
 										executor.shutdownNow();
-									}	
-									
-									//check whether voting as construct or as annotation is selected
-									if(votingAsConstructBox.isSelected()) {
+									}
+
+									// check whether voting as construct or as annotation is selected
+									if (votingAsConstructBox.isSelected()) {
 										try {
-											//check whether or not voting should be inside subprocess and whether or not it should be mapped 										
-											CommonFunctionality.generateNewModelsWithVotersAsBpmnConstruct(api, pInstances.get(selectedAlgorithm), amountModelsToCreate, directoryToStoreModels, subProcessBox.isSelected(), mapModelBox.isSelected());
+											// check whether or not voting should be inside subprocess and whether or
+											// not it should be mapped
+											CommonFunctionality.generateNewModelsWithVotersAsBpmnConstruct(api,
+													pInstances.get(selectedAlgorithm), amountModelsToCreate,
+													props.getProperty("defaultDirectoryForStoringModels"),
+													subProcessBox.isSelected(), mapModelBox.isSelected());
 										} catch (IOException e) {
 											// TODO Auto-generated catch block
-											rightPanel.add(new JLabel("IO Exception: "+e.getMessage()));
+											rightPanel.add(new JLabel("IO Exception: " + e.getMessage()));
 										}
 									} else if (votingAsAnnotationBox.isSelected()) {
-										CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(api, pInstances.get(selectedAlgorithm), amountModelsToCreate, directoryToStoreModels);
+										CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(api,
+												pInstances.get(selectedAlgorithm), amountModelsToCreate,
+												props.getProperty("defaultDirectoryForStoringModels"));
 									}
-									
-										frame.pack();
-										runButton.setText("FINISHED");
-										runButton.setEnabled(false);
+
+									frame.pack();
+									runButton.setText("FINISHED");
+									runButton.setEnabled(false);
 								}
-							
+
 							});
-							
-							
-							
+
 							rightPanel.add(runButton);
 							rightPanel.add(Box.createRigidArea(verticalSpacingBetweenComponents));
 							frame.add(rightPanel);
 
 						} catch (Exception e2) {
 							// TODO Auto-generated catch block
-							// System.err.println("Error found: ");
-							// e2.printStackTrace();
 							leftPanel.add(new JLabel("Error: " + e2.getMessage()));
 							frame.add(leftPanel);
 
 						} finally {
 							frame.pack();
-							frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
 						}
 					}
 				}
-				
-			}
-			
-		});
-		
-		saveFileItem.addActionListener(new ActionListener(){
-							
 
-				@Override
-				public void actionPerformed(ActionEvent arg0) {
-					saveFileChooser = new JFileChooser();
-					// TODO Auto-generated method stub
-					saveFileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-					if(saveFileChooserLastDirectory!=null) {
-						saveFileChooser.setCurrentDirectory(saveFileChooserLastDirectory);
-					}
-					
-			        if (saveFileChooser.showSaveDialog(saveFileChooser) == JFileChooser.APPROVE_OPTION) {
-			            File saveFile = saveFileChooser.getSelectedFile();
-			            directoryToStoreModels = saveFile.getAbsolutePath();
-			            saveFileChooserLastDirectory = saveFileChooser.getCurrentDirectory();
-			        } else {
-			        	directoryToStoreModels = "";				        	
-			        }
-				}
-				
-			
+			}
+
 		});
-				
-		
+
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
 	}
 }
