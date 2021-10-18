@@ -74,13 +74,12 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	private BPMNEndEvent bpmnEnd;
 	private ArrayList<BPMNDataObject> dataObjects = new ArrayList<BPMNDataObject>();
 	private ArrayList<BPMNElement> processElements = new ArrayList<BPMNElement>();
-	private LinkedList<BPMNParticipant>allParticipants = new LinkedList<BPMNParticipant>();
+	private LinkedList<BPMNParticipant>publicSphere = new LinkedList<BPMNParticipant>();
 	private LinkedList<BPMNParticipant> globalSphere = new LinkedList<BPMNParticipant>();
 	private LinkedList<BPMNElement>globalSphereTasks;
 	private ArrayList<BPMNBusinessRuleTask> businessRuleTaskList = new ArrayList<BPMNBusinessRuleTask>();
 	private ArrayList<Label> labelList = new ArrayList<Label>();
 	private LinkedList<LinkedList<FlowNode>> pathsThroughProcess = new LinkedList<LinkedList<FlowNode>>();
-	private double costForAddingReaderAfterBrt;
 	private double costForLiftingFromPublicToGlobal;
 	private double costForLiftingFromGlobalToStatic;
 	private double costForLiftingFromStaticToWeakDynamic;
@@ -88,8 +87,9 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	private LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters;
 	private HashMap<DataObjectReference, LinkedList<FlowNode>> readersMap;
 	private HashMap<DataObjectReference, LinkedList<FlowNode>> writersMap;
+	private String deciderOrVerifier;
 
-	public API(String pathToFile, ArrayList<Double> cost, double costForAddingReaderAfterBrt) throws Exception {
+	public API(String pathToFile, ArrayList<Double> cost) throws Exception {
 		if (cost.size() != 4) {
 			throw new Exception("Not exactly 4 cost parameters in the list!");
 		}
@@ -98,13 +98,13 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		this.startEvent = modelInstance.getModelElementsByType(StartEvent.class);
 		this.endEvent = modelInstance.getModelElementsByType(EndEvent.class);
 		this.globalSphereTasks = new LinkedList<BPMNElement>();
-		this.costForAddingReaderAfterBrt = costForAddingReaderAfterBrt;
 		this.costForLiftingFromPublicToGlobal = cost.get(0);
 		this.costForLiftingFromGlobalToStatic = cost.get(1);
 		this.costForLiftingFromStaticToWeakDynamic = cost.get(2);
 		this.costForLiftingFromWeakDynamicToStrongDynamic = cost.get(3);
 		this.algorithmToPerform = "bruteForce";
 		this.executionTimeMap = new HashMap<String, Double>();
+		this.amountPossibleCombinationsOfParticipants = 1;
 
 		System.out.println("API for: " + process.getName());
 		CommonFunctionality.isCorrectModel(modelInstance);
@@ -120,10 +120,9 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(),
 				new LinkedList<LinkedList<FlowNode>>());
 	
-		this.setAmountPossibleCombinationsOfParticipants(CommonFunctionality.calculatePossibleCombinationsForProcess(modelInstance, modelWithLanes));	
 	}
 
-	private void mapAndCompute() {
+	private void mapAndCompute() throws Exception {
 		// check if it is a model with lanes
 		if (modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
 			this.modelWithLanes = false;
@@ -147,7 +146,12 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		this.mapDataObjects();
 
 		this.computeGlobalSphere();
-		this.createDataObjectAsssociatons();
+		try {
+			this.mapAssociationsAndAnotations();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			throw e;
+		}
 		this.mapDefaultTroubleShooter();
 		this.setAllEffectivePathsForWriters();
 
@@ -467,14 +471,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 								//reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(1);
 								currInst.getListOfRequiredUpgrades().add(reqUpdate);
 
-								// add additional cost for adding a reader as voter who reads data after the brt
-
-								if (spheres.size() == 2) {
-									if (spheres.get(1) != null) {
-										cost += this.costForAddingReaderAfterBrt;
-									}
-								}
-
+								
 								double currInstCost = currInst.getCostForModelInstance();
 								// cost will be multiplied with the weighting of the last writer and the
 								// weighting of the brt
@@ -483,7 +480,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 									// since process is block structured -> there are 2 paths for each xor-split
 									weightingOfCurrentBrt = weightingOfCurrentBrt / (brtToBeAdded.getLabels().size() * 2);
 								}
-
+								
 								currInstCost += (cost * reqUpdate.getWeightingOfLastWriterToWriteDataForBrt()
 										* weightingOfCurrentBrt);
 								currInst.setCostForModelInstance(currInstCost);
@@ -890,7 +887,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		if (this.modelWithLanes) {
 			for (Lane l : this.modelInstance.getModelElementsByType(Lane.class)) {
 				BPMNParticipant lanePart = new BPMNParticipant(l.getId(), l.getName().trim());
-				this.allParticipants.add(lanePart);
+				this.publicSphere.add(lanePart);
 				for (FlowNode flowNode : l.getFlowNodeRefs()) {
 					for (BPMNElement t : this.processElements) {
 						if (t instanceof BPMNTask && flowNode.getId().equals(t.getId())) {
@@ -910,7 +907,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						String participantName = task.getName().substring(task.getName().indexOf("["),
 								task.getName().indexOf("]") + 1);
 						boolean partAlreadyMapped = false;
-						for(BPMNParticipant part: this.allParticipants) {
+						for(BPMNParticipant part: this.publicSphere) {
 							if(part.getName().contentEquals(participantName)) {
 								((BPMNTask) t).setParticipant(part);
 								partAlreadyMapped = true;
@@ -920,7 +917,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						if(!partAlreadyMapped) {
 							BPMNParticipant participant = new BPMNParticipant(participantName, participantName);
 							((BPMNTask) t).setParticipant(participant);
-							this.allParticipants.add(participant);
+							this.publicSphere.add(participant);
 						}
 						
 					}
@@ -1067,22 +1064,27 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			if (str.toLowerCase().contains(("Default").toLowerCase())
 					&& str.toLowerCase().contains(("[Troubleshooter]").toLowerCase())) {
 				troubleshooter = str.substring(str.indexOf('{') + 1, str.indexOf('}')).trim();
-				
-				for (BPMNParticipant part : this.globalSphere) {
+				boolean troubleshooterExists = false;
+				for (BPMNParticipant part : this.publicSphere) {
 					if (part.getName().contentEquals(troubleshooter)) {
 						this.troubleShooter = part;
+						troubleshooterExists = true;
 						break;
 					}
-				}
-
+				} 
+				if(!troubleshooterExists) {
+					BPMNParticipant troubleShooter = new BPMNParticipant(troubleshooter, troubleshooter);
+					this.publicSphere.add(troubleShooter);
+					this.troubleShooter = troubleShooter;
+				}	
 			} 
 			
 				
 		}
 		
-		//when there is no default troubleShooter -> randomly choose one from the global sphere
+		//when there is no default troubleShooter -> randomly choose one from the public sphere
 		if (this.troubleShooter == null) {
-			this.troubleShooter = CommonFunctionality.getRandomItem(this.getGlobalSphereList());
+			this.troubleShooter = CommonFunctionality.getRandomItem(publicSphere);
 		}
 
 	
@@ -1138,13 +1140,16 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	// map the annotated amount of needed voters to the BPMNExclusiveGateways
 	// map the sphere connected to the gateway
-	private void mapAnnotations(BPMNExclusiveGateway gtw) {
+	private void mapAnnotations(BPMNExclusiveGateway gtw) throws Exception {
 		for (TextAnnotation text : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 			for (Association a : modelInstance.getModelElementsByType(Association.class)) {
 				if (a.getAttributeValue("sourceRef").equals(gtw.getId())
 						&& a.getAttributeValue("targetRef").equals(text.getId())) {
-					String str = text.getTextContent();
-					if (str.contains("[Voters]")) {
+					String str = text.getTextContent().trim();
+					if(!(str.contains("[")&&str.contains("]")&&str.contains("{")&&str.contains("}"))) {
+						throw new Exception("Annotation: " +a.getId()+" not modeled in correct form [...]{...}"); 
+					}
+					if (CommonFunctionality.containsIgnoreCase(str, "[Voters]")) {
 						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 						String[] split = subStr.split(",");
 
@@ -1156,36 +1161,44 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
-					} else if (str.contains("[Sphere]")) {
+					} else if (CommonFunctionality.containsIgnoreCase(str, "[Sphere]")) {
 						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 						gtw.setSphere(subStr);
-					} else if (str.contains("[ExcludeParticipantConstraint]")) {
+					} else if (CommonFunctionality.containsIgnoreCase(str, "[ExcludeParticipantConstraint]")) {
 							String partName = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
-							
-							for(BPMNParticipant p: this.globalSphere) {
+							boolean partAlreadyMapped = false;
+							for(BPMNParticipant p: this.publicSphere) {
 								if(p.getNameWithoutBrackets().contentEquals(partName)) {
 									ExcludeParticipantConstraint epc = new ExcludeParticipantConstraint(p);
 									gtw.getConstraints().add(epc);
+									partAlreadyMapped = true;
 									break;
 								}
 								
 								
 							}
+							if(!partAlreadyMapped) {
+								BPMNParticipant part = new BPMNParticipant(partName, partName);	
+								this.publicSphere.add(part);
+								ExcludeParticipantConstraint epc = new ExcludeParticipantConstraint(part);
+								gtw.getConstraints().add(epc);
+							}
 					
-					} else if(str.contains("[MandatoryParticipantConstraint]")) {
+					} else if(CommonFunctionality.containsIgnoreCase(str, "[MandatoryParticipantConstraint]")) {
 						String partName = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 						boolean partAlreadyMapped = false;
-						for(BPMNParticipant p: this.allParticipants) {
+						for(BPMNParticipant p: this.publicSphere) {
 							if(p.getNameWithoutBrackets().contentEquals(partName)) {
 								MandatoryParticipantConstraint mpc = new MandatoryParticipantConstraint(p);
 								gtw.getConstraints().add(mpc);
 								partAlreadyMapped = true;
 								break;
-							}							
+							}						
+							
 						}
 						if(!partAlreadyMapped) {
 							BPMNParticipant part = new BPMNParticipant(partName, partName);	
-							this.allParticipants.add(part);
+							this.publicSphere.add(part);
 							MandatoryParticipantConstraint mpc = new MandatoryParticipantConstraint(part);
 							gtw.getConstraints().add(mpc);
 						}
@@ -1199,7 +1212,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	// DataObjects can be attached to Tasks, BusinessRuleTasks and UserTasks in
 	// Camunda
-	public void createDataObjectAsssociatons() {
+	public void mapAssociationsAndAnotations() throws Exception {
 		for (BPMNDataObject bpmno : this.dataObjects) {
 			for (Task t : modelInstance.getModelElementsByType(Task.class)) {
 				for (BPMNElement e : this.processElements) {
@@ -1228,16 +1241,90 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 					}
 				}
 			}
-
+		}
 			for (ExclusiveGateway xor : this.modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
-				this.mapAnnotations((BPMNExclusiveGateway) this.getNodeById(xor.getId()));
+				
+				try {
+					this.mapAnnotations((BPMNExclusiveGateway) this.getNodeById(xor.getId()));
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					throw e;
+				}
 			}
+			
+			LinkedList<BPMNParticipant> partsInExcludeConstraints = new LinkedList<BPMNParticipant>();
+			LinkedList<BPMNParticipant> partsInMandatoryConstraints = new LinkedList<BPMNParticipant>();
+			
+			boolean decisionTakerPartOfVerifier = true;
+			for (ExclusiveGateway xor : this.modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+				BPMNExclusiveGateway xorGtw = (BPMNExclusiveGateway) this.getNodeById(xor.getId());
+				LinkedList<BPMNParticipant> partsInExcludeConstraintsForGtw = new LinkedList<BPMNParticipant>();
+				LinkedList<BPMNParticipant> partsInMandatoryConstraintsForGtw = new LinkedList<BPMNParticipant>();
+
+				
+				for(Constraint constraint: xorGtw.getConstraints()) {
+					if(constraint instanceof ExcludeParticipantConstraint) {
+						ExcludeParticipantConstraint exclConst = (ExcludeParticipantConstraint) constraint;
+						if(!partsInExcludeConstraintsForGtw.contains(exclConst.getParticipantToExclude())) {
+						partsInExcludeConstraintsForGtw.add(exclConst.getParticipantToExclude());
+						}
+					}
+					if(constraint instanceof MandatoryParticipantConstraint) {
+						MandatoryParticipantConstraint mandConst = (MandatoryParticipantConstraint) constraint;
+						if(!partsInMandatoryConstraintsForGtw.contains(mandConst.getMandatoryParticipant())) {
+						partsInMandatoryConstraintsForGtw.add(mandConst.getMandatoryParticipant());
+						}
+					}
+				}	
+				
+				//check if each decision taker is mandatory for the succeeding gtw due to constraints
+				for(BPMNElement predec: xorGtw.getPredecessors()) {
+					if(predec instanceof BPMNBusinessRuleTask) {
+						BPMNBusinessRuleTask predecBrt = (BPMNBusinessRuleTask)predec;
+						BPMNParticipant decisionTaker = predecBrt.getParticipant();
+						if(partsInMandatoryConstraintsForGtw.contains(decisionTaker)&&partsInExcludeConstraintsForGtw.contains(decisionTaker)) {
+							decisionTakerPartOfVerifier = false;
+							break;
+						} else if(!partsInMandatoryConstraintsForGtw.contains(decisionTaker)) {
+							decisionTakerPartOfVerifier = false;
+							break;
+						} else if(partsInExcludeConstraintsForGtw.contains(decisionTaker)) {
+							decisionTakerPartOfVerifier = false;
+							break;
+						}
+					}
+				}
+				
+				if(decisionTakerPartOfVerifier) {
+					this.deciderOrVerifier="verifier";
+				} else {
+					this.deciderOrVerifier="decider";
+				}
+				
+				partsInExcludeConstraints.addAll(partsInExcludeConstraintsForGtw);
+				partsInMandatoryConstraintsForGtw.addAll(partsInMandatoryConstraintsForGtw);
+				
+				if(partsInMandatoryConstraintsForGtw.size()>xorGtw.getAmountVoters()) {
+					throw new Exception("Mandatory participants > amount voters needed at "+xorGtw.getId());
+				}
+				
+			}
+			if(!(partsInExcludeConstraints.isEmpty())) {
+				for(BPMNParticipant exclPart: partsInExcludeConstraints) {
+					if(!partsInMandatoryConstraints.contains(exclPart)) {
+						//remove the exclPart from public sphere 
+						this.publicSphere.remove(exclPart);						
+					}
+			}
+			}
+			
+			
 
 			for (BusinessRuleTask brt : this.modelInstance.getModelElementsByType(BusinessRuleTask.class)) {
 				this.mapDecisions((BPMNBusinessRuleTask) this.getNodeById(brt.getId()));
 			}
 		}
-	}
+	
 
 	public void printDataObjects() {
 		for (BPMNDataObject bpmnd : this.dataObjects) {
@@ -1501,15 +1588,15 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
-	public synchronized LinkedList<VoterForXorArc> generateArcsForXorSplitWithConstraints(BPMNBusinessRuleTask currBrt) {
+	public synchronized LinkedList<VoterForXorArc> generateArcsForXorSplitWithConstraints(BPMNBusinessRuleTask currBrt) throws Exception{
 		LinkedList<VoterForXorArc> brtCombs = new LinkedList<VoterForXorArc>();
-
+		
 		if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
 			BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
 			// get all the possible combinations of participants for the brt
 			// consider the constraints e.g. participants may be excluded or mandatory
 			LinkedList<BPMNParticipant>participantsToCombine = new LinkedList<BPMNParticipant>();
-			participantsToCombine.addAll(this.allParticipants);
+			participantsToCombine.addAll(this.publicSphere);
 			LinkedList<BPMNParticipant>mandatoryParticipants = new LinkedList<BPMNParticipant>();
 			
 			for(Constraint constraint: bpmnEx.getConstraints()) {
@@ -1528,6 +1615,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			
 			
 			if (currBrt.getCombinations().isEmpty()) {
+				
 				LinkedList<LinkedList<BPMNParticipant>> list = Combination.getPermutations(participantsToCombine,
 						bpmnEx.getAmountVoters());
 				Iterator<LinkedList<BPMNParticipant>>listIter = list.iterator();
@@ -1536,8 +1624,12 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 					if(!partList.containsAll(mandatoryParticipants)) {
 						listIter.remove();
 					}
-				}							
+				}
+				if(list.isEmpty()) {
+					throw new Exception("No possible combination of voters for "+currBrt.getId());
+				}
 				currBrt.getCombinations().putIfAbsent(currBrt, list);
+				this.amountPossibleCombinationsOfParticipants*=list.size();
 			}
 
 			for (LinkedList<BPMNParticipant> partList : currBrt.getCombinations().get(currBrt)) {
@@ -1554,45 +1646,12 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			}
 
 		}
-
+		
 		return brtCombs;
 
 	}
 
-	public LinkedList<Object> generateArcsForXorSplitReturnAsObjectList(BPMNBusinessRuleTask currBrt) {
-		LinkedList<Object> brtCombs = new LinkedList<Object>();
 
-		if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
-			BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
-			// get all the possible combinations of participants for the brt
-			if (currBrt.getCombinations().isEmpty()) {
-				LinkedList<LinkedList<BPMNParticipant>> list = Combination.getPermutations(this.globalSphere,
-						bpmnEx.getAmountVoters());
-				currBrt.getCombinations().putIfAbsent(currBrt, list);
-			}
-
-			for (LinkedList<BPMNParticipant> partList : currBrt.getCombinations().get(currBrt)) {
-
-				VoterForXorArc arc = new VoterForXorArc(currBrt, bpmnEx, partList);
-
-				// check if arc already exists
-				VoterForXorArc arcAlreadyGenerated = this.arcAlreadyGenerated(currBrt, arc);
-				if (arcAlreadyGenerated == null) {
-					brtCombs.add(arc);
-				} else {
-
-					brtCombs.add(arcAlreadyGenerated);
-					ArcWithCost.id--;
-				}
-
-			}
-
-		}
-
-		return brtCombs;
-
-	}
-	
 
 	public LinkedList<ProcessInstanceWithVoters> goDFSthroughProcessBuildArcsAndGetVoters(boolean localMin, int bound, 
 			BPMNElement startNode, BPMNElement endNode, BPMNBusinessRuleTask lastFoundBrt,
@@ -1687,7 +1746,11 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 				if (currBrt.getVoterArcs().isEmpty()) {
 					// when brt is found and arcs have not been generated
+					try {
 					arcsForCurrBrt = generateArcsForXorSplitWithConstraints(currBrt);
+					} catch (Exception ex) {
+						throw ex;
+					}
 					currBrt.setVoterArcs(arcsForCurrBrt);
 
 					// check if there has been already a brt before
@@ -1701,9 +1764,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 							pInstance.addVoterArc(voters);
 
 							if (localMin) {
-								//when bound == 0 -> get all cheapest instances
-								
-									this.insertIfCheapestWithBound(processInstancesWithVoters, pInstance, bound);
+								this.insertIfCheapestWithBound(processInstancesWithVoters, pInstance, bound);
 								
 								
 							} else {
@@ -3000,7 +3061,31 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	public List<BPMNElement> getProcessElements() {
 		return this.processElements;
 	}
+	
+	public boolean addParticipantToPublicShpere(BPMNParticipant part) {
+		if(!publicSphere.contains(part)) {
+			publicSphere.add(part);
+			return true;
+		}
+		return false;
+	}
 
+	public LinkedList<BPMNParticipant> getPublicSphere(){
+		return this.publicSphere;
+	}
+	
+	public void setPublicSphere(LinkedList<BPMNParticipant>publicSphere) {
+		this.publicSphere=publicSphere;
+	}
+	
+
+	
+	public int getAmountPossibleCombinations() {
+		return this.amountPossibleCombinationsOfParticipants;
+	}
+	
+	
+	
 	@Override
 	public synchronized HashMap<String, LinkedList<ProcessInstanceWithVoters>> call() throws NullPointerException, InterruptedException, Exception {
 		// TODO Auto-generated method stub
@@ -3008,7 +3093,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		HashMap<String, LinkedList<ProcessInstanceWithVoters>> mapToReturn = new HashMap<String, LinkedList<ProcessInstanceWithVoters>>();
 			if (this.algorithmToPerform.contentEquals("bruteForce")) {
 				LinkedList<ProcessInstanceWithVoters> pInstBruteForce = this.bruteForceAlgorithm();
-				mapToReturn.putIfAbsent("bruteForce", pInstBruteForce);
 				return mapToReturn;
 
 			} else if (this.algorithmToPerform.contentEquals("localMin")) {
@@ -3026,6 +3110,10 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 		
 		return null;
+	}
+	
+	public String getDeciderOrVerifier() {
+		return this.deciderOrVerifier;
 	}
 	
 }

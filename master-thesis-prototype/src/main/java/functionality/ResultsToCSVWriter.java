@@ -29,7 +29,7 @@ public class ResultsToCSVWriter {
 
 			rows = new ArrayList<>();
 			String[] header = new String[] { "fileName", "pathToFile", "exceptionLocalMin", "exceptionBruteForce", "exceptionLocalMinWithLimit", "totalAmountSolutionsWithoutConstraints", "solution(s) bruteForce", "solution(s) localMinimumAlgorithm", "solution(s) localMinimumAlgorithmWithLimit", "amount cheapest solution(s) bruteForce", "costCheapestSolutionBruteForce", "costCheapestSolutionLocalMin", "costCheapestSolutionLocalMinWithLimit", "averageCostAllBruteForceSolutions",
-					"executionTimeLocalMinimumAlogrithm in sec", "executionTimeLocalMinWithLimit in sec","executionTimeBruteForce in sec",  "deltaExecutionTime in sec (localMin - bruteForce)", "deltaExecutionTime in sec (localMinWithLimit - bruteForce)", "isCheapestSolutionOfLocalMinInBruteForce", "isCheapestSolutionOfLocalMinWithLimitInBruteForce", "amountPaths", "amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements", "amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum", "dependentBrts"};
+					"executionTimeLocalMinimumAlogrithm in sec", "executionTimeLocalMinWithLimit in sec","executionTimeBruteForce in sec",  "deltaExecutionTime in sec (localMin - bruteForce)", "deltaExecutionTime in sec (localMinWithLimit - bruteForce)", "isCheapestSolutionOfLocalMinInBruteForce", "isCheapestSolutionOfLocalMinWithLimitInBruteForce", "amountPaths", "amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements", "amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum", "dependentBrts", "deciderOrVerifier"};
 			this.rows.add(header);
 			
 			
@@ -110,11 +110,12 @@ public class ResultsToCSVWriter {
 					String averageAmountVotersOfModel = "null";
 					String globalSphereSize = "null";
 					String sphereSumOfModel = "null";
+					String deciderOrVerifier = "null";
 					
 			
 					
 					if(api!=null) {
-						 allPathsThroughProcess = api.getAllPathsThroughProcess().size()+"";
+						allPathsThroughProcess = api.getAllPathsThroughProcess().size()+"";
 						amountExclusiveGtwSplits = CommonFunctionality.getAmountExclusiveGtwSplits(api.getModelInstance())+"";
 						amountParallelGtwSplits = CommonFunctionality.getAmountParallelGtwSplits(api.getModelInstance())+"";
 						amountTasks = CommonFunctionality.getAmountTasks(api.getModelInstance())+"";
@@ -123,8 +124,8 @@ public class ResultsToCSVWriter {
 						averageAmountVotersOfModel = CommonFunctionality.getAverageAmountVotersOfModel(api.getModelInstance())+"";
 						globalSphereSize =  CommonFunctionality.getGlobalSphere(api.getModelInstance(), api.modelWithLanes())+"";
 						sphereSumOfModel =  CommonFunctionality.getSphereSumOfModel(api.getModelInstance())+"";		
-						amountSolutions = CommonFunctionality.calculatePossibleCombinationsForProcess(api.getModelInstance(), false)+"";
-						
+						amountSolutions = api.getAmountPossibleCombinationsOfParticipants()+"";
+						deciderOrVerifier = api.getDeciderOrVerifier();
 					for(Entry<DataObjectReference, LinkedList<FlowNode>> entr: CommonFunctionality.getReadersForDataObjects(api.getModelInstance()).entrySet()) {
 						readersPerDataObject.append(entr.getKey().getName()+": ");
 						int amountReadersPerDataObject = 0; 
@@ -164,7 +165,7 @@ public class ResultsToCSVWriter {
 					}
 				
 					String[] row = new String[] { fileName, pathToFile, exceptionNameLocalMin, exceptionNameBruteForce, amountSolutions, amountSolutionsBruteForce, amountCheapestSolutionsLocalMin, amountCheapestSolutionsBruteForce, costCheapestSolution, averageCostAllSolutions,
-							localMinAlgorithmTime, bruteForceAlgorithmTime, timeDifference, "null", allPathsThroughProcess, readersPerDataObject.toString(), writersPerDataObject.toString(), amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks, amountElements,sumAmountVotersOfModel, averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel};
+							localMinAlgorithmTime, bruteForceAlgorithmTime, timeDifference, "null", allPathsThroughProcess, readersPerDataObject.toString(), writersPerDataObject.toString(), amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks, amountElements,sumAmountVotersOfModel, averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, deciderOrVerifier};
 					
 					this.rows.add(row);
 
@@ -270,7 +271,8 @@ public class ResultsToCSVWriter {
 					String globalSphereSize = "null";
 					String sphereSumOfModel = "null";
 					String amountSolutions = "null";
-					
+					String deciderOrVerifier = "null";
+
 			
 					
 					if(bruteForceApi!=null) {
@@ -283,7 +285,8 @@ public class ResultsToCSVWriter {
 						averageAmountVotersOfModel = CommonFunctionality.getAverageAmountVotersOfModel(bruteForceApi.getModelInstance())+"";
 						globalSphereSize =  CommonFunctionality.getGlobalSphere(bruteForceApi.getModelInstance(), bruteForceApi.modelWithLanes())+"";
 						sphereSumOfModel =  CommonFunctionality.getSphereSumOfModel(bruteForceApi.getModelInstance())+"";		
-						amountSolutions = CommonFunctionality.calculatePossibleCombinationsForProcess(bruteForceApi.getModelInstance(), false)+"";
+						amountSolutions = bruteForceApi.getAmountPossibleCombinationsOfParticipants()+"";
+						deciderOrVerifier = bruteForceApi.getDeciderOrVerifier();
 					for(Entry<DataObjectReference, LinkedList<FlowNode>> entr: CommonFunctionality.getReadersForDataObjects(bruteForceApi.getModelInstance()).entrySet()) {
 						readersPerDataObject.append(entr.getKey().getName()+": ");
 						int amountReadersPerDataObject = 0; 
@@ -339,7 +342,7 @@ public class ResultsToCSVWriter {
 					
 					
 					String[] row = new String[] { fileName, pathToFile, exceptionNameLocalMin, exceptionNameBruteForce, exceptionNameLocalMinWithLimit, amountSolutions, amountSolutionsBruteForce,  amountCheapestSolutionsLocalMin, amountCheapestSolutionsLocalMinWithLimit, amountCheapestSolutionsBruteForce, costCheapestSolutionBruteForce, costCheapestSolutionLocalMin, costCheapestSolutionLocalMinWithLimit, averageCostAllSolutions,
-							localMinAlgorithmTime, localMinWithLimitAlgorithmTime, bruteForceAlgorithmTime, timeDifferenceLocalMinBruteForce, timeDifferenceLocalMinWithLimitBruteForce,isCheapestSolutionInBruteForce,isCheapestSolutionWithLimitInBruteForce, allPathsThroughProcess, readersPerDataObject.toString(), writersPerDataObject.toString(), amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks, amountElements,sumAmountVotersOfModel, averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, dependentBrts.toString()};
+							localMinAlgorithmTime, localMinWithLimitAlgorithmTime, bruteForceAlgorithmTime, timeDifferenceLocalMinBruteForce, timeDifferenceLocalMinWithLimitBruteForce,isCheapestSolutionInBruteForce,isCheapestSolutionWithLimitInBruteForce, allPathsThroughProcess, readersPerDataObject.toString(), writersPerDataObject.toString(), amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks, amountElements,sumAmountVotersOfModel, averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, dependentBrts.toString(), deciderOrVerifier};
 					
 					this.rows.add(row);	
 					
@@ -353,7 +356,16 @@ public void addEmptyRow() {
 	this.rows.add(emptyRow);
 	
 }
-	
+
+public void addNullValueRowForModel(String fileName, String pathToFile) {
+	String[]nullValueRow = new String[this.rows.get(0).length];
+	nullValueRow[0] = fileName;
+	nullValueRow[1] = pathToFile;
+	for(int i = 2; i < this.rows.get(0).length; i++) {
+		nullValueRow[i] = "null";
+	}
+	this.rows.add(nullValueRow);
+}
 	
 	
 

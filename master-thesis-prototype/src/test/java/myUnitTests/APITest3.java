@@ -14,7 +14,6 @@ import functionality.API;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class APITest3 {
 	ArrayList<Double> cost = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
-	double costForAddingReaderAfterBrt = 1.0;
 	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\algorithmTest.bpmn";
 	
 	@Test
@@ -22,7 +21,7 @@ public class APITest3 {
 		
 
 		try {
-			API a2 = new API(pathToFile, cost, costForAddingReaderAfterBrt);
+			API a2 = new API(pathToFile, cost);
 			//4 voters for Brt1
 			//6 voters for Brt2
 			//6 voters for Brt3

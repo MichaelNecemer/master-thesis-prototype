@@ -1328,7 +1328,6 @@ public static LinkedList<LinkedList<FlowNode>> getAllPaths(BpmnModelInstance mod
 		return participants.size();
 	}
 	
-	
 
 		
 	
@@ -1882,45 +1881,7 @@ public static int getAmountTasks(BpmnModelInstance modelInstance) {
 }
 
 
-public static int calculatePossibleCombinationsForProcess(BpmnModelInstance modelInstance, boolean modelWithLanes) {
-	int combinations = 1;
-	if(modelInstance.getModelElementsByType(ExclusiveGateway.class).size()==0) {
-		return 0;
-	}
-	
-	
-	int amountParticipants = CommonFunctionality.getGlobalSphere(modelInstance, modelWithLanes);
-	
-	for(BusinessRuleTask brt: modelInstance.getModelElementsByType(BusinessRuleTask.class)) {
-		if(brt.getOutgoing().iterator().next().getTarget() instanceof ExclusiveGateway) {
-			ExclusiveGateway gtw = (ExclusiveGateway) brt.getOutgoing().iterator().next().getTarget();
-			if(gtw.getOutgoing().size()>=2) {
-				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
-					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
-						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-							if (tx.getTextContent().startsWith("[Voters]")) {
-								
-								String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{')+1, tx.getTextContent().indexOf('}'));
-								String[]values = subString.split(",");
-								
-								int amountVoters = Integer.parseInt(values[0]);
-								combinations *= binom(amountParticipants, amountVoters);
-								
-								
-							}
-						}
-					}
-				}
-								
-			}
-			
-		}
-		
-	}
-	
-	return combinations;
-	
-}
+
 
 public static List<Integer> maxVoterCombsPerGatewayFromProcessDimension(double processDimensionSize, int amountDecisions, int globalSphere, int minVotersPerDecision, boolean equallyDistributed ) throws Exception {
 	//calculate the amount of maximum voter combinations per gateway to fit the processDimensionSize
@@ -2014,7 +1975,26 @@ public static int binom(int n, int k) {
 	
 }
 
+public static boolean containsIgnoreCase(String src, String what) {
+    final int length = what.length();
+    if (length == 0)
+        return true; // Empty string is contained
 
+    final char firstLo = Character.toLowerCase(what.charAt(0));
+    final char firstUp = Character.toUpperCase(what.charAt(0));
+
+    for (int i = src.length() - length; i >= 0; i--) {
+        // Quick check before calling the more expensive regionMatches() method:
+        final char ch = src.charAt(i);
+        if (ch != firstLo && ch != firstUp)
+            continue;
+
+        if (src.regionMatches(true, i, what, 0, length))
+            return true;
+    }
+
+    return false;
+}
 
 
 public static Object deepCopy(Object object) {
@@ -3185,12 +3165,12 @@ private static void generateDIElementForReader(BpmnModelInstance modelInstance, 
 
 
 public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName, int probabilityForGatewayToHaveConstraint,
-		int lowerBoundAmountParticipantsToExclude,  boolean alwaysMaxConstrained,  boolean modelWithLanes, String directoryToStore) throws Exception {
+		int lowerBoundAmountParticipantsToExclude,boolean decisionTakerExcludeable, boolean alwaysMaxConstrained,  boolean modelWithLanes, String directoryToStore) throws Exception {
 	// upperBoundAmountParticipantsToExclude is the difference between the amount of
 	// needed voters and the global Sphere
 	// e.g. global sphere = 5, 3 people needed -> 2 is the max amount of
 	// participants to exclude
-	// the decision taker himself can not be excluded
+	
 	
 	boolean constraintInserted = false;
 	if(lowerBoundAmountParticipantsToExclude < 1) {
@@ -3198,7 +3178,7 @@ public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance mod
 	}
 
 	for (ExclusiveGateway gtw :modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
-		if(gtw.getIncoming().size()==1) {
+		if(gtw.getOutgoing().size()==2&&gtw.getIncoming().iterator().next() instanceof BusinessRuleTask) {
 		int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 		if (probabilityForGatewayToHaveConstraint >= randomInt) {
 			BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
@@ -3206,13 +3186,15 @@ public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance mod
 			LinkedList<String> participantsToChooseFrom = CommonFunctionality.getGlobalSphereList(modelInstance, modelWithLanes);
 			int globalSphereSize = participantsToChooseFrom.size();
 			
-			// remove the decision taker from the list
+			// remove the decision taker from the list if necessary
+			if(!decisionTakerExcludeable) {
 			for (String part : participantsToChooseFrom) {
 				if (decisionTakerName.contains(part)) {
 					participantsToChooseFrom.remove(part);
 					break;
 				}
 
+			}
 			}
 
 			if (!participantsToChooseFrom.isEmpty()) {
@@ -3297,14 +3279,160 @@ public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance mod
 	if(constraintInserted) {
 		String suffix = "";
 	if(alwaysMaxConstrained) {
-		suffix = "alwMaxConstrained";
+		suffix = "alwMaxExcl_Constrained";
 	} else if(!alwaysMaxConstrained){
-		suffix = "constrained";
+		suffix = "excl_constrained";
 	} 
 	CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, suffix);
 	}
 }
 
+
+public static void addMandatoryParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName, int probabilityForGatewayToHaveConstraint,
+		int lowerBoundAmountParticipantsToBeMandatory, boolean decisionTakerMandatory,  boolean alwaysMaxConstrained,  boolean modelWithLanes, String directoryToStore) throws Exception {
+	// upperBoundAmountParticipantsToBeMandatory is the difference between the amount of
+	// needed voters and the global Sphere
+	// e.g. 3 people needed -> max 3 constraints for mandatory participants for the gtw
+	// if decisionTakerMandatory = true -> the participant of the brt will be mandatory
+	// else the mandatory participants will be chosen randomly from global sphere
+	
+	boolean constraintInserted = false;
+	if(lowerBoundAmountParticipantsToBeMandatory < 1) {
+		lowerBoundAmountParticipantsToBeMandatory = 1;
+	}
+
+	for (ExclusiveGateway gtw :modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+		if(gtw.getOutgoing().size()==2&&gtw.getIncoming().iterator().next() instanceof BusinessRuleTask) {
+		int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
+		if (probabilityForGatewayToHaveConstraint >= randomInt) {
+			BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
+			String decisionTakerName = brtBeforeGtw.getName();
+			LinkedList<String> participantsToChooseFrom = CommonFunctionality.getGlobalSphereList(modelInstance, modelWithLanes);
+			
+			if (!participantsToChooseFrom.isEmpty()) {
+
+				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+							if (tx.getTextContent().startsWith("[Voters]")) {
+								String subStr = tx.getTextContent().substring(tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
+
+								String[] data = subStr.split(",");
+								int amountVotersNeeded = Integer.parseInt(data[0]);
+								int randomAmountConstraintsForGtw = 0;
+								
+										
+								if(alwaysMaxConstrained) {
+									randomAmountConstraintsForGtw = amountVotersNeeded;									
+								} else {
+									int maxConstraint = amountVotersNeeded;	
+									
+									if(lowerBoundAmountParticipantsToBeMandatory==maxConstraint) {
+										randomAmountConstraintsForGtw = lowerBoundAmountParticipantsToBeMandatory;
+									} else {
+									randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
+											lowerBoundAmountParticipantsToBeMandatory,
+											maxConstraint + 1);
+									}
+								}
+								
+								if(decisionTakerMandatory) {
+									//first mandatory participant will be the decision taker
+									String mandatoryParticipantConstraint = "[MandatoryParticipantConstraint] {"+decisionTakerName+"}";
+									TextAnnotation constraintAnnotation = modelInstance.newInstance(TextAnnotation.class);
+								
+									constraintAnnotation.setTextFormat("text/plain");
+									Text text = modelInstance.newInstance(Text.class);
+									text.setTextContent(mandatoryParticipantConstraint);
+									constraintAnnotation.setText(text);
+									gtw.getParentElement().addChildElement(constraintAnnotation);
+				
+									CommonFunctionality.generateShapeForTextAnnotation(modelInstance, constraintAnnotation, brtBeforeGtw);
+									
+									Association association = modelInstance.newInstance(Association.class);
+									association.setSource(gtw);
+									association.setTarget(constraintAnnotation);
+									gtw.getParentElement().addChildElement(association);
+									
+									
+									BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
+									edge.setBpmnElement(association);
+									Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
+									wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+									wp1.setY(gtw.getDiagramElement().getBounds().getY());
+									Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+									wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+									wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
+
+									edge.getWaypoints().add(wp1);
+									edge.getWaypoints().add(wp2);
+									modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
+									constraintInserted = true;
+									participantsToChooseFrom.remove(decisionTakerName);
+									randomAmountConstraintsForGtw--;									
+								}
+															
+								Collections.shuffle(participantsToChooseFrom);
+								Iterator<String> partIter = participantsToChooseFrom.iterator();								
+
+								for(int i = 0; i < randomAmountConstraintsForGtw; i++) {
+									if(partIter.hasNext()) {
+									String currPart = partIter.next();
+									
+									String mandatoryParticipantConstraint = "[MandatoryParticipantConstraint] {"+currPart+"}";
+									TextAnnotation constraintAnnotation = modelInstance.newInstance(TextAnnotation.class);
+								
+									constraintAnnotation.setTextFormat("text/plain");
+									Text text = modelInstance.newInstance(Text.class);
+									text.setTextContent(mandatoryParticipantConstraint);
+									constraintAnnotation.setText(text);
+									gtw.getParentElement().addChildElement(constraintAnnotation);
+				
+									CommonFunctionality.generateShapeForTextAnnotation(modelInstance, constraintAnnotation, brtBeforeGtw);
+									
+									Association association = modelInstance.newInstance(Association.class);
+									association.setSource(gtw);
+									association.setTarget(constraintAnnotation);
+									gtw.getParentElement().addChildElement(association);
+									
+									
+									BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
+									edge.setBpmnElement(association);
+									Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
+									wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+									wp1.setY(gtw.getDiagramElement().getBounds().getY());
+									Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+									wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+									wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
+
+									edge.getWaypoints().add(wp1);
+									edge.getWaypoints().add(wp2);
+									modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
+									constraintInserted = true;
+									partIter.remove();
+									
+									}
+								}
+
+							}
+						}
+
+					}
+				}
+			}
+		}
+	}
+	}
+	if(constraintInserted) {
+		String suffix = "";
+	if(alwaysMaxConstrained) {
+		suffix = "alwMaxMand_Constrained";
+	} else if(!alwaysMaxConstrained){
+		suffix = "mand_constrained";
+	} 
+	CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, suffix);
+	}
+}
 
 
 		

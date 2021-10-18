@@ -55,8 +55,6 @@ public class GUI {
 	static API api = null;
 	static BPMNExclusiveGateway bpmnEx = null;
 	static int sumVotes = 0;
-	static ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
-	static double costForAddingReaderAfterBrt = 0.0;
 	static JCheckBox compareResultsAgainstBruteForce;
 	static JCheckBox jrbBruteForce;
 	static JCheckBox jrbLocalMinimum;
@@ -94,6 +92,7 @@ public class GUI {
 	static File configFile = new File("src/main/resources/configGUI.properties");
 	static Properties props = new Properties();
 	static FileReader reader;
+	static ArrayList<Double> costForUpgradingSpheres;
 
 	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub
@@ -151,29 +150,39 @@ public class GUI {
 					leftPanel.add(new JLabel("Cost for upgrading spheres: "));
 					jFormattedTextFieldCost = new JFormattedTextField();
 					String costForUpgradingSpheresAsString = props.getProperty("costForUpgradingSpheres");
+					boolean askUserForValues = false;
 					if (!costForUpgradingSpheresAsString.isEmpty()) {
 						String[] spheresArr = costForUpgradingSpheresAsString.split(",");
 						ArrayList<Double> spheresAsDouble = new ArrayList<Double>();
+
 						for (String str : spheresArr) {
 							spheresAsDouble.add(Double.parseDouble(str));
 						}
-						if (spheresAsDouble.size() == 4) {
+						if (spheresAsDouble.size() != 4) {
+							askUserForValues = true;
+						} else {
 							costForUpgradingSpheres = spheresAsDouble;
 						}
 
-					} else {
+					}
+
+					if (askUserForValues) {
 						// ask user for default values
-						String defaultCost = JOptionPane.showInputDialog(
-								"Add 4 comma separated numbers as cost for sphere upgrades! (Public->Global, Global->Static, Static->Weak-Dynamic, Weak-Dynamic->Strong-Dynamic");
-						defaultCost.trim();
-						String[] defaultCostArr = defaultCost.split(",");
-						ArrayList<Double> cost = new ArrayList<Double>();
-						for (String str : defaultCostArr) {
-							cost.add((Double.parseDouble(str)));
-						}
+						ArrayList<Double> cost;
+						String defaultCost;
+						do {
+							cost = new ArrayList<Double>();
+							defaultCost = JOptionPane.showInputDialog(
+									"Add 4 comma separated numbers as cost for sphere upgrades! (Public to Global, Global to Static, Static to Weak-Dynamic, Weak-Dynamic to Strong-Dynamic");
+							defaultCost.trim();
+							String[] defaultCostArr = defaultCost.split(",");
+							for (String str : defaultCostArr) {
+								cost.add((Double.parseDouble(str)));
+							}
+						} while (cost.size() != 4);
+
 						if (cost.size() == 4) {
 							props.setProperty("costForUpgradingSpheres", defaultCost);
-							costForUpgradingSpheres = cost;
 							costForUpgradingSpheresAsString = defaultCost;
 						}
 
@@ -226,7 +235,7 @@ public class GUI {
 
 					defaultDirectoryForStoringModels = props.getProperty("defaultDirectoryForStoringModels");
 					saveModelsLabel = new JLabel(
-							"Default directory for storing models: " + defaultDirectoryForStoringModels);
+							"Default directory for storing models: " + defaultDirectoryForStoringModels.trim());
 					leftPanel.add(saveModelsLabel);
 					File defaultDirectoryForStoringModelsFile = new File(defaultDirectoryForStoringModels);
 					JButton searchFolderButton2 = new JButton("Search folder...");
@@ -271,7 +280,7 @@ public class GUI {
 								openingModelsLabel.setText("Default directory for opening models: "
 										+ props.getProperty("defaultDirectoryForOpeningModels"));
 								saveModelsLabel.setText("Default directory for storing models: "
-										+ props.getProperty("defaultDirectoryForStoringModels"));
+										+ props.getProperty("defaultDirectoryForStoringModels").trim());
 								String costForUpgradeString = props.getProperty("costForUpgradingSpheres");
 								String[] costForUpgradeArr = costForUpgradeString.split(",");
 								ArrayList<Double> costForUpgrade = new ArrayList<Double>();
@@ -328,23 +337,39 @@ public class GUI {
 					}
 
 					String cost = props.getProperty("costForUpgradingSpheres");
-					if (cost.isEmpty()) {
-						cost = JOptionPane.showInputDialog("Add 4 comma separated values as cost for sphere upgrades!");
-					}
+					boolean askUserForValues = false;
+					ArrayList<Double> costList = new ArrayList<Double>();
 					cost.trim();
 					String[] defaultCostArr = cost.split(",");
-					ArrayList<Double> costList = new ArrayList<Double>();
 					for (String str : defaultCostArr) {
 						costList.add((Double.parseDouble(str)));
+					}
+					if (cost.isEmpty() || defaultCostArr.length != 4) {
+						askUserForValues = true;
+					}
+					if (askUserForValues) {
+
+						while (costList.size() != 4) {
+							cost = JOptionPane.showInputDialog(
+									"Add 4 comma separated numbers as cost for sphere upgrades! (Public to Global, Global to Static, Static to Weak-Dynamic, Weak-Dynamic to Strong-Dynamic");
+
+							costList = new ArrayList<Double>();
+							cost.trim();
+							defaultCostArr = cost.split(",");
+							for (String str : defaultCostArr) {
+								costList.add((Double.parseDouble(str)));
+							}
+
+						}
 					}
 					if (costList.size() == 4) {
 						props.setProperty("costForUpgradingSpheres", cost);
 						costForUpgradingSpheres = costList;
 					}
-
 				} catch (Exception ex) {
 					leftPanel.add(new JLabel("Default directory for file can not be null"));
 				}
+
 				if (defaultDirectoryForOpeningModelsFile != null) {
 					openFileChooser.setCurrentDirectory(defaultDirectoryForOpeningModelsFile);
 
@@ -359,7 +384,6 @@ public class GUI {
 					if (insertDefaultValues) {
 						// set default properties
 						String directoryOfInputFile = openFileChooser.getCurrentDirectory().getAbsolutePath();
-						System.out.print(directoryOfInputFile);
 						props.setProperty("defaultDirectoryForOpeningModels", directoryOfInputFile);
 						props.setProperty("defaultDirectoryForStoringModels", directoryOfInputFile);
 					}
@@ -384,7 +408,7 @@ public class GUI {
 						leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.PAGE_AXIS));
 
 						try {
-							api = new API(pathToInputFile, costForUpgradingSpheres, costForAddingReaderAfterBrt);
+							api = new API(pathToInputFile, costForUpgradingSpheres);
 							leftPanel.add(new JLabel("Troubleshooter: " + api.getTroubleShooter().getName()));
 							leftPanel.add(
 									new JLabel("Paths through process: " + api.getAllPathsThroughProcess().size()));
@@ -678,6 +702,8 @@ public class GUI {
 											leftPanel.add(new JLabel("No solutions found!!!"));
 										}
 									}
+									leftPanel.add(new JLabel("Amount of possible voter combinations: "+api.getAmountPossibleCombinationsOfParticipants()));
+
 									leftPanel.add(new JLabel("Model(s) stored in: "
 											+ props.getProperty("defaultDirectoryForStoringModels")));
 
