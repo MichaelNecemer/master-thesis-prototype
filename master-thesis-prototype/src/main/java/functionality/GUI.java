@@ -769,6 +769,9 @@ public class GUI {
 										} catch (IOException e) {
 											// TODO Auto-generated catch block
 											rightPanel.add(new JLabel("IO Exception: " + e.getMessage()));
+										} catch (Exception e) {
+											leftPanel.add(new JLabel("Exception: " + e.getMessage()));
+
 										}
 									} else if (votingAsAnnotationBox.isSelected()) {
 										CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(api,

@@ -3089,27 +3089,27 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	@Override
 	public synchronized HashMap<String, LinkedList<ProcessInstanceWithVoters>> call() throws NullPointerException, InterruptedException, Exception {
 		// TODO Auto-generated method stub
+		
 		System.out.println("Call algorithm for: "+this.process.getAbsolutePath());
 		HashMap<String, LinkedList<ProcessInstanceWithVoters>> mapToReturn = new HashMap<String, LinkedList<ProcessInstanceWithVoters>>();
 			if (this.algorithmToPerform.contentEquals("bruteForce")) {
 				LinkedList<ProcessInstanceWithVoters> pInstBruteForce = this.bruteForceAlgorithm();
-				return mapToReturn;
-
+				mapToReturn.putIfAbsent("bruteForce", pInstBruteForce);
+				
 			} else if (this.algorithmToPerform.contentEquals("localMin")) {
 				LinkedList<ProcessInstanceWithVoters> pInstLocalMin = this.localMinimumAlgorithm();
 				mapToReturn.putIfAbsent("localMin", pInstLocalMin);
-				return mapToReturn;
 
 			} else if(this.algorithmToPerform.contains("localMinWithBound")) {
 				String limit = this.algorithmToPerform;
 				int limitPerIteration = Integer.parseInt(limit.replaceAll("\\D+","").trim());
 				LinkedList<ProcessInstanceWithVoters> pInstLocalMinWithBound = this.localMinimumAlgorithmWithLimit(limitPerIteration);
 				mapToReturn.putIfAbsent(this.algorithmToPerform, pInstLocalMinWithBound);
-				return mapToReturn;				
 			}
 
 		
-		return null;
+		 	return mapToReturn;
+
 	}
 	
 	public String getDeciderOrVerifier() {

@@ -1597,6 +1597,7 @@ public static void increaseSpherePerDataObject(BpmnModelInstance modelInstance, 
 		
 	}
 	
+	
 	public static int getAmountFromPercentage(int amountTasks, int percentage) {
 		double amountFromPercentage = (double)amountTasks*percentage/100;
 		return (int) Math.ceil(amountFromPercentage);		
@@ -2264,9 +2265,12 @@ public static void generateShapeForTextAnnotation(BpmnModelInstance modelInstanc
 
 
 public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedList<ProcessInstanceWithVoters> pInstances, int upperBoundNewModels,
-		String directoryToStoreModels, boolean votingAsSubProcess, boolean mapModel) throws IOException {
+		String directoryToStoreModels, boolean votingAsSubProcess, boolean mapModel) throws Exception, IOException {
 	
+	try {
 	String fileName = api.getProcessFile().getName();
+	
+	
 	if(directoryToStoreModels == null || directoryToStoreModels.contentEquals("")) {
 		//directory will be the same directory as the process file from the api
 		directoryToStoreModels = api.getProcessFile().getParent();	
@@ -2279,6 +2283,7 @@ public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedLis
 	if(upperBoundNewModels>pInstances.size()) {
 		upperBoundNewModels = pInstances.size();
 	}
+	
 	
 	int i = 1;
 	
@@ -2430,9 +2435,12 @@ public static void generateNewModelsWithVotersAsBpmnConstruct(API api, LinkedLis
 	}
 	j++;
 	}
+	} catch(NullPointerException n) {
+		throw new Exception("API was null!");
+	} catch (Exception e) {
+		throw e;
+	}
 
-	
-	
 
 }
 
@@ -3012,11 +3020,9 @@ public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnMode
 	
 	Collection<BusinessRuleTask>brtList = modelInstance.getModelElementsByType(BusinessRuleTask.class);
 	Iterator<BusinessRuleTask>brtIter = brtList.iterator();
-	System.out.println(substitute.getName());
 	
 	while(brtIter.hasNext()) {
 		BusinessRuleTask brt = brtIter.next();
-		System.out.println("brt: "+brt.getName());
 		boolean substituteAnnotatedAlready = false;
 		LinkedList<DataObjectReference> toRemove = new LinkedList<DataObjectReference>();
 		for(DataInputAssociation dia: brt.getDataInputAssociations()) {
@@ -3040,7 +3046,6 @@ public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnMode
 			//choose random dataObject to remove
 			DataObjectReference daoRToBeRemoved = CommonFunctionality.getRandomItem(toRemove);
 			Iterator<DataInputAssociation>diaIter = brt.getDataInputAssociations().iterator();
-			System.out.println("To Remove: "+daoRToBeRemoved.getName());
 			while(diaIter.hasNext()) {
 				DataInputAssociation dia = diaIter.next();
 				for(ItemAwareElement iae: dia.getSources()) {
@@ -3059,7 +3064,6 @@ public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnMode
 						LinkedList<Task>taskWithInputAssocRemoved = new LinkedList<Task>();
 						LinkedList<Task>taskWithOutputAssocRemoved = new LinkedList<Task>();
 						for(Task task: modelInstance.getModelElementsByType(Task.class)) {
-							System.out.println("Task: "+task.getName());
 							for(DataInputAssociation taskDia: task.getDataInputAssociations()) {
 								for(ItemAwareElement taskIae: taskDia.getSources()) {
 									if(taskIae.getId().contentEquals(daoRToBeRemoved.getId())) {
@@ -3115,6 +3119,7 @@ public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnMode
 
 						try {
 							CommonFunctionality.writeChangesToFile(modelInstance, fileName, directoryToStore, "substituteIter"+iteration);
+							toRemove.remove(daoRToBeRemoved);
 						} catch (IOException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();

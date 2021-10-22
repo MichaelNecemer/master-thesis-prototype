@@ -44,7 +44,7 @@ public class Main1 {
 	  }*/
 	
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches1.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\RealWorldProcesses\\randomProcessModel3.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test3-ImpactOfDataObjects\\randomProcessModel1_annotated1.bpmn";
 		
 
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
@@ -63,11 +63,12 @@ public class Main1 {
 	Exception ex = null;
 	do {
 	try {
+		/*
 		ProcessModelAnnotater p = new ProcessModelAnnotater(pathToFile, "", "");
 		p.connectDataObjectsToBrtsAndTuplesForXorSplits(1, 1, 1, 4, 0, false);
 		p.addExcludeParticipantConstraintsOnModel(100, 1, false, false);
 		File f = p.call();
-		
+		*/
 		
 	} catch (Exception e1) {
 		// TODO Auto-generated catch block
@@ -80,7 +81,7 @@ public class Main1 {
 	//API
 	try {	
 		
-		//a2 = new API(pathToFile, costForUpgradingSpheres);
+		a2 = new API(pathToFile, costForUpgradingSpheres);
 		
 	
 		

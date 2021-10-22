@@ -76,6 +76,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 	private String pathToFile;
 	private String pathWhereToCreateAnnotatedFile;
 	private String fileNameSuffix;
+	private boolean dataObjectsConnectedToBrts;
 
 	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix)
 			throws Exception {
@@ -90,6 +91,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		this.dataObjects = new LinkedList<DataObjectReference>();
 		this.dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
 		this.differentParticipants = new LinkedList<String>();
+		this.dataObjectsConnectedToBrts = false;
 
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
@@ -100,7 +102,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 			int probPublicDecision, int amountParticipantsPerDecision, int maxDataObjectsPerDecision,
 			List<String> namesForOutgoingSeqFlowsOfXorSplits) throws Exception {
 		this.process = new File(pathToFile);
-		this.modelInstance = Bpmn.readModelFromFile(process);	
+		this.modelInstance = Bpmn.readModelFromFile(process);
 
 		if (amountWritersOfProcess == 0 || amountReadersOfProcess == 0) {
 			throw new Exception("0 writers and 0 readers specified!");
@@ -114,7 +116,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 		this.dataObjects = new LinkedList<DataObjectReference>();
 		this.dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
 		this.differentParticipants = new LinkedList<String>();
-		
+		this.dataObjectsConnectedToBrts = false;
+
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 		this.addNamesForOutgoingFlowsOfXorSplits(namesForOutgoingSeqFlowsOfXorSplits);
@@ -131,7 +134,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 			boolean allDataObjectsUniquePerGtw) throws Exception {
 		this.process = new File(pathToFile);
 		modelInstance = Bpmn.readModelFromFile(process);
-		
+
 		if (amountWritersOfProcess == 0 || amountReadersOfProcess == 0) {
 			throw new Exception("0 writers and 0 readers specified!");
 		}
@@ -144,6 +147,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		this.dataObjects = new LinkedList<DataObjectReference>();
 		this.dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
 		this.differentParticipants = new LinkedList<String>();
+		this.dataObjectsConnectedToBrts = false;
 
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
@@ -205,6 +209,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 			}
 		}
+		this.dataObjectsConnectedToBrts = true;
+
 	}
 
 	public File checkCorrectnessAndWriteChangesToFile() throws Exception {
@@ -277,18 +283,32 @@ public class ProcessModelAnnotater implements Callable<File> {
 				throw new Exception("Amount of writers must be >= amount of DataObjects!");
 			}
 
+			if (!this.dataObjectsConnectedToBrts) {
+				throw new Exception(
+						"Method: connectDataObjectsToBrtsAndTuplesForXorSplits() needs to be called before annotating the model with readers and writers!");
+			}
+
+			// check how many readers there are already in the model			
+			int sumExistingReaders = modelInstance.getModelElementsByType(DataInputAssociation.class).size();
+			int sumExistingWriters = modelInstance.getModelElementsByType(DataOutputAssociation.class).size();
+			
+			if(amountWriters>sumExistingWriters) {
+				amountWriters=amountWriters-sumExistingWriters;
+			}
+			
+			if(amountReaders>sumExistingReaders) {
+				amountReaders=amountReaders-sumExistingReaders;
+			}
+
 			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality
 					.computeRepartitionNumber(amountWriters, this.dataObjects.size(), 1);
 			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
 			LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
 			List<LinkedList<Integer>> subAmountReadersLists = null;
-			if (amountReaders <= this.dataObjects.size()) {
-				subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders,
-						this.dataObjects.size(), 0);
-			} else {
-				subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders,
-						this.dataObjects.size(), 1);
-			}
+
+			subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders, this.dataObjects.size(),
+					0);
+
 			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
 			LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
 
@@ -369,12 +389,11 @@ public class ProcessModelAnnotater implements Callable<File> {
 					possibleWritersBeforeBrt.putIfAbsent((BusinessRuleTask) task, tasksBeforeBrt);
 				}
 			}
-										
+
 			if (!possibleWritersBeforeBrt.isEmpty()) {
 
 				for (Entry<BusinessRuleTask, LinkedList<Task>> entry : possibleWritersBeforeBrt.entrySet()) {
 					for (int i = 0; i < dataObjects.size(); i++) {
-
 						Task writerBeforeDecision = CommonFunctionality.getRandomItem(entry.getValue());
 
 						this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i),
@@ -396,7 +415,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 		}
 
 	}
-	
 
 	private void generateDIElementForSphereAnnotation(Task writerTask, DataObjectReference daoR,
 			List<String> defaultSpheres) {
@@ -567,10 +585,10 @@ public class ProcessModelAnnotater implements Callable<File> {
 		Bpmn.validateModel(this.modelInstance);
 		String fileName = process.getName().substring(0, process.getName().indexOf(".bpmn"));
 		int fileNumber = 0;
-		
-		if(directoryToStoreAnnotatedModel.isEmpty()||directoryToStoreAnnotatedModel==null) {
-			//write it to same directory as process
-			directoryToStoreAnnotatedModel = process.getParent();		
+
+		if (directoryToStoreAnnotatedModel.isEmpty() || directoryToStoreAnnotatedModel == null) {
+			// write it to same directory as process
+			directoryToStoreAnnotatedModel = process.getParent();
 		}
 
 		File dir = new File(directoryToStoreAnnotatedModel);
@@ -667,8 +685,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 		}
 		return false;
 	}
-
-
 
 	private FlowNode insertTaskAfterNode(FlowNode node, FlowNode successor, boolean modelWithLanes) {
 		SequenceFlow toBeDeleted = node.getOutgoing().iterator().next();
@@ -1146,9 +1162,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 		}
 	}
 
-	private void addReadersAndWritersForDataObjectWithFixedAmounts(int amountWriters, int amountReaders,
-			int dynamicWriter, DataObjectReference dataORef, List<String> defaultSpheresForDynamicWriter,
-			Task writerBeforeDecision) {
+	private void addReadersAndWritersForDataObjectWithFixedAmounts(int amountWriters,
+			int amountReaders, int dynamicWriterProb, DataObjectReference dataORef,
+			List<String> defaultSpheresForDynamicWriter, Task writerBeforeDecision) {
 		// iterate through all tasks of the process and assign readers and writers
 		// if task is a writer - add the dynamic writer sphere if necessary
 		// task can only be either reader or writer to a specific dataObject
@@ -1160,6 +1176,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		LinkedList<Task> allAvailableTasks = new LinkedList<Task>();
 		allAvailableTasks.addAll(modelInstance.getModelElementsByType(Task.class));
 		boolean writerTaskInFrontOfDecisionChosen = false;
+
 
 		do {
 			// get a random flowNode and try making it a writer
@@ -1197,7 +1214,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 					generateDIElementForWriter(dao, getShape(dataORef.getId()), getShape(task.getId()));
 					// add sphere annotation for writer if necessary
 					int randomCountSphere = ThreadLocalRandom.current().nextInt(1, 100 + 1);
-					if (randomCountSphere <= dynamicWriter) {
+					if (randomCountSphere <= dynamicWriterProb) {
 						generateDIElementForSphereAnnotation(task, dataORef, defaultSpheresForDynamicWriter);
 					}
 					if (inFrontOfDecision == true) {
@@ -1218,21 +1235,21 @@ public class ProcessModelAnnotater implements Callable<File> {
 			Task task = CommonFunctionality.getRandomItem(allAvailableTasks);
 
 			if (!taskIsBrtFollowedByXorSplit(task)) {
-				boolean toBeInserted = true;
+				boolean toBeReader = true;
 				for (DataOutputAssociation dao : task.getDataOutputAssociations()) {
 					if (dao.getTarget().getId().contentEquals(dataORef.getId())) {
-						toBeInserted = false;
+						toBeReader = false;
 					}
 				}
 				for (DataInputAssociation dia : task.getDataInputAssociations()) {
 					for (ItemAwareElement iae : dia.getSources()) {
 						if (iae.getId().contentEquals(dataORef.getId())) {
-							toBeInserted = false;
+							toBeReader = false;
 						}
 					}
 				}
 
-				if (toBeInserted) {
+				if (toBeReader) {
 					DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
 					Property p1 = modelInstance.newInstance(Property.class);
 					p1.setName("__targetRef_placeholder");
@@ -1252,255 +1269,270 @@ public class ProcessModelAnnotater implements Callable<File> {
 	}
 
 	public void addExcludeParticipantConstraintsOnModel(int probabilityForGatewayToHaveConstraint,
-			int lowerBoundAmountParticipantsToExclude,boolean decisionTakerExcludeable, boolean alwaysMaxConstrained) throws Exception {
+			int lowerBoundAmountParticipantsToExclude, boolean decisionTakerExcludeable, boolean alwaysMaxConstrained)
+			throws Exception {
 		// upperBoundAmountParticipantsToExclude is the difference between the amount of
 		// needed voters and the global Sphere
 		// e.g. global sphere = 5, 3 people needed -> 2 is the max amount of
-		// participants to exclude	
-		if(probabilityForGatewayToHaveConstraint<=0) {
+		// participants to exclude
+		if (probabilityForGatewayToHaveConstraint <= 0) {
 			return;
 		}
-		
-		if(lowerBoundAmountParticipantsToExclude < 1) {
+
+		if (lowerBoundAmountParticipantsToExclude < 1) {
 			lowerBoundAmountParticipantsToExclude = 1;
 		}
 
-		for (ExclusiveGateway gtw :modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
-			if(gtw.getOutgoing().size()==2&&gtw.getIncoming().iterator().next().getSource() instanceof BusinessRuleTask) {
-			int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
-			if (probabilityForGatewayToHaveConstraint >= randomInt) {
-				BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
-				String decisionTakerName = brtBeforeGtw.getName();
-				LinkedList<String> participantsToChooseFrom = CommonFunctionality.getGlobalSphereList(modelInstance, modelWithLanes);
-				int globalSphereSize = participantsToChooseFrom.size();
-				
-				// remove the decision taker from the list if necessary
-				if(!decisionTakerExcludeable) {
-				for (String part : participantsToChooseFrom) {
-					if (decisionTakerName.contains(part)) {
-						participantsToChooseFrom.remove(part);
-						break;
-					}
+		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+			if (gtw.getOutgoing().size() == 2
+					&& gtw.getIncoming().iterator().next().getSource() instanceof BusinessRuleTask) {
+				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
+				if (probabilityForGatewayToHaveConstraint >= randomInt) {
+					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
+					String decisionTakerName = brtBeforeGtw.getName();
+					LinkedList<String> participantsToChooseFrom = CommonFunctionality.getGlobalSphereList(modelInstance,
+							modelWithLanes);
+					int globalSphereSize = participantsToChooseFrom.size();
 
-				}
-				}
-
-				if (!participantsToChooseFrom.isEmpty()) {
-
-					for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
-						for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
-							if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-								if (tx.getTextContent().startsWith("[Voters]")) {
-									String subStr = tx.getTextContent().substring(tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
-
-									String[] data = subStr.split(",");
-									int amountVotersNeeded = Integer.parseInt(data[0]);
-									int randomAmountConstraintsForGtw = 0;
-									
-											
-									if(alwaysMaxConstrained) {
-										randomAmountConstraintsForGtw = globalSphereSize - amountVotersNeeded;									
-									} else {
-										int maxConstraint = globalSphereSize - amountVotersNeeded;	
-										
-										if(lowerBoundAmountParticipantsToExclude==maxConstraint) {
-											randomAmountConstraintsForGtw = lowerBoundAmountParticipantsToExclude;
-										} else {
-										randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
-												lowerBoundAmountParticipantsToExclude,
-												maxConstraint + 1);
-										}
-									}
-									
-																
-									Collections.shuffle(participantsToChooseFrom);
-									Iterator<String> partIter = participantsToChooseFrom.iterator();
-
-									for(int i = 0; i < randomAmountConstraintsForGtw; i++) {
-										if(partIter.hasNext()) {
-										String currPart = partIter.next();
-										
-										String excludeParticipantConstraint = "[ExcludeParticipantConstraint] {"+currPart+"}";
-										TextAnnotation constraintAnnotation = modelInstance.newInstance(TextAnnotation.class);
-									
-										constraintAnnotation.setTextFormat("text/plain");
-										Text text = modelInstance.newInstance(Text.class);
-										text.setTextContent(excludeParticipantConstraint);
-										constraintAnnotation.setText(text);
-										gtw.getParentElement().addChildElement(constraintAnnotation);
-					
-										CommonFunctionality.generateShapeForTextAnnotation(modelInstance, constraintAnnotation, brtBeforeGtw);
-										
-										Association association = modelInstance.newInstance(Association.class);
-										association.setSource(gtw);
-										association.setTarget(constraintAnnotation);
-										gtw.getParentElement().addChildElement(association);
-										
-										
-										BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
-										edge.setBpmnElement(association);
-										Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
-										wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
-										wp1.setY(gtw.getDiagramElement().getBounds().getY());
-										Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
-										wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
-										wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
-
-										edge.getWaypoints().add(wp1);
-										edge.getWaypoints().add(wp2);
-										modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
-										partIter.remove();
-										
-										}
-									}
-
-								}
+					// remove the decision taker from the list if necessary
+					if (!decisionTakerExcludeable) {
+						for (String part : participantsToChooseFrom) {
+							if (decisionTakerName.contains(part)) {
+								participantsToChooseFrom.remove(part);
+								break;
 							}
 
+						}
+					}
+
+					if (!participantsToChooseFrom.isEmpty()) {
+
+						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+							for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+								if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+									if (tx.getTextContent().startsWith("[Voters]")) {
+										String subStr = tx.getTextContent().substring(
+												tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
+
+										String[] data = subStr.split(",");
+										int amountVotersNeeded = Integer.parseInt(data[0]);
+										int randomAmountConstraintsForGtw = 0;
+
+										if (alwaysMaxConstrained) {
+											randomAmountConstraintsForGtw = globalSphereSize - amountVotersNeeded;
+										} else {
+											int maxConstraint = globalSphereSize - amountVotersNeeded;
+
+											if (lowerBoundAmountParticipantsToExclude == maxConstraint) {
+												randomAmountConstraintsForGtw = lowerBoundAmountParticipantsToExclude;
+											} else {
+												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
+														lowerBoundAmountParticipantsToExclude, maxConstraint + 1);
+											}
+										}
+
+										Collections.shuffle(participantsToChooseFrom);
+										Iterator<String> partIter = participantsToChooseFrom.iterator();
+
+										for (int i = 0; i < randomAmountConstraintsForGtw; i++) {
+											if (partIter.hasNext()) {
+												String currPart = partIter.next();
+
+												String excludeParticipantConstraint = "[ExcludeParticipantConstraint] {"
+														+ currPart + "}";
+												TextAnnotation constraintAnnotation = modelInstance
+														.newInstance(TextAnnotation.class);
+
+												constraintAnnotation.setTextFormat("text/plain");
+												Text text = modelInstance.newInstance(Text.class);
+												text.setTextContent(excludeParticipantConstraint);
+												constraintAnnotation.setText(text);
+												gtw.getParentElement().addChildElement(constraintAnnotation);
+
+												CommonFunctionality.generateShapeForTextAnnotation(modelInstance,
+														constraintAnnotation, brtBeforeGtw);
+
+												Association association = modelInstance.newInstance(Association.class);
+												association.setSource(gtw);
+												association.setTarget(constraintAnnotation);
+												gtw.getParentElement().addChildElement(association);
+
+												BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
+												edge.setBpmnElement(association);
+												Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
+												wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+												wp1.setY(gtw.getDiagramElement().getBounds().getY());
+												Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+												wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+												wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
+
+												edge.getWaypoints().add(wp1);
+												edge.getWaypoints().add(wp2);
+												modelInstance.getModelElementsByType(Plane.class).iterator().next()
+														.addChildElement(edge);
+												partIter.remove();
+
+											}
+										}
+
+									}
+								}
+
+							}
 						}
 					}
 				}
 			}
 		}
-		}
 	}
+
 	public void addMandatoryParticipantConstraintsOnModel(int probabilityForGatewayToHaveConstraint,
-			int lowerBoundAmountParticipantsToBeMandatory, boolean decisionTakerMandatory,  boolean alwaysMaxConstrained) throws Exception {
-		// upperBoundAmountParticipantsToBeMandatory is the difference between the amount of
+			int lowerBoundAmountParticipantsToBeMandatory, boolean decisionTakerMandatory, boolean alwaysMaxConstrained)
+			throws Exception {
+		// upperBoundAmountParticipantsToBeMandatory is the difference between the
+		// amount of
 		// needed voters and the global Sphere
-		// e.g. 3 people needed -> max 3 constraints for mandatory participants for the gtw
-		// if decisionTakerMandatory = true -> the participant of the brt will be mandatory
+		// e.g. 3 people needed -> max 3 constraints for mandatory participants for the
+		// gtw
+		// if decisionTakerMandatory = true -> the participant of the brt will be
+		// mandatory
 		// else the mandatory participants will be chosen randomly from global sphere
-		if(probabilityForGatewayToHaveConstraint<=0) {
+		if (probabilityForGatewayToHaveConstraint <= 0) {
 			return;
 		}
-		
-		if(lowerBoundAmountParticipantsToBeMandatory < 1) {
+
+		if (lowerBoundAmountParticipantsToBeMandatory < 1) {
 			lowerBoundAmountParticipantsToBeMandatory = 1;
 		}
 
-		for (ExclusiveGateway gtw :modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
-			if(gtw.getOutgoing().size()==2&&gtw.getIncoming().iterator().next().getSource() instanceof BusinessRuleTask) {
-			int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
-			if (probabilityForGatewayToHaveConstraint >= randomInt) {
-				BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
-				String decisionTakerName = brtBeforeGtw.getName();
-				LinkedList<String> participantsToChooseFrom = CommonFunctionality.getGlobalSphereList(modelInstance, modelWithLanes);
-				
-				if (!participantsToChooseFrom.isEmpty()) {
+		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+			if (gtw.getOutgoing().size() == 2
+					&& gtw.getIncoming().iterator().next().getSource() instanceof BusinessRuleTask) {
+				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
+				if (probabilityForGatewayToHaveConstraint >= randomInt) {
+					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
+					String decisionTakerName = brtBeforeGtw.getName();
+					LinkedList<String> participantsToChooseFrom = CommonFunctionality.getGlobalSphereList(modelInstance,
+							modelWithLanes);
 
-					for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
-						for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
-							if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-								if (tx.getTextContent().startsWith("[Voters]")) {
-									String subStr = tx.getTextContent().substring(tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
+					if (!participantsToChooseFrom.isEmpty()) {
 
-									String[] data = subStr.split(",");
-									int amountVotersNeeded = Integer.parseInt(data[0]);
-									int randomAmountConstraintsForGtw = 0;
-									
-											
-									if(alwaysMaxConstrained) {
-										randomAmountConstraintsForGtw = amountVotersNeeded;									
-									} else {
-										int maxConstraint = amountVotersNeeded;	
-										
-										if(lowerBoundAmountParticipantsToBeMandatory==maxConstraint) {
-											randomAmountConstraintsForGtw = lowerBoundAmountParticipantsToBeMandatory;
+						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+							for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+								if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+									if (tx.getTextContent().startsWith("[Voters]")) {
+										String subStr = tx.getTextContent().substring(
+												tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
+
+										String[] data = subStr.split(",");
+										int amountVotersNeeded = Integer.parseInt(data[0]);
+										int randomAmountConstraintsForGtw = 0;
+
+										if (alwaysMaxConstrained) {
+											randomAmountConstraintsForGtw = amountVotersNeeded;
 										} else {
-										randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
-												lowerBoundAmountParticipantsToBeMandatory,
-												maxConstraint + 1);
+											int maxConstraint = amountVotersNeeded;
+
+											if (lowerBoundAmountParticipantsToBeMandatory == maxConstraint) {
+												randomAmountConstraintsForGtw = lowerBoundAmountParticipantsToBeMandatory;
+											} else {
+												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
+														lowerBoundAmountParticipantsToBeMandatory, maxConstraint + 1);
+											}
 										}
-									}
-									
-									if(decisionTakerMandatory) {
-										//first mandatory participant will be the decision taker
-										String mandatoryParticipantConstraint = "[MandatoryParticipantConstraint] {"+decisionTakerName+"}";
-										TextAnnotation constraintAnnotation = modelInstance.newInstance(TextAnnotation.class);
-									
-										constraintAnnotation.setTextFormat("text/plain");
-										Text text = modelInstance.newInstance(Text.class);
-										text.setTextContent(mandatoryParticipantConstraint);
-										constraintAnnotation.setText(text);
-										gtw.getParentElement().addChildElement(constraintAnnotation);
-					
-										CommonFunctionality.generateShapeForTextAnnotation(modelInstance, constraintAnnotation, brtBeforeGtw);
-										
-										Association association = modelInstance.newInstance(Association.class);
-										association.setSource(gtw);
-										association.setTarget(constraintAnnotation);
-										gtw.getParentElement().addChildElement(association);
-										
-										
-										BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
-										edge.setBpmnElement(association);
-										Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
-										wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
-										wp1.setY(gtw.getDiagramElement().getBounds().getY());
-										Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
-										wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
-										wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
 
-										edge.getWaypoints().add(wp1);
-										edge.getWaypoints().add(wp2);
-										modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
-										participantsToChooseFrom.remove(decisionTakerName);
-										randomAmountConstraintsForGtw--;									
-									}
-																
-									Collections.shuffle(participantsToChooseFrom);
-									Iterator<String> partIter = participantsToChooseFrom.iterator();								
+										if (decisionTakerMandatory) {
+											// first mandatory participant will be the decision taker
+											String mandatoryParticipantConstraint = "[MandatoryParticipantConstraint] {"
+													+ decisionTakerName + "}";
+											TextAnnotation constraintAnnotation = modelInstance
+													.newInstance(TextAnnotation.class);
 
-									for(int i = 0; i < randomAmountConstraintsForGtw; i++) {
-										if(partIter.hasNext()) {
-										String currPart = partIter.next();
-										
-										String mandatoryParticipantConstraint = "[MandatoryParticipantConstraint] {"+currPart+"}";
-										TextAnnotation constraintAnnotation = modelInstance.newInstance(TextAnnotation.class);
-									
-										constraintAnnotation.setTextFormat("text/plain");
-										Text text = modelInstance.newInstance(Text.class);
-										text.setTextContent(mandatoryParticipantConstraint);
-										constraintAnnotation.setText(text);
-										gtw.getParentElement().addChildElement(constraintAnnotation);
-					
-										CommonFunctionality.generateShapeForTextAnnotation(modelInstance, constraintAnnotation, brtBeforeGtw);
-										
-										Association association = modelInstance.newInstance(Association.class);
-										association.setSource(gtw);
-										association.setTarget(constraintAnnotation);
-										gtw.getParentElement().addChildElement(association);
-										
-										
-										BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
-										edge.setBpmnElement(association);
-										Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
-										wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
-										wp1.setY(gtw.getDiagramElement().getBounds().getY());
-										Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
-										wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
-										wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
+											constraintAnnotation.setTextFormat("text/plain");
+											Text text = modelInstance.newInstance(Text.class);
+											text.setTextContent(mandatoryParticipantConstraint);
+											constraintAnnotation.setText(text);
+											gtw.getParentElement().addChildElement(constraintAnnotation);
 
-										edge.getWaypoints().add(wp1);
-										edge.getWaypoints().add(wp2);
-										modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(edge);
-										partIter.remove();
-										
+											CommonFunctionality.generateShapeForTextAnnotation(modelInstance,
+													constraintAnnotation, brtBeforeGtw);
+
+											Association association = modelInstance.newInstance(Association.class);
+											association.setSource(gtw);
+											association.setTarget(constraintAnnotation);
+											gtw.getParentElement().addChildElement(association);
+
+											BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
+											edge.setBpmnElement(association);
+											Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
+											wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+											wp1.setY(gtw.getDiagramElement().getBounds().getY());
+											Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+											wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+											wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
+
+											edge.getWaypoints().add(wp1);
+											edge.getWaypoints().add(wp2);
+											modelInstance.getModelElementsByType(Plane.class).iterator().next()
+													.addChildElement(edge);
+											participantsToChooseFrom.remove(decisionTakerName);
+											randomAmountConstraintsForGtw--;
 										}
-									}
 
+										Collections.shuffle(participantsToChooseFrom);
+										Iterator<String> partIter = participantsToChooseFrom.iterator();
+
+										for (int i = 0; i < randomAmountConstraintsForGtw; i++) {
+											if (partIter.hasNext()) {
+												String currPart = partIter.next();
+
+												String mandatoryParticipantConstraint = "[MandatoryParticipantConstraint] {"
+														+ currPart + "}";
+												TextAnnotation constraintAnnotation = modelInstance
+														.newInstance(TextAnnotation.class);
+
+												constraintAnnotation.setTextFormat("text/plain");
+												Text text = modelInstance.newInstance(Text.class);
+												text.setTextContent(mandatoryParticipantConstraint);
+												constraintAnnotation.setText(text);
+												gtw.getParentElement().addChildElement(constraintAnnotation);
+
+												CommonFunctionality.generateShapeForTextAnnotation(modelInstance,
+														constraintAnnotation, brtBeforeGtw);
+
+												Association association = modelInstance.newInstance(Association.class);
+												association.setSource(gtw);
+												association.setTarget(constraintAnnotation);
+												gtw.getParentElement().addChildElement(association);
+
+												BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
+												edge.setBpmnElement(association);
+												Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
+												wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+												wp1.setY(gtw.getDiagramElement().getBounds().getY());
+												Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
+												wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
+												wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
+
+												edge.getWaypoints().add(wp1);
+												edge.getWaypoints().add(wp2);
+												modelInstance.getModelElementsByType(Plane.class).iterator().next()
+														.addChildElement(edge);
+												partIter.remove();
+
+											}
+										}
+
+									}
 								}
-							}
 
+							}
 						}
 					}
 				}
 			}
 		}
-		}
 	}
-
 
 	public void addNamesForOutgoingFlowsOfXorSplits(List<String> namesForOutgoingSeqFlowsOfXorSplits) {
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
@@ -1532,8 +1564,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 		if (!Thread.currentThread().isInterrupted()) {
 			try {
-			File f = this.checkCorrectnessAndWriteChangesToFile();
-			return f;
+				File f = this.checkCorrectnessAndWriteChangesToFile();
+				return f;
 			} catch (Exception ex) {
 				throw ex;
 			}
