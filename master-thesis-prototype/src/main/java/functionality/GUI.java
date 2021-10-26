@@ -702,7 +702,8 @@ public class GUI {
 											leftPanel.add(new JLabel("No solutions found!!!"));
 										}
 									}
-									leftPanel.add(new JLabel("Amount of possible voter combinations: "+api.getAmountPossibleCombinationsOfParticipants()));
+									leftPanel.add(new JLabel("Amount of possible voter combinations: "
+											+ api.getAmountPossibleCombinationsOfParticipants()));
 
 									leftPanel.add(new JLabel("Model(s) stored in: "
 											+ props.getProperty("defaultDirectoryForStoringModels")));
