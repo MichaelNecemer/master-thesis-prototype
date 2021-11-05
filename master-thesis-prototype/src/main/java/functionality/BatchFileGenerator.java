@@ -858,69 +858,100 @@ public class BatchFileGenerator {
 		// each decision has unique dataObject sets of same size
 		// e.g. model has 4 decisions -> and each decision has 3 DataObjects -> 12
 		// unique dataObjects need to be connected
+		// -> at least 12 readers and 12 writers needed, since every data object will have to be first written and then get read by some brt
 
 		// amount voters per gtw will be between 2 and globalSphere
 
-		// Test with medium amount of writers and readers
-		int amountWritersInPercent = percentageOfWritersClasses.get(1);
-		int amountReadersInPercent = percentageOfReadersClasses.get(1);
-
+		// Test each model with small, medium and large amount of writers and readers
+		// in this case, small, medium and large will be added on top of the already existing readers/writers
+		
+		
 		// Start test with static sphere
 		// then take same models and take strong dynamic sphere
 		List<String> sphere = Arrays.asList("Static");
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreadPools);
 
 		for (int i = 0; i < processes.size(); i++) {
-			String pathToRandomProcess = processes.get(i).getAbsolutePath();
-			BpmnModelInstance processModel = Bpmn.readModelFromFile(processes.get(i));
-			int amountTasks = processModel.getModelElementsByType(Task.class).size();
-			int amountDecisions = CommonFunctionality.getAmountExclusiveGtwSplits(processModel);
-			int globalSphere = CommonFunctionality.getGlobalSphere(processModel, false);
-			int amountVotersUpperBound = ThreadLocalRandom.current().nextInt(2, globalSphere + 1);
+			for(int indexWriters = 0; indexWriters < percentageOfWritersClasses.size(); indexWriters++) {
+				for(int indexReaders = 0; indexReaders < percentageOfReadersClasses.size(); indexReaders++) {
+					String pathToRandomProcess = processes.get(i).getAbsolutePath();
+					BpmnModelInstance processModel = Bpmn.readModelFromFile(processes.get(i));			
+					int amountTasks = processModel.getModelElementsByType(Task.class).size();
+					int amountDecisions = CommonFunctionality.getAmountExclusiveGtwSplits(processModel);
+					int globalSphere = CommonFunctionality.getGlobalSphere(processModel, false);
+					int amountVotersUpperBound = ThreadLocalRandom.current().nextInt(2, globalSphere + 1);
 
-			File newModel = null;
-			boolean modelIsValid = false;
-			int sumDataObjectsToCreate = 0;
-			boolean skipModel = false;
-			while (modelIsValid == false && skipModel == false) {
-				try {
-					ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
-							pathToDestinationFolderForStoringModels, "");
-
-					sumDataObjectsToCreate = amountUniqueDataObjectsPerDecision * amountDecisions;
-					if (amountTasks > sumDataObjectsToCreate) {
-						pModel.generateDataObjects(sumDataObjectsToCreate, sphere);
-						pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(amountUniqueDataObjectsPerDecision,
-								amountUniqueDataObjectsPerDecision, 2, amountVotersUpperBound, 0, true);
-						int amountWriters = CommonFunctionality.getAmountFromPercentageWithMinimum(amountTasks,
-								amountWritersInPercent, sumDataObjectsToCreate);
-						int amountReaders = CommonFunctionality.getAmountFromPercentageWithMinimum(amountTasks,
-								amountReadersInPercent, sumDataObjectsToCreate);
-						if (amountReaders >= sumDataObjectsToCreate) {
-							amountReaders = amountReaders - sumDataObjectsToCreate;
-						}
-
-						pModel.annotateModelWithFixedAmountOfReadersAndWriters(amountWriters, amountReaders, 0, null);
-						Future<File> f = executor.submit(pModel);
+					File newModel = null;
+					boolean modelIsValid = false;
+					int sumDataObjectsToCreate = 0;
+					boolean skipModel = false;
+					while (modelIsValid == false && skipModel == false) {
 						try {
-							f.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
-							f.cancel(true);
-							modelIsValid = true;
+							int percentageReaders = percentageOfReadersClasses.get(indexReaders);
+							int percentageWriters = percentageOfWritersClasses.get(indexWriters);
+							String suffix = "";
+							//additional readers and writers suffix
+							if(indexReaders==0) {
+								suffix+="asR";
+							} else if(indexReaders==1) {
+								suffix+="amR";
+							} else if(indexReaders==2) {
+								suffix+="alR";
+							}
+							
+							if(indexWriters==0) {
+								suffix+="asW";
+							} else if(indexWriters==1) {
+								suffix+="amW";
+							} else if(indexWriters==2) {
+								suffix+="alW";
+							}
+							ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
+									pathToDestinationFolderForStoringModels, suffix);
+
+							sumDataObjectsToCreate = amountUniqueDataObjectsPerDecision * amountDecisions;
+							if (amountTasks > sumDataObjectsToCreate) {
+								pModel.generateDataObjects(sumDataObjectsToCreate, sphere);
+								pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(amountUniqueDataObjectsPerDecision,
+										amountUniqueDataObjectsPerDecision, 2, amountVotersUpperBound, 0, true);
+								int amountWritersNeededForDataObjects = sumDataObjectsToCreate;
+								int amountReadersNeededForDataObjects = sumDataObjectsToCreate;
+								
+								//additional readers and writers to be inserted								
+								int amountAdditionalWriters = CommonFunctionality.getAmountFromPercentage(amountTasks, percentageWriters);
+								int amountAdditionalReaders = CommonFunctionality.getAmountFromPercentage(amountTasks, percentageReaders);
+								
+								int amountWritersToBeInserted = amountWritersNeededForDataObjects+amountAdditionalWriters;
+								int amountReadersToBeInserted = amountReadersNeededForDataObjects+amountAdditionalReaders;
+								
+								if(amountWritersToBeInserted<=amountTasks&&amountReadersToBeInserted<=amountTasks) {
+								pModel.annotateModelWithFixedAmountOfReadersAndWriters(amountWritersToBeInserted, amountReadersToBeInserted, 0, null);
+								Future<File> f = executor.submit(pModel);
+								try {
+									f.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
+									f.cancel(true);
+									modelIsValid = true;
+
+								} catch (Exception e) {
+									f.cancel(true);
+								}
+								} else {
+									skipModel = true;
+								}
+
+							} else {
+								skipModel = true;
+							}
 
 						} catch (Exception e) {
-							f.cancel(true);
+							System.err.println(e.getMessage());
+
 						}
 
-					} else {
-						skipModel = true;
 					}
-
-				} catch (Exception e) {
-					System.err.println(e.getMessage());
-
 				}
-
 			}
+		
 		}
 		executor.shutdownNow();
 		File directory = new File(pathToDestinationFolderForStoringModels);
@@ -1226,10 +1257,10 @@ public class BatchFileGenerator {
 							"_annotated");
 					p.addNamesForOutgoingFlowsOfXorSplits(defaultNamesSeqFlowsXorSplits);
 					p.generateDataObjects(amountDataObjectsToCreate, defaultSpheres);
-					p.annotateModelWithFixedAmountOfReadersAndWriters(amountWriters, amountReaders, 0, defaultSpheres);
 					p.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision,
 							maxDataObjectsPerDecision, votersPerDecision, votersPerDecision, 0, true);
-
+					p.annotateModelWithFixedAmountOfReadersAndWriters(amountWriters, amountReaders, 0, defaultSpheres);
+					
 					Future<File> future = executor.submit(p);
 					try {
 						future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);

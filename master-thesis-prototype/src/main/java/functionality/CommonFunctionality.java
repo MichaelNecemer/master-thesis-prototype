@@ -96,8 +96,10 @@ public class CommonFunctionality {
 		if (!CommonFunctionality.checkIfOnlyOneStartEventAndEventEvent(modelInstance)) {
 			throw new Exception("Model must have exactly 1 Start and 1 End Event");
 		}
-
+		
+		
 		CommonFunctionality.isModelValid(modelInstance);
+		
 
 		if (!CommonFunctionality.isModelBlockStructured(modelInstance)) {
 			throw new Exception("Model must be block structured!");
@@ -1014,11 +1016,17 @@ public class CommonFunctionality {
 				FlowNode successor = outgoingFlow.getTarget();
 				if (element instanceof Gateway && element.getOutgoing().size() == 2) {
 					// when a split is found - go dfs till the corresponding join is found
-					FlowNode correspondingJoinGtw = CommonFunctionality.getCorrespondingGtw(modelInstance,
-							(Gateway) element);
+					FlowNode correspondingJoinGtw = null;
+					try {
+						 correspondingJoinGtw = CommonFunctionality.getCorrespondingGtw(modelInstance,
+									(Gateway) element);
+					} catch(Exception ex) {
+						
+					}
+					
 					if (correspondingJoinGtw == null) {
-						System.err.println(
-								"no corresponding join for " + element.getId() + ", " + element.getOutgoing().size());
+						throw new Exception(
+								"No corresponding join for " + element.getId()+" found! Elements must be named accordingly");
 
 					}
 
@@ -1077,6 +1085,10 @@ public class CommonFunctionality {
 
 	public static Gateway getCorrespondingGtw(BpmnModelInstance modelInstance, Gateway gtw)
 			throws NullPointerException, Exception {
+		
+		if(gtw.getName().isEmpty()||gtw.getName().equals(null)) {
+			throw new Exception("Corresponding gtws must be named accordingly!");
+		}
 
 		Gateway correspondingGtw = null;
 		if (gtw.getIncoming().size() >= 2 && gtw.getOutgoing().size() == 1) {
@@ -1140,7 +1152,11 @@ public class CommonFunctionality {
 			return false;
 		}
 		for (Gateway gtw : modelInstance.getModelElementsByType(Gateway.class)) {
+			try {
 			if (CommonFunctionality.getCorrespondingGtw(modelInstance, gtw) == null) {
+				return false;
+			}
+			} catch(Exception ex) {
 				return false;
 			}
 		}

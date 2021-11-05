@@ -44,11 +44,12 @@ public class Main1 {
 	  }*/
 	
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches1.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test3-ImpactOfDataObjects\\randomProcessModel1_annotated1.bpmn";
-		
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test3-ImpactOfDataObjects\\randomProcessModel1_annotated1.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel.bpmn";
+
 
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
-	String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop";
+	//String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop";
 		
 	
 	//ProcessGenerator 

@@ -38,10 +38,10 @@ public class ResultsToCSVWriter {
 					"deltaExecutionTime in sec (localMin - bruteForce)",
 					"deltaExecutionTime in sec (localMinWithLimit - bruteForce)",
 					"isCheapestSolutionOfLocalMinInBruteForce", "isCheapestSolutionOfLocalMinWithLimitInBruteForce",
-					"amountPaths", "amountReadersPerDataObject", "amountWritersPerDataObject",
-					"amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements",
-					"amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum", "dependentBrts",
-					"deciderOrVerifier" };
+					"amountPaths", "amountReaders", "amountWriters", "amountReadersPerDataObject",
+					"amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks",
+					"amountElements", "amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum",
+					"dependentBrts", "deciderOrVerifier" };
 			this.rows.add(header);
 
 		} catch (IOException e) {
@@ -122,6 +122,8 @@ public class ResultsToCSVWriter {
 		String globalSphereSize = "null";
 		String sphereSumOfModel = "null";
 		String deciderOrVerifier = "null";
+		String amountReaders = "null";
+		String amountWriters = "null";
 
 		if (api != null) {
 			allPathsThroughProcess = api.getAllPathsThroughProcess().size() + "";
@@ -135,6 +137,7 @@ public class ResultsToCSVWriter {
 			sphereSumOfModel = CommonFunctionality.getSphereSumOfModel(api.getModelInstance()) + "";
 			amountSolutions = api.getAmountPossibleCombinationsOfParticipants() + "";
 			deciderOrVerifier = api.getDeciderOrVerifier();
+			int readers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
 					.getReadersForDataObjects(api.getModelInstance()).entrySet()) {
 				readersPerDataObject.append(entr.getKey().getName() + ": ");
@@ -143,11 +146,13 @@ public class ResultsToCSVWriter {
 					amountReadersPerDataObject++;
 				}
 				readersPerDataObject.append(amountReadersPerDataObject + ",");
-
+				readers += amountReadersPerDataObject;
 			}
 			if (readersPerDataObject.length() != 0) {
 				readersPerDataObject.deleteCharAt(readersPerDataObject.length() - 1);
+				amountReaders = readers + "";
 			}
+			int writers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
 					.getWritersForDataObjects(api.getModelInstance()).entrySet()) {
 				writersPerDataObject.append(entr.getKey().getName() + ": ");
@@ -156,10 +161,11 @@ public class ResultsToCSVWriter {
 					amountWritersPerDataObject++;
 				}
 				writersPerDataObject.append(amountWritersPerDataObject + ",");
-
+				writers += amountWritersPerDataObject;
 			}
 			if (writersPerDataObject.length() != 0) {
 				writersPerDataObject.deleteCharAt(writersPerDataObject.length() - 1);
+				amountWriters = writers + "";
 			}
 		} else {
 			readersPerDataObject.append("null");
@@ -178,7 +184,7 @@ public class ResultsToCSVWriter {
 		String[] row = new String[] { fileName, pathToFile, exceptionNameLocalMin, exceptionNameBruteForce,
 				amountSolutions, amountSolutionsBruteForce, amountCheapestSolutionsLocalMin,
 				amountCheapestSolutionsBruteForce, costCheapestSolution, averageCostAllSolutions, localMinAlgorithmTime,
-				bruteForceAlgorithmTime, timeDifference, "null", allPathsThroughProcess,
+				bruteForceAlgorithmTime, timeDifference, "null", allPathsThroughProcess, amountReaders, amountWriters,
 				readersPerDataObject.toString(), writersPerDataObject.toString(), amountExclusiveGtwSplits,
 				amountParallelGtwSplits, amountTasks, amountElements, sumAmountVotersOfModel,
 				averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, deciderOrVerifier };
@@ -279,6 +285,8 @@ public class ResultsToCSVWriter {
 		String sphereSumOfModel = "null";
 		String amountSolutions = "null";
 		String deciderOrVerifier = "null";
+		String amountReaders = "null";
+		String amountWriters = "null";
 
 		if (bruteForceApi != null) {
 			allPathsThroughProcess = bruteForceApi.getAllPathsThroughProcess().size() + "";
@@ -297,6 +305,7 @@ public class ResultsToCSVWriter {
 			sphereSumOfModel = CommonFunctionality.getSphereSumOfModel(bruteForceApi.getModelInstance()) + "";
 			amountSolutions = bruteForceApi.getAmountPossibleCombinationsOfParticipants() + "";
 			deciderOrVerifier = bruteForceApi.getDeciderOrVerifier();
+			int readers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
 					.getReadersForDataObjects(bruteForceApi.getModelInstance()).entrySet()) {
 				readersPerDataObject.append(entr.getKey().getName() + ": ");
@@ -305,11 +314,14 @@ public class ResultsToCSVWriter {
 					amountReadersPerDataObject++;
 				}
 				readersPerDataObject.append(amountReadersPerDataObject + ",");
-
+				readers += amountReadersPerDataObject;
 			}
 			if (readersPerDataObject.length() > 0) {
 				readersPerDataObject.deleteCharAt(readersPerDataObject.length() - 1);
+				amountReaders = readers + "";
 			}
+
+			int writers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
 					.getWritersForDataObjects(bruteForceApi.getModelInstance()).entrySet()) {
 				writersPerDataObject.append(entr.getKey().getName() + ": ");
@@ -318,10 +330,11 @@ public class ResultsToCSVWriter {
 					amountWritersPerDataObject++;
 				}
 				writersPerDataObject.append(amountWritersPerDataObject + ",");
-
+				writers += amountWritersPerDataObject;
 			}
 			if (writersPerDataObject.length() > 0) {
 				writersPerDataObject.deleteCharAt(writersPerDataObject.length() - 1);
+				amountWriters = writers + "";
 			}
 
 			boolean dependentBrtsInProcess = false;
@@ -358,10 +371,11 @@ public class ResultsToCSVWriter {
 				costCheapestSolutionLocalMinWithLimit, averageCostAllSolutions, localMinAlgorithmTime,
 				localMinWithLimitAlgorithmTime, bruteForceAlgorithmTime, timeDifferenceLocalMinBruteForce,
 				timeDifferenceLocalMinWithLimitBruteForce, isCheapestSolutionInBruteForce,
-				isCheapestSolutionWithLimitInBruteForce, allPathsThroughProcess, readersPerDataObject.toString(),
-				writersPerDataObject.toString(), amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks,
-				amountElements, sumAmountVotersOfModel, averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel,
-				dependentBrts.toString(), deciderOrVerifier };
+				isCheapestSolutionWithLimitInBruteForce, allPathsThroughProcess, amountReaders, amountWriters,
+				readersPerDataObject.toString(), writersPerDataObject.toString(), amountExclusiveGtwSplits,
+				amountParallelGtwSplits, amountTasks, amountElements, sumAmountVotersOfModel,
+				averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, dependentBrts.toString(),
+				deciderOrVerifier };
 
 		this.rows.add(row);
 

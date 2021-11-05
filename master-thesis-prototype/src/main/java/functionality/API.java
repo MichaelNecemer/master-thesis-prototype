@@ -108,6 +108,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 		System.out.println("API for: " + process.getName());
 		CommonFunctionality.isCorrectModel(modelInstance);
+		
 		this.readersMap = CommonFunctionality.getReadersForDataObjects(modelInstance);
 		this.writersMap = CommonFunctionality.getWritersForDataObjects(modelInstance);
 
