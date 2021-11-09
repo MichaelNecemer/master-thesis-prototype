@@ -1284,17 +1284,18 @@ public class BatchFileGenerator {
 						future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
 
 					} catch (Exception e) {
-						System.err.println(e.getMessage());
+						System.err.println("Exception in call method of ProcessModelAnnoater"+e.getMessage());
 						future.cancel(true);
 						modelIter.remove();
 					}
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
+					System.err.println("Exception in ProcessModelAnnotater");
 					e1.printStackTrace();
 				}
 
 			}
-
+			executor.shutdownNow();
 			// map annotated models
 			LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderForModelsWithDecisionsAnnotated,
 					writer);
