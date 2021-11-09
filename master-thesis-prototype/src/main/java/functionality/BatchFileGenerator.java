@@ -726,16 +726,18 @@ public class BatchFileGenerator {
 			} catch (TimeoutException e) {
 				// TODO Auto-generated catch block
 				exceptionBruteForce = (TimeoutException) e;
-				timeOutOrHeapSpaceExceptionMap.put("bruteForce", timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
+				timeOutOrHeapSpaceExceptionMap.put("bruteForce",
+						timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
 				System.err.println("Timeout for bruteForce!");
 				futureBruteForce.cancel(true);
-			} catch(OutOfMemoryError e) {
+			} catch (OutOfMemoryError e) {
 				exceptionBruteForce = new HeapSpaceException(e.getMessage(), e.getCause());
-				timeOutOrHeapSpaceExceptionMap.put("bruteForce", timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
+				timeOutOrHeapSpaceExceptionMap.put("bruteForce",
+						timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
 				System.err.println("BruteForce ran out of memory");
 				futureBruteForce.cancel(true);
 			}
-			
+
 			finally {
 				exceptionPerAlgorithm.putIfAbsent("bruteForce", exceptionBruteForce);
 				futureBruteForce.cancel(true);
@@ -762,15 +764,17 @@ public class BatchFileGenerator {
 			} catch (TimeoutException e) {
 				// TODO Auto-generated catch block
 				exceptionLocalMin = (TimeoutException) e;
-				timeOutOrHeapSpaceExceptionMap.put("localMin", timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
+				timeOutOrHeapSpaceExceptionMap.put("localMin",
+						timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
 				System.err.println("Timeout for localMin!");
 				futureLocalMin.cancel(true);
-			} 	catch(OutOfMemoryError e) {
+			} catch (OutOfMemoryError e) {
 				exceptionLocalMin = new HeapSpaceException(e.getMessage(), e.getCause());
-				timeOutOrHeapSpaceExceptionMap.put("localMin", timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
+				timeOutOrHeapSpaceExceptionMap.put("localMin",
+						timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
 				System.err.println("LocalMin ran out of memory");
 				futureLocalMin.cancel(true);
-			}finally {
+			} finally {
 				exceptionPerAlgorithm.putIfAbsent("localMin", exceptionLocalMin);
 				futureLocalMin.cancel(true);
 			}
@@ -799,15 +803,17 @@ public class BatchFileGenerator {
 			} catch (TimeoutException e) {
 				// TODO Auto-generated catch block
 				exceptionLocalMinWithMaxSolutions = (TimeoutException) e;
-				timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions, timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
+				timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions,
+						timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
 				System.err.println("Timeout for " + localMinWithMaxSolutions + "!");
 				futureLocalMinWithMaxSolutions.cancel(true);
-			} catch(OutOfMemoryError e) {
+			} catch (OutOfMemoryError e) {
 				exceptionLocalMinWithMaxSolutions = new HeapSpaceException(e.getMessage(), e.getCause());
-				timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions, timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
-				System.err.println(localMinWithMaxSolutions+" ran out of memory");
-				futureLocalMinWithMaxSolutions.cancel(true);				
-			}	finally {
+				timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions,
+						timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
+				System.err.println(localMinWithMaxSolutions + " ran out of memory");
+				futureLocalMinWithMaxSolutions.cancel(true);
+			} finally {
 				exceptionPerAlgorithm.putIfAbsent(localMinWithMaxSolutions, exceptionLocalMinWithMaxSolutions);
 				futureLocalMinWithMaxSolutions.cancel(true);
 			}
@@ -876,24 +882,25 @@ public class BatchFileGenerator {
 		// each decision has unique dataObject sets of same size
 		// e.g. model has 4 decisions -> and each decision has 3 DataObjects -> 12
 		// unique dataObjects need to be connected
-		// -> at least 12 readers and 12 writers needed, since every data object will have to be first written and then get read by some brt
+		// -> at least 12 readers and 12 writers needed, since every data object will
+		// have to be first written and then get read by some brt
 
 		// amount voters per gtw will be between 2 and globalSphere
 
 		// Test each model with small, medium and large amount of writers and readers
-		// in this case, small, medium and large will be added on top of the already existing readers/writers
-		
-		
+		// in this case, small, medium and large will be added on top of the already
+		// existing readers/writers
+
 		// Start test with static sphere
 		// then take same models and take strong dynamic sphere
 		List<String> sphere = Arrays.asList("Static");
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreadPools);
 
 		for (int i = 0; i < processes.size(); i++) {
-			for(int indexWriters = 0; indexWriters < percentageOfWritersClasses.size(); indexWriters++) {
-				for(int indexReaders = 0; indexReaders < percentageOfReadersClasses.size(); indexReaders++) {
+			for (int indexWriters = 0; indexWriters < percentageOfWritersClasses.size(); indexWriters++) {
+				for (int indexReaders = 0; indexReaders < percentageOfReadersClasses.size(); indexReaders++) {
 					String pathToRandomProcess = processes.get(i).getAbsolutePath();
-					BpmnModelInstance processModel = Bpmn.readModelFromFile(processes.get(i));			
+					BpmnModelInstance processModel = Bpmn.readModelFromFile(processes.get(i));
 					int amountTasks = processModel.getModelElementsByType(Task.class).size();
 					int amountDecisions = CommonFunctionality.getAmountExclusiveGtwSplits(processModel);
 					int globalSphere = CommonFunctionality.getGlobalSphere(processModel, false);
@@ -908,21 +915,21 @@ public class BatchFileGenerator {
 							int percentageReaders = percentageOfReadersClasses.get(indexReaders);
 							int percentageWriters = percentageOfWritersClasses.get(indexWriters);
 							String suffix = "";
-							//additional readers and writers suffix
-							if(indexReaders==0) {
-								suffix+="asR";
-							} else if(indexReaders==1) {
-								suffix+="amR";
-							} else if(indexReaders==2) {
-								suffix+="alR";
+							// additional readers and writers suffix
+							if (indexReaders == 0) {
+								suffix += "asR";
+							} else if (indexReaders == 1) {
+								suffix += "amR";
+							} else if (indexReaders == 2) {
+								suffix += "alR";
 							}
-							
-							if(indexWriters==0) {
-								suffix+="asW";
-							} else if(indexWriters==1) {
-								suffix+="amW";
-							} else if(indexWriters==2) {
-								suffix+="alW";
+
+							if (indexWriters == 0) {
+								suffix += "asW";
+							} else if (indexWriters == 1) {
+								suffix += "amW";
+							} else if (indexWriters == 2) {
+								suffix += "alW";
 							}
 							ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
 									pathToDestinationFolderForStoringModels, suffix);
@@ -934,25 +941,31 @@ public class BatchFileGenerator {
 										amountUniqueDataObjectsPerDecision, 2, amountVotersUpperBound, 0, true);
 								int amountWritersNeededForDataObjects = sumDataObjectsToCreate;
 								int amountReadersNeededForDataObjects = sumDataObjectsToCreate;
-								
-								//additional readers and writers to be inserted								
-								int amountAdditionalWriters = CommonFunctionality.getAmountFromPercentage(amountTasks, percentageWriters);
-								int amountAdditionalReaders = CommonFunctionality.getAmountFromPercentage(amountTasks, percentageReaders);
-								
-								int amountWritersToBeInserted = amountWritersNeededForDataObjects+amountAdditionalWriters;
-								int amountReadersToBeInserted = amountReadersNeededForDataObjects+amountAdditionalReaders;
-								
-								if(amountWritersToBeInserted<=amountTasks&&amountReadersToBeInserted<=amountTasks) {
-								pModel.annotateModelWithFixedAmountOfReadersAndWriters(amountWritersToBeInserted, amountReadersToBeInserted, 0, null);
-								Future<File> f = executor.submit(pModel);
-								try {
-									f.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
-									f.cancel(true);
-									modelIsValid = true;
 
-								} catch (Exception e) {
-									f.cancel(true);
-								}
+								// additional readers and writers to be inserted
+								int amountAdditionalWriters = CommonFunctionality.getAmountFromPercentage(amountTasks,
+										percentageWriters);
+								int amountAdditionalReaders = CommonFunctionality.getAmountFromPercentage(amountTasks,
+										percentageReaders);
+
+								int amountWritersToBeInserted = amountWritersNeededForDataObjects
+										+ amountAdditionalWriters;
+								int amountReadersToBeInserted = amountReadersNeededForDataObjects
+										+ amountAdditionalReaders;
+
+								if (amountWritersToBeInserted <= amountTasks
+										&& amountReadersToBeInserted <= amountTasks) {
+									pModel.annotateModelWithFixedAmountOfReadersAndWriters(amountWritersToBeInserted,
+											amountReadersToBeInserted, 0, null);
+									Future<File> f = executor.submit(pModel);
+									try {
+										f.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
+										f.cancel(true);
+										modelIsValid = true;
+
+									} catch (Exception e) {
+										f.cancel(true);
+									}
 								} else {
 									skipModel = true;
 								}
@@ -969,7 +982,7 @@ public class BatchFileGenerator {
 					}
 				}
 			}
-		
+
 		}
 		executor.shutdownNow();
 		File directory = new File(pathToDestinationFolderForStoringModels);
@@ -1278,13 +1291,13 @@ public class BatchFileGenerator {
 					p.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision,
 							maxDataObjectsPerDecision, votersPerDecision, votersPerDecision, 0, true);
 					p.annotateModelWithFixedAmountOfReadersAndWriters(amountWriters, amountReaders, 0, defaultSpheres);
-					
+
 					Future<File> future = executor.submit(p);
 					try {
 						future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
 
 					} catch (Exception e) {
-						System.err.println("Exception in call method of ProcessModelAnnoater"+e.getMessage());
+						System.err.println("Exception in call method of ProcessModelAnnoater" + e.getMessage());
 						future.cancel(true);
 						modelIter.remove();
 					}
@@ -1304,11 +1317,13 @@ public class BatchFileGenerator {
 
 			for (API api : apiList) {
 				timeOutOrHeapSpaceExceptionMap = BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api,
-						upperBoundSolutionsForLocalMinWithBound, boundForComparisons, timeOutOrHeapSpaceExceptionMap, writer, executor);
+						upperBoundSolutionsForLocalMinWithBound, boundForComparisons, timeOutOrHeapSpaceExceptionMap,
+						writer, executor);
 			}
 
 			System.out.println("Iteration" + amountDecisionsToStart + " end - timeOutsBruteForce: "
-					+ timeOutOrHeapSpaceExceptionMap.get("bruteForce") + ", timeOutsLocalMin: " + timeOutOrHeapSpaceExceptionMap.get("localMin"));
+					+ timeOutOrHeapSpaceExceptionMap.get("bruteForce") + ", timeOutsLocalMin: "
+					+ timeOutOrHeapSpaceExceptionMap.get("localMin"));
 			amountDecisionsToStart++;
 
 		} while (timeOutOrHeapSpaceExceptionMap.get("bruteForce") < amountProcessesPerIteration
