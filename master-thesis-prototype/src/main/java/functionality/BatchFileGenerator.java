@@ -1296,7 +1296,7 @@ public class BatchFileGenerator {
 					Future<File> future = executor.submit(p);
 					try {
 						future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
-
+						System.out.println("Model annotated! ");
 					} catch (Exception e) {
 						System.err.println("Exception in call method of ProcessModelAnnoater" + e.getMessage());
 						future.cancel(true);
