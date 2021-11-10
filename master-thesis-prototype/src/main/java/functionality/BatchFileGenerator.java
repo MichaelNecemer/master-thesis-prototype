@@ -1282,6 +1282,7 @@ public class BatchFileGenerator {
 			Iterator<File> modelIter = listOfFiles.iterator();
 			while (modelIter.hasNext()) { // annotate the model
 				File model = modelIter.next();
+				System.out.println(model.getName());
 				ProcessModelAnnotater p;
 				try {
 					p = new ProcessModelAnnotater(model.getAbsolutePath(), pathToFolderForModelsWithDecisionsAnnotated,
@@ -1308,7 +1309,6 @@ public class BatchFileGenerator {
 				}
 
 			}
-			executor.shutdownNow();
 			// map annotated models
 			LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderForModelsWithDecisionsAnnotated,
 					writer);
