@@ -1285,14 +1285,19 @@ public class BatchFileGenerator {
 				System.out.println(model.getName());
 				ProcessModelAnnotater p;
 				try {
+					System.out.println("Test1");
 					p = new ProcessModelAnnotater(model.getAbsolutePath(), pathToFolderForModelsWithDecisionsAnnotated,
 							"_annotated");
+					System.out.println("Test2");
 					p.addNamesForOutgoingFlowsOfXorSplits(defaultNamesSeqFlowsXorSplits);
+					System.out.println("Test3");
 					p.generateDataObjects(amountDataObjectsToCreate, defaultSpheres);
+					System.out.println("Test4");
 					p.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision,
 							maxDataObjectsPerDecision, votersPerDecision, votersPerDecision, 0, true);
+					System.out.println("Test5");
 					p.annotateModelWithFixedAmountOfReadersAndWriters(amountWriters, amountReaders, 0, defaultSpheres);
-
+					System.out.println("Test6");
 					Future<File> future = executor.submit(p);
 					try {
 						future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
@@ -1323,7 +1328,7 @@ public class BatchFileGenerator {
 
 			System.out.println("Iteration" + amountDecisionsToStart + " end - timeOutsBruteForce: "
 					+ timeOutOrHeapSpaceExceptionMap.get("bruteForce") + ", timeOutsLocalMin: "
-					+ timeOutOrHeapSpaceExceptionMap.get("localMin"));
+					+ timeOutOrHeapSpaceExceptionMap.get("localMin")+ ", timeOutsLocalMinWithBound"+upperBoundSolutionsForLocalMinWithBound+": "+timeOutOrHeapSpaceExceptionMap.get(localMinWithBound));
 			amountDecisionsToStart++;
 
 		} while (timeOutOrHeapSpaceExceptionMap.get("bruteForce") < amountProcessesPerIteration
