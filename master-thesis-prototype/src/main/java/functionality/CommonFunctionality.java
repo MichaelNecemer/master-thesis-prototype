@@ -1694,7 +1694,6 @@ public class CommonFunctionality {
 			throws Exception {
 
 		List<LinkedList<Integer>> resultRec = new LinkedList<LinkedList<Integer>>();
-
 		if (subParts == 1) {
 			List<LinkedList<Integer>> resultEnd = new LinkedList<LinkedList<Integer>>();
 			LinkedList<Integer> unitary = new LinkedList<>();

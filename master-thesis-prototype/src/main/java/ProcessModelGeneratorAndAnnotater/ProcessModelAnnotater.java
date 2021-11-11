@@ -299,14 +299,14 @@ public class ProcessModelAnnotater implements Callable<File> {
 			if(amountReaders>sumExistingReaders) {
 				amountReaders=amountReaders-sumExistingReaders;
 			}
-
+			System.out.println(amountWriters+", "+this.dataObjects.size());
 			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality
 					.computeRepartitionNumber(amountWriters, this.dataObjects.size(), 1);
 			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
 			LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
-			List<LinkedList<Integer>> subAmountReadersLists = null;
+			System.out.println(amountReaders+", "+this.dataObjects.size());
 
-			subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders, this.dataObjects.size(),
+			List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders, this.dataObjects.size(),
 					0);
 
 			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
@@ -1180,6 +1180,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 		do {
 			// get a random flowNode and try making it a writer
+			System.out.println(i);
 			Task task = null;
 			boolean inFrontOfDecision = false;
 			if (writerTaskInFrontOfDecisionChosen == false && writerBeforeDecision != null) {
@@ -1232,6 +1233,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 			// task will be a reader if it is not a reader or writer to the dataObject
 			// already
 			// brts followed by a xor-split will always be readers to some dataObjects
+			System.out.println(j);
 			Task task = CommonFunctionality.getRandomItem(allAvailableTasks);
 
 			if (!taskIsBrtFollowedByXorSplit(task)) {

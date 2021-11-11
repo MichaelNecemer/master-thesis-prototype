@@ -30,8 +30,8 @@ import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
 public class BatchFileGenerator {
 
 	static int idCSVFile = 1;
-	// static String root = System.getProperty("user.home") + "/Desktop";
-	static String root = System.getProperty("user.home") + "/Onedrive/Desktop";
+	static String root = System.getProperty("user.home") + "/Desktop";
+	//static String root = System.getProperty("user.home") + "/Onedrive/Desktop";
 
 	static int timeOutForProcessGeneratorInMin = 1;
 	static int timeOutForProcessModelAnnotaterInMin = 1;
