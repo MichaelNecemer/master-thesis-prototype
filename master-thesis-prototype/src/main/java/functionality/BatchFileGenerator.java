@@ -31,7 +31,7 @@ public class BatchFileGenerator {
 
 	static int idCSVFile = 1;
 	static String root = System.getProperty("user.home") + "/Desktop";
-	//static String root = System.getProperty("user.home") + "/Onedrive/Desktop";
+	// static String root = System.getProperty("user.home") + "/Onedrive/Desktop";
 
 	static int timeOutForProcessGeneratorInMin = 1;
 	static int timeOutForProcessModelAnnotaterInMin = 1;
@@ -1328,7 +1328,9 @@ public class BatchFileGenerator {
 
 			System.out.println("Iteration" + amountDecisionsToStart + " end - timeOutsBruteForce: "
 					+ timeOutOrHeapSpaceExceptionMap.get("bruteForce") + ", timeOutsLocalMin: "
-					+ timeOutOrHeapSpaceExceptionMap.get("localMin")+ ", timeOutsLocalMinWithBound"+upperBoundSolutionsForLocalMinWithBound+": "+timeOutOrHeapSpaceExceptionMap.get(localMinWithBound));
+					+ timeOutOrHeapSpaceExceptionMap.get("localMin") + ", timeOutsLocalMinWithBound"
+					+ upperBoundSolutionsForLocalMinWithBound + ": "
+					+ timeOutOrHeapSpaceExceptionMap.get(localMinWithBound));
 			amountDecisionsToStart++;
 
 		} while (timeOutOrHeapSpaceExceptionMap.get("bruteForce") < amountProcessesPerIteration
