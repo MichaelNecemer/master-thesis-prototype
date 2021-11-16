@@ -30,8 +30,8 @@ import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
 public class BatchFileGenerator {
 
 	static int idCSVFile = 1;
-	static String root = System.getProperty("user.home") + "/Desktop";
-	// static String root = System.getProperty("user.home") + "/Onedrive/Desktop";
+	//static String root = System.getProperty("user.home") + "/Desktop";
+	static String root = System.getProperty("user.home") + "/Onedrive/Desktop";
 
 	static int timeOutForProcessGeneratorInMin = 1;
 	static int timeOutForProcessModelAnnotaterInMin = 1;
@@ -1283,6 +1283,8 @@ public class BatchFileGenerator {
 			while (modelIter.hasNext()) { // annotate the model
 				File model = modelIter.next();
 				System.out.println(model.getName());
+				boolean correctModel = false;
+				while(correctModel==false) {
 				ProcessModelAnnotater p;
 				try {
 					System.out.println("Test1");
@@ -1301,18 +1303,18 @@ public class BatchFileGenerator {
 					Future<File> future = executor.submit(p);
 					try {
 						future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
-						System.out.println("Model annotated! ");
+						System.out.println("Model annotated correctly!");
+						correctModel=true;
 					} catch (Exception e) {
-						System.err.println("Exception in call method of ProcessModelAnnoater" + e.getMessage());
+						System.err.println("Exception in call method of ProcessModelAnnotater" + e.getMessage());
 						future.cancel(true);
-						modelIter.remove();
 					}
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
 					System.err.println("Exception in ProcessModelAnnotater");
 					e1.printStackTrace();
 				}
-
+				}
 			}
 			// map annotated models
 			LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderForModelsWithDecisionsAnnotated,

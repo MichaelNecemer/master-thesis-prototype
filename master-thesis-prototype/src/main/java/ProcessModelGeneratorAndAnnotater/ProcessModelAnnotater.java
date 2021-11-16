@@ -291,27 +291,36 @@ public class ProcessModelAnnotater implements Callable<File> {
 			// check how many readers there are already in the model			
 			int sumExistingReaders = modelInstance.getModelElementsByType(DataInputAssociation.class).size();
 			int sumExistingWriters = modelInstance.getModelElementsByType(DataOutputAssociation.class).size();
+			System.out.println("writers: "+amountWriters);
+			System.out.println("Existing Writers: "+sumExistingWriters);
+			System.out.println("readers: "+amountReaders);
+
+			System.out.println("Existing Readers: "+sumExistingReaders);
 			
-			if(amountWriters>sumExistingWriters) {
+			if(amountWriters>=sumExistingWriters) {
 				amountWriters=amountWriters-sumExistingWriters;
 			}
 			
-			if(amountReaders>sumExistingReaders) {
+			if(amountReaders>=sumExistingReaders) {
 				amountReaders=amountReaders-sumExistingReaders;
 			}
-			System.out.println(amountWriters+", "+this.dataObjects.size());
 			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality
 					.computeRepartitionNumber(amountWriters, this.dataObjects.size(), 1);
 			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
 			LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
-			System.out.println(amountReaders+", "+this.dataObjects.size());
+			for(Integer i: subAmountWriters) {
+				System.out.println("writer: "+i);
+			}
 
 			List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders, this.dataObjects.size(),
 					0);
 
 			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
 			LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
-
+			for(Integer i: subAmountReaders) {
+				System.out.println("reader: "+i);
+			}
+			
 			HashMap<BusinessRuleTask, LinkedList<Task>> possibleWritersBeforeBrt = new HashMap<BusinessRuleTask, LinkedList<Task>>();
 			List<Task> taskList = new LinkedList<Task>();
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
@@ -390,16 +399,30 @@ public class ProcessModelAnnotater implements Callable<File> {
 				}
 			}
 
+			
 			if (!possibleWritersBeforeBrt.isEmpty()) {
-
+		
+				int index = 0; 
+				LinkedList<DataObjectReference>alreadyMapped = new LinkedList<DataObjectReference>();
 				for (Entry<BusinessRuleTask, LinkedList<Task>> entry : possibleWritersBeforeBrt.entrySet()) {
-					for (int i = 0; i < dataObjects.size(); i++) {
-						Task writerBeforeDecision = CommonFunctionality.getRandomItem(entry.getValue());
-
-						this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i),
-								subAmountReaders.get(i), dynamicWriter, dataObjects.get(i),
-								defaultSpheresForDynamicWriter, writerBeforeDecision);
+					//get the dataObjects connected to the brt
+					BusinessRuleTask currBrt = entry.getKey();
+					for(DataInputAssociation dia: currBrt.getDataInputAssociations()) {
+						for(ItemAwareElement iae: dia.getSources()) {
+							DataObjectReference daoR = CommonFunctionality.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
+							if(daoR!=null&&!(alreadyMapped.contains(daoR))) {
+								Task writerBeforeDecision = CommonFunctionality.getRandomItem(entry.getValue());
+								this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(index),
+										subAmountReaders.get(index), dynamicWriter, daoR,
+										defaultSpheresForDynamicWriter, writerBeforeDecision);
+								index++;	
+								alreadyMapped.add(daoR);
+							}
+						}
+						
 					}
+					
+					
 				}
 			} else {
 				// there is no brt inserted

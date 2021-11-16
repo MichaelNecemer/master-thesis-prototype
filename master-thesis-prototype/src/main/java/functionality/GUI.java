@@ -676,108 +676,118 @@ public class GUI {
 										// TODO Auto-generated catch block
 										exception = (TimeoutException) e;
 										future.cancel(true);
+									} catch(Exception e) {
+										exception = e;
+										future.cancel(true);
 									}
-									if (exception != null) {
-										leftPanel.add(new JLabel("Exception: " + exception.getMessage()));
-										frame.pack();
-									}
+									
+									if(exception == null) {
 
-									if (pInstances.get(selectedAlgorithm) != null) {
-										leftPanel.add(new JLabel("RESULTS: "));
-										LinkedList<ProcessInstanceWithVoters> cheapestInst = null;
-										if (selectedAlgorithm.contentEquals("bruteForce")) {
-											cheapestInst = CommonFunctionality.getCheapestProcessInstancesWithVoters(
-													pInstances.get(selectedAlgorithm));
-											leftPanel.add(new JLabel("BruteForce sum amount solution(s): "
-													+ pInstances.get(selectedAlgorithm).size()));
-										} else {
-											cheapestInst = pInstances.get(selectedAlgorithm);
+										if (pInstances.get(selectedAlgorithm) != null) {
+											leftPanel.add(new JLabel("RESULTS: "));
+											LinkedList<ProcessInstanceWithVoters> cheapestInst = null;
+											if (selectedAlgorithm.contentEquals("bruteForce")) {
+												cheapestInst = CommonFunctionality.getCheapestProcessInstancesWithVoters(
+														pInstances.get(selectedAlgorithm));
+												leftPanel.add(new JLabel("BruteForce sum amount solution(s): "
+														+ pInstances.get(selectedAlgorithm).size()));
+											} else {
+												cheapestInst = pInstances.get(selectedAlgorithm);
+											}
+											if (cheapestInst != null) {
+												leftPanel.add(new JLabel(selectedAlgorithm + ": " + cheapestInst.size()
+														+ " cheapest solutions"));
+												leftPanel.add(new JLabel("Cost of cheapest solution(s): "
+														+ cheapestInst.getFirst().getCostForModelInstance()));
+											} else {
+												leftPanel.add(new JLabel("No solutions found!!!"));
+											}
 										}
-										if (cheapestInst != null) {
-											leftPanel.add(new JLabel(selectedAlgorithm + ": " + cheapestInst.size()
-													+ " cheapest solutions"));
-											leftPanel.add(new JLabel("Cost of cheapest solution(s): "
-													+ cheapestInst.getFirst().getCostForModelInstance()));
-										} else {
-											leftPanel.add(new JLabel("No solutions found!!!"));
+										
+										if (selectedAlgorithm.contentEquals("localMin")
+												|| selectedAlgorithm.contains("localMinWithBound")) {
+											if (compareResultsAgainstBruteForce.isSelected() && api2 != null) {
+												HashMap<String, LinkedList<ProcessInstanceWithVoters>> pInstancesBruteForce = null;
+
+												Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureBruteForce = executor
+														.submit(api2);
+												Exception exceptionBruteForce = null;
+
+												try {
+													api2.setAlgorithmToPerform("bruteForce");
+													pInstancesBruteForce = futureBruteForce.get(timeout, TimeUnit.SECONDS);
+													futureBruteForce.cancel(true);
+												} catch (InterruptedException e) {
+													// TODO Auto-generated catch block
+													exceptionBruteForce = (InterruptedException) e;
+													futureBruteForce.cancel(true);
+												} catch (ExecutionException e) {
+													// TODO Auto-generated catch block
+													exceptionBruteForce = (ExecutionException) e;
+													futureBruteForce.cancel(true);
+												} catch (TimeoutException e) {
+													// TODO Auto-generated catch block
+													exceptionBruteForce = (TimeoutException) e;
+													futureBruteForce.cancel(true);
+												}
+
+												if (exceptionBruteForce != null) {
+													leftPanel.add(
+															new JLabel("Exception: " + exceptionBruteForce.getMessage()));
+												}
+
+												String comparison = CommonFunctionality
+														.compareResultsOfAlgorithmsForDifferentAPIs(
+																pInstances.get(selectedAlgorithm),
+																pInstancesBruteForce.get("bruteForce"), 1000000);
+												leftPanel.add(new JLabel("bruteForce: "
+														+ pInstancesBruteForce.get("bruteForce").size() + " solution(s)"));
+												LinkedList<ProcessInstanceWithVoters> cheapestBruteForceInstances = CommonFunctionality
+														.getCheapestProcessInstancesWithVoters(
+																pInstancesBruteForce.get("bruteForce"));
+												leftPanel.add(new JLabel(
+														"Cost of cheapest solution(s): " + cheapestBruteForceInstances
+																.getFirst().getCostForModelInstance()));
+												leftPanel.add(new JLabel("Cheapest solution(s) found:  " + comparison));
+											}
+											executor.shutdownNow();
 										}
-									}
-									leftPanel.add(new JLabel("Amount of possible voter combinations: "
-											+ api.getAmountPossibleCombinationsOfParticipants()));
 
-									leftPanel.add(new JLabel("Model(s) stored in: "
-											+ props.getProperty("defaultDirectoryForStoringModels")));
+										leftPanel.add(new JLabel("Amount of possible voter combinations: "
+												+ api.getAmountPossibleCombinationsOfParticipants()));
 
-									// check if comparison against bruteforce is selected
-									if (selectedAlgorithm.contentEquals("localMin")
-											|| selectedAlgorithm.contains("localMinWithBound")) {
-										if (compareResultsAgainstBruteForce.isSelected() && api2 != null) {
-											HashMap<String, LinkedList<ProcessInstanceWithVoters>> pInstancesBruteForce = null;
+										leftPanel.add(new JLabel("Model(s) stored in: "
+												+ props.getProperty("defaultDirectoryForStoringModels")));
 
-											Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureBruteForce = executor
-													.submit(api2);
-											Exception exceptionBruteForce = null;
+										// check if comparison against bruteforce is selected
+										
 
+										// check whether voting as construct or as annotation is selected
+										if (votingAsConstructBox.isSelected()) {
 											try {
-												api2.setAlgorithmToPerform("bruteForce");
-												pInstancesBruteForce = futureBruteForce.get(timeout, TimeUnit.SECONDS);
-												futureBruteForce.cancel(true);
-											} catch (InterruptedException e) {
+												// check whether or not voting should be inside subprocess and whether or
+												// not it should be mapped
+												CommonFunctionality.generateNewModelsWithVotersAsBpmnConstruct(api,
+														pInstances.get(selectedAlgorithm), amountModelsToCreate,
+														props.getProperty("defaultDirectoryForStoringModels"),
+														subProcessBox.isSelected(), mapModelBox.isSelected());
+											} catch (IOException e) {
 												// TODO Auto-generated catch block
-												exceptionBruteForce = (InterruptedException) e;
-												futureBruteForce.cancel(true);
-											} catch (ExecutionException e) {
-												// TODO Auto-generated catch block
-												exceptionBruteForce = (ExecutionException) e;
-												futureBruteForce.cancel(true);
-											} catch (TimeoutException e) {
-												// TODO Auto-generated catch block
-												exceptionBruteForce = (TimeoutException) e;
-												futureBruteForce.cancel(true);
+												rightPanel.add(new JLabel("IO Exception: " + e.getMessage()));
+											} catch (Exception e) {
+												leftPanel.add(new JLabel("Exception: " + e.getMessage()));
+
 											}
-
-											if (exceptionBruteForce != null) {
-												leftPanel.add(
-														new JLabel("Exception: " + exceptionBruteForce.getMessage()));
-											}
-
-											String comparison = CommonFunctionality
-													.compareResultsOfAlgorithmsForDifferentAPIs(
-															pInstances.get(selectedAlgorithm),
-															pInstancesBruteForce.get("bruteForce"), 1000000);
-											leftPanel.add(new JLabel("bruteForce: "
-													+ pInstancesBruteForce.get("bruteForce").size() + " solution(s)"));
-											LinkedList<ProcessInstanceWithVoters> cheapestBruteForceInstances = CommonFunctionality
-													.getCheapestProcessInstancesWithVoters(
-															pInstancesBruteForce.get("bruteForce"));
-											leftPanel.add(new JLabel(
-													"Cost of cheapest solution(s): " + cheapestBruteForceInstances
-															.getFirst().getCostForModelInstance()));
-											leftPanel.add(new JLabel("Cheapest solution(s) found:  " + comparison));
-										}
-										executor.shutdownNow();
-									}
-
-									// check whether voting as construct or as annotation is selected
-									if (votingAsConstructBox.isSelected()) {
-										try {
-											// check whether or not voting should be inside subprocess and whether or
-											// not it should be mapped
-											CommonFunctionality.generateNewModelsWithVotersAsBpmnConstruct(api,
+										} else if (votingAsAnnotationBox.isSelected()) {
+											CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(api,
 													pInstances.get(selectedAlgorithm), amountModelsToCreate,
-													props.getProperty("defaultDirectoryForStoringModels"),
-													subProcessBox.isSelected(), mapModelBox.isSelected());
-										} catch (IOException e) {
-											// TODO Auto-generated catch block
-											rightPanel.add(new JLabel("IO Exception: " + e.getMessage()));
-										} catch (Exception e) {
-											leftPanel.add(new JLabel("Exception: " + e.getMessage()));
-
+													props.getProperty("defaultDirectoryForStoringModels"));
 										}
-									} else if (votingAsAnnotationBox.isSelected()) {
-										CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(api,
-												pInstances.get(selectedAlgorithm), amountModelsToCreate,
-												props.getProperty("defaultDirectoryForStoringModels"));
+
+									}
+									else  {
+										leftPanel.add(new JLabel("Exception: " + exception.getClass().getName()));
+										frame.pack();
 									}
 
 									frame.pack();

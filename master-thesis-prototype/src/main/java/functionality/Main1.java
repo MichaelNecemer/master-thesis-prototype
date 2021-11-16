@@ -29,7 +29,9 @@ public class Main1 {
 	static API a2 = null;
 	static BPMNExclusiveGateway bpmnEx = null;
 	static int sumVotes = 0;
-	
+	static LinkedList<String>defaultNamesSeqFlowsXorSplits = new LinkedList<String>( Arrays.asList("yes","no"));
+	static LinkedList<String> defaultSpheres = new LinkedList<String>(
+			Arrays.asList("Global", "Static", "Weak-Dynamic", "Strong-Dynamic"));
 	public static void main(String[] args) {
 	
 	/*String pathToFile = "";
@@ -45,8 +47,8 @@ public class Main1 {
 	
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test3-ImpactOfDataObjects\\randomProcessModel1_annotated1.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel.bpmn";
-
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test1_1-BoundaryTestDecisions\\BoundaryTest_decision-7\\randomProcessModel77.bpmn";
 
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	//String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop";
@@ -61,28 +63,37 @@ public class Main1 {
 	} catch (Exception e1) {
 		System.err.println(e1.getMessage());
 	}
+	File f = null;
 	Exception ex = null;
-	do {
+	//do {
 	try {
-		/*
+		
 		ProcessModelAnnotater p = new ProcessModelAnnotater(pathToFile, "", "");
-		p.connectDataObjectsToBrtsAndTuplesForXorSplits(1, 1, 1, 4, 0, false);
-		p.addExcludeParticipantConstraintsOnModel(100, 1, false, false);
-		File f = p.call();
-		*/
+		p.addNamesForOutgoingFlowsOfXorSplits(defaultNamesSeqFlowsXorSplits);
+		System.out.println("Test3");
+		p.generateDataObjects(7, defaultSpheres);
+		System.out.println("Test4");
+		p.connectDataObjectsToBrtsAndTuplesForXorSplits(1,
+				1, 3, 3, 0, true);
+		System.out.println("Test5");
+		p.annotateModelWithFixedAmountOfReadersAndWriters(7, 7, 0, defaultSpheres);
+		System.out.println("Test6");
+		f = p.call();
+		System.out.println("File annotated at: "+f.getAbsolutePath());
 		
 	} catch (Exception e1) {
 		// TODO Auto-generated catch block
 		ex = e1;
-		System.err.println(e1.getMessage());
+		System.err.println("Exception in Annotater: "+e1.getMessage());
 	}
-	} while(ex!=null);
+//	} while(ex!=null);
 	
 	
 	//API
 	try {	
 		
-		a2 = new API(pathToFile, costForUpgradingSpheres);
+		String pathToAnnotatedFile = f.getAbsolutePath();
+		//a2 = new API(pathToAnnotatedFile, costForUpgradingSpheres);
 		
 	
 		
@@ -90,7 +101,7 @@ public class Main1 {
 		
 	} catch (Exception e2) {
 		// TODO Auto-generated catch block
-		System.err.println(e2.getMessage());
+		System.err.println("Exception in API: "+e2.getMessage());
 
 	}
 
