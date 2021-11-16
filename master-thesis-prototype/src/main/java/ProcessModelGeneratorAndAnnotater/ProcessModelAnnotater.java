@@ -288,39 +288,30 @@ public class ProcessModelAnnotater implements Callable<File> {
 						"Method: connectDataObjectsToBrtsAndTuplesForXorSplits() needs to be called before annotating the model with readers and writers!");
 			}
 
-			// check how many readers there are already in the model			
+			// check how many readers there are already in the model
 			int sumExistingReaders = modelInstance.getModelElementsByType(DataInputAssociation.class).size();
 			int sumExistingWriters = modelInstance.getModelElementsByType(DataOutputAssociation.class).size();
-			System.out.println("writers: "+amountWriters);
-			System.out.println("Existing Writers: "+sumExistingWriters);
-			System.out.println("readers: "+amountReaders);
 
-			System.out.println("Existing Readers: "+sumExistingReaders);
-			
-			if(amountWriters>=sumExistingWriters) {
-				amountWriters=amountWriters-sumExistingWriters;
+			if (amountWriters >= sumExistingWriters) {
+				amountWriters = amountWriters - sumExistingWriters;
 			}
-			
-			if(amountReaders>=sumExistingReaders) {
-				amountReaders=amountReaders-sumExistingReaders;
+
+			if (amountReaders >= sumExistingReaders) {
+				amountReaders = amountReaders - sumExistingReaders;
 			}
+			System.out.println("Writers to be inserted: " + amountWriters);
+			System.out.println("Readers to be inserted: " + amountReaders);
 			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality
 					.computeRepartitionNumber(amountWriters, this.dataObjects.size(), 1);
 			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
 			LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
-			for(Integer i: subAmountWriters) {
-				System.out.println("writer: "+i);
-			}
-
-			List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders, this.dataObjects.size(),
-					0);
+			
+			List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality
+					.computeRepartitionNumber(amountReaders, this.dataObjects.size(), 0);
 
 			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
 			LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
-			for(Integer i: subAmountReaders) {
-				System.out.println("reader: "+i);
-			}
-			
+		
 			HashMap<BusinessRuleTask, LinkedList<Task>> possibleWritersBeforeBrt = new HashMap<BusinessRuleTask, LinkedList<Task>>();
 			List<Task> taskList = new LinkedList<Task>();
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
@@ -399,30 +390,29 @@ public class ProcessModelAnnotater implements Callable<File> {
 				}
 			}
 
-			
 			if (!possibleWritersBeforeBrt.isEmpty()) {
-		
-				int index = 0; 
-				LinkedList<DataObjectReference>alreadyMapped = new LinkedList<DataObjectReference>();
+
+				int index = 0;
+				LinkedList<DataObjectReference> alreadyMapped = new LinkedList<DataObjectReference>();
 				for (Entry<BusinessRuleTask, LinkedList<Task>> entry : possibleWritersBeforeBrt.entrySet()) {
-					//get the dataObjects connected to the brt
+					// get the dataObjects connected to the brt
 					BusinessRuleTask currBrt = entry.getKey();
-					for(DataInputAssociation dia: currBrt.getDataInputAssociations()) {
-						for(ItemAwareElement iae: dia.getSources()) {
-							DataObjectReference daoR = CommonFunctionality.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
-							if(daoR!=null&&!(alreadyMapped.contains(daoR))) {
+					for (DataInputAssociation dia : currBrt.getDataInputAssociations()) {
+						for (ItemAwareElement iae : dia.getSources()) {
+							DataObjectReference daoR = CommonFunctionality
+									.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
+							if (daoR != null && !(alreadyMapped.contains(daoR))) {
 								Task writerBeforeDecision = CommonFunctionality.getRandomItem(entry.getValue());
 								this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(index),
 										subAmountReaders.get(index), dynamicWriter, daoR,
 										defaultSpheresForDynamicWriter, writerBeforeDecision);
-								index++;	
+								index++;
 								alreadyMapped.add(daoR);
 							}
 						}
-						
+
 					}
-					
-					
+
 				}
 			} else {
 				// there is no brt inserted
@@ -1185,9 +1175,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 		}
 	}
 
-	private void addReadersAndWritersForDataObjectWithFixedAmounts(int amountWriters,
-			int amountReaders, int dynamicWriterProb, DataObjectReference dataORef,
-			List<String> defaultSpheresForDynamicWriter, Task writerBeforeDecision) {
+	private void addReadersAndWritersForDataObjectWithFixedAmounts(int amountWriters, int amountReaders,
+			int dynamicWriterProb, DataObjectReference dataORef, List<String> defaultSpheresForDynamicWriter,
+			Task writerBeforeDecision) {
 		// iterate through all tasks of the process and assign readers and writers
 		// if task is a writer - add the dynamic writer sphere if necessary
 		// task can only be either reader or writer to a specific dataObject
@@ -1199,7 +1189,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 		LinkedList<Task> allAvailableTasks = new LinkedList<Task>();
 		allAvailableTasks.addAll(modelInstance.getModelElementsByType(Task.class));
 		boolean writerTaskInFrontOfDecisionChosen = false;
-
 
 		do {
 			// get a random flowNode and try making it a writer
@@ -1256,7 +1245,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 			// task will be a reader if it is not a reader or writer to the dataObject
 			// already
 			// brts followed by a xor-split will always be readers to some dataObjects
-			System.out.println(j);
 			Task task = CommonFunctionality.getRandomItem(allAvailableTasks);
 
 			if (!taskIsBrtFollowedByXorSplit(task)) {
