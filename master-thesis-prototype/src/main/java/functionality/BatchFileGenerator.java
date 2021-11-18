@@ -1284,10 +1284,12 @@ public class BatchFileGenerator {
 				File model = modelIter.next();
 				System.out.println(model.getName());
 				boolean correctModel = false;
-				while(correctModel==false) {
+				int tries = 0;
+				while(correctModel==false&&tries<10) {
+				File modelCopy = (File) CommonFunctionality.deepCopy(model);	
 				ProcessModelAnnotater p;
 				try {
-					p = new ProcessModelAnnotater(model.getAbsolutePath(), pathToFolderForModelsWithDecisionsAnnotated,
+					p = new ProcessModelAnnotater(modelCopy.getAbsolutePath(), pathToFolderForModelsWithDecisionsAnnotated,
 							"_annotated");
 					p.addNamesForOutgoingFlowsOfXorSplits(defaultNamesSeqFlowsXorSplits);
 					p.generateDataObjects(amountDataObjectsToCreate, defaultSpheres);
@@ -1300,7 +1302,8 @@ public class BatchFileGenerator {
 						System.out.println("Model annotated correctly!");
 						correctModel=true;
 					} catch (Exception e) {
-						System.err.println("Exception in call method of ProcessModelAnnotater" + e.getMessage());
+						System.err.println("Exception in call method of ProcessModelAnnotater: ");
+						e.printStackTrace();
 						future.cancel(true);
 					}
 				} catch (Exception e1) {
@@ -1308,6 +1311,7 @@ public class BatchFileGenerator {
 					System.err.println("Exception in ProcessModelAnnotater");
 					e1.printStackTrace();
 				}
+				tries++;
 				}
 			}
 			// map annotated models

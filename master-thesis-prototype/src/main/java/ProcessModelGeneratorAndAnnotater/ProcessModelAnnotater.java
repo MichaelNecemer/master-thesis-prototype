@@ -1192,7 +1192,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 		do {
 			// get a random flowNode and try making it a writer
-			System.out.println(i);
 			Task task = null;
 			boolean inFrontOfDecision = false;
 			if (writerTaskInFrontOfDecisionChosen == false && writerBeforeDecision != null) {
