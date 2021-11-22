@@ -77,6 +77,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 	private String pathWhereToCreateAnnotatedFile;
 	private String fileNameSuffix;
 	private boolean dataObjectsConnectedToBrts;
+	private String pathToFileAfterWritingChanges;
 
 	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix)
 			throws Exception {
@@ -635,6 +636,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 				annotatedFileNameBuilder.toString());
 
 		System.out.println("File path: " + file.getAbsolutePath());
+		this.pathToFileAfterWritingChanges = file.getAbsolutePath();
 		Bpmn.writeModelToFile(file, modelInstance);
 
 		DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
@@ -1568,6 +1570,16 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	public BpmnModelInstance getModelInstance() {
 		return this.modelInstance;
+	}
+	
+	
+
+	public String getPathToFileAfterWritingChanges() {
+		return pathToFileAfterWritingChanges;
+	}
+
+	public void setPathToFileAfterWritingChanges(String pathToFileAfterWritingChanges) {
+		this.pathToFileAfterWritingChanges = pathToFileAfterWritingChanges;
 	}
 
 	@Override

@@ -130,7 +130,7 @@ public class BatchFileGenerator {
 				.fileWithDirectoryAssurance(pathToRootFolder, "BoundaryTest2").getAbsolutePath();
 
 		// choose a model
-		File directoryOfFiles = new File(pathToFolderForModelsForTest1_1 + "\\BoundaryTest_decision-3\\annotated\\");
+		File directoryOfFiles = new File(pathToFolderForModelsForTest1_1 +File.separatorChar+"BoundaryTest_decision-3"+File.separatorChar+"annotated");
 		List<File> listOfFiles = Arrays.asList(directoryOfFiles.listFiles());
 		File model = CommonFunctionality.getRandomItem(listOfFiles);
 		int newModelsPerIteration = 5;
@@ -251,11 +251,11 @@ public class BatchFileGenerator {
 		// constraints
 		boolean decisionTakerExcludeable = false;
 		String pathToSmallProcessesWithAnnotation = pathToSmallProcessesForTest2WithAnnotation
-				+ "\\ModelsForEvaluation";
+				+ File.separatorChar+"ModelsForEvaluation";
 		LinkedList<File> smallProcessesFromTradeOffTest = BatchFileGenerator
 				.getAllModelsFromFolder(pathToSmallProcessesWithAnnotation);
 		String pathToMediumProcessesWithAnnotation = pathToMediumProcessesForTest2WithAnnotation
-				+ "\\ModelsForEvaluation";
+				+File.separatorChar+ "ModelsForEvaluation";
 		LinkedList<File> mediumProcessesFromTradeOffTest = BatchFileGenerator
 				.getAllModelsFromFolder(pathToMediumProcessesWithAnnotation);
 
@@ -295,7 +295,7 @@ public class BatchFileGenerator {
 		// Search for the best set of verifiers
 		// take all models from trade off test
 		String pathToLargeProcessesWithAnnotation = pathToLargeProcessesForTest2WithAnnotation
-				+ "\\ModelsForEvaluation";
+				+ File.separatorChar+"ModelsForEvaluation";
 		LinkedList<File> allProcessesFromTradeOffTest = new LinkedList<File>();
 		allProcessesFromTradeOffTest
 				.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToSmallProcessesWithAnnotation));
@@ -1150,6 +1150,7 @@ public class BatchFileGenerator {
 							// TODO Auto-generated catch block
 							future.cancel(true);
 							e.printStackTrace();
+							
 						}
 
 					} catch (Exception e) {
@@ -1246,6 +1247,7 @@ public class BatchFileGenerator {
 		String localMinWithBound = "localMinWithBound" + upperBoundSolutionsForLocalMinWithBound;
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 		do {
+			timeOutOrHeapSpaceExceptionMap.clear();
 			timeOutOrHeapSpaceExceptionMap.put("bruteForce", 0);
 			timeOutOrHeapSpaceExceptionMap.put("localMin", 0);
 			timeOutOrHeapSpaceExceptionMap.put(localMinWithBound, 0);
@@ -1305,6 +1307,11 @@ public class BatchFileGenerator {
 						System.err.println("Exception in call method of ProcessModelAnnotater: ");
 						e.printStackTrace();
 						future.cancel(true);
+						//delete already generated file
+						if(!p.getPathToFileAfterWritingChanges().isEmpty()) {
+						File alreadyGenerated = new File(p.getPathToFileAfterWritingChanges());
+						alreadyGenerated.delete();
+						}
 					}
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
