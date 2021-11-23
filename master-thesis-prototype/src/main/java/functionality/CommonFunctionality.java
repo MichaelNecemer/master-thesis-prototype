@@ -109,10 +109,7 @@ public class CommonFunctionality {
 
 	}
 
-	public void writeChangesToFile() {
-
-	}
-
+	
 	public static boolean checkIfOnlyOneStartEventAndEventEvent(BpmnModelInstance modelInstance) {
 		if (modelInstance.getModelElementsByType(StartEvent.class).size() == 1
 				&& modelInstance.getModelElementsByType(EndEvent.class).size() == 1) {

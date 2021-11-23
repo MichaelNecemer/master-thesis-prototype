@@ -1309,8 +1309,8 @@ public class BatchFileGenerator {
 						e.printStackTrace();
 						future.cancel(true);
 						//delete already generated file
-						File alreadyGenerated = new File(p.getFileNameForNewFile());
-						if(alreadyGenerated!=null) {
+						File alreadyGenerated = new File(p.getDirectoryForNewFile());
+						if(alreadyGenerated!=null&&alreadyGenerated.isFile()) {
 						System.out.println(alreadyGenerated.getAbsolutePath()+" will be deleted!");
 						alreadyGenerated.delete();
 						}

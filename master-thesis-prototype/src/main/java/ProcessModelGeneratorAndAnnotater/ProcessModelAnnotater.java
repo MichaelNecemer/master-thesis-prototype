@@ -78,6 +78,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 	private String fileNameSuffix;
 	private boolean dataObjectsConnectedToBrts;
 	private String fileNameForNewFile;
+	private String directoryForNewFile;
 
 	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix)
 			throws Exception {
@@ -94,6 +95,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		this.differentParticipants = new LinkedList<String>();
 		this.dataObjectsConnectedToBrts = false;
 		this.fileNameForNewFile=this.generateFileNameForNewFile(process, pathWhereToCreateAnnotatedFile, fileNameSuffix);
+		this.directoryForNewFile=pathWhereToCreateAnnotatedFile+File.separatorChar + fileNameForNewFile;
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 	}
@@ -119,6 +121,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		this.differentParticipants = new LinkedList<String>();
 		this.dataObjectsConnectedToBrts = false;
 		this.fileNameForNewFile=this.generateFileNameForNewFile(process, pathWhereToCreateAnnotatedFile, fileNameSuffix);
+		this.directoryForNewFile=pathWhereToCreateAnnotatedFile+File.separatorChar + fileNameForNewFile;
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 		this.addNamesForOutgoingFlowsOfXorSplits(namesForOutgoingSeqFlowsOfXorSplits);
@@ -150,6 +153,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		this.differentParticipants = new LinkedList<String>();
 		this.dataObjectsConnectedToBrts = false;
 		this.fileNameForNewFile=this.generateFileNameForNewFile(process, pathWhereToCreateAnnotatedFile, fileNameSuffix);
+		this.directoryForNewFile=pathWhereToCreateAnnotatedFile+File.separatorChar + fileNameForNewFile;
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 		this.generateDataObjects(amountDataObjectsToCreate, defaultSpheres);
@@ -217,7 +221,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 	public File checkCorrectnessAndWriteChangesToFile() throws Exception {
 		File newFile = null;
 		CommonFunctionality.isCorrectModel(this.modelInstance);
-		newFile = this.writeChangesToFile(this.process, this.pathWhereToCreateAnnotatedFile, this.fileNameSuffix);
+		newFile = this.writeChangesToFile();
 		if (newFile == null) {
 			throw new Exception("Model not valid - try another readers/writers assertion!");
 		}
@@ -227,7 +231,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	public File writeChangesToFileWithoutCorrectnessCheck()
 			throws IOException, ParserConfigurationException, SAXException {
-		return this.writeChangesToFile(this.process, this.pathWhereToCreateAnnotatedFile, this.fileNameSuffix);
+		return this.writeChangesToFile();
 	}
 
 	public void generateDataObjects(int amountDataObjectsToCreate, List<String> defaultSpheres) {
@@ -632,13 +636,13 @@ public class ProcessModelAnnotater implements Callable<File> {
 		return annotatedFileNameBuilder.toString();
 	}
 
-	private File writeChangesToFile(File process, String directoryToStoreAnnotatedModel, String suffixFileName)
+	private File writeChangesToFile()
 			throws IOException, ParserConfigurationException, SAXException {
 		// validate and write model to file
 		Bpmn.validateModel(this.modelInstance);
 		String fileName = this.fileNameForNewFile;
 		
-		File file = CommonFunctionality.createFileWithinDirectory(directoryToStoreAnnotatedModel,
+		File file = CommonFunctionality.createFileWithinDirectory(this.pathWhereToCreateAnnotatedFile,
 				fileName);
 
 		System.out.println("File path: " + file.getAbsolutePath());
@@ -1579,6 +1583,10 @@ public class ProcessModelAnnotater implements Callable<File> {
 	
 	public String getFileNameForNewFile() {
 		return this.fileNameForNewFile;
+	}
+	
+	public String getDirectoryForNewFile() {
+		return this.directoryForNewFile;
 	}
 	
 	@Override
