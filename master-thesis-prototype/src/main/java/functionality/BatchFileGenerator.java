@@ -1304,12 +1304,14 @@ public class BatchFileGenerator {
 						System.out.println("Model annotated correctly!");
 						correctModel=true;
 					} catch (Exception e) {
+						correctModel=false;
 						System.err.println("Exception in call method of ProcessModelAnnotater: ");
 						e.printStackTrace();
 						future.cancel(true);
 						//delete already generated file
-						if(!p.getPathToFileAfterWritingChanges().isEmpty()) {
-						File alreadyGenerated = new File(p.getPathToFileAfterWritingChanges());
+						File alreadyGenerated = new File(p.getFileNameForNewFile());
+						if(alreadyGenerated!=null) {
+						System.out.println(alreadyGenerated.getAbsolutePath()+" will be deleted!");
 						alreadyGenerated.delete();
 						}
 					}

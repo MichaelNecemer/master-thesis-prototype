@@ -77,7 +77,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 	private String pathWhereToCreateAnnotatedFile;
 	private String fileNameSuffix;
 	private boolean dataObjectsConnectedToBrts;
-	private String pathToFileAfterWritingChanges;
+	private String fileNameForNewFile;
 
 	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix)
 			throws Exception {
@@ -93,7 +93,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		this.dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
 		this.differentParticipants = new LinkedList<String>();
 		this.dataObjectsConnectedToBrts = false;
-
+		this.fileNameForNewFile=this.generateFileNameForNewFile(process, pathWhereToCreateAnnotatedFile, fileNameSuffix);
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 	}
@@ -118,7 +118,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		this.dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
 		this.differentParticipants = new LinkedList<String>();
 		this.dataObjectsConnectedToBrts = false;
-
+		this.fileNameForNewFile=this.generateFileNameForNewFile(process, pathWhereToCreateAnnotatedFile, fileNameSuffix);
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 		this.addNamesForOutgoingFlowsOfXorSplits(namesForOutgoingSeqFlowsOfXorSplits);
@@ -149,7 +149,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		this.dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
 		this.differentParticipants = new LinkedList<String>();
 		this.dataObjectsConnectedToBrts = false;
-
+		this.fileNameForNewFile=this.generateFileNameForNewFile(process, pathWhereToCreateAnnotatedFile, fileNameSuffix);
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 		this.generateDataObjects(amountDataObjectsToCreate, defaultSpheres);
@@ -592,11 +592,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 		modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(dataOShape);
 
 	}
-
-	private File writeChangesToFile(File process, String directoryToStoreAnnotatedModel, String suffixFileName)
-			throws IOException, ParserConfigurationException, SAXException {
-		// validate and write model to file
-		Bpmn.validateModel(this.modelInstance);
+	
+	private String generateFileNameForNewFile(File process, String directoryToStoreAnnotatedModel, String suffixFileName) {
 		String fileName = process.getName().substring(0, process.getName().indexOf(".bpmn"));
 		int fileNumber = 0;
 
@@ -632,11 +629,19 @@ public class ProcessModelAnnotater implements Callable<File> {
 			annotatedFileNameBuilder.append(suffixFileName);
 		}
 		annotatedFileNameBuilder.append(".bpmn");
+		return annotatedFileNameBuilder.toString();
+	}
+
+	private File writeChangesToFile(File process, String directoryToStoreAnnotatedModel, String suffixFileName)
+			throws IOException, ParserConfigurationException, SAXException {
+		// validate and write model to file
+		Bpmn.validateModel(this.modelInstance);
+		String fileName = this.fileNameForNewFile;
+		
 		File file = CommonFunctionality.createFileWithinDirectory(directoryToStoreAnnotatedModel,
-				annotatedFileNameBuilder.toString());
+				fileName);
 
 		System.out.println("File path: " + file.getAbsolutePath());
-		this.pathToFileAfterWritingChanges = file.getAbsolutePath();
 		Bpmn.writeModelToFile(file, modelInstance);
 
 		DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
@@ -1572,16 +1577,10 @@ public class ProcessModelAnnotater implements Callable<File> {
 		return this.modelInstance;
 	}
 	
+	public String getFileNameForNewFile() {
+		return this.fileNameForNewFile;
+	}
 	
-
-	public String getPathToFileAfterWritingChanges() {
-		return pathToFileAfterWritingChanges;
-	}
-
-	public void setPathToFileAfterWritingChanges(String pathToFileAfterWritingChanges) {
-		this.pathToFileAfterWritingChanges = pathToFileAfterWritingChanges;
-	}
-
 	@Override
 	public File call() throws Exception {
 		// TODO Auto-generated method stub
