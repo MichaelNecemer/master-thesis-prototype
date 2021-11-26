@@ -4,10 +4,12 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -79,6 +81,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 	private boolean dataObjectsConnectedToBrts;
 	private String fileNameForNewFile;
 	private String directoryForNewFile;
+	private LinkedHashMap<String, Object[]> methodsToRunWithinCall;
 
 	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix)
 			throws Exception {
@@ -94,79 +97,18 @@ public class ProcessModelAnnotater implements Callable<File> {
 		this.dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
 		this.differentParticipants = new LinkedList<String>();
 		this.dataObjectsConnectedToBrts = false;
-		this.fileNameForNewFile=this.generateFileNameForNewFile(process, pathWhereToCreateAnnotatedFile, fileNameSuffix);
-		this.directoryForNewFile=pathWhereToCreateAnnotatedFile+File.separatorChar + fileNameForNewFile;
+		this.fileNameForNewFile = this.generateFileNameForNewFile(process, pathWhereToCreateAnnotatedFile,
+				fileNameSuffix);
+		this.directoryForNewFile = pathWhereToCreateAnnotatedFile + File.separatorChar + fileNameForNewFile;
+		this.methodsToRunWithinCall = new LinkedHashMap<String, Object[]>();
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 	}
 
-	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix,
-			List<String> defaultSpheres, int dynamicWriter, int amountWritersOfProcess, int amountReadersOfProcess,
-			int probPublicDecision, int amountParticipantsPerDecision, int maxDataObjectsPerDecision,
-			List<String> namesForOutgoingSeqFlowsOfXorSplits) throws Exception {
-		this.process = new File(pathToFile);
-		this.modelInstance = Bpmn.readModelFromFile(process);
-
-		if (amountWritersOfProcess == 0 || amountReadersOfProcess == 0) {
-			throw new Exception("0 writers and 0 readers specified!");
-		}
-
-		this.pathToFile = pathToFile;
-		this.pathWhereToCreateAnnotatedFile = pathWhereToCreateAnnotatedFile;
-		this.fileNameSuffix = fileNameSuffix;
-		this.idForTask = 1;
-		this.idForBrt = 1;
-		this.dataObjects = new LinkedList<DataObjectReference>();
-		this.dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
-		this.differentParticipants = new LinkedList<String>();
-		this.dataObjectsConnectedToBrts = false;
-		this.fileNameForNewFile=this.generateFileNameForNewFile(process, pathWhereToCreateAnnotatedFile, fileNameSuffix);
-		this.directoryForNewFile=pathWhereToCreateAnnotatedFile+File.separatorChar + fileNameForNewFile;
-		this.setDifferentParticipants();
-		this.addFlowNodesIfNecessary();
-		this.addNamesForOutgoingFlowsOfXorSplits(namesForOutgoingSeqFlowsOfXorSplits);
-		this.annotateModelWithFixedAmountOfReadersAndWriters(amountWritersOfProcess, amountReadersOfProcess,
-				dynamicWriter, defaultSpheres);
-
-	}
-
-	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix,
-			List<String> defaultSpheres, int dynamicWriter, int amountWritersOfProcess, int amountReadersOfProcess,
-			int probPublicDecision, int amountDataObjectsToCreate, int minDataObjectsPerDecision,
-			int maxDataObjectsPerDecision, int amountParticipantsPerDecisionLowerBound,
-			int amountParticipantsPerDecisionUpperBound, List<String> namesForOutgoingSeqFlowsOfXorSplits,
-			boolean allDataObjectsUniquePerGtw) throws Exception {
-		this.process = new File(pathToFile);
-		modelInstance = Bpmn.readModelFromFile(process);
-
-		if (amountWritersOfProcess == 0 || amountReadersOfProcess == 0) {
-			throw new Exception("0 writers and 0 readers specified!");
-		}
-
-		this.pathToFile = pathToFile;
-		this.pathWhereToCreateAnnotatedFile = pathWhereToCreateAnnotatedFile;
-		this.fileNameSuffix = fileNameSuffix;
-		this.idForTask = 1;
-		this.idForBrt = 1;
-		this.dataObjects = new LinkedList<DataObjectReference>();
-		this.dataObjects.addAll(this.modelInstance.getModelElementsByType(DataObjectReference.class));
-		this.differentParticipants = new LinkedList<String>();
-		this.dataObjectsConnectedToBrts = false;
-		this.fileNameForNewFile=this.generateFileNameForNewFile(process, pathWhereToCreateAnnotatedFile, fileNameSuffix);
-		this.directoryForNewFile=pathWhereToCreateAnnotatedFile+File.separatorChar + fileNameForNewFile;
-		this.setDifferentParticipants();
-		this.addFlowNodesIfNecessary();
-		this.generateDataObjects(amountDataObjectsToCreate, defaultSpheres);
-
-		this.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision, maxDataObjectsPerDecision,
-				amountParticipantsPerDecisionLowerBound, amountParticipantsPerDecisionUpperBound, probPublicDecision,
-				allDataObjectsUniquePerGtw);
-
-		this.addNamesForOutgoingFlowsOfXorSplits(namesForOutgoingSeqFlowsOfXorSplits);
-
-		this.annotateModelWithFixedAmountOfReadersAndWriters(amountWritersOfProcess, amountReadersOfProcess,
-				dynamicWriter, defaultSpheres);
-
+	public void setMethodsToRunWithinCall(LinkedHashMap<String, Object[]> methodsToRunWithinCall) {
+		// key -> method to call
+		// value -> arguments for that methods
+		this.methodsToRunWithinCall = methodsToRunWithinCall;
 	}
 
 	public void connectDataObjectsToBrtsAndTuplesForXorSplits(int minDataObjectsPerDecision,
@@ -234,7 +176,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		return this.writeChangesToFile();
 	}
 
-	public void generateDataObjects(int amountDataObjectsToCreate, List<String> defaultSpheres) {
+	public void generateDataObjects(int amountDataObjectsToCreate, LinkedList<String> defaultSpheres) {
 		for (int i = 0; i < amountDataObjectsToCreate; i++) {
 			// create a new dataObject and add it to the model
 			Object[] nodesAsArray = flowNodes.toArray();
@@ -275,7 +217,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 	}
 
 	public void annotateModelWithFixedAmountOfReadersAndWriters(int amountWriters, int amountReaders, int dynamicWriter,
-			List<String> defaultSpheresForDynamicWriter) throws Exception {
+			LinkedList<String> defaultSpheresForDynamicWriter) throws InterruptedException, Exception {
 		// amountWriters and amountReaders is for whole process
 		// randomly generate subAmounts for each dataObject
 		// get each dataObject -> insert a writer for it
@@ -310,13 +252,13 @@ public class ProcessModelAnnotater implements Callable<File> {
 					.computeRepartitionNumber(amountWriters, this.dataObjects.size(), 1);
 			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
 			LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
-			
+
 			List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality
 					.computeRepartitionNumber(amountReaders, this.dataObjects.size(), 0);
 
 			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
 			LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
-		
+
 			HashMap<BusinessRuleTask, LinkedList<Task>> possibleWritersBeforeBrt = new HashMap<BusinessRuleTask, LinkedList<Task>>();
 			List<Task> taskList = new LinkedList<Task>();
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
@@ -596,8 +538,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 		modelInstance.getModelElementsByType(Plane.class).iterator().next().addChildElement(dataOShape);
 
 	}
-	
-	private String generateFileNameForNewFile(File process, String directoryToStoreAnnotatedModel, String suffixFileName) {
+
+	private String generateFileNameForNewFile(File process, String directoryToStoreAnnotatedModel,
+			String suffixFileName) {
 		String fileName = process.getName().substring(0, process.getName().indexOf(".bpmn"));
 		int fileNumber = 0;
 
@@ -636,14 +579,12 @@ public class ProcessModelAnnotater implements Callable<File> {
 		return annotatedFileNameBuilder.toString();
 	}
 
-	private File writeChangesToFile()
-			throws IOException, ParserConfigurationException, SAXException {
+	private File writeChangesToFile() throws IOException, ParserConfigurationException, SAXException {
 		// validate and write model to file
 		Bpmn.validateModel(this.modelInstance);
 		String fileName = this.fileNameForNewFile;
-		
-		File file = CommonFunctionality.createFileWithinDirectory(this.pathWhereToCreateAnnotatedFile,
-				fileName);
+
+		File file = CommonFunctionality.createFileWithinDirectory(this.pathWhereToCreateAnnotatedFile, fileName);
 
 		System.out.println("File path: " + file.getAbsolutePath());
 		Bpmn.writeModelToFile(file, modelInstance);
@@ -1188,7 +1129,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	private void addReadersAndWritersForDataObjectWithFixedAmounts(int amountWriters, int amountReaders,
 			int dynamicWriterProb, DataObjectReference dataORef, List<String> defaultSpheresForDynamicWriter,
-			Task writerBeforeDecision) {
+			Task writerBeforeDecision) throws InterruptedException {
 		// iterate through all tasks of the process and assign readers and writers
 		// if task is a writer - add the dynamic writer sphere if necessary
 		// task can only be either reader or writer to a specific dataObject
@@ -1202,6 +1143,10 @@ public class ProcessModelAnnotater implements Callable<File> {
 		boolean writerTaskInFrontOfDecisionChosen = false;
 
 		do {
+			if (Thread.currentThread().isInterrupted()) {
+				System.err.println("Interrupted! " + Thread.currentThread().getName());
+				throw new InterruptedException();
+			}
 			// get a random flowNode and try making it a writer
 			Task task = null;
 			boolean inFrontOfDecision = false;
@@ -1255,6 +1200,10 @@ public class ProcessModelAnnotater implements Callable<File> {
 			// task will be a reader if it is not a reader or writer to the dataObject
 			// already
 			// brts followed by a xor-split will always be readers to some dataObjects
+			if (Thread.currentThread().isInterrupted()) {
+				System.err.println("Interrupted! " + Thread.currentThread().getName());
+				throw new InterruptedException();
+			}
 			Task task = CommonFunctionality.getRandomItem(allAvailableTasks);
 
 			if (!taskIsBrtFollowedByXorSplit(task)) {
@@ -1557,7 +1506,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		}
 	}
 
-	public void addNamesForOutgoingFlowsOfXorSplits(List<String> namesForOutgoingSeqFlowsOfXorSplits) {
+	public void addNamesForOutgoingFlowsOfXorSplits(LinkedList<String> namesForOutgoingSeqFlowsOfXorSplits) {
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getOutgoing().size() == 2 && gtw.getIncoming().size() == 1) {
 				if (namesForOutgoingSeqFlowsOfXorSplits != null && namesForOutgoingSeqFlowsOfXorSplits.size() != 0) {
@@ -1580,21 +1529,64 @@ public class ProcessModelAnnotater implements Callable<File> {
 	public BpmnModelInstance getModelInstance() {
 		return this.modelInstance;
 	}
-	
+
 	public String getFileNameForNewFile() {
 		return this.fileNameForNewFile;
 	}
-	
+
 	public String getDirectoryForNewFile() {
 		return this.directoryForNewFile;
 	}
-	
+
 	@Override
 	public File call() throws Exception {
 		// TODO Auto-generated method stub
 
 		if (!Thread.currentThread().isInterrupted()) {
 			try {
+				if (methodsToRunWithinCall.isEmpty()) {
+					throw new Exception("No methods specifided to run within call!");
+				}
+
+				for (Entry<String, Object[]> methodEntry : this.methodsToRunWithinCall.entrySet()) {
+					// methodEntry is in order of execution
+					// key -> method name
+					// value -> arguments
+					String methodName = methodEntry.getKey();
+					Object[] methodArguments = methodEntry.getValue();
+					Class[] methodParameters = new Class[methodArguments.length];
+
+					for (int i = 0; i < methodArguments.length; i++) {
+						Object argument = methodArguments[i];
+						if (argument instanceof Byte) {
+							methodParameters[i] = Byte.TYPE;
+						} else if (argument instanceof Short) {
+							methodParameters[i] = Short.TYPE;
+						} else if (argument instanceof Integer) {
+							methodParameters[i] = Integer.TYPE;
+						} else if (argument instanceof Long) {
+							methodParameters[i] = Long.TYPE;
+						} else if (argument instanceof Float) {
+							methodParameters[i] = Float.TYPE;
+						} else if (argument instanceof Double) {
+							methodParameters[i] = Double.TYPE;
+						} else if (argument instanceof Boolean) {
+							methodParameters[i] = Boolean.TYPE;
+						} else {
+							methodParameters[i] = argument.getClass();
+						}
+
+					}
+
+					try {
+						Method method = this.getClass().getMethod(methodName, methodParameters);
+						method.invoke(this, methodArguments);
+					} catch (Exception ex) {
+						ex.printStackTrace();
+						throw ex;
+					}
+
+				}
 				File f = this.checkCorrectnessAndWriteChangesToFile();
 				return f;
 			} catch (Exception ex) {

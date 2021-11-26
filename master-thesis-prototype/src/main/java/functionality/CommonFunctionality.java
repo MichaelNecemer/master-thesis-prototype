@@ -96,10 +96,8 @@ public class CommonFunctionality {
 		if (!CommonFunctionality.checkIfOnlyOneStartEventAndEventEvent(modelInstance)) {
 			throw new Exception("Model must have exactly 1 Start and 1 End Event");
 		}
-		
-		
+
 		CommonFunctionality.isModelValid(modelInstance);
-		
 
 		if (!CommonFunctionality.isModelBlockStructured(modelInstance)) {
 			throw new Exception("Model must be block structured!");
@@ -109,7 +107,6 @@ public class CommonFunctionality {
 
 	}
 
-	
 	public static boolean checkIfOnlyOneStartEventAndEventEvent(BpmnModelInstance modelInstance) {
 		if (modelInstance.getModelElementsByType(StartEvent.class).size() == 1
 				&& modelInstance.getModelElementsByType(EndEvent.class).size() == 1) {
@@ -513,19 +510,19 @@ public class CommonFunctionality {
 		return null;
 
 	}
-	
-	public static boolean isSubPath(LinkedList<FlowNode>currentPath, LinkedList<FlowNode>subPath) {
-		boolean isSubPath = false;	
+
+	public static boolean isSubPath(LinkedList<FlowNode> currentPath, LinkedList<FlowNode> subPath) {
+		boolean isSubPath = false;
 		if (currentPath.containsAll(subPath)) {
 			isSubPath = true;
-				for(int i = 0; i < subPath.size(); i++) {
-					if(!subPath.get(i).equals(currentPath.get(i))) {
-						isSubPath =  false;
-						return isSubPath;
-					}
+			for (int i = 0; i < subPath.size(); i++) {
+				if (!subPath.get(i).equals(currentPath.get(i))) {
+					isSubPath = false;
+					return isSubPath;
 				}
-			return isSubPath;	
-			} 
+			}
+			return isSubPath;
+		}
 		return isSubPath;
 	}
 
@@ -644,11 +641,12 @@ public class CommonFunctionality {
 	public static LinkedList<LinkedList<FlowNode>> getAllPathsBetweenNodes(BpmnModelInstance modelInstance,
 			FlowNode startNode, FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<FlowNode> openSplits,
 			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths,
-			LinkedList<LinkedList<FlowNode>> parallelBranches) throws NullPointerException, Exception {
+			LinkedList<LinkedList<FlowNode>> parallelBranches)
+			throws NullPointerException, InterruptedException, Exception {
 		// filter out subpaths that do not have the endNode as target
 		LinkedList<LinkedList<FlowNode>> subPaths = CommonFunctionality.getAllPaths(modelInstance, startNode, endNode,
 				queue, openSplits, currentPath, paths, parallelBranches, endNode);
-		
+
 		Iterator<LinkedList<FlowNode>> subPathsIter = subPaths.iterator();
 		while (subPathsIter.hasNext()) {
 			LinkedList<FlowNode> subPath = subPathsIter.next();
@@ -678,7 +676,7 @@ public class CommonFunctionality {
 
 		Set<LinkedList<FlowNode>> set = new HashSet<LinkedList<FlowNode>>(subPaths);
 		LinkedList<LinkedList<FlowNode>> noDups = new LinkedList<LinkedList<FlowNode>>(set);
-		
+
 		return noDups;
 	}
 
@@ -830,27 +828,31 @@ public class CommonFunctionality {
 			FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<FlowNode> openSplits,
 			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths,
 			LinkedList<LinkedList<FlowNode>> parallelBranches, FlowNode endPointOfSearch)
-			throws NullPointerException, Exception {
+			throws NullPointerException, InterruptedException, Exception {
 		// go DFS inside all branch till corresponding join is found
 		queue.add(startNode);
-		
+
 		while (!(queue.isEmpty())) {
 			FlowNode element = queue.poll();
-			//System.out.println(element.getName());
-			
+
+			if (Thread.currentThread().isInterrupted()) {
+				System.err.println("Interrupted! " + Thread.currentThread().getName());
+				throw new InterruptedException();
+			}
+
 			currentPath.add(element);
-			
-			if((element.getId().contentEquals(endPointOfSearch.getId())&&endPointOfSearch instanceof Task)) {
-				
+
+			if ((element.getId().contentEquals(endPointOfSearch.getId()) && endPointOfSearch instanceof Task)) {
+
 				Iterator<LinkedList<FlowNode>> subPathsIter = paths.iterator();
 				while (subPathsIter.hasNext()) {
-					LinkedList<FlowNode> subPath = subPathsIter.next();	
-						boolean isSubPath = CommonFunctionality.isSubPath(currentPath, subPath);
-						
-						if(isSubPath) {
+					LinkedList<FlowNode> subPath = subPathsIter.next();
+					boolean isSubPath = CommonFunctionality.isSubPath(currentPath, subPath);
+
+					if (isSubPath) {
 						subPathsIter.remove();
-						}
-					
+					}
+
 				}
 				paths.add(currentPath);
 
@@ -859,7 +861,7 @@ public class CommonFunctionality {
 
 					return paths;
 				}
-				
+
 			}
 
 			if (element.getId().equals(endNode.getId())) {
@@ -867,18 +869,16 @@ public class CommonFunctionality {
 				Iterator<LinkedList<FlowNode>> subPathIter = paths.iterator();
 				while (subPathIter.hasNext()) {
 					LinkedList<FlowNode> subPath = subPathIter.next();
-					
-						
-							boolean isSubPath = CommonFunctionality.isSubPath(currentPath, subPath);
-							
-							if(isSubPath) {
-							subPathIter.remove();
-							
-						}					}
 
-				
+					boolean isSubPath = CommonFunctionality.isSubPath(currentPath, subPath);
+
+					if (isSubPath) {
+						subPathIter.remove();
+
+					}
+				}
+
 				paths.add(currentPath);
-				
 
 				if (endNode instanceof ParallelGateway) {
 					// currentPath is part of a parallel branch
@@ -977,13 +977,13 @@ public class CommonFunctionality {
 							LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
 
 							Iterator<LinkedList<FlowNode>> pathsIter = paths.iterator();
-							while(pathsIter.hasNext()) {
-							LinkedList<FlowNode>path = pathsIter.next();			
+							while (pathsIter.hasNext()) {
+								LinkedList<FlowNode> path = pathsIter.next();
 								if (path.getLast().equals(element)) {
 									LinkedList<FlowNode> newPathAfterJoin = new LinkedList<FlowNode>();
 									newPathAfterJoin.addAll(path);
 									newPaths.add(newPathAfterJoin);
-									//pathsIter.remove();
+									// pathsIter.remove();
 								}
 							}
 
@@ -995,11 +995,11 @@ public class CommonFunctionality {
 							}
 
 							Iterator<LinkedList<FlowNode>> newPathIter = newPaths.iterator();
-							while(newPathIter.hasNext()) {
-							LinkedList<FlowNode> newPath = newPathIter.next();
-							if(!newPathIter.hasNext()) {
-								
-							}
+							while (newPathIter.hasNext()) {
+								LinkedList<FlowNode> newPath = newPathIter.next();
+								if (!newPathIter.hasNext()) {
+
+								}
 								getAllPaths(modelInstance, element.getOutgoing().iterator().next().getTarget(),
 										correspondingJoin, queue, openSplits, newPath, paths, parallelBranches,
 										endPointOfSearch);
@@ -1007,18 +1007,19 @@ public class CommonFunctionality {
 
 						} else {
 							// when there are no open splits gtws
-							// go from the successor of the element to endPointOfSearch since the currentElement has
+							// go from the successor of the element to endPointOfSearch since the
+							// currentElement has
 							// already been added to the path
 							LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
 
 							Iterator<LinkedList<FlowNode>> pathsIter = paths.iterator();
-							while(pathsIter.hasNext()) {
-							LinkedList<FlowNode>path = pathsIter.next();							
+							while (pathsIter.hasNext()) {
+								LinkedList<FlowNode> path = pathsIter.next();
 								if (path.getLast().equals(element)) {
 									LinkedList<FlowNode> newPathAfterJoin = new LinkedList<FlowNode>();
 									newPathAfterJoin.addAll(path);
 									newPaths.add(newPathAfterJoin);
-									//pathsIter.remove();
+									// pathsIter.remove();
 								}
 							}
 
@@ -1052,19 +1053,19 @@ public class CommonFunctionality {
 
 			}
 
-			Iterator<SequenceFlow>seqFlowIter = element.getOutgoing().iterator();
-			while(seqFlowIter.hasNext()) {
+			Iterator<SequenceFlow> seqFlowIter = element.getOutgoing().iterator();
+			while (seqFlowIter.hasNext()) {
 				FlowNode successor = seqFlowIter.next().getTarget();
 				if (element instanceof Gateway && element.getOutgoing().size() == 2) {
 					// when a split is found - go dfs till the corresponding join is found
 					FlowNode correspondingJoinGtw = null;
 					try {
-						 correspondingJoinGtw = CommonFunctionality.getCorrespondingGtw(modelInstance,
-									(Gateway) element);
-					} catch(Exception ex) {
+						correspondingJoinGtw = CommonFunctionality.getCorrespondingGtw(modelInstance,
+								(Gateway) element);
+					} catch (Exception ex) {
 						throw ex;
 					}
-					
+
 					LinkedList<FlowNode> newPath = new LinkedList<FlowNode>();
 					newPath.addAll(currentPath);
 					getAllPaths(modelInstance, successor, correspondingJoinGtw, queue, openSplits, newPath, paths,
@@ -1119,8 +1120,8 @@ public class CommonFunctionality {
 
 	public static Gateway getCorrespondingGtw(BpmnModelInstance modelInstance, Gateway gtw)
 			throws NullPointerException, Exception {
-		
-		if(gtw.getName().isEmpty()||gtw.getName().equals(null)) {
+
+		if (gtw.getName().isEmpty() || gtw.getName().equals(null)) {
 			throw new Exception("Corresponding gtws must be named accordingly!");
 		}
 
@@ -1187,10 +1188,10 @@ public class CommonFunctionality {
 		}
 		for (Gateway gtw : modelInstance.getModelElementsByType(Gateway.class)) {
 			try {
-			if (CommonFunctionality.getCorrespondingGtw(modelInstance, gtw) == null) {
-				return false;
-			}
-			} catch(Exception ex) {
+				if (CommonFunctionality.getCorrespondingGtw(modelInstance, gtw) == null) {
+					return false;
+				}
+			} catch (Exception ex) {
 				return false;
 			}
 		}

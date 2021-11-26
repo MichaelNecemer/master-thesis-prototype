@@ -2,11 +2,13 @@ package functionality;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -30,11 +32,11 @@ import ProcessModelGeneratorAndAnnotater.ProcessModelAnnotater;
 public class BatchFileGenerator {
 
 	static int idCSVFile = 1;
-	//static String root = System.getProperty("user.home") + "/Desktop";
+	// static String root = System.getProperty("user.home") + "/Desktop";
 	static String root = System.getProperty("user.home") + "/Onedrive/Desktop";
 
-	static int timeOutForProcessGeneratorInMin = 1;
-	static int timeOutForProcessModelAnnotaterInMin = 1;
+	static int timeOutForProcessGeneratorInMin = 2;
+	static int timeOutForProcessModelAnnotaterInMin = 6;
 	// API is the class where the computations will be done
 	static int timeOutForApiInMin = 3;
 
@@ -117,7 +119,8 @@ public class BatchFileGenerator {
 				6, 4, 0, 0, percentageOfWritersClasses.get(1), percentageOfReadersClasses.get(1),
 				minDataObjectsPerDecision, maxDataObjectsPerDecision, defaultSpheres, amountThreads,
 				pathToFolderForModelsForTest1_1);
-
+		System.out.println("BoundartyTest1_1 finished!");
+		
 		// Test 1.2 - Boundary Test 2
 		// choose a model from boundary test 1 that had no exceptions for all algorithms
 		// create x new models on each iteration till every task of the model has a
@@ -126,11 +129,13 @@ public class BatchFileGenerator {
 		// one of the 2 participants connected
 		// end point -> x models where each task has a different participant connected
 
+		/*
 		String pathToFolderForModelsForTest1_2 = CommonFunctionality
 				.fileWithDirectoryAssurance(pathToRootFolder, "BoundaryTest2").getAbsolutePath();
 
 		// choose a model
-		File directoryOfFiles = new File(pathToFolderForModelsForTest1_1 +File.separatorChar+"BoundaryTest_decision-3"+File.separatorChar+"annotated");
+		File directoryOfFiles = new File(pathToFolderForModelsForTest1_1 + File.separatorChar
+				+ "BoundaryTest_decision-4" + File.separatorChar + "annotated");
 		List<File> listOfFiles = Arrays.asList(directoryOfFiles.listFiles());
 		File model = CommonFunctionality.getRandomItem(listOfFiles);
 		int newModelsPerIteration = 5;
@@ -154,7 +159,7 @@ public class BatchFileGenerator {
 				.getAbsolutePath();
 
 		// for each processes folder -> generate 100 random processes
-		// small processes: 2-3 participants, 6-15 tasks, 1-2 xor, 0-2 parallels, 100
+		// small processes: 2-3 participants, 6-15 tasks, 1-2 xors, 0-2 parallels, 100
 		// processes
 		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation, 2, 3,
 				6, 15, 1, 2, 0, 2, 100);
@@ -250,12 +255,12 @@ public class BatchFileGenerator {
 		// after that compare it to test 2 where those models have been run without
 		// constraints
 		boolean decisionTakerExcludeable = false;
-		String pathToSmallProcessesWithAnnotation = pathToSmallProcessesForTest2WithAnnotation
-				+ File.separatorChar+"ModelsForEvaluation";
+		String pathToSmallProcessesWithAnnotation = pathToSmallProcessesForTest2WithAnnotation + File.separatorChar
+				+ "ModelsForEvaluation";
 		LinkedList<File> smallProcessesFromTradeOffTest = BatchFileGenerator
 				.getAllModelsFromFolder(pathToSmallProcessesWithAnnotation);
-		String pathToMediumProcessesWithAnnotation = pathToMediumProcessesForTest2WithAnnotation
-				+File.separatorChar+ "ModelsForEvaluation";
+		String pathToMediumProcessesWithAnnotation = pathToMediumProcessesForTest2WithAnnotation + File.separatorChar
+				+ "ModelsForEvaluation";
 		LinkedList<File> mediumProcessesFromTradeOffTest = BatchFileGenerator
 				.getAllModelsFromFolder(pathToMediumProcessesWithAnnotation);
 
@@ -294,8 +299,8 @@ public class BatchFileGenerator {
 		// Test 5 - "mandatory participants"
 		// Search for the best set of verifiers
 		// take all models from trade off test
-		String pathToLargeProcessesWithAnnotation = pathToLargeProcessesForTest2WithAnnotation
-				+ File.separatorChar+"ModelsForEvaluation";
+		String pathToLargeProcessesWithAnnotation = pathToLargeProcessesForTest2WithAnnotation + File.separatorChar
+				+ "ModelsForEvaluation";
 		LinkedList<File> allProcessesFromTradeOffTest = new LinkedList<File>();
 		allProcessesFromTradeOffTest
 				.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToSmallProcessesWithAnnotation));
@@ -352,6 +357,7 @@ public class BatchFileGenerator {
 				upperBoundLocalMinWithBound, amountThreads);
 
 		System.out.println("Everything finished!");
+		*/
 	}
 
 	public static void performTestWithRealWorldProcesses(String pathWhereToCreateProcessesWithoutAnnotation,
@@ -464,20 +470,61 @@ public class BatchFileGenerator {
 			ProcessModelAnnotater p = null;
 
 			try {
-				p = new ProcessModelAnnotater(pathToFile, pathToFolderForStoringAnnotatedModelsFolder, "_annotated",
-						defaultSpheres, dynamicWriterProb, amountWritersOfProcess, amountReadersOfProcess,
-						publicDecisionProb, amountDataObjectsToCreate, minDataObjectsPerDecision,
-						maxDataObjectsPerDecision, amountParticipantsPerDecisionLowerBound,
-						amountParticipantsPerDecisionUpperBound, defaultNamesSeqFlowsXorSplits, false);
+				p = new ProcessModelAnnotater(pathToFile, pathToFolderForStoringAnnotatedModelsFolder, "_annotated");
+
+				// add the methods to be called
+				LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
+
+				String firstMethodToBeCalledName = "generateDataObjects";
+				Object[] argumentsForFirstMethod = new Object[2];
+				argumentsForFirstMethod[0] = amountDataObjectsToCreate;
+				argumentsForFirstMethod[1] = defaultSpheres;
+				methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName, argumentsForFirstMethod);
+
+				String secondMethodToBeCalledName = "connectDataObjectsToBrtsAndTuplesForXorSplits";
+				Object[] argumentsForSecondMethod = new Object[6];
+				argumentsForSecondMethod[0] = minDataObjectsPerDecision;
+				argumentsForSecondMethod[1] = maxDataObjectsPerDecision;
+				argumentsForSecondMethod[2] = amountParticipantsPerDecisionLowerBound;
+				argumentsForSecondMethod[3] = amountParticipantsPerDecisionUpperBound;
+				argumentsForSecondMethod[4] = publicDecisionProb;
+				argumentsForSecondMethod[5] = false;
+				methodsToBeCalledMap.putIfAbsent(secondMethodToBeCalledName, argumentsForSecondMethod);
+
+				String thirdMethodToBeCalledName = "addNamesForOutgoingFlowsOfXorSplits";
+				Object[] argumentsForThirdMethod = new Object[1];
+				argumentsForThirdMethod[0] = defaultNamesSeqFlowsXorSplits;
+				methodsToBeCalledMap.putIfAbsent(thirdMethodToBeCalledName, argumentsForThirdMethod);
+
+				String fourthMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
+				Object[] argumentsForFourthMethod = new Object[4];
+				argumentsForFourthMethod[0] = amountWritersOfProcess;
+				argumentsForFourthMethod[1] = amountReadersOfProcess;
+				argumentsForFourthMethod[2] = dynamicWriterProb;
+				argumentsForFourthMethod[3] = defaultSpheres;
+				methodsToBeCalledMap.putIfAbsent(fourthMethodToBeCalledName, argumentsForFourthMethod);
+
 				if (probabilityForGatewayToHaveExcludeConstraint > 0) {
-					p.addExcludeParticipantConstraintsOnModel(probabilityForGatewayToHaveExcludeConstraint,
-							lowerBoundAmountParticipantsToExclude, decisionTakerExcludeable, alwaysMaxExclConstrained);
+					String fifthMethodToBeCalledName = "addExcludeParticipantConstraintsOnModel";
+					Object[] argumentsForFifthMethod = new Object[4];
+					argumentsForFifthMethod[0] = probabilityForGatewayToHaveExcludeConstraint;
+					argumentsForFifthMethod[1] = lowerBoundAmountParticipantsToExclude;
+					argumentsForFifthMethod[2] = decisionTakerExcludeable;
+					argumentsForFifthMethod[3] = alwaysMaxExclConstrained;
+					methodsToBeCalledMap.putIfAbsent(fifthMethodToBeCalledName, argumentsForFifthMethod);
 				}
+
 				if (probabilityForGatewayToHaveMandConstraint > 0) {
-					p.addMandatoryParticipantConstraintsOnModel(probabilityForGatewayToHaveMandConstraint,
-							lowerBoundAmountParticipantsToBeMandatory, decisionTakerMandatory,
-							alwaysMaxMandConstrained);
+					String sixthMethodToBeCalledName = "addMandatoryParticipantConstraintsOnModel";
+					Object[] argumentsForSixthMethod = new Object[4];
+					argumentsForSixthMethod[0] = probabilityForGatewayToHaveMandConstraint;
+					argumentsForSixthMethod[1] = lowerBoundAmountParticipantsToBeMandatory;
+					argumentsForSixthMethod[2] = decisionTakerMandatory;
+					argumentsForSixthMethod[3] = alwaysMaxMandConstrained;
+					methodsToBeCalledMap.putIfAbsent(sixthMethodToBeCalledName, argumentsForSixthMethod);
 				}
+				// set the methods that will be run within the call method
+				p.setMethodsToRunWithinCall(methodsToBeCalledMap);
 
 				Future<File> future = executor.submit(p);
 				futures.add(future);
@@ -893,7 +940,8 @@ public class BatchFileGenerator {
 
 		// Start test with static sphere
 		// then take same models and take strong dynamic sphere
-		List<String> sphere = Arrays.asList("Static");
+		LinkedList<String> sphere = new LinkedList<String>();
+		sphere.add("Static");
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreadPools);
 
 		for (int i = 0; i < processes.size(); i++) {
@@ -1128,10 +1176,28 @@ public class BatchFileGenerator {
 
 					ProcessModelAnnotater modelWithReadersAndWriters;
 					try {
+
 						modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(),
-								pathToDestinationFolderForStoringModels, suffixBuilder.toString(), emptySphere, 0,
-								amountWriterTasksInModel, amountReaderTasksInModel, 0, 1,
-								amountRandomCountDataObjectsToCreate, defaultNamesSeqFlowsXorSplits);
+								pathToDestinationFolderForStoringModels, suffixBuilder.toString());
+
+						// add the methods to be called
+						LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
+
+						String firstMethodToBeCalledName = "addNamesForOutgoingFlowsOfXorSplits";
+						Object[] argumentsForFirstMethod = new Object[1];
+						argumentsForFirstMethod[0] = defaultNamesSeqFlowsXorSplits;
+						methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName, argumentsForFirstMethod);
+
+						String secondMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
+						Object[] argumentsForSecondMethod = new Object[4];
+						argumentsForSecondMethod[0] = amountWriterTasksInModel;
+						argumentsForSecondMethod[1] = amountReaderTasksInModel;
+						argumentsForSecondMethod[2] = 0;
+						argumentsForSecondMethod[3] = emptySphere;
+						methodsToBeCalledMap.putIfAbsent(secondMethodToBeCalledName, argumentsForSecondMethod);
+
+						modelWithReadersAndWriters.setMethodsToRunWithinCall(methodsToBeCalledMap);
+
 						Future<File> future = executor.submit(modelWithReadersAndWriters);
 
 						try {
@@ -1150,7 +1216,7 @@ public class BatchFileGenerator {
 							// TODO Auto-generated catch block
 							future.cancel(true);
 							e.printStackTrace();
-							
+
 						}
 
 					} catch (Exception e) {
@@ -1287,40 +1353,70 @@ public class BatchFileGenerator {
 				System.out.println(model.getName());
 				boolean correctModel = false;
 				int tries = 0;
-				while(correctModel==false&&tries<10) {
-				File modelCopy = (File) CommonFunctionality.deepCopy(model);	
-				ProcessModelAnnotater p;
-				try {
-					p = new ProcessModelAnnotater(modelCopy.getAbsolutePath(), pathToFolderForModelsWithDecisionsAnnotated,
-							"_annotated");
-					p.addNamesForOutgoingFlowsOfXorSplits(defaultNamesSeqFlowsXorSplits);
-					p.generateDataObjects(amountDataObjectsToCreate, defaultSpheres);
-					p.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision,
-							maxDataObjectsPerDecision, votersPerDecision, votersPerDecision, 0, true);
-					p.annotateModelWithFixedAmountOfReadersAndWriters(amountWriters, amountReaders, 0, defaultSpheres);
-					Future<File> future = executor.submit(p);
+				while (correctModel == false && tries < 10) {
+					File modelCopy = (File) CommonFunctionality.deepCopy(model);
+					ProcessModelAnnotater p;
 					try {
-						future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
-						System.out.println("Model annotated correctly!");
-						correctModel=true;
-					} catch (Exception e) {
-						correctModel=false;
-						System.err.println("Exception in call method of ProcessModelAnnotater: ");
-						e.printStackTrace();
-						future.cancel(true);
-						//delete already generated file
-						File alreadyGenerated = new File(p.getDirectoryForNewFile());
-						if(alreadyGenerated!=null&&alreadyGenerated.isFile()) {
-						System.out.println(alreadyGenerated.getAbsolutePath()+" will be deleted!");
-						alreadyGenerated.delete();
+						p = new ProcessModelAnnotater(modelCopy.getAbsolutePath(),
+								pathToFolderForModelsWithDecisionsAnnotated, "_annotated");
+						// add the methods to be called
+						LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
+
+						String firstMethodToBeCalledName = "addNamesForOutgoingFlowsOfXorSplits";
+						Object[] argumentsForFirstMethod = new Object[1];
+						argumentsForFirstMethod[0] = defaultNamesSeqFlowsXorSplits;
+						methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName, argumentsForFirstMethod);
+
+						String secondMethodToBeCalledName = "generateDataObjects";
+						Object[] argumentsForSecondMethod = new Object[2];
+						argumentsForSecondMethod[0] = amountDataObjectsToCreate;
+						argumentsForSecondMethod[1] = defaultSpheres;
+						methodsToBeCalledMap.putIfAbsent(secondMethodToBeCalledName, argumentsForSecondMethod);
+
+						String thirdMethodToBeCalledName = "connectDataObjectsToBrtsAndTuplesForXorSplits";
+						Object[] argumentsForThirdMethod = new Object[6];
+						argumentsForThirdMethod[0] = minDataObjectsPerDecision;
+						argumentsForThirdMethod[1] = maxDataObjectsPerDecision;
+						argumentsForThirdMethod[2] = votersPerDecision;
+						argumentsForThirdMethod[3] = votersPerDecision;
+						argumentsForThirdMethod[4] = 0;
+						argumentsForThirdMethod[5] = true;
+						methodsToBeCalledMap.putIfAbsent(thirdMethodToBeCalledName, argumentsForThirdMethod);
+
+						String fourthMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
+						Object[] argumentsForFourthMethod = new Object[4];
+						argumentsForFourthMethod[0] = amountWriters;
+						argumentsForFourthMethod[1] = amountReaders;
+						argumentsForFourthMethod[2] = 0;
+						argumentsForFourthMethod[3] = defaultSpheres;
+						methodsToBeCalledMap.putIfAbsent(fourthMethodToBeCalledName, argumentsForFourthMethod);
+
+						// set the methods that will be run within the call method
+						p.setMethodsToRunWithinCall(methodsToBeCalledMap);
+
+						Future<File> future = executor.submit(p);
+						try {
+							future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
+							System.out.println("Model annotated correctly!");
+							correctModel = true;
+						} catch (Exception e) {
+							correctModel = false;
+							System.err.println("Exception in call method of ProcessModelAnnotater: ");
+							e.printStackTrace();
+							future.cancel(true);
+							// delete already generated file
+							File alreadyGenerated = new File(p.getDirectoryForNewFile());
+							if (alreadyGenerated != null && alreadyGenerated.isFile()) {
+								System.out.println(alreadyGenerated.getAbsolutePath() + " deleted - "
+										+ alreadyGenerated.delete() + "!");
+							}
 						}
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						System.err.println("Exception in ProcessModelAnnotater");
+						e1.printStackTrace();
 					}
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					System.err.println("Exception in ProcessModelAnnotater");
-					e1.printStackTrace();
-				}
-				tries++;
+					tries++;
 				}
 			}
 			// map annotated models
