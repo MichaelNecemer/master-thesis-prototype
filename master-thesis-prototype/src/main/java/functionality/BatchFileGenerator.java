@@ -728,7 +728,7 @@ public class BatchFileGenerator {
 		return csvFile;
 	}
 
-	public static HashMap<String, Integer> runAlgorithmsAndWriteResultsToCSV(API api, int limitForLocalMin,
+	public static HashMap<Boolean, HashMap<String, Integer>> runAlgorithmsAndWriteResultsToCSV(API api, int limitForLocalMin,
 			int boundForComparisons, HashMap<String, Integer> timeOutOrHeapSpaceExceptionMap, ResultsToCSVWriter writer,
 			ExecutorService service) {
 		// write the result of an algorithm to an existing csv file
@@ -749,7 +749,8 @@ public class BatchFileGenerator {
 		HashMap<String, LinkedList<ProcessInstanceWithVoters>> pInstancesBruteForce = null;
 		HashMap<String, LinkedList<ProcessInstanceWithVoters>> pInstancesLocalMin = null;
 		HashMap<String, LinkedList<ProcessInstanceWithVoters>> pInstancesLocalMinWithMaxSolutions = null;
-
+		boolean heapSpaceError = false;
+		
 		try {
 
 			Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureBruteForce = service
@@ -777,11 +778,14 @@ public class BatchFileGenerator {
 						timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
 				System.err.println("Timeout for bruteForce!");
 				futureBruteForce.cancel(true);
-			} catch (OutOfMemoryError e) {
+			} catch (Error e) {
+				System.gc();
+				if(e instanceof OutOfMemoryError) {
 				exceptionBruteForce = new HeapSpaceException(e.getMessage(), e.getCause());
 				timeOutOrHeapSpaceExceptionMap.put("bruteForce",
 						timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
-				System.err.println("BruteForce ran out of memory");
+				System.err.println("BruteForce ran out of memory");				
+				}
 				futureBruteForce.cancel(true);
 			}
 
@@ -815,11 +819,14 @@ public class BatchFileGenerator {
 						timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
 				System.err.println("Timeout for localMin!");
 				futureLocalMin.cancel(true);
-			} catch (OutOfMemoryError e) {
+			} catch (Error e) {
+				System.gc();
+				if(e instanceof OutOfMemoryError) {
 				exceptionLocalMin = new HeapSpaceException(e.getMessage(), e.getCause());
 				timeOutOrHeapSpaceExceptionMap.put("localMin",
 						timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
 				System.err.println("LocalMin ran out of memory");
+				}
 				futureLocalMin.cancel(true);
 			} finally {
 				exceptionPerAlgorithm.putIfAbsent("localMin", exceptionLocalMin);
@@ -854,11 +861,14 @@ public class BatchFileGenerator {
 						timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
 				System.err.println("Timeout for " + localMinWithMaxSolutions + "!");
 				futureLocalMinWithMaxSolutions.cancel(true);
-			} catch (OutOfMemoryError e) {
+			} catch (Error e) {
+				System.gc();
+				if(e instanceof OutOfMemoryError) {
 				exceptionLocalMinWithMaxSolutions = new HeapSpaceException(e.getMessage(), e.getCause());
 				timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions,
 						timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
 				System.err.println(localMinWithMaxSolutions + " ran out of memory");
+				}
 				futureLocalMinWithMaxSolutions.cancel(true);
 			} finally {
 				exceptionPerAlgorithm.putIfAbsent(localMinWithMaxSolutions, exceptionLocalMinWithMaxSolutions);
@@ -891,7 +901,9 @@ public class BatchFileGenerator {
 
 		}
 
-		return timeOutOrHeapSpaceExceptionMap;
+		HashMap<Boolean, HashMap<String, Integer>> returnMap = new HashMap<Boolean, HashMap<String, Integer>>();
+		returnMap.putIfAbsent(heapSpaceError, timeOutOrHeapSpaceExceptionMap);
+		return returnMap;
 
 	}
 
@@ -1312,6 +1324,8 @@ public class BatchFileGenerator {
 
 		String localMinWithBound = "localMinWithBound" + upperBoundSolutionsForLocalMinWithBound;
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
+		boolean outOfMemoryError = false;
+
 		do {
 			timeOutOrHeapSpaceExceptionMap.clear();
 			timeOutOrHeapSpaceExceptionMap.put("bruteForce", 0);
@@ -1424,11 +1438,17 @@ public class BatchFileGenerator {
 					writer);
 
 			// perform all algorithms and count the timeouts
-
 			for (API api : apiList) {
-				timeOutOrHeapSpaceExceptionMap = BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api,
+				HashMap<Boolean, HashMap<String, Integer>> returnMap = BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api,
 						upperBoundSolutionsForLocalMinWithBound, boundForComparisons, timeOutOrHeapSpaceExceptionMap,
 						writer, executor);
+				if(returnMap.get(false)!=null) {
+					outOfMemoryError = true;
+					timeOutOrHeapSpaceExceptionMap = returnMap.get(false);
+				} else {
+					timeOutOrHeapSpaceExceptionMap = returnMap.get(true);
+				}
+				
 			}
 
 			System.out.println("Iteration" + amountDecisionsToStart + " end - timeOutsBruteForce: "
@@ -1437,10 +1457,12 @@ public class BatchFileGenerator {
 					+ upperBoundSolutionsForLocalMinWithBound + ": "
 					+ timeOutOrHeapSpaceExceptionMap.get(localMinWithBound));
 			amountDecisionsToStart++;
+			
+			
 
 		} while (timeOutOrHeapSpaceExceptionMap.get("bruteForce") < amountProcessesPerIteration
 				|| timeOutOrHeapSpaceExceptionMap.get("localMin") < amountProcessesPerIteration
-				|| timeOutOrHeapSpaceExceptionMap.get(localMinWithBound) < amountProcessesPerIteration);
+				|| timeOutOrHeapSpaceExceptionMap.get(localMinWithBound) < amountProcessesPerIteration || outOfMemoryError == false);
 
 		executor.shutdownNow();
 
@@ -1466,7 +1488,6 @@ public class BatchFileGenerator {
 		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(directoryToStore, writer);
 
 		// perform all algorithms and count the timeouts
-
 		for (API api : apiList) {
 			HashMap<String, Integer> timeOutMap = new HashMap<String, Integer>();
 
@@ -1474,15 +1495,22 @@ public class BatchFileGenerator {
 			timeOutMap.put("localMin", 0);
 			timeOutMap.put(localMinWithBound, 0);
 
-			timeOutMap = BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, upperBoundSolutionsForLocalMin,
+			HashMap<Boolean, HashMap<String, Integer>> returnMap = BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, upperBoundSolutionsForLocalMin,
 					boundForComparisons, timeOutMap, writer, executor);
-
+			boolean outOfMemoryException = false;
+			if(returnMap.get(false)!=null) {
+				outOfMemoryException = true;
+				timeOutMap = returnMap.get(false);
+			} else {
+				timeOutMap = returnMap.get(true);
+			}
+			
 			System.out.println("timeOutsBruteForce: " + timeOutMap.get("bruteForce") + ", timeOutsLocalMin: "
 					+ timeOutMap.get("localMin") + ", timeOuts" + localMinWithBound + ": "
 					+ timeOutMap.get(localMinWithBound));
 
-			if (timeOutMap.get("bruteForce") == 1 && timeOutMap.get("localMin") == 1
-					&& timeOutMap.get(localMinWithBound) == 1) {
+			if ((timeOutMap.get("bruteForce") == 1 && timeOutMap.get("localMin") == 1
+					&& timeOutMap.get(localMinWithBound) == 1) || outOfMemoryException==true) {
 				break;
 			}
 		}
