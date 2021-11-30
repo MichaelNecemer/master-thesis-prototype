@@ -36,9 +36,12 @@ public class BatchFileGenerator {
 	static String root = System.getProperty("user.home") + "/Onedrive/Desktop";
 
 	static int timeOutForProcessGeneratorInMin = 2;
-	static int timeOutForProcessModelAnnotaterInMin = 6;
+	static int timeOutForProcessModelAnnotaterInMin = 4;
 	// API is the class where the computations will be done
 	static int timeOutForApiInMin = 3;
+	
+	//how often will the modelAnnotater try to annotate the model if it fails
+	static int triesForModelAnnotater = 5;
 
 	// bound for the bounded localMinAlgorithm
 	static int upperBoundLocalMinWithBound = 1;
@@ -1364,12 +1367,12 @@ public class BatchFileGenerator {
 			Iterator<File> modelIter = listOfFiles.iterator();
 			while (modelIter.hasNext()) { // annotate the model
 				File model = modelIter.next();
-				System.out.println(model.getName());
 				boolean correctModel = false;
 				int tries = 0;
-				while (correctModel == false && tries < 10) {
+				while (correctModel == false && tries < triesForModelAnnotater) {
 					File modelCopy = (File) CommonFunctionality.deepCopy(model);
 					ProcessModelAnnotater p;
+					System.out.println(model.getName()+", tries: "+tries);
 					try {
 						p = new ProcessModelAnnotater(modelCopy.getAbsolutePath(),
 								pathToFolderForModelsWithDecisionsAnnotated, "_annotated");
