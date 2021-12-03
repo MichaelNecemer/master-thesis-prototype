@@ -303,7 +303,7 @@ public class ResultsToCSVWriter {
 			globalSphereSize = CommonFunctionality.getGlobalSphere(bruteForceApi.getModelInstance(),
 					bruteForceApi.modelWithLanes()) + "";
 			sphereSumOfModel = CommonFunctionality.getSphereSumOfModel(bruteForceApi.getModelInstance()) + "";
-			amountSolutions = bruteForceApi.getAmountPossibleCombinationsOfParticipants() + "";
+			amountSolutions = bruteForceApi.getAmountPossibleCombinationsOfParticipants();
 			deciderOrVerifier = bruteForceApi.getDeciderOrVerifier();
 			int readers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality

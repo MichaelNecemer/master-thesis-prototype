@@ -35,8 +35,8 @@ public class BatchFileGenerator {
 	// static String root = System.getProperty("user.home") + "/Desktop";
 	static String root = System.getProperty("user.home") + "/Onedrive/Desktop";
 
-	static int timeOutForProcessGeneratorInMin = 2;
-	static int timeOutForProcessModelAnnotaterInMin = 4;
+	static int timeOutForProcessGeneratorInMin = 5;
+	static int timeOutForProcessModelAnnotaterInMin = 10;
 	// API is the class where the computations will be done
 	static int timeOutForApiInMin = 3;
 	
@@ -560,6 +560,60 @@ public class BatchFileGenerator {
 
 		executor.shutdown();
 	}
+	
+	public static void generateRandomProcessesWithFixedValuesAndExactlyMaxDecisionsAndMaxAmountParticipants(String pathForAddingRandomModels,
+			int maxAmountParticipants, int maxAmountTasks, int maxAmountXorSplits, int maxAmountParallelSplits,
+			int amountProcesses, ExecutorService executor) {
+
+		for (int i = 1; i <= amountProcesses; i++) {
+
+			// will be written to the pathForAddingRandomModels
+
+			ProcessGenerator pGen;
+			try {
+
+				pGen = new ProcessGenerator(pathForAddingRandomModels, maxAmountParticipants, maxAmountTasks,
+						maxAmountXorSplits, maxAmountParallelSplits, probTask, probXorGtw, probParallelGtw,
+						probJoinGtw, nestingDepthFactor);
+
+				Future<File> future = executor.submit(pGen);
+				try {
+					File f = future.get(timeOutForProcessGeneratorInMin, TimeUnit.MINUTES);
+					System.out.println(f.getName() + " deployed successfully");
+					//there need to be exactly as many xor splits as maxAmountXorSplits
+					//there need to be exactly as many participants as maxAmountParticipants
+					BpmnModelInstance createdModel = Bpmn.readModelFromFile(f);				
+					if(CommonFunctionality.getAmountExclusiveGtwSplits(createdModel)!=maxAmountXorSplits || CommonFunctionality.getGlobalSphere(createdModel, false)!=maxAmountParticipants) {
+						//delete the model
+						System.out.println(f.getAbsolutePath()+"not exactly" +maxAmountXorSplits+" xor-splits. Deleted: "+f.delete());						
+					}					
+					
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					future.cancel(true);
+				} catch (ExecutionException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					future.cancel(true);
+				} catch (TimeoutException e) {
+					// TODO Auto-generated catch block
+					System.out.println("ProcessGenerator timed out!");
+					e.printStackTrace();
+					future.cancel(true);
+				}
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				i--;
+			}
+
+		}
+
+	}
+	
+	
+	
 
 	public static void generateRandomProcessesWithFixedValues(String pathForAddingRandomModels,
 			int maxAmountParticipants, int maxAmountMaxTasks, int maxAmountMaxXorSplits, int maxAmountMaxParallelSplits,
@@ -1328,6 +1382,7 @@ public class BatchFileGenerator {
 		String localMinWithBound = "localMinWithBound" + upperBoundSolutionsForLocalMinWithBound;
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 		boolean outOfMemoryError = false;
+		int apiListSize = amountProcessesPerIteration;
 
 		do {
 			timeOutOrHeapSpaceExceptionMap.clear();
@@ -1351,7 +1406,7 @@ public class BatchFileGenerator {
 					amountReadersInPercent, amountDataObjectsToCreate);
 
 			// generate processes
-			BatchFileGenerator.generateRandomProcessesWithFixedValues(pathToFolderForModelsWithDecisions, globalSphere,
+			BatchFileGenerator.generateRandomProcessesWithFixedValuesAndExactlyMaxDecisionsAndMaxAmountParticipants(pathToFolderForModelsWithDecisions, globalSphere,
 					amountTasksWithFactor, amountDecisionsToStart, amountParallelGtws, amountProcessesPerIteration,
 					executor);
 
@@ -1361,7 +1416,7 @@ public class BatchFileGenerator {
 			listOfFiles.addAll(Arrays.asList(folder.listFiles()));
 
 			amountProcessesPerIteration = listOfFiles.size();
-
+			
 			String pathToFolderForModelsWithDecisionsAnnotated = CommonFunctionality
 					.fileWithDirectoryAssurance(pathToFolderForModelsWithDecisions, "annotated").getAbsolutePath();
 			Iterator<File> modelIter = listOfFiles.iterator();
@@ -1439,6 +1494,8 @@ public class BatchFileGenerator {
 			// map annotated models
 			LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderForModelsWithDecisionsAnnotated,
 					writer);
+			
+			apiListSize = apiList.size();
 
 			// perform all algorithms and count the timeouts
 			for (API api : apiList) {
@@ -1459,13 +1516,14 @@ public class BatchFileGenerator {
 					+ timeOutOrHeapSpaceExceptionMap.get("localMin") + ", timeOutsLocalMinWithBound"
 					+ upperBoundSolutionsForLocalMinWithBound + ": "
 					+ timeOutOrHeapSpaceExceptionMap.get(localMinWithBound));
+			
 			amountDecisionsToStart++;
 			
 			
 
-		} while (timeOutOrHeapSpaceExceptionMap.get("bruteForce") < amountProcessesPerIteration
-				|| timeOutOrHeapSpaceExceptionMap.get("localMin") < amountProcessesPerIteration
-				|| timeOutOrHeapSpaceExceptionMap.get(localMinWithBound) < amountProcessesPerIteration || outOfMemoryError == false);
+		} while (timeOutOrHeapSpaceExceptionMap.get("bruteForce") < apiListSize
+				|| timeOutOrHeapSpaceExceptionMap.get("localMin") < apiListSize
+				|| timeOutOrHeapSpaceExceptionMap.get(localMinWithBound) < apiListSize || outOfMemoryError == false);
 
 		executor.shutdownNow();
 

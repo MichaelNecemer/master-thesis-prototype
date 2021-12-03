@@ -64,7 +64,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	private Collection<EndEvent> endEvent;
 	private File process;
 	private BpmnModelInstance modelInstance;
-	private int amountPossibleCombinationsOfParticipants;
+	private String amountPossibleCombinationsOfParticipants;
 	private boolean modelWithLanes;
 	private HashMap<String, Double> executionTimeMap;
 	private BPMNParticipant troubleShooter;
@@ -74,9 +74,9 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	private BPMNEndEvent bpmnEnd;
 	private ArrayList<BPMNDataObject> dataObjects = new ArrayList<BPMNDataObject>();
 	private ArrayList<BPMNElement> processElements = new ArrayList<BPMNElement>();
-	private LinkedList<BPMNParticipant>publicSphere = new LinkedList<BPMNParticipant>();
+	private LinkedList<BPMNParticipant> publicSphere = new LinkedList<BPMNParticipant>();
 	private LinkedList<BPMNParticipant> globalSphere = new LinkedList<BPMNParticipant>();
-	private LinkedList<BPMNElement>globalSphereTasks;
+	private LinkedList<BPMNElement> globalSphereTasks;
 	private ArrayList<BPMNBusinessRuleTask> businessRuleTaskList = new ArrayList<BPMNBusinessRuleTask>();
 	private ArrayList<Label> labelList = new ArrayList<Label>();
 	private LinkedList<LinkedList<FlowNode>> pathsThroughProcess = new LinkedList<LinkedList<FlowNode>>();
@@ -104,23 +104,22 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		this.costForLiftingFromWeakDynamicToStrongDynamic = cost.get(3);
 		this.algorithmToPerform = "bruteForce";
 		this.executionTimeMap = new HashMap<String, Double>();
-		this.amountPossibleCombinationsOfParticipants = 1;
+		this.amountPossibleCombinationsOfParticipants = "1";
 
 		System.out.println("API for: " + process.getName());
 		CommonFunctionality.isCorrectModel(modelInstance);
-		
+
 		this.readersMap = CommonFunctionality.getReadersForDataObjects(modelInstance);
 		this.writersMap = CommonFunctionality.getWritersForDataObjects(modelInstance);
 
 		this.mapAndCompute();
-		
+
 		this.setDependentBrts();
 		this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
 				modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
 				modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), new LinkedList<FlowNode>(),
 				new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(),
 				new LinkedList<LinkedList<FlowNode>>());
-	
 	}
 
 	private void mapAndCompute() throws Exception {
@@ -162,13 +161,11 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			for (BPMNDataObject dataO : brt.getDataObjects()) {
 				ArrayList<BPMNTask> lastWritersForDataO = this.getLastWriterListForDataObject(brt, dataO,
 						new ArrayList<BPMNTask>(), new LinkedList<BPMNElement>());
-				for(BPMNTask t: lastWritersForDataO) {
+				for (BPMNTask t : lastWritersForDataO) {
 				}
 				brt.getLastWriterList().putIfAbsent(dataO, lastWritersForDataO);
 			}
 		}
-		
-	
 
 	}
 
@@ -265,248 +262,250 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		return null;
 
 	}
-	private void setRequiredUpgradeForArc (VoterForXorArc arcToBeAdded, ProcessInstanceWithVoters currInst ,
+
+	private void setRequiredUpgradeForArc(VoterForXorArc arcToBeAdded, ProcessInstanceWithVoters currInst,
 			LinkedList<LinkedList<BPMNElement>> paths) throws NullPointerException, InterruptedException, Exception {
-			// get all the participants of the current process instance and check which
-			// updates would be necessary for arcToBeAdded
-			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters = currInst.getVotersMap();
-			BPMNBusinessRuleTask brtToBeAdded = arcToBeAdded.getBrt();
-			if(currInst.getListOfRequiredUpgrades().isEmpty()) {
-				currInst.setGlobalSphere(this.globalSphere);
-				HashMap<BPMNDataObject, LinkedList<BPMNParticipant>>staticSphereToSet = new HashMap<BPMNDataObject, LinkedList<BPMNParticipant>>();
-				HashMap<BPMNDataObject, LinkedList<BPMNElement>>readersPerDataObject = new HashMap<BPMNDataObject, LinkedList<BPMNElement>>();
-				HashMap<BPMNDataObject, LinkedList<BPMNElement>>writersPerDataObject = new HashMap<BPMNDataObject, LinkedList<BPMNElement>>();
+		// get all the participants of the current process instance and check which
+		// updates would be necessary for arcToBeAdded
+		HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters = currInst.getVotersMap();
+		BPMNBusinessRuleTask brtToBeAdded = arcToBeAdded.getBrt();
+		if (currInst.getListOfRequiredUpgrades().isEmpty()) {
+			currInst.setGlobalSphere(this.globalSphere);
+			HashMap<BPMNDataObject, LinkedList<BPMNParticipant>> staticSphereToSet = new HashMap<BPMNDataObject, LinkedList<BPMNParticipant>>();
+			HashMap<BPMNDataObject, LinkedList<BPMNElement>> readersPerDataObject = new HashMap<BPMNDataObject, LinkedList<BPMNElement>>();
+			HashMap<BPMNDataObject, LinkedList<BPMNElement>> writersPerDataObject = new HashMap<BPMNDataObject, LinkedList<BPMNElement>>();
 
-				for(BPMNDataObject dataO: this.dataObjects) {
-					staticSphereToSet.putIfAbsent(dataO, dataO.getStaticSphere());
-					readersPerDataObject.putIfAbsent(dataO, (LinkedList<BPMNElement>) dataO.getReaders());
-					writersPerDataObject.putIfAbsent(dataO, (LinkedList<BPMNElement>) dataO.getWriters());
-				}				
-				currInst.setStaticSphere(staticSphereToSet);
-				currInst.setWritersOfDataObjects(writersPerDataObject);
-				currInst.setReadersOfDataObjects(readersPerDataObject);				
-			} 
-			currInst.updateSpheres(brtToBeAdded, this.globalSphereTasks);			
-			
-				HashMap<BPMNDataObject, ArrayList<BPMNTask>> lastWriters = brtToBeAdded.getLastWriterList();
-				for (Entry<BPMNDataObject, ArrayList<BPMNTask>> entry : lastWriters.entrySet()) {
-					for (BPMNTask lastWriter : entry.getValue()) {
-						BPMNDataObject dataO = entry.getKey();
-						String requiredSphere = lastWriter.getSphereAnnotation().get(dataO);
-						HashMap<BPMNParticipant, LinkedList<String>> sphereMap = new HashMap<BPMNParticipant, LinkedList<String>>();
-						// set the WD and SD sphere and consider the preceeding already chosen voters
-						// substitute the respective brts participant with the voters
-						ArrayList<BPMNParticipant> wdList = new ArrayList<BPMNParticipant>();
-						ArrayList<BPMNParticipant> sdList = new ArrayList<BPMNParticipant>();
+			for (BPMNDataObject dataO : this.dataObjects) {
+				staticSphereToSet.putIfAbsent(dataO, dataO.getStaticSphere());
+				readersPerDataObject.putIfAbsent(dataO, (LinkedList<BPMNElement>) dataO.getReaders());
+				writersPerDataObject.putIfAbsent(dataO, (LinkedList<BPMNElement>) dataO.getWriters());
+			}
+			currInst.setStaticSphere(staticSphereToSet);
+			currInst.setWritersOfDataObjects(writersPerDataObject);
+			currInst.setReadersOfDataObjects(readersPerDataObject);
+		}
+		currInst.updateSpheres(brtToBeAdded, this.globalSphereTasks);
 
-						for (BPMNParticipant readerParticipant : arcToBeAdded.getChosenCombinationOfParticipants()) {
-							// List will contain 1 or 2 entries, 1. sphereForReaderBeforeBrt 2.(if possible)
-							// - sphereForReaderAfterBrt
-							LinkedList<String> sphereList = new LinkedList<String>();
+		HashMap<BPMNDataObject, ArrayList<BPMNTask>> lastWriters = brtToBeAdded.getLastWriterList();
+		for (Entry<BPMNDataObject, ArrayList<BPMNTask>> entry : lastWriters.entrySet()) {
+			for (BPMNTask lastWriter : entry.getValue()) {
+				BPMNDataObject dataO = entry.getKey();
+				String requiredSphere = lastWriter.getSphereAnnotation().get(dataO);
+				HashMap<BPMNParticipant, LinkedList<String>> sphereMap = new HashMap<BPMNParticipant, LinkedList<String>>();
+				// set the WD and SD sphere and consider the preceeding already chosen voters
+				// substitute the respective brts participant with the voters
+				ArrayList<BPMNParticipant> wdList = new ArrayList<BPMNParticipant>();
+				ArrayList<BPMNParticipant> sdList = new ArrayList<BPMNParticipant>();
 
-							// get sphere for reader between lastWriter and currentBrt
-							String sphereForReaderBeforeBrt = this
-									.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(currInst, brtToBeAdded, lastWriter,
-											dataO, readerParticipant, alreadyChosenVoters);
-							sphereList.add(sphereForReaderBeforeBrt);
-							String sphereForReader = sphereForReaderBeforeBrt;
-							// if found sphere for reader does not match the required sphere
-							// e.g. if writer demands WD or SD and the sphereForReader is static
-							// search can be extended
-							// since the reader reads the data somewhere in the process (may be after the
-							// xor-split and potentially WD or SD)
-							String requiredSphereOfWriter = ((BPMNTask) lastWriter).getSphereAnnotation().get(dataO);
+				for (BPMNParticipant readerParticipant : arcToBeAdded.getChosenCombinationOfParticipants()) {
+					// List will contain 1 or 2 entries, 1. sphereForReaderBeforeBrt 2.(if possible)
+					// - sphereForReaderAfterBrt
+					LinkedList<String> sphereList = new LinkedList<String>();
 
-							if ((requiredSphereOfWriter.equals("Strong-Dynamic")
-									|| requiredSphereOfWriter.equals("Weak-Dynamic"))
-									&& sphereForReaderBeforeBrt.contentEquals("Static")) {
-								if (this.atLeastInSphere(sphereForReaderBeforeBrt, requiredSphereOfWriter) == false) {
-									String sphereForReaderAfterBrt = this
-											.getSphereForParticipantOnEffectivePathsAfterCurrentBrtWithAlreadyChosenVoters(
-													brtToBeAdded, lastWriter, dataO, readerParticipant, currInst.getReadersOfDataObjects().get(dataO), currInst.getWritersOfDataObjects().get(dataO), alreadyChosenVoters,
-													sphereForReaderBeforeBrt, paths);
-									// check if the sphere for reader after brt has been "upgraded" e.g. from static
-									// to WD
-									if (this.atLeastInSphere(sphereForReaderAfterBrt, sphereForReaderBeforeBrt)) {
-										if (!sphereForReaderAfterBrt.contentEquals(sphereForReaderBeforeBrt)) {
-											// take the upgraded sphere as a required Update
-											// mark that a reader fulfills required sphere only after the brt and not on the
-											// path from lastWriter to it
-											sphereList.add(sphereForReaderAfterBrt);
-											sphereForReader = sphereForReaderAfterBrt;
-										}
-									}
+					// get sphere for reader between lastWriter and currentBrt
+					String sphereForReaderBeforeBrt = this
+							.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(currInst, brtToBeAdded,
+									lastWriter, dataO, readerParticipant, alreadyChosenVoters);
+					sphereList.add(sphereForReaderBeforeBrt);
+					String sphereForReader = sphereForReaderBeforeBrt;
+					// if found sphere for reader does not match the required sphere
+					// e.g. if writer demands WD or SD and the sphereForReader is static
+					// search can be extended
+					// since the reader reads the data somewhere in the process (may be after the
+					// xor-split and potentially WD or SD)
+					String requiredSphereOfWriter = ((BPMNTask) lastWriter).getSphereAnnotation().get(dataO);
+
+					if ((requiredSphereOfWriter.equals("Strong-Dynamic")
+							|| requiredSphereOfWriter.equals("Weak-Dynamic"))
+							&& sphereForReaderBeforeBrt.contentEquals("Static")) {
+						if (this.atLeastInSphere(sphereForReaderBeforeBrt, requiredSphereOfWriter) == false) {
+							String sphereForReaderAfterBrt = this
+									.getSphereForParticipantOnEffectivePathsAfterCurrentBrtWithAlreadyChosenVoters(
+											brtToBeAdded, lastWriter, dataO, readerParticipant,
+											currInst.getReadersOfDataObjects().get(dataO),
+											currInst.getWritersOfDataObjects().get(dataO), alreadyChosenVoters,
+											sphereForReaderBeforeBrt, paths);
+							// check if the sphere for reader after brt has been "upgraded" e.g. from static
+							// to WD
+							if (this.atLeastInSphere(sphereForReaderAfterBrt, sphereForReaderBeforeBrt)) {
+								if (!sphereForReaderAfterBrt.contentEquals(sphereForReaderBeforeBrt)) {
+									// take the upgraded sphere as a required Update
+									// mark that a reader fulfills required sphere only after the brt and not on the
+									// path from lastWriter to it
+									sphereList.add(sphereForReaderAfterBrt);
+									sphereForReader = sphereForReaderAfterBrt;
 								}
 							}
-
-							if (sphereForReader.contentEquals("Strong-Dynamic")) {
-								if (!sdList.contains(readerParticipant)) {
-									sdList.add(readerParticipant);
-								}
-							} else if (sphereForReader.contentEquals("Weak-Dynamic")) {
-								if (!wdList.contains(readerParticipant)) {
-									wdList.add(readerParticipant);
-								}
-							}
-
-							sphereMap.putIfAbsent(readerParticipant, sphereList);
 						}
-
-						if (lastWriter.getWeakDynamicHashMap().get(dataO) == null) {
-							lastWriter.getWeakDynamicHashMap().put(dataO, wdList);
-						} else {
-							lastWriter.getWeakDynamicHashMap().remove(dataO);
-							lastWriter.getWeakDynamicHashMap().put(dataO, wdList);
-						}
-
-						if (lastWriter.getStrongDynamicHashMap().get(dataO) == null) {
-							lastWriter.getStrongDynamicHashMap().put(dataO, sdList);
-						} else {
-							lastWriter.getStrongDynamicHashMap().remove(dataO);
-							lastWriter.getStrongDynamicHashMap().put(dataO, sdList);
-						}
-
-						LinkedList<BPMNParticipant> chosenPartForArc = arcToBeAdded.getChosenCombinationOfParticipants();
-
-						for (BPMNParticipant reader : chosenPartForArc) {
-
-							String update = "";
-							double cost = 0;
-							double weight = 1;
-							// to calculate the weight we have to check on how many paths the lastWriter
-							// writes data that is read by the brt
-
-							if (requiredSphere.contentEquals("Strong-Dynamic")) {
-
-								if (lastWriter.getStrongDynamicHashMap().containsKey(dataO)) {
-									if (lastWriter.getStrongDynamicHashMap().get(dataO).contains(reader)) {
-										// reader is on each effective path from lastwriter to brt and also in sd sphere
-										// of the process at the point of the lastwriter
-										// no update needed
-
-									} else if (lastWriter.getWeakDynamicHashMap().get(dataO).contains(reader)) {
-										// update from WD to SD
-										update = "wdToSD";
-										cost = this.costForLiftingFromWeakDynamicToStrongDynamic;
-
-									} else if (currInst.getStaticSphere().get(dataO).contains(reader)) {
-										// update from static to SD
-										update = "staticToSD";
-										cost = this.costForLiftingFromStaticToWeakDynamic
-												+ this.costForLiftingFromWeakDynamicToStrongDynamic;
-
-									} else if (currInst.getGlobalSphere().contains(reader)) {
-										// update from global to SD
-										update = "globalToSD";
-										cost = this.costForLiftingFromGlobalToStatic
-												+ this.costForLiftingFromStaticToWeakDynamic
-												+ this.costForLiftingFromWeakDynamicToStrongDynamic;
-									} else {
-										// update from public to SD
-										update = "publicToSD";
-										cost = this.costForLiftingFromPublicToGlobal + this.costForLiftingFromGlobalToStatic
-												+ this.costForLiftingFromStaticToWeakDynamic
-												+ this.costForLiftingFromWeakDynamicToStrongDynamic;
-									}
-
-								}
-							} else if (requiredSphere.contentEquals("Weak-Dynamic")) {
-								if (lastWriter.getWeakDynamicHashMap().containsKey(dataO)) {
-
-									if (lastWriter.getStrongDynamicHashMap().get(dataO).contains(reader)
-											|| lastWriter.getWeakDynamicHashMap().get(dataO).contains(reader)) {
-										// no update needed
-
-									} else if (currInst.getStaticSphere().get(dataO).contains(reader)) {
-										// update from static to WD
-										update = "staticToWD";
-										cost = this.costForLiftingFromStaticToWeakDynamic;
-
-									} else if (currInst.getGlobalSphere().contains(reader)) {
-										// update from global to WD
-										update = "globalToWD";
-										cost = this.costForLiftingFromGlobalToStatic
-												+ this.costForLiftingFromStaticToWeakDynamic;
-									} else {
-										// update from public to WD
-										update = "publicToWD";
-										cost = this.costForLiftingFromPublicToGlobal + this.costForLiftingFromGlobalToStatic
-												+ this.costForLiftingFromStaticToWeakDynamic;
-									}
-
-								}
-							} else if (requiredSphere.contentEquals("Static")) {
-								if (lastWriter.getStrongDynamicHashMap().get(dataO).contains(reader)
-										|| lastWriter.getWeakDynamicHashMap().get(dataO).contains(reader)
-										|| currInst.getStaticSphere().get(dataO).contains(reader)) {
-									// no update needed
-
-								} else if (currInst.getGlobalSphere().contains(reader)) {
-									update = "globalToStatic";
-									cost = this.costForLiftingFromGlobalToStatic;
-								} else {
-									update = "publicToStatic";
-									cost = this.costForLiftingFromPublicToGlobal + this.costForLiftingFromGlobalToStatic;
-								}
-
-							} else if (requiredSphere.contentEquals("Global")) {
-								if (lastWriter.getStrongDynamicHashMap().get(dataO).contains(reader)
-										|| lastWriter.getWeakDynamicHashMap().get(dataO).contains(reader)
-										|| currInst.getStaticSphere().get(dataO).contains(reader) || currInst.getGlobalSphere().contains(reader)) {
-									// no update needed
-								} else {
-
-								// update from public to global
-								update = "publicToGlobal";
-								cost = this.costForLiftingFromPublicToGlobal;
-								}
-							}
-
-							if (update != "") {
-								LinkedList<String> spheres = sphereMap.get(reader);
-								RequiredUpgrade reqUpdate = new RequiredUpgrade(lastWriter, dataO, brtToBeAdded,
-										alreadyChosenVoters, reader, spheres, update, weight, cost);
-								double weighting = this
-										.calculateWeightingForLastWriter(lastWriter, this.bpmnStart, dataO, brtToBeAdded);
-								reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(weighting);
-								//reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(1);
-								currInst.getListOfRequiredUpgrades().add(reqUpdate);
-
-								
-								double currInstCost = currInst.getCostForModelInstance();
-								// cost will be multiplied with the weighting of the last writer and the
-								// weighting of the brt
-								double weightingOfCurrentBrt = 1;
-								if (!brtToBeAdded.getLabels().isEmpty()) {
-									// since process is block structured -> there are 2 paths for each xor-split
-									weightingOfCurrentBrt = weightingOfCurrentBrt / (brtToBeAdded.getLabels().size() * 2);
-								}
-								
-								currInstCost += (cost * reqUpdate.getWeightingOfLastWriterToWriteDataForBrt()
-										* weightingOfCurrentBrt);
-								currInst.setCostForModelInstance(currInstCost);
-
-							} 
-						}
-							
-						if(Thread.currentThread().isInterrupted()) {
-							System.err.println("Interrupted! " +Thread.currentThread().getName());
-							throw new InterruptedException();
-						}
-						
 					}
 
+					if (sphereForReader.contentEquals("Strong-Dynamic")) {
+						if (!sdList.contains(readerParticipant)) {
+							sdList.add(readerParticipant);
+						}
+					} else if (sphereForReader.contentEquals("Weak-Dynamic")) {
+						if (!wdList.contains(readerParticipant)) {
+							wdList.add(readerParticipant);
+						}
+					}
+
+					sphereMap.putIfAbsent(readerParticipant, sphereList);
 				}
-			
+
+				if (lastWriter.getWeakDynamicHashMap().get(dataO) == null) {
+					lastWriter.getWeakDynamicHashMap().put(dataO, wdList);
+				} else {
+					lastWriter.getWeakDynamicHashMap().remove(dataO);
+					lastWriter.getWeakDynamicHashMap().put(dataO, wdList);
+				}
+
+				if (lastWriter.getStrongDynamicHashMap().get(dataO) == null) {
+					lastWriter.getStrongDynamicHashMap().put(dataO, sdList);
+				} else {
+					lastWriter.getStrongDynamicHashMap().remove(dataO);
+					lastWriter.getStrongDynamicHashMap().put(dataO, sdList);
+				}
+
+				LinkedList<BPMNParticipant> chosenPartForArc = arcToBeAdded.getChosenCombinationOfParticipants();
+
+				for (BPMNParticipant reader : chosenPartForArc) {
+
+					String update = "";
+					double cost = 0;
+					double weight = 1;
+					// to calculate the weight we have to check on how many paths the lastWriter
+					// writes data that is read by the brt
+
+					if (requiredSphere.contentEquals("Strong-Dynamic")) {
+
+						if (lastWriter.getStrongDynamicHashMap().containsKey(dataO)) {
+							if (lastWriter.getStrongDynamicHashMap().get(dataO).contains(reader)) {
+								// reader is on each effective path from lastwriter to brt and also in sd sphere
+								// of the process at the point of the lastwriter
+								// no update needed
+
+							} else if (lastWriter.getWeakDynamicHashMap().get(dataO).contains(reader)) {
+								// update from WD to SD
+								update = "wdToSD";
+								cost = this.costForLiftingFromWeakDynamicToStrongDynamic;
+
+							} else if (currInst.getStaticSphere().get(dataO).contains(reader)) {
+								// update from static to SD
+								update = "staticToSD";
+								cost = this.costForLiftingFromStaticToWeakDynamic
+										+ this.costForLiftingFromWeakDynamicToStrongDynamic;
+
+							} else if (currInst.getGlobalSphere().contains(reader)) {
+								// update from global to SD
+								update = "globalToSD";
+								cost = this.costForLiftingFromGlobalToStatic
+										+ this.costForLiftingFromStaticToWeakDynamic
+										+ this.costForLiftingFromWeakDynamicToStrongDynamic;
+							} else {
+								// update from public to SD
+								update = "publicToSD";
+								cost = this.costForLiftingFromPublicToGlobal + this.costForLiftingFromGlobalToStatic
+										+ this.costForLiftingFromStaticToWeakDynamic
+										+ this.costForLiftingFromWeakDynamicToStrongDynamic;
+							}
+
+						}
+					} else if (requiredSphere.contentEquals("Weak-Dynamic")) {
+						if (lastWriter.getWeakDynamicHashMap().containsKey(dataO)) {
+
+							if (lastWriter.getStrongDynamicHashMap().get(dataO).contains(reader)
+									|| lastWriter.getWeakDynamicHashMap().get(dataO).contains(reader)) {
+								// no update needed
+
+							} else if (currInst.getStaticSphere().get(dataO).contains(reader)) {
+								// update from static to WD
+								update = "staticToWD";
+								cost = this.costForLiftingFromStaticToWeakDynamic;
+
+							} else if (currInst.getGlobalSphere().contains(reader)) {
+								// update from global to WD
+								update = "globalToWD";
+								cost = this.costForLiftingFromGlobalToStatic
+										+ this.costForLiftingFromStaticToWeakDynamic;
+							} else {
+								// update from public to WD
+								update = "publicToWD";
+								cost = this.costForLiftingFromPublicToGlobal + this.costForLiftingFromGlobalToStatic
+										+ this.costForLiftingFromStaticToWeakDynamic;
+							}
+
+						}
+					} else if (requiredSphere.contentEquals("Static")) {
+						if (lastWriter.getStrongDynamicHashMap().get(dataO).contains(reader)
+								|| lastWriter.getWeakDynamicHashMap().get(dataO).contains(reader)
+								|| currInst.getStaticSphere().get(dataO).contains(reader)) {
+							// no update needed
+
+						} else if (currInst.getGlobalSphere().contains(reader)) {
+							update = "globalToStatic";
+							cost = this.costForLiftingFromGlobalToStatic;
+						} else {
+							update = "publicToStatic";
+							cost = this.costForLiftingFromPublicToGlobal + this.costForLiftingFromGlobalToStatic;
+						}
+
+					} else if (requiredSphere.contentEquals("Global")) {
+						if (lastWriter.getStrongDynamicHashMap().get(dataO).contains(reader)
+								|| lastWriter.getWeakDynamicHashMap().get(dataO).contains(reader)
+								|| currInst.getStaticSphere().get(dataO).contains(reader)
+								|| currInst.getGlobalSphere().contains(reader)) {
+							// no update needed
+						} else {
+
+							// update from public to global
+							update = "publicToGlobal";
+							cost = this.costForLiftingFromPublicToGlobal;
+						}
+					}
+
+					if (update != "") {
+						LinkedList<String> spheres = sphereMap.get(reader);
+						RequiredUpgrade reqUpdate = new RequiredUpgrade(lastWriter, dataO, brtToBeAdded,
+								alreadyChosenVoters, reader, spheres, update, weight, cost);
+						double weighting = this.calculateWeightingForLastWriter(lastWriter, this.bpmnStart, dataO,
+								brtToBeAdded);
+						reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(weighting);
+						// reqUpdate.setWeightingOfLastWriterToWriteDataForBrt(1);
+						currInst.getListOfRequiredUpgrades().add(reqUpdate);
+
+						double currInstCost = currInst.getCostForModelInstance();
+						// cost will be multiplied with the weighting of the last writer and the
+						// weighting of the brt
+						double weightingOfCurrentBrt = 1;
+						if (!brtToBeAdded.getLabels().isEmpty()) {
+							// since process is block structured -> there are 2 paths for each xor-split
+							weightingOfCurrentBrt = weightingOfCurrentBrt / (brtToBeAdded.getLabels().size() * 2);
+						}
+
+						currInstCost += (cost * reqUpdate.getWeightingOfLastWriterToWriteDataForBrt()
+								* weightingOfCurrentBrt);
+						currInst.setCostForModelInstance(currInstCost);
+
+					}
+				}
+
+				if (Thread.currentThread().isInterrupted()) {
+					System.err.println("Interrupted! " + Thread.currentThread().getName());
+					throw new InterruptedException();
+				}
+
+			}
 
 		}
-	
-	public synchronized LinkedList<ProcessInstanceWithVoters> localMinimumAlgorithmWithLimit(int upperBoundSolutionsPerIteration)
-			throws NullPointerException, InterruptedException, Exception {
+
+	}
+
+	public synchronized LinkedList<ProcessInstanceWithVoters> localMinimumAlgorithmWithLimit(
+			int upperBoundSolutionsPerIteration) throws NullPointerException, InterruptedException, Exception {
 		// at each businessRuleTask in front of a xor-split:
 		// generate all possible combinations of voters - calculate cost and only take
 		// cheapest one(s)
-		
+
 		if (!this.executionTimeMap.isEmpty()) {
 			// delete all arcs for brts
 			for (BPMNBusinessRuleTask brt : this.businessRuleTaskList) {
@@ -515,34 +514,33 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			}
 
 		}
-		System.out.println("Local Minimum Algorithm with Limit "
-				+ upperBoundSolutionsPerIteration+" generating all cheapest process instances: ");
+		System.out.println("Local Minimum Algorithm with Limit " + upperBoundSolutionsPerIteration
+				+ " generating all cheapest process instances: ");
 		long startTime = System.nanoTime();
-		LinkedList<ProcessInstanceWithVoters> cheapestCombinationsWithLimit = this.goDFSthroughProcessBuildArcsAndGetVoters(true, upperBoundSolutionsPerIteration,
-				this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
-				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
-				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>>(), new LinkedList<VoterForXorArc>(),
-				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+		LinkedList<ProcessInstanceWithVoters> cheapestCombinationsWithLimit = this
+				.goDFSthroughProcessBuildArcsAndGetVoters(true, upperBoundSolutionsPerIteration, this.bpmnStart,
+						this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
+						new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
+						new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>>(),
+						new LinkedList<VoterForXorArc>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+						new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+						new LinkedList<LinkedList<BPMNElement>>());
 		long stopTime = System.nanoTime();
 		long executionTime = stopTime - startTime;
 		double executionTimelocalMinAlgorithmWithLimitInSeconds = (double) executionTime / 1000000000;
-		String key = "localMinWithBound"+upperBoundSolutionsPerIteration;
+		String key = "localMinWithBound" + upperBoundSolutionsPerIteration;
 		this.executionTimeMap.put(key, executionTimelocalMinAlgorithmWithLimitInSeconds);
 
-		
 		return cheapestCombinationsWithLimit;
-		
+
 	}
-	
-	
 
 	public synchronized LinkedList<ProcessInstanceWithVoters> localMinimumAlgorithm()
 			throws NullPointerException, InterruptedException, Exception {
 		// at each businessRuleTask in front of a xor-split:
 		// generate all possible combinations of voters - calculate cost and only take
 		// cheapest one(s)
-		
+
 		if (!this.executionTimeMap.isEmpty()) {
 			// delete all arcs for brts
 			for (BPMNBusinessRuleTask brt : this.businessRuleTaskList) {
@@ -553,8 +551,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		}
 		System.out.println("Local Minimum Algorithm generating all cheapest process instances: ");
 		long startTime = System.nanoTime();
-		LinkedList<ProcessInstanceWithVoters> cheapestCombinations = this.goDFSthroughProcessBuildArcsAndGetVoters(true,0,
-				this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
+		LinkedList<ProcessInstanceWithVoters> cheapestCombinations = this.goDFSthroughProcessBuildArcsAndGetVoters(true,
+				0, this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>>(), new LinkedList<VoterForXorArc>(),
 				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
@@ -564,9 +562,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		double executionTimeLocalMinAlgorithmInSeconds = (double) executionTime / 1000000000;
 		this.executionTimeMap.put("localMin", executionTimeLocalMinAlgorithmInSeconds);
 
-		
 		return cheapestCombinations;
-		
+
 	}
 
 	public synchronized LinkedList<ProcessInstanceWithVoters> bruteForceAlgorithm()
@@ -584,7 +581,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		}
 
 		long startTime = System.nanoTime();
-		LinkedList<ProcessInstanceWithVoters> pInstances = this.goDFSthroughProcessBuildArcsAndGetVoters(false,0,
+		LinkedList<ProcessInstanceWithVoters> pInstances = this.goDFSthroughProcessBuildArcsAndGetVoters(false, 0,
 				this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
 				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>>(), new LinkedList<VoterForXorArc>(),
@@ -595,7 +592,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		double executionTimeBruteForceAlgorithmInSeconds = (double) executionTime / 1000000000;
 		this.executionTimeMap.put("bruteForce", executionTimeBruteForceAlgorithmInSeconds);
 		return pInstances;
-		
+
 	}
 
 	private double calculateWeightingForLastWriter(BPMNTask currentLastWriter, BPMNElement start, BPMNDataObject dataO,
@@ -608,8 +605,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(),
 						new LinkedList<LinkedList<FlowNode>>()));
 
-		
-		
 		for (LinkedList<BPMNElement> pathList : paths) {
 
 			for (int i = pathList.size() - 1; i > 0; i--) {
@@ -629,8 +624,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			}
 
 		}
-		
-		
+
 		double amount = (double) Math.round(foundCurrentLastWriterCount / paths.size() * 100) / 100;
 
 		return amount;
@@ -908,19 +902,19 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						String participantName = task.getName().substring(task.getName().indexOf("["),
 								task.getName().indexOf("]") + 1);
 						boolean partAlreadyMapped = false;
-						for(BPMNParticipant part: this.publicSphere) {
-							if(part.getName().contentEquals(participantName)) {
+						for (BPMNParticipant part : this.publicSphere) {
+							if (part.getName().contentEquals(participantName)) {
 								((BPMNTask) t).setParticipant(part);
 								partAlreadyMapped = true;
 								break;
 							}
 						}
-						if(!partAlreadyMapped) {
+						if (!partAlreadyMapped) {
 							BPMNParticipant participant = new BPMNParticipant(participantName, participantName);
 							((BPMNTask) t).setParticipant(participant);
 							this.publicSphere.add(participant);
 						}
-						
+
 					}
 				}
 			}
@@ -1061,7 +1055,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 			String str = text.getTextContent();
 			String troubleshooter = "";
-			
+
 			if (str.toLowerCase().contains(("Default").toLowerCase())
 					&& str.toLowerCase().contains(("[Troubleshooter]").toLowerCase())) {
 				troubleshooter = str.substring(str.indexOf('{') + 1, str.indexOf('}')).trim();
@@ -1072,23 +1066,21 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						troubleshooterExists = true;
 						break;
 					}
-				} 
-				if(!troubleshooterExists) {
+				}
+				if (!troubleshooterExists) {
 					BPMNParticipant troubleShooter = new BPMNParticipant(troubleshooter, troubleshooter);
 					this.publicSphere.add(troubleShooter);
 					this.troubleShooter = troubleShooter;
-				}	
-			} 
-			
-				
+				}
+			}
+
 		}
-		
-		//when there is no default troubleShooter -> randomly choose one from the public sphere
+
+		// when there is no default troubleShooter -> randomly choose one from the
+		// public sphere
 		if (this.troubleShooter == null) {
 			this.troubleShooter = CommonFunctionality.getRandomItem(publicSphere);
 		}
-
-	
 
 	}
 
@@ -1147,8 +1139,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				if (a.getAttributeValue("sourceRef").equals(gtw.getId())
 						&& a.getAttributeValue("targetRef").equals(text.getId())) {
 					String str = text.getTextContent().trim();
-					if(!(str.contains("[")&&str.contains("]")&&str.contains("{")&&str.contains("}"))) {
-						throw new Exception("Annotation: " +a.getId()+" not modeled in correct form [...]{...}"); 
+					if (!(str.contains("[") && str.contains("]") && str.contains("{") && str.contains("}"))) {
+						throw new Exception("Annotation: " + a.getId() + " not modeled in correct form [...]{...}");
 					}
 					if (CommonFunctionality.containsIgnoreCase(str, "[Voters]")) {
 						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
@@ -1166,45 +1158,44 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 						gtw.setSphere(subStr);
 					} else if (CommonFunctionality.containsIgnoreCase(str, "[ExcludeParticipantConstraint]")) {
-							String partName = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
-							boolean partAlreadyMapped = false;
-							for(BPMNParticipant p: this.publicSphere) {
-								if(p.getNameWithoutBrackets().contentEquals(partName)) {
-									ExcludeParticipantConstraint epc = new ExcludeParticipantConstraint(p);
-									gtw.getConstraints().add(epc);
-									partAlreadyMapped = true;
-									break;
-								}
-								
-								
-							}
-							if(!partAlreadyMapped) {
-								BPMNParticipant part = new BPMNParticipant(partName, partName);	
-								this.publicSphere.add(part);
-								ExcludeParticipantConstraint epc = new ExcludeParticipantConstraint(part);
-								gtw.getConstraints().add(epc);
-							}
-					
-					} else if(CommonFunctionality.containsIgnoreCase(str, "[MandatoryParticipantConstraint]")) {
 						String partName = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 						boolean partAlreadyMapped = false;
-						for(BPMNParticipant p: this.publicSphere) {
-							if(p.getNameWithoutBrackets().contentEquals(partName)) {
+						for (BPMNParticipant p : this.publicSphere) {
+							if (p.getNameWithoutBrackets().contentEquals(partName)) {
+								ExcludeParticipantConstraint epc = new ExcludeParticipantConstraint(p);
+								gtw.getConstraints().add(epc);
+								partAlreadyMapped = true;
+								break;
+							}
+
+						}
+						if (!partAlreadyMapped) {
+							BPMNParticipant part = new BPMNParticipant(partName, partName);
+							this.publicSphere.add(part);
+							ExcludeParticipantConstraint epc = new ExcludeParticipantConstraint(part);
+							gtw.getConstraints().add(epc);
+						}
+
+					} else if (CommonFunctionality.containsIgnoreCase(str, "[MandatoryParticipantConstraint]")) {
+						String partName = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
+						boolean partAlreadyMapped = false;
+						for (BPMNParticipant p : this.publicSphere) {
+							if (p.getNameWithoutBrackets().contentEquals(partName)) {
 								MandatoryParticipantConstraint mpc = new MandatoryParticipantConstraint(p);
 								gtw.getConstraints().add(mpc);
 								partAlreadyMapped = true;
 								break;
-							}						
-							
+							}
+
 						}
-						if(!partAlreadyMapped) {
-							BPMNParticipant part = new BPMNParticipant(partName, partName);	
+						if (!partAlreadyMapped) {
+							BPMNParticipant part = new BPMNParticipant(partName, partName);
 							this.publicSphere.add(part);
 							MandatoryParticipantConstraint mpc = new MandatoryParticipantConstraint(part);
 							gtw.getConstraints().add(mpc);
 						}
 					}
-					
+
 				}
 			}
 		}
@@ -1243,89 +1234,87 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				}
 			}
 		}
-			for (ExclusiveGateway xor : this.modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
-				
-				try {
-					this.mapAnnotations((BPMNExclusiveGateway) this.getNodeById(xor.getId()));
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					throw e;
-				}
-			}
-			
-			LinkedList<BPMNParticipant> partsInExcludeConstraints = new LinkedList<BPMNParticipant>();
-			LinkedList<BPMNParticipant> partsInMandatoryConstraints = new LinkedList<BPMNParticipant>();
-			
-			boolean decisionTakerPartOfVerifier = true;
-			for (ExclusiveGateway xor : this.modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
-				BPMNExclusiveGateway xorGtw = (BPMNExclusiveGateway) this.getNodeById(xor.getId());
-				LinkedList<BPMNParticipant> partsInExcludeConstraintsForGtw = new LinkedList<BPMNParticipant>();
-				LinkedList<BPMNParticipant> partsInMandatoryConstraintsForGtw = new LinkedList<BPMNParticipant>();
+		for (ExclusiveGateway xor : this.modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 
-				
-				for(Constraint constraint: xorGtw.getConstraints()) {
-					if(constraint instanceof ExcludeParticipantConstraint) {
-						ExcludeParticipantConstraint exclConst = (ExcludeParticipantConstraint) constraint;
-						if(!partsInExcludeConstraintsForGtw.contains(exclConst.getParticipantToExclude())) {
-						partsInExcludeConstraintsForGtw.add(exclConst.getParticipantToExclude());
-						}
-					}
-					if(constraint instanceof MandatoryParticipantConstraint) {
-						MandatoryParticipantConstraint mandConst = (MandatoryParticipantConstraint) constraint;
-						if(!partsInMandatoryConstraintsForGtw.contains(mandConst.getMandatoryParticipant())) {
-						partsInMandatoryConstraintsForGtw.add(mandConst.getMandatoryParticipant());
-						}
-					}
-				}	
-				
-				//check if each decision taker is mandatory for the succeeding gtw due to constraints
-				for(BPMNElement predec: xorGtw.getPredecessors()) {
-					if(predec instanceof BPMNBusinessRuleTask) {
-						BPMNBusinessRuleTask predecBrt = (BPMNBusinessRuleTask)predec;
-						BPMNParticipant decisionTaker = predecBrt.getParticipant();
-						if(partsInMandatoryConstraintsForGtw.contains(decisionTaker)&&partsInExcludeConstraintsForGtw.contains(decisionTaker)) {
-							decisionTakerPartOfVerifier = false;
-							break;
-						} else if(!partsInMandatoryConstraintsForGtw.contains(decisionTaker)) {
-							decisionTakerPartOfVerifier = false;
-							break;
-						} else if(partsInExcludeConstraintsForGtw.contains(decisionTaker)) {
-							decisionTakerPartOfVerifier = false;
-							break;
-						}
-					}
-				}
-				
-				if(decisionTakerPartOfVerifier) {
-					this.deciderOrVerifier="verifier";
-				} else {
-					this.deciderOrVerifier="decider";
-				}
-				
-				partsInExcludeConstraints.addAll(partsInExcludeConstraintsForGtw);
-				partsInMandatoryConstraintsForGtw.addAll(partsInMandatoryConstraintsForGtw);
-				
-				if(partsInMandatoryConstraintsForGtw.size()>xorGtw.getAmountVoters()) {
-					throw new Exception("Mandatory participants > amount voters needed at "+xorGtw.getId());
-				}
-				
-			}
-			if(!(partsInExcludeConstraints.isEmpty())) {
-				for(BPMNParticipant exclPart: partsInExcludeConstraints) {
-					if(!partsInMandatoryConstraints.contains(exclPart)) {
-						//remove the exclPart from public sphere 
-						this.publicSphere.remove(exclPart);						
-					}
-			}
-			}
-			
-			
-
-			for (BusinessRuleTask brt : this.modelInstance.getModelElementsByType(BusinessRuleTask.class)) {
-				this.mapDecisions((BPMNBusinessRuleTask) this.getNodeById(brt.getId()));
+			try {
+				this.mapAnnotations((BPMNExclusiveGateway) this.getNodeById(xor.getId()));
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				throw e;
 			}
 		}
-	
+
+		LinkedList<BPMNParticipant> partsInExcludeConstraints = new LinkedList<BPMNParticipant>();
+		LinkedList<BPMNParticipant> partsInMandatoryConstraints = new LinkedList<BPMNParticipant>();
+
+		boolean decisionTakerPartOfVerifier = true;
+		for (ExclusiveGateway xor : this.modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
+			BPMNExclusiveGateway xorGtw = (BPMNExclusiveGateway) this.getNodeById(xor.getId());
+			LinkedList<BPMNParticipant> partsInExcludeConstraintsForGtw = new LinkedList<BPMNParticipant>();
+			LinkedList<BPMNParticipant> partsInMandatoryConstraintsForGtw = new LinkedList<BPMNParticipant>();
+
+			for (Constraint constraint : xorGtw.getConstraints()) {
+				if (constraint instanceof ExcludeParticipantConstraint) {
+					ExcludeParticipantConstraint exclConst = (ExcludeParticipantConstraint) constraint;
+					if (!partsInExcludeConstraintsForGtw.contains(exclConst.getParticipantToExclude())) {
+						partsInExcludeConstraintsForGtw.add(exclConst.getParticipantToExclude());
+					}
+				}
+				if (constraint instanceof MandatoryParticipantConstraint) {
+					MandatoryParticipantConstraint mandConst = (MandatoryParticipantConstraint) constraint;
+					if (!partsInMandatoryConstraintsForGtw.contains(mandConst.getMandatoryParticipant())) {
+						partsInMandatoryConstraintsForGtw.add(mandConst.getMandatoryParticipant());
+					}
+				}
+			}
+
+			// check if each decision taker is mandatory for the succeeding gtw due to
+			// constraints
+			for (BPMNElement predec : xorGtw.getPredecessors()) {
+				if (predec instanceof BPMNBusinessRuleTask) {
+					BPMNBusinessRuleTask predecBrt = (BPMNBusinessRuleTask) predec;
+					BPMNParticipant decisionTaker = predecBrt.getParticipant();
+					if (partsInMandatoryConstraintsForGtw.contains(decisionTaker)
+							&& partsInExcludeConstraintsForGtw.contains(decisionTaker)) {
+						decisionTakerPartOfVerifier = false;
+						break;
+					} else if (!partsInMandatoryConstraintsForGtw.contains(decisionTaker)) {
+						decisionTakerPartOfVerifier = false;
+						break;
+					} else if (partsInExcludeConstraintsForGtw.contains(decisionTaker)) {
+						decisionTakerPartOfVerifier = false;
+						break;
+					}
+				}
+			}
+
+			if (decisionTakerPartOfVerifier) {
+				this.deciderOrVerifier = "verifier";
+			} else {
+				this.deciderOrVerifier = "decider";
+			}
+
+			partsInExcludeConstraints.addAll(partsInExcludeConstraintsForGtw);
+			partsInMandatoryConstraintsForGtw.addAll(partsInMandatoryConstraintsForGtw);
+
+			if (partsInMandatoryConstraintsForGtw.size() > xorGtw.getAmountVoters()) {
+				throw new Exception("Mandatory participants > amount voters needed at " + xorGtw.getId());
+			}
+
+		}
+		if (!(partsInExcludeConstraints.isEmpty())) {
+			for (BPMNParticipant exclPart : partsInExcludeConstraints) {
+				if (!partsInMandatoryConstraints.contains(exclPart)) {
+					// remove the exclPart from public sphere
+					this.publicSphere.remove(exclPart);
+				}
+			}
+		}
+
+		for (BusinessRuleTask brt : this.modelInstance.getModelElementsByType(BusinessRuleTask.class)) {
+			this.mapDecisions((BPMNBusinessRuleTask) this.getNodeById(brt.getId()));
+		}
+	}
 
 	public void printDataObjects() {
 		for (BPMNDataObject bpmnd : this.dataObjects) {
@@ -1338,7 +1327,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	public void computeGlobalSphere() {
 		for (BPMNElement e : this.processElements) {
 			if (e instanceof BPMNTask) {
-				this.globalSphereTasks.add((BPMNTask)e);
+				this.globalSphereTasks.add((BPMNTask) e);
 				if (!(globalSphere.contains(((BPMNTask) e).getParticipant()))) {
 					this.globalSphere.add(((BPMNTask) e).getParticipant());
 				}
@@ -1408,7 +1397,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		queue.addAll(brt.getPredecessorsSorted());
 		while (!(queue.isEmpty())) {
 			BPMNElement element = queue.poll();
-			
+
 			// if the element is a writer who has been already found, than skip it
 			if (lastWriterList.contains(element)) {
 				element = queue.poll();
@@ -1425,12 +1414,12 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				for (BPMNDataObject dataO : brt.getDataObjects()) {
 					if (dataO.equals(data) && dataO.getWriters().contains(currentLastWriterCandidate)) {
 						// if a writer is found who is already in the list - return the list
-						
-						if(!lastWriterList.contains(currentLastWriterCandidate)) {
-						lastWriterList.add(currentLastWriterCandidate);						
-						} 
-						
-						if(!currentLastWriterCandidate.hasLabel()) {
+
+						if (!lastWriterList.contains(currentLastWriterCandidate)) {
+							lastWriterList.add(currentLastWriterCandidate);
+						}
+
+						if (!currentLastWriterCandidate.hasLabel()) {
 							return lastWriterList;
 						} else {
 							// check if last added writer is not on the same branch as the
@@ -1443,7 +1432,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 									return lastWriterList;
 								}
 							}
-
 
 							// when the found writers labels don't match with the labels of the brt
 							// check other paths for possible last writers too
@@ -1479,36 +1467,36 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		if (firstEl.getLabels().size() != secondEl.getLabels().size()) {
 			return false;
 		}
-		if(firstEl.getLabels().isEmpty()&&secondEl.getLabels().isEmpty()) {
+		if (firstEl.getLabels().isEmpty() && secondEl.getLabels().isEmpty()) {
 			return false;
 		}
-		
-		ArrayList<Label>firstElLabelsWithoutLast = new ArrayList<Label>();
-		for(int i = 0; i < firstEl.getLabels().size()-1; i++) {
+
+		ArrayList<Label> firstElLabelsWithoutLast = new ArrayList<Label>();
+		for (int i = 0; i < firstEl.getLabels().size() - 1; i++) {
 			firstElLabelsWithoutLast.add(firstEl.getLabels().get(i));
 		}
-		
-		ArrayList<Label>secondElLabelsWithoutLast = new ArrayList<Label>();
-		for(int i = 0; i < secondEl.getLabels().size()-1; i++) {
+
+		ArrayList<Label> secondElLabelsWithoutLast = new ArrayList<Label>();
+		for (int i = 0; i < secondEl.getLabels().size() - 1; i++) {
 			secondElLabelsWithoutLast.add(secondEl.getLabels().get(i));
 		}
 
-		if(firstElLabelsWithoutLast.equals(secondElLabelsWithoutLast)) {
-			//last label must be in other branch
-			Label firstElLastLabel = firstEl.getLabels().get(firstEl.getLabels().size()-1);
-			Label secondElLastLabel  = secondEl.getLabels().get(secondEl.getLabels().size()-1);
-			if(firstElLastLabel.getName().contentEquals(secondElLastLabel.getName())) {
-				if(firstElLastLabel.getOutcome().contentEquals(secondElLastLabel.getOutcome())) {
-					//same branch
+		if (firstElLabelsWithoutLast.equals(secondElLabelsWithoutLast)) {
+			// last label must be in other branch
+			Label firstElLastLabel = firstEl.getLabels().get(firstEl.getLabels().size() - 1);
+			Label secondElLastLabel = secondEl.getLabels().get(secondEl.getLabels().size() - 1);
+			if (firstElLastLabel.getName().contentEquals(secondElLastLabel.getName())) {
+				if (firstElLastLabel.getOutcome().contentEquals(secondElLastLabel.getOutcome())) {
+					// same branch
 					return false;
 				} else {
 					return true;
 				}
-				
+
 			}
-			
+
 		}
-		
+
 		return true;
 	}
 
@@ -1589,48 +1577,59 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
-	public synchronized LinkedList<VoterForXorArc> generateArcsForXorSplitWithConstraints(BPMNBusinessRuleTask currBrt) throws Exception{
+	public synchronized LinkedList<VoterForXorArc> generateArcsForXorSplitWithConstraints(BPMNBusinessRuleTask currBrt)
+			throws Exception {
 		LinkedList<VoterForXorArc> brtCombs = new LinkedList<VoterForXorArc>();
-		
+
 		if (currBrt.getSuccessors().iterator().next() instanceof BPMNExclusiveGateway) {
 			BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
 			// get all the possible combinations of participants for the brt
 			// consider the constraints e.g. participants may be excluded or mandatory
-			LinkedList<BPMNParticipant>participantsToCombine = new LinkedList<BPMNParticipant>();
+			LinkedList<BPMNParticipant> participantsToCombine = new LinkedList<BPMNParticipant>();
 			participantsToCombine.addAll(this.publicSphere);
-			LinkedList<BPMNParticipant>mandatoryParticipants = new LinkedList<BPMNParticipant>();
-			
-			for(Constraint constraint: bpmnEx.getConstraints()) {
-				if(constraint instanceof ExcludeParticipantConstraint) {
-					//exclude the participants due to constraints
-					BPMNParticipant partToRemove = ((ExcludeParticipantConstraint)constraint).getParticipantToExclude();
-					participantsToCombine.remove(partToRemove);					
-				} else if(constraint instanceof MandatoryParticipantConstraint)		{
-					BPMNParticipant mandatoryPart = ((MandatoryParticipantConstraint)constraint).getMandatoryParticipant();
-					if(!mandatoryParticipants.contains(mandatoryPart)) {
+			LinkedList<BPMNParticipant> mandatoryParticipants = new LinkedList<BPMNParticipant>();
+
+			for (Constraint constraint : bpmnEx.getConstraints()) {
+				if (constraint instanceof ExcludeParticipantConstraint) {
+					// exclude the participants due to constraints
+					BPMNParticipant partToRemove = ((ExcludeParticipantConstraint) constraint)
+							.getParticipantToExclude();
+					participantsToCombine.remove(partToRemove);
+				} else if (constraint instanceof MandatoryParticipantConstraint) {
+					BPMNParticipant mandatoryPart = ((MandatoryParticipantConstraint) constraint)
+							.getMandatoryParticipant();
+					if (!mandatoryParticipants.contains(mandatoryPart)) {
 						mandatoryParticipants.add(mandatoryPart);
 					}
 				}
 			}
-			
-			
-			
+
 			if (currBrt.getCombinations().isEmpty()) {
-				
+
 				LinkedList<LinkedList<BPMNParticipant>> list = Combination.getPermutations(participantsToCombine,
 						bpmnEx.getAmountVoters());
-				Iterator<LinkedList<BPMNParticipant>>listIter = list.iterator();
-				while(listIter.hasNext()) {
-					LinkedList<BPMNParticipant>partList = listIter.next();
-					if(!partList.containsAll(mandatoryParticipants)) {
+				Iterator<LinkedList<BPMNParticipant>> listIter = list.iterator();
+				while (listIter.hasNext()) {
+					LinkedList<BPMNParticipant> partList = listIter.next();
+					if (!partList.containsAll(mandatoryParticipants)) {
 						listIter.remove();
 					}
 				}
-				if(list.isEmpty()) {
-					throw new Exception("No possible combination of voters for "+currBrt.getId());
+				if (list.isEmpty()) {
+					throw new Exception("No possible combination of voters for " + currBrt.getId());
 				}
 				currBrt.getCombinations().putIfAbsent(currBrt, list);
-				this.amountPossibleCombinationsOfParticipants*=list.size();
+
+				try {
+					if (!this.amountPossibleCombinationsOfParticipants.contentEquals("Overflow")) {
+						int currAmountCombinationsOfParticipants = Math.multiplyExact(
+								Integer.parseInt(this.amountPossibleCombinationsOfParticipants), list.size());
+						this.amountPossibleCombinationsOfParticipants = currAmountCombinationsOfParticipants + "";
+					}
+				} catch (ArithmeticException e) {
+					this.amountPossibleCombinationsOfParticipants = "Overflow";
+				}
+
 			}
 
 			for (LinkedList<BPMNParticipant> partList : currBrt.getCombinations().get(currBrt)) {
@@ -1647,14 +1646,12 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			}
 
 		}
-		
+
 		return brtCombs;
 
 	}
 
-
-
-	public LinkedList<ProcessInstanceWithVoters> goDFSthroughProcessBuildArcsAndGetVoters(boolean localMin, int bound, 
+	public LinkedList<ProcessInstanceWithVoters> goDFSthroughProcessBuildArcsAndGetVoters(boolean localMin, int bound,
 			BPMNElement startNode, BPMNElement endNode, BPMNBusinessRuleTask lastFoundBrt,
 			LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters,
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> votersMap,
@@ -1664,220 +1661,218 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			LinkedList<BPMNElement> currentPath, LinkedList<LinkedList<BPMNElement>> paths)
 			throws NullPointerException, InterruptedException, Exception {
 		// go DFS inside the XOR till corresponding join is found
-		
+
 		try {
-		queue.add(startNode);
-		
-		while (!(queue.isEmpty())) {
-			if(Thread.currentThread().isInterrupted()) {
-				System.err.println("Interrupted! " +Thread.currentThread().getName());
-				throw new InterruptedException();
-			}
-			
-			
-			if (lastFoundBrt == null) {
-				for (int i = currentPath.size() - 1; i >= 0; i--) {
-					BPMNElement el = currentPath.get(i);
-					if (el instanceof BPMNBusinessRuleTask) {
-						lastFoundBrt = (BPMNBusinessRuleTask) el;
-					}
+			queue.add(startNode);
+
+			while (!(queue.isEmpty())) {
+				if (Thread.currentThread().isInterrupted()) {
+					System.err.println("Interrupted! " + Thread.currentThread().getName());
+					throw new InterruptedException();
 				}
 
-			}
-
-			BPMNElement element = queue.poll();
-			currentPath.add(element);
-
-			if (element.getId().equals(endNode.getId())) {
-
-				paths.add(currentPath);
-
-				if (endNode instanceof BPMNGateway && ((BPMNGateway) element).getPredecessors().size() >= 2) {
-
-					BPMNGateway joinGtw = (BPMNGateway) element;
-
-					// when a xor-join is found - poll the last opened xor gateway from the stack
-					BPMNGateway lastOpenedSplit = (BPMNGateway) openSplitStack.pollLast();
-
-					if (!openSplitStack.isEmpty()) {
-						if (!openSplitStack.contains(lastOpenedSplit)) {
-							// when the openSplitStack does not contain the lastOpenedSplit anymore, all
-							// branches to the joinGtw have been visited
-							// go from joinGtw to the Join of the last opened split in the stack
-							this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, bound, joinGtw,
-									this.getCorrespondingGtw((BPMNGateway) openSplitStack.getLast()), lastFoundBrt,
-									processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters, queue,
-									parallelGtwQueue, openSplitStack, currentPath, paths);
-
+				if (lastFoundBrt == null) {
+					for (int i = currentPath.size() - 1; i >= 0; i--) {
+						BPMNElement el = currentPath.get(i);
+						if (el instanceof BPMNBusinessRuleTask) {
+							lastFoundBrt = (BPMNBusinessRuleTask) el;
 						}
-					} else if (openSplitStack.isEmpty()) {
-						// when there are no open Xor gtws
-						// go from the successor of the element to bpmnEnd since the currentElement has
-						// already been added to the path
-						LinkedList<LinkedList<BPMNElement>> newPaths = new LinkedList<LinkedList<BPMNElement>>();
-
-						for (LinkedList<BPMNElement> path : paths) {
-							if (path.getLast().equals(element)) {
-								LinkedList<BPMNElement> newPathAfterXorJoin = new LinkedList<BPMNElement>();
-								newPathAfterXorJoin.addAll(path);
-								newPaths.add(newPathAfterXorJoin);
-							}
-						}
-
-						for (LinkedList<BPMNElement> newPath : newPaths) {
-							this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, bound,
-									element.getSuccessors().iterator().next(), this.bpmnEnd, lastFoundBrt,
-									processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters, queue,
-									parallelGtwQueue, openSplitStack, newPath, paths);
-						}
-
 					}
 
 				}
-				element = queue.poll();
-				if (element == null && queue.isEmpty()) {
-					return processInstancesWithVoters;
-				}
 
-			}
+				BPMNElement element = queue.poll();
+				currentPath.add(element);
 
-			if (element instanceof BPMNBusinessRuleTask) {
-				BPMNBusinessRuleTask currBrt = (BPMNBusinessRuleTask) element;
-				LinkedList<VoterForXorArc> arcsForCurrBrt = null;
+				if (element.getId().equals(endNode.getId())) {
 
-				if (currBrt.getVoterArcs().isEmpty()) {
-					// when brt is found and arcs have not been generated
-					try {
-					arcsForCurrBrt = generateArcsForXorSplitWithConstraints(currBrt);
-					} catch (Exception ex) {
-						throw ex;
-					}
-					currBrt.setVoterArcs(arcsForCurrBrt);
+					paths.add(currentPath);
 
-					// check if there has been already a brt before
-					if (lastFoundBrt == null) {
-						for (VoterForXorArc voters : arcsForCurrBrt) {
-							// generate a new possible processInstance
-							ProcessInstanceWithVoters pInstance = new ProcessInstanceWithVoters();
-							
-							this.setRequiredUpgradeForArc(voters, pInstance, paths);
-							
-							pInstance.addVoterArc(voters);
+					if (endNode instanceof BPMNGateway && ((BPMNGateway) element).getPredecessors().size() >= 2) {
 
-							if (localMin) {
-								this.insertIfCheapestWithBound(processInstancesWithVoters, pInstance, bound);
-								
-								
-							} else {
-								processInstancesWithVoters.add(pInstance);
+						BPMNGateway joinGtw = (BPMNGateway) element;
+
+						// when a xor-join is found - poll the last opened xor gateway from the stack
+						BPMNGateway lastOpenedSplit = (BPMNGateway) openSplitStack.pollLast();
+
+						if (!openSplitStack.isEmpty()) {
+							if (!openSplitStack.contains(lastOpenedSplit)) {
+								// when the openSplitStack does not contain the lastOpenedSplit anymore, all
+								// branches to the joinGtw have been visited
+								// go from joinGtw to the Join of the last opened split in the stack
+								this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, bound, joinGtw,
+										this.getCorrespondingGtw((BPMNGateway) openSplitStack.getLast()), lastFoundBrt,
+										processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters,
+										queue, parallelGtwQueue, openSplitStack, currentPath, paths);
+
 							}
-						}
+						} else if (openSplitStack.isEmpty()) {
+							// when there are no open Xor gtws
+							// go from the successor of the element to bpmnEnd since the currentElement has
+							// already been added to the path
+							LinkedList<LinkedList<BPMNElement>> newPaths = new LinkedList<LinkedList<BPMNElement>>();
 
-					} else {
-						// if there has already been a brt before the currBrt
-						LinkedList<LinkedList<Object>> toCombine = new LinkedList<LinkedList<Object>>();
-						LinkedList<ProcessInstanceWithVoters> newInstances = new LinkedList<ProcessInstanceWithVoters>();
-
-						// need to combine currBrtArcs with each existing possible process instance
-						LinkedList<Object> aK = new LinkedList<Object>();
-						for (ProcessInstanceWithVoters existingInstance : processInstancesWithVoters) {
-							aK.add(existingInstance);
-						}
-
-						toCombine.add(aK);
-
-						LinkedList<Object> aL = new LinkedList<Object>();
-						for (VoterForXorArc ar : arcsForCurrBrt) {
-							aL.add(ar);
-						}
-						toCombine.add(aL);
-
-						// list of all possible combinations of Voters for currBrt combined with all
-						// existing process instances
-						Collection<List<Object>> combs = Combination.permutations(toCombine);
-						ProcessInstanceWithVoters.setProcessID(0);
-												
-						for (List list : combs) {
-							if(Thread.currentThread().isInterrupted()) {
-								System.err.println("Interrupted" +Thread.currentThread().getName());
-								throw new InterruptedException();							}
-							
-							ProcessInstanceWithVoters newInstance = new ProcessInstanceWithVoters();
-							ProcessInstanceWithVoters currInst = (ProcessInstanceWithVoters) list.get(0);
-							VoterForXorArc currBrtCombArc = (VoterForXorArc) list.get(1);
-							for (VoterForXorArc curr : currInst.getListOfArcs()) {
-								VoterForXorArc newInstanceArc = new VoterForXorArc(curr.getBrt(), curr.getXorSplit(),
-										curr.getChosenCombinationOfParticipants());
-								newInstance.addVoterArc(newInstanceArc);
+							for (LinkedList<BPMNElement> path : paths) {
+								if (path.getLast().equals(element)) {
+									LinkedList<BPMNElement> newPathAfterXorJoin = new LinkedList<BPMNElement>();
+									newPathAfterXorJoin.addAll(path);
+									newPaths.add(newPathAfterXorJoin);
+								}
 							}
-							newInstance.getListOfRequiredUpgrades().addAll(currInst.getListOfRequiredUpgrades());
-							newInstance.setCostForModelInstance(currInst.getCostForModelInstance());
-							newInstance.setGlobalSphere(currInst.getGlobalSphere());
-							newInstance.setStaticSphere(currInst.getStaticSphere());
-							newInstance.setReadersOfDataObjects(currInst.getReadersOfDataObjects());
-							newInstance.setWritersOfDataObjects(currInst.getWritersOfDataObjects());
-							this.setRequiredUpgradeForArc(currBrtCombArc, newInstance, paths);
-						
-							newInstance.addVoterArc(currBrtCombArc);
-							if (localMin) {
-								//when bound == 0 -> get all cheapest instances
-								//else e.g. bound == 3 -> get the first 3 cheapest instances
-															
-							this.insertIfCheapestWithBound(newInstances, newInstance, bound);
-									
-								
-							} else {
-								newInstances.add(newInstance);
+
+							for (LinkedList<BPMNElement> newPath : newPaths) {
+								this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, bound,
+										element.getSuccessors().iterator().next(), this.bpmnEnd, lastFoundBrt,
+										processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters,
+										queue, parallelGtwQueue, openSplitStack, newPath, paths);
 							}
 
 						}
 
-						processInstancesWithVoters.clear();
-						processInstancesWithVoters.addAll(newInstances);
-
+					}
+					element = queue.poll();
+					if (element == null && queue.isEmpty()) {
+						return processInstancesWithVoters;
 					}
 
-					lastFoundBrt = currBrt;
 				}
 
-			}
+				if (element instanceof BPMNBusinessRuleTask) {
+					BPMNBusinessRuleTask currBrt = (BPMNBusinessRuleTask) element;
+					LinkedList<VoterForXorArc> arcsForCurrBrt = null;
 
-			if (element instanceof BPMNGateway && ((BPMNGateway) element).getSuccessors().size() >= 2) {
-				// add the xor split to the openXorStack 1 times for each outgoing paths
-				int amountOfOutgoingPaths = element.getSuccessors().size();
-				int i = 0;
-				while (i < amountOfOutgoingPaths) {
-					openSplitStack.add((BPMNGateway) element);
-					i++;
+					if (currBrt.getVoterArcs().isEmpty()) {
+						// when brt is found and arcs have not been generated
+						try {
+							arcsForCurrBrt = generateArcsForXorSplitWithConstraints(currBrt);
+						} catch (Exception ex) {
+							throw ex;
+						}
+						currBrt.setVoterArcs(arcsForCurrBrt);
+
+						// check if there has been already a brt before
+						if (lastFoundBrt == null) {
+							for (VoterForXorArc voters : arcsForCurrBrt) {
+								// generate a new possible processInstance
+								ProcessInstanceWithVoters pInstance = new ProcessInstanceWithVoters();
+
+								this.setRequiredUpgradeForArc(voters, pInstance, paths);
+
+								pInstance.addVoterArc(voters);
+
+								if (localMin) {
+									this.insertIfCheapestWithBound(processInstancesWithVoters, pInstance, bound);
+
+								} else {
+									processInstancesWithVoters.add(pInstance);
+								}
+							}
+
+						} else {
+							// if there has already been a brt before the currBrt
+							LinkedList<LinkedList<Object>> toCombine = new LinkedList<LinkedList<Object>>();
+							LinkedList<ProcessInstanceWithVoters> newInstances = new LinkedList<ProcessInstanceWithVoters>();
+
+							// need to combine currBrtArcs with each existing possible process instance
+							LinkedList<Object> aK = new LinkedList<Object>();
+							for (ProcessInstanceWithVoters existingInstance : processInstancesWithVoters) {
+								aK.add(existingInstance);
+							}
+
+							toCombine.add(aK);
+
+							LinkedList<Object> aL = new LinkedList<Object>();
+							for (VoterForXorArc ar : arcsForCurrBrt) {
+								aL.add(ar);
+							}
+							toCombine.add(aL);
+
+							// list of all possible combinations of Voters for currBrt combined with all
+							// existing process instances
+							Collection<List<Object>> combs = Combination.permutations(toCombine);
+							ProcessInstanceWithVoters.setProcessID(0);
+
+							for (List list : combs) {
+								if (Thread.currentThread().isInterrupted()) {
+									System.err.println("Interrupted" + Thread.currentThread().getName());
+									throw new InterruptedException();
+								}
+
+								ProcessInstanceWithVoters newInstance = new ProcessInstanceWithVoters();
+								ProcessInstanceWithVoters currInst = (ProcessInstanceWithVoters) list.get(0);
+								VoterForXorArc currBrtCombArc = (VoterForXorArc) list.get(1);
+								for (VoterForXorArc curr : currInst.getListOfArcs()) {
+									VoterForXorArc newInstanceArc = new VoterForXorArc(curr.getBrt(),
+											curr.getXorSplit(), curr.getChosenCombinationOfParticipants());
+									newInstance.addVoterArc(newInstanceArc);
+								}
+								newInstance.getListOfRequiredUpgrades().addAll(currInst.getListOfRequiredUpgrades());
+								newInstance.setCostForModelInstance(currInst.getCostForModelInstance());
+								newInstance.setGlobalSphere(currInst.getGlobalSphere());
+								newInstance.setStaticSphere(currInst.getStaticSphere());
+								newInstance.setReadersOfDataObjects(currInst.getReadersOfDataObjects());
+								newInstance.setWritersOfDataObjects(currInst.getWritersOfDataObjects());
+								this.setRequiredUpgradeForArc(currBrtCombArc, newInstance, paths);
+
+								newInstance.addVoterArc(currBrtCombArc);
+								if (localMin) {
+									// when bound == 0 -> get all cheapest instances
+									// else e.g. bound == 3 -> get the first 3 cheapest instances
+
+									this.insertIfCheapestWithBound(newInstances, newInstance, bound);
+
+								} else {
+									newInstances.add(newInstance);
+								}
+
+							}
+
+							processInstancesWithVoters.clear();
+							processInstancesWithVoters.addAll(newInstances);
+
+						}
+
+						lastFoundBrt = currBrt;
+					}
+
 				}
-
-			}
-
-			for (BPMNElement successor : element.getSuccessors()) {
 
 				if (element instanceof BPMNGateway && ((BPMNGateway) element).getSuccessors().size() >= 2) {
-					// when a split is found - go dfs till the corresponding join is found
+					// add the xor split to the openXorStack 1 times for each outgoing paths
+					int amountOfOutgoingPaths = element.getSuccessors().size();
+					int i = 0;
+					while (i < amountOfOutgoingPaths) {
+						openSplitStack.add((BPMNGateway) element);
+						i++;
+					}
 
-					BPMNGateway correspondingJoinGtw = this.getCorrespondingGtw((BPMNGateway) element);
+				}
 
-					LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
-					newPath.addAll(currentPath);
+				for (BPMNElement successor : element.getSuccessors()) {
 
-					this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, bound, successor, correspondingJoinGtw,
-							lastFoundBrt, processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters,
-							queue, parallelGtwQueue, openSplitStack, newPath, paths);
-				} else {
+					if (element instanceof BPMNGateway && ((BPMNGateway) element).getSuccessors().size() >= 2) {
+						// when a split is found - go dfs till the corresponding join is found
 
-					queue.add(successor);
+						BPMNGateway correspondingJoinGtw = this.getCorrespondingGtw((BPMNGateway) element);
+
+						LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
+						newPath.addAll(currentPath);
+
+						this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, bound, successor, correspondingJoinGtw,
+								lastFoundBrt, processInstancesWithVoters, votersMap, requiredUpdates,
+								alreadyTakenVoters, queue, parallelGtwQueue, openSplitStack, newPath, paths);
+					} else {
+
+						queue.add(successor);
+
+					}
 
 				}
 
 			}
 
-		}
-		
-		return processInstancesWithVoters;
-		} catch(Exception e) {
+			return processInstancesWithVoters;
+		} catch (Exception e) {
 			throw e;
 		}
 
@@ -1885,12 +1880,11 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	private void insertIfCheapestWithBound(LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters,
 			ProcessInstanceWithVoters currInstance, int bound) throws InterruptedException {
-		if(Thread.currentThread().isInterrupted()) {
-			System.err.println("Interrupted" +Thread.currentThread().getName());
+		if (Thread.currentThread().isInterrupted()) {
+			System.err.println("Interrupted" + Thread.currentThread().getName());
 			throw new InterruptedException();
 		}
-		
-		
+
 		if (processInstancesWithVoters.isEmpty()) {
 			processInstancesWithVoters.add(currInstance);
 		} else {
@@ -1902,13 +1896,13 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				processInstancesWithVoters.add(currInstance);
 			} else if (currInstance.getCostForModelInstance() == processInstancesWithVoters.getFirst()
 					.getCostForModelInstance()) {
-				//only insert if bound not reached!
-				if(bound==0) {
+				// only insert if bound not reached!
+				if (bound == 0) {
 					processInstancesWithVoters.add(currInstance);
 				} else {
-				if(processInstancesWithVoters.size()<bound) {
-				processInstancesWithVoters.add(currInstance);
-				}
+					if (processInstancesWithVoters.size() < bound) {
+						processInstancesWithVoters.add(currInstance);
+					}
 				}
 			}
 		}
@@ -1958,8 +1952,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
-	
-	
 	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> allEffectivePathsForWriters(BPMNDataObject dataO,
 			BPMNElement writerTask, BPMNElement startNode, BPMNElement endNode, LinkedList<BPMNElement> stack,
 			LinkedList<BPMNElement> gtwStack, LinkedList<BPMNElement> currentPath,
@@ -2003,8 +1995,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		return pathMap;
 
 	}
-
-
 
 	public BPMNElement getNodeById(String id) {
 		for (BPMNElement e : this.processElements) {
@@ -2584,7 +2574,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	}
 
 	public String getSphereForParticipantOnEffectivePathsAfterCurrentBrtWithAlreadyChosenVoters(
-			BPMNBusinessRuleTask currentBrt, BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,LinkedList<BPMNElement> readersOfDataO, LinkedList<BPMNElement> writersOfDataO, 
+			BPMNBusinessRuleTask currentBrt, BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,
+			LinkedList<BPMNElement> readersOfDataO, LinkedList<BPMNElement> writersOfDataO,
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters, String sphereForReader,
 			LinkedList<LinkedList<BPMNElement>> paths) {
 
@@ -2597,136 +2588,131 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		// only those that have not been visited yet
 
 		String sphereForReaderAfterCurrentBrt = sphereForReader;
-		
-		
-		if(((BPMNTask)writerTask).getEffectivePaths().get(true).isEmpty()){
-			//need to check if there may be subpaths with the reader on it and no writer in between
-			for(LinkedList<BPMNElement> path: ((BPMNTask)writerTask).getEffectivePaths().get(false)) {
+
+		if (((BPMNTask) writerTask).getEffectivePaths().get(true).isEmpty()) {
+			// need to check if there may be subpaths with the reader on it and no writer in
+			// between
+			for (LinkedList<BPMNElement> path : ((BPMNTask) writerTask).getEffectivePaths().get(false)) {
 				BPMNTask otherReader = null;
-				for(BPMNElement el: path) {
-					if(el instanceof BPMNTask) {
-						BPMNTask task = (BPMNTask)el;
-						if(!task.getParticipant().equals(reader)) {
-							if(writersOfDataO.contains(task)) {
-								if(!task.equals(writerTask)) {
+				for (BPMNElement el : path) {
+					if (el instanceof BPMNTask) {
+						BPMNTask task = (BPMNTask) el;
+						if (!task.getParticipant().equals(reader)) {
+							if (writersOfDataO.contains(task)) {
+								if (!task.equals(writerTask)) {
 									break;
 								}
 							}
-							
-						}					
-						
-						if(task.getParticipant().equals(reader)&&readersOfDataO.contains(task)&&(!task.equals(writerTask))) {
-							//another reader to the dataObject found
+
+						}
+
+						if (task.getParticipant().equals(reader) && readersOfDataO.contains(task)
+								&& (!task.equals(writerTask))) {
+							// another reader to the dataObject found
 							otherReader = task;
 							break;
 						}
 					}
-					
+
 				}
-				if(otherReader!=null) {
-					sphereForReaderAfterCurrentBrt = this
-							.getSphereForEffectiveReaderAfterBrt((BPMNTask) otherReader, currentBrt);
+				if (otherReader != null) {
+					sphereForReaderAfterCurrentBrt = this.getSphereForEffectiveReaderAfterBrt((BPMNTask) otherReader,
+							currentBrt);
 				}
-				
-				
+
 			}
-			
-			
+
 		} else {
 
-		for (BPMNElement effectiveReader : ((BPMNTask) writerTask).getEffectiveReaders()) {
-			if (reader.equals(((BPMNTask) effectiveReader).getParticipant())) {
-				boolean alreadyVisited = false;
-				for (LinkedList<BPMNElement> path : paths) {
-					for (BPMNElement pathEl : path) {
-						if (pathEl.equals(effectiveReader)) {
-							alreadyVisited = true;
-							break;
+			for (BPMNElement effectiveReader : ((BPMNTask) writerTask).getEffectiveReaders()) {
+				if (reader.equals(((BPMNTask) effectiveReader).getParticipant())) {
+					boolean alreadyVisited = false;
+					for (LinkedList<BPMNElement> path : paths) {
+						for (BPMNElement pathEl : path) {
+							if (pathEl.equals(effectiveReader)) {
+								alreadyVisited = true;
+								break;
+							}
 						}
 					}
+					if (alreadyVisited == false) {
+						sphereForReaderAfterCurrentBrt = this
+								.getSphereForEffectiveReaderAfterBrt((BPMNTask) effectiveReader, currentBrt);
+					}
 				}
-				if (alreadyVisited == false) {
-					sphereForReaderAfterCurrentBrt = this
-							.getSphereForEffectiveReaderAfterBrt((BPMNTask) effectiveReader, currentBrt);
-				}
-			}
 
-		}
+			}
 		}
 		return sphereForReaderAfterCurrentBrt;
 
 	}
 	/*
-	public String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVotersAndExtendedSearch(BPMNBusinessRuleTask currentBrt,
-			BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,
-			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
-			// get sphere for reader between lastWriter and currentBrt
-			String sphereForReaderBeforeBrt = this.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(currentBrt, writerTask, dataO, reader, alreadyChosenVoters);
-	
-			String sphereForReader = sphereForReaderBeforeBrt;
-			// if found sphere for reader does not match the required sphere
-			// e.g. if writer demands WD or SD and the sphereForReader is static
-			// search can be extended
-			// since the reader reads the data somewhere in the process (may be after the
-			// xor-split and potentially WD or SD)
-			String requiredSphereOfWriter = ((BPMNTask) writerTask).getSphereAnnotation().get(dataO);
+	 * public String
+	 * getSphereForParticipantOnEffectivePathsWithAlreadyChosenVotersAndExtendedSearch
+	 * (BPMNBusinessRuleTask currentBrt, BPMNElement writerTask, BPMNDataObject
+	 * dataO, BPMNParticipant reader, HashMap<BPMNBusinessRuleTask,
+	 * LinkedList<BPMNParticipant>> alreadyChosenVoters) { // get sphere for reader
+	 * between lastWriter and currentBrt String sphereForReaderBeforeBrt =
+	 * this.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(
+	 * currentBrt, writerTask, dataO, reader, alreadyChosenVoters);
+	 * 
+	 * String sphereForReader = sphereForReaderBeforeBrt; // if found sphere for
+	 * reader does not match the required sphere // e.g. if writer demands WD or SD
+	 * and the sphereForReader is static // search can be extended // since the
+	 * reader reads the data somewhere in the process (may be after the // xor-split
+	 * and potentially WD or SD) String requiredSphereOfWriter = ((BPMNTask)
+	 * writerTask).getSphereAnnotation().get(dataO);
+	 * 
+	 * if ((requiredSphereOfWriter.equals("Strong-Dynamic") ||
+	 * requiredSphereOfWriter.equals("Weak-Dynamic")) &&
+	 * sphereForReaderBeforeBrt.contentEquals("Static")) { if
+	 * (this.atLeastInSphere(sphereForReaderBeforeBrt, requiredSphereOfWriter) ==
+	 * false) { LinkedList<LinkedList<BPMNElement>> paths =
+	 * CommonFunctionality.allPathsBetweenNodesWithMappedNodes(this.bpmnStart,
+	 * currentBrt, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new
+	 * LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>()); String
+	 * sphereForReaderAfterBrt = this
+	 * .getSphereForParticipantOnEffectivePathsAfterCurrentBrtWithAlreadyChosenVoters(
+	 * currentBrt, writerTask, dataO, reader, alreadyChosenVoters,
+	 * sphereForReaderBeforeBrt, paths); // check if the sphere for reader after brt
+	 * has been "upgraded" e.g. from static // to WD if
+	 * (this.atLeastInSphere(sphereForReaderAfterBrt, sphereForReaderBeforeBrt)) {
+	 * if (!sphereForReaderAfterBrt.contentEquals(sphereForReaderBeforeBrt)) {
+	 * sphereForReader = sphereForReaderAfterBrt; } } } } return sphereForReader; }
+	 * 
+	 * 
+	 * public String
+	 * getSphereForParticipantWithAlreadyChosenVotersAndExtendedSearch(
+	 * BPMNBusinessRuleTask currentBrt, BPMNElement writerTask, BPMNDataObject
+	 * dataO, BPMNParticipant reader, HashMap<BPMNBusinessRuleTask,
+	 * LinkedList<BPMNParticipant>> alreadyChosenVoters) { String
+	 * sphereForReaderBeforeBrt =
+	 * this.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(
+	 * currentBrt, writerTask, dataO,reader, alreadyChosenVoters); String
+	 * requiredSphereOfWriter = ((BPMNTask)
+	 * writerTask).getSphereAnnotation().get(dataO);
+	 * 
+	 * if ((requiredSphereOfWriter.equals("Strong-Dynamic") ||
+	 * requiredSphereOfWriter.equals("Weak-Dynamic")) &&
+	 * sphereForReaderBeforeBrt.contentEquals("Static")) { if
+	 * (this.atLeastInSphere(sphereForReaderBeforeBrt, requiredSphereOfWriter) ==
+	 * false) { String sphereForReaderAfterBrt = this
+	 * .getSphereForParticipantOnEffectivePathsAfterCurrentBrtWithAlreadyChosenVoters(
+	 * currentBrt, writerTask, dataO, reader, alreadyChosenVoters,
+	 * sphereForReaderBeforeBrt, paths); // check if the sphere for reader after brt
+	 * has been "upgraded" e.g. from static // to WD if
+	 * (this.atLeastInSphere(sphereForReaderAfterBrt, sphereForReaderBeforeBrt)) {
+	 * if (!sphereForReaderAfterBrt.contentEquals(sphereForReaderBeforeBrt)) { //
+	 * take the upgraded sphere as a required Update // mark that a reader fulfills
+	 * required sphere only after the brt and not on the // path from lastWriter to
+	 * it sphereList.add(sphereForReaderAfterBrt); sphereForReader =
+	 * sphereForReaderAfterBrt; } } } }
+	 * 
+	 * }
+	 */
 
-			if ((requiredSphereOfWriter.equals("Strong-Dynamic")
-					|| requiredSphereOfWriter.equals("Weak-Dynamic"))
-					&& sphereForReaderBeforeBrt.contentEquals("Static")) {
-				if (this.atLeastInSphere(sphereForReaderBeforeBrt, requiredSphereOfWriter) == false) {
-					LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(this.bpmnStart, currentBrt, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
-					String sphereForReaderAfterBrt = this
-							.getSphereForParticipantOnEffectivePathsAfterCurrentBrtWithAlreadyChosenVoters(
-									currentBrt, writerTask, dataO, reader, alreadyChosenVoters,
-									sphereForReaderBeforeBrt, paths);
-					// check if the sphere for reader after brt has been "upgraded" e.g. from static
-					// to WD
-					if (this.atLeastInSphere(sphereForReaderAfterBrt, sphereForReaderBeforeBrt)) {
-						if (!sphereForReaderAfterBrt.contentEquals(sphereForReaderBeforeBrt)) {
-							sphereForReader = sphereForReaderAfterBrt;
-						}
-					}
-				}
-			}
-			return sphereForReader;
-	}
-	
-	
-	public String getSphereForParticipantWithAlreadyChosenVotersAndExtendedSearch(BPMNBusinessRuleTask currentBrt,
-			BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,
-			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
-		String sphereForReaderBeforeBrt = this.getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(currentBrt,
-			writerTask, dataO,reader,
-			alreadyChosenVoters);
-		String requiredSphereOfWriter = ((BPMNTask) writerTask).getSphereAnnotation().get(dataO);
-
-		if ((requiredSphereOfWriter.equals("Strong-Dynamic")
-				|| requiredSphereOfWriter.equals("Weak-Dynamic"))
-				&& sphereForReaderBeforeBrt.contentEquals("Static")) {
-			if (this.atLeastInSphere(sphereForReaderBeforeBrt, requiredSphereOfWriter) == false) {
-				String sphereForReaderAfterBrt = this
-						.getSphereForParticipantOnEffectivePathsAfterCurrentBrtWithAlreadyChosenVoters(
-								currentBrt, writerTask, dataO, reader, alreadyChosenVoters,
-								sphereForReaderBeforeBrt, paths);
-				// check if the sphere for reader after brt has been "upgraded" e.g. from static
-				// to WD
-				if (this.atLeastInSphere(sphereForReaderAfterBrt, sphereForReaderBeforeBrt)) {
-					if (!sphereForReaderAfterBrt.contentEquals(sphereForReaderBeforeBrt)) {
-						// take the upgraded sphere as a required Update
-						// mark that a reader fulfills required sphere only after the brt and not on the
-						// path from lastWriter to it
-						sphereList.add(sphereForReaderAfterBrt);
-						sphereForReader = sphereForReaderAfterBrt;
-					}
-				}
-			}
-		}
-
-	}*/
-
-	public String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(ProcessInstanceWithVoters currInst, BPMNBusinessRuleTask currentBrt,
-			BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,
+	public String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(ProcessInstanceWithVoters currInst,
+			BPMNBusinessRuleTask currentBrt, BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
 
 		if (writerTask == null || currentBrt == null || dataO == null) {
@@ -2778,24 +2764,25 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 		return sphereForEffectiveReader;
 	}
-	
-	private LinkedList<BPMNElement> upgradeSphereForAlreadyChosenVoters(String sphereToUpgrade, BPMNDataObject dataO, HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>alreadyChosenVoters) {
-		//exclude brts that have already been substituted by alreadyChosenVoters
-		if(sphereToUpgrade.contentEquals("globalSphere")) {
-			LinkedList<BPMNElement>currGlobalSphereTasks = new LinkedList<BPMNElement>();
+
+	private LinkedList<BPMNElement> upgradeSphereForAlreadyChosenVoters(String sphereToUpgrade, BPMNDataObject dataO,
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
+		// exclude brts that have already been substituted by alreadyChosenVoters
+		if (sphereToUpgrade.contentEquals("globalSphere")) {
+			LinkedList<BPMNElement> currGlobalSphereTasks = new LinkedList<BPMNElement>();
 			currGlobalSphereTasks.addAll(this.globalSphereTasks);
-			for(Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>entry: alreadyChosenVoters.entrySet()) {
+			for (Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> entry : alreadyChosenVoters.entrySet()) {
 				BPMNBusinessRuleTask brt = entry.getKey();
-				currGlobalSphereTasks.remove(brt);	
-			}			
+				currGlobalSphereTasks.remove(brt);
+			}
 			return currGlobalSphereTasks;
-			
-		} else if(sphereToUpgrade.contentEquals("staticSphere")) {
-			LinkedList<BPMNElement>currStaticSphereElements = new LinkedList<BPMNElement>();
+
+		} else if (sphereToUpgrade.contentEquals("staticSphere")) {
+			LinkedList<BPMNElement> currStaticSphereElements = new LinkedList<BPMNElement>();
 			currStaticSphereElements.addAll(dataO.getStaticSphereElements());
-			for(Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>entry: alreadyChosenVoters.entrySet()) {
+			for (Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> entry : alreadyChosenVoters.entrySet()) {
 				BPMNBusinessRuleTask brt = entry.getKey();
-				currStaticSphereElements.remove(brt);		
+				currStaticSphereElements.remove(brt);
 			}
 			return currStaticSphereElements;
 
@@ -2803,9 +2790,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		return null;
 	}
 
-
-	private String getSphereOnPathBeforeCurrentBrt(ProcessInstanceWithVoters currInst, BPMNBusinessRuleTask currentBrt, BPMNElement writerTask,
-			BPMNDataObject dataO, BPMNParticipant reader,
+	private String getSphereOnPathBeforeCurrentBrt(ProcessInstanceWithVoters currInst, BPMNBusinessRuleTask currentBrt,
+			BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,
 			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths,
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
 		int strongDynamicCountEffectivePaths = 0;
@@ -2818,8 +2804,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		if (((BPMNTask) writerTask).getParticipant().equals(reader)) {
 			return "Strong-Dynamic";
 		}
-		
-		
+
 		for (Entry<Boolean, LinkedList<LinkedList<BPMNElement>>> entry : effectivePaths.entrySet()) {
 			for (LinkedList<BPMNElement> path : entry.getValue()) {
 
@@ -2841,16 +2826,17 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 							} else {
 								if (currInst.getReadersOfDataObjects().get(dataO).contains(currentBrtOnPath)
-										&& task.getParticipant().equals(reader)
-										&& this.isParticipantInList(currInst.getReadersOfDataObjects().get(dataO), reader)) {
+										&& task.getParticipant().equals(reader) && this.isParticipantInList(
+												currInst.getReadersOfDataObjects().get(dataO), reader)) {
 									// reader found on the path
 									readerFound = true;
 								}
 
 							}
 						} else {
-							if (currInst.getReadersOfDataObjects().get(dataO).contains(task) && task.getParticipant().equals(reader)
-									&& this.isParticipantInList(currInst.getReadersOfDataObjects().get(dataO), reader)) {
+							if (currInst.getReadersOfDataObjects().get(dataO).contains(task)
+									&& task.getParticipant().equals(reader) && this.isParticipantInList(
+											currInst.getReadersOfDataObjects().get(dataO), reader)) {
 								// reader found on the path
 								readerFound = true;
 							}
@@ -2871,7 +2857,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			}
 
 		}
-
 
 		if (!effectivePaths.get(true).isEmpty()) {
 			if (strongDynamicCountEffectivePaths == effectivePaths.get(true).size()
@@ -2913,13 +2898,11 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
-	
-
-	public int getAmountPossibleCombinationsOfParticipants() {
+	public String getAmountPossibleCombinationsOfParticipants() {
 		return amountPossibleCombinationsOfParticipants;
 	}
 
-	public void setAmountPossibleCombinationsOfParticipants(int amountPossibleCombinationsOfParticipants) {
+	public void setAmountPossibleCombinationsOfParticipants(String amountPossibleCombinationsOfParticipants) {
 		this.amountPossibleCombinationsOfParticipants = amountPossibleCombinationsOfParticipants;
 	}
 
@@ -2957,22 +2940,21 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		return null;
 
 	}
-	
+
 	public double getExecutionTimeLocalMinimumAlgorithmWithLimit(int limitPerIteration) {
-		String key = "localMinWithBound"+limitPerIteration;
-		return this.executionTimeMap.get(key);		
+		String key = "localMinWithBound" + limitPerIteration;
+		return this.executionTimeMap.get(key);
 	}
 
 	public double getExecutionTimeLocalMinimumAlgorithmWithLimit() {
-		if(this.getAlgorithmToPerform().contains("localMinWithBound")) {
+		if (this.getAlgorithmToPerform().contains("localMinWithBound")) {
 			return this.executionTimeMap.get(this.getAlgorithmToPerform());
 		} else {
 			return -1;
 		}
-		
+
 	}
-	
-	
+
 	public double getExecutionTimeLocalMinimumAlgorithm() {
 		return this.executionTimeMap.get("localMin");
 	}
@@ -3052,69 +3034,63 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	}
 
 	public void setAlgorithmToPerform(String algorithmToPerform) {
-		this.algorithmToPerform=algorithmToPerform;
+		this.algorithmToPerform = algorithmToPerform;
 	}
 
-	public  String getAlgorithmToPerform() {
+	public String getAlgorithmToPerform() {
 		return this.algorithmToPerform;
 	}
 
 	public List<BPMNElement> getProcessElements() {
 		return this.processElements;
 	}
-	
+
 	public boolean addParticipantToPublicShpere(BPMNParticipant part) {
-		if(!publicSphere.contains(part)) {
+		if (!publicSphere.contains(part)) {
 			publicSphere.add(part);
 			return true;
 		}
 		return false;
 	}
 
-	public LinkedList<BPMNParticipant> getPublicSphere(){
+	public LinkedList<BPMNParticipant> getPublicSphere() {
 		return this.publicSphere;
 	}
-	
-	public void setPublicSphere(LinkedList<BPMNParticipant>publicSphere) {
-		this.publicSphere=publicSphere;
-	}
-	
 
-	
-	public int getAmountPossibleCombinations() {
-		return this.amountPossibleCombinationsOfParticipants;
+	public void setPublicSphere(LinkedList<BPMNParticipant> publicSphere) {
+		this.publicSphere = publicSphere;
 	}
-	
-	
+
 	
 	@Override
-	public synchronized HashMap<String, LinkedList<ProcessInstanceWithVoters>> call() throws NullPointerException, InterruptedException, Exception {
+	public synchronized HashMap<String, LinkedList<ProcessInstanceWithVoters>> call()
+			throws NullPointerException, InterruptedException, Exception {
 		// TODO Auto-generated method stub
-		
-		System.out.println("Call algorithm for: "+this.process.getAbsolutePath());
+
+		System.out.println("Call algorithm for: " + this.process.getAbsolutePath());
 		HashMap<String, LinkedList<ProcessInstanceWithVoters>> mapToReturn = new HashMap<String, LinkedList<ProcessInstanceWithVoters>>();
-			if (this.algorithmToPerform.contentEquals("bruteForce")) {
-				LinkedList<ProcessInstanceWithVoters> pInstBruteForce = this.bruteForceAlgorithm();
-				mapToReturn.putIfAbsent("bruteForce", pInstBruteForce);
-				
-			} else if (this.algorithmToPerform.contentEquals("localMin")) {
-				LinkedList<ProcessInstanceWithVoters> pInstLocalMin = this.localMinimumAlgorithm();
-				mapToReturn.putIfAbsent("localMin", pInstLocalMin);
+		if (this.algorithmToPerform.contentEquals("bruteForce")) {
+			LinkedList<ProcessInstanceWithVoters> pInstBruteForce = this.bruteForceAlgorithm();
+			mapToReturn.putIfAbsent("bruteForce", pInstBruteForce);
 
-			} else if(this.algorithmToPerform.contains("localMinWithBound")) {
-				String limit = this.algorithmToPerform;
-				int limitPerIteration = Integer.parseInt(limit.replaceAll("\\D+","").trim());
-				LinkedList<ProcessInstanceWithVoters> pInstLocalMinWithBound = this.localMinimumAlgorithmWithLimit(limitPerIteration);
-				mapToReturn.putIfAbsent(this.algorithmToPerform, pInstLocalMinWithBound);
-			}
+		} else if (this.algorithmToPerform.contentEquals("localMin")) {
+			LinkedList<ProcessInstanceWithVoters> pInstLocalMin = this.localMinimumAlgorithm();
+			mapToReturn.putIfAbsent("localMin", pInstLocalMin);
 
-		
-		 	return mapToReturn;
+		} else if (this.algorithmToPerform.contains("localMinWithBound")) {
+			String limit = this.algorithmToPerform;
+			int limitPerIteration = Integer.parseInt(limit.replaceAll("\\D+", "").trim());
+			LinkedList<ProcessInstanceWithVoters> pInstLocalMinWithBound = this
+					.localMinimumAlgorithmWithLimit(limitPerIteration);
+			mapToReturn.putIfAbsent(this.algorithmToPerform, pInstLocalMinWithBound);
+		}
+
+		return mapToReturn;
 
 	}
-	
+
 	public String getDeciderOrVerifier() {
 		return this.deciderOrVerifier;
 	}
-	
+
 }

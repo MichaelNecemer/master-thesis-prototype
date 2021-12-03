@@ -32,7 +32,7 @@ public class APITest3 {
 			
 			int expectedAmountPossibleCombinations = 576;
 		
-			Assert.assertEquals(expectedAmountPossibleCombinations,a2.getAmountPossibleCombinationsOfParticipants(), 0);
+			Assert.assertEquals(expectedAmountPossibleCombinations, Integer.parseInt(a2.getAmountPossibleCombinationsOfParticipants()), 0);
 
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
