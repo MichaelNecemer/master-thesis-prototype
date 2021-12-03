@@ -624,15 +624,13 @@ public class ProcessModelAnnotater implements Callable<File> {
 			transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
 			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
 
-			StreamResult result = new StreamResult(new PrintWriter(new FileOutputStream(file, false)));
+			FileOutputStream outputStream = new FileOutputStream(file, false);
+			PrintWriter printWriter = new PrintWriter(outputStream);
+			StreamResult result = new StreamResult(printWriter);
 			DOMSource source = new DOMSource(document);
 			transformer.transform(source, result);
-			/*
-			 * DOMSource source = new DOMSource(document); StreamResult filex = new
-			 * StreamResult(new File("C:\\Users\\Micha\\OneDrive\\Desktop\\test.xml"));
-			 * 
-			 * transformer.transform(source, filex);
-			 */
+			outputStream.close();
+			printWriter.close();
 
 		} catch (TransformerException e) {
 			// TODO Auto-generated catch block

@@ -3,6 +3,7 @@ package functionality;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -39,8 +40,8 @@ public class BatchFileGenerator {
 	static int timeOutForProcessModelAnnotaterInMin = 10;
 	// API is the class where the computations will be done
 	static int timeOutForApiInMin = 3;
-	
-	//how often will the modelAnnotater try to annotate the model if it fails
+
+	// how often will the modelAnnotater try to annotate the model if it fails
 	static int triesForModelAnnotater = 5;
 
 	// bound for the bounded localMinAlgorithm
@@ -123,7 +124,7 @@ public class BatchFileGenerator {
 				minDataObjectsPerDecision, maxDataObjectsPerDecision, defaultSpheres, amountThreads,
 				pathToFolderForModelsForTest1_1);
 		System.out.println("BoundartyTest1_1 finished!");
-		
+
 		// Test 1.2 - Boundary Test 2
 		// choose a model from boundary test 1 that had no exceptions for all algorithms
 		// create x new models on each iteration till every task of the model has a
@@ -133,234 +134,255 @@ public class BatchFileGenerator {
 		// end point -> x models where each task has a different participant connected
 
 		/*
-		String pathToFolderForModelsForTest1_2 = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToRootFolder, "BoundaryTest2").getAbsolutePath();
-
-		// choose a model
-		File directoryOfFiles = new File(pathToFolderForModelsForTest1_1 + File.separatorChar
-				+ "BoundaryTest_decision-4" + File.separatorChar + "annotated");
-		List<File> listOfFiles = Arrays.asList(directoryOfFiles.listFiles());
-		File model = CommonFunctionality.getRandomItem(listOfFiles);
-		int newModelsPerIteration = 5;
-		BatchFileGenerator.performBoundaryTest2(model, votersPerDecision, newModelsPerIteration,
-				upperBoundLocalMinWithBound, boundForComparisons, amountThreads, pathToFolderForModelsForTest1_2);
-
-		// Generate small, medium, large processes
-		// generate 3 Classes -> small, medium, large processes (without annotation)
-		// put them into a new folder into the root
-		String pathToFolderForModelsWithoutAnnotation = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToRootFolder, "ProcessesWithoutAnnotation").getAbsolutePath();
-
-		String pathToSmallProcessesFolderWithoutAnnotation = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "SmallProcessesFolder")
-				.getAbsolutePath();
-		String pathToMediumProcessesFolderWithoutAnnotation = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "MediumProcessesFolder")
-				.getAbsolutePath();
-		String pathToLargeProcessesFolderWithoutAnnotation = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "LargeProcessesFolder")
-				.getAbsolutePath();
-
-		// for each processes folder -> generate 100 random processes
-		// small processes: 2-3 participants, 6-15 tasks, 1-2 xors, 0-2 parallels, 100
-		// processes
-		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation, 2, 3,
-				6, 15, 1, 2, 0, 2, 100);
-
-		// medium processes: 3-4 participants, 16-30 tasks, 3-4 xors, 0-3 parallels, 100
-		// processes
-		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToMediumProcessesFolderWithoutAnnotation, 3, 4,
-				16, 30, 3, 4, 0, 3, 100);
-
-		// large processes: 4-5 participants, 31-60 tasks, 5-6 xors, 0-4, parallels, 100
-		// processes
-		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation, 4, 5,
-				31, 60, 5, 6, 0, 4, 100);
-
-		// Test 2 - Measure impact of enforceability on privity and vice versa
-		// take x random models from small, medium and large processes
-		// add dataObjects with global sphere and 1 voter per decision
-		// add readers/writers combinations - generate new models (9 new models for
-		// each)
-		// increase the amount of voters needed for decisions till the global sphere of
-		// that process is reached on all xors
-		// increase privity requirements to next stricter sphere for all dataObjects
-		String pathToFolderForModelsForTest2 = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToRootFolder, "Test2-TradeOff").getAbsolutePath();
-		int modelsToTakeFromEachFolder = 10;
-		String pathToSmallProcessesForTest2WithAnnotation = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "SmallProcessesAnnotatedFolder")
-				.getAbsolutePath();
-		String pathToMediumProcessesForTest2WithAnnotation = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "MediumProcessesAnnotatedFolder")
-				.getAbsolutePath();
-		String pathToLargeProcessesForTest2WithAnnotation = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "LargeProcessesAnnotatedFolder")
-				.getAbsolutePath();
-
-		LinkedList<File> smallProcessesWithoutAnnotation = BatchFileGenerator.getModelsInOrderFromSourceFolder(
-				modelsToTakeFromEachFolder, pathToSmallProcessesFolderWithoutAnnotation);
-		LinkedList<File> mediumProcessesWithoutAnnotation = BatchFileGenerator.getModelsInOrderFromSourceFolder(
-				modelsToTakeFromEachFolder, pathToMediumProcessesFolderWithoutAnnotation);
-		LinkedList<File> largeProcessesWithoutAnnotation = BatchFileGenerator.getModelsInOrderFromSourceFolder(
-				modelsToTakeFromEachFolder, pathToLargeProcessesFolderWithoutAnnotation);
-
-		BatchFileGenerator.performTradeOffTest("small", smallProcessesWithoutAnnotation,
-				pathToSmallProcessesForTest2WithAnnotation, dataObjectBoundsSmallProcesses, upperBoundLocalMinWithBound,
-				boundForComparisons, amountThreads);
-		BatchFileGenerator.performTradeOffTest("medium", mediumProcessesWithoutAnnotation,
-				pathToMediumProcessesForTest2WithAnnotation, dataObjectBoundsMediumProcesses,
-				upperBoundLocalMinWithBound, boundForComparisons, amountThreads);
-		BatchFileGenerator.performTradeOffTest("large", largeProcessesWithoutAnnotation,
-				pathToLargeProcessesForTest2WithAnnotation, dataObjectBoundsLargeProcesses, upperBoundLocalMinWithBound,
-				boundForComparisons, amountThreads);
-
-		// Test 3 - Measure impact of dataObjects
-		// annotate unique gateways per decision e.g. 5 unique data objects and 5
-		// decisions in the model -> 25 unique data objects
-		// take one dataObject, loop through the others and replace one object with that
-		// dataObject in each iteration
-		// on last step each decision will only have that dataObject connected
-		String pathToFolderForModelsForDataObjectTest = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToRootFolder, "Test3-ImpactOfDataObjects").getAbsolutePath();
-
-		int modelsToTakeFromEachFolderForTest3 = 10;
-		String pathToSmallProcessesForTest3WithAnnotation = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsForDataObjectTest, "SmallProcessesAnnotatedFolder")
-				.getAbsolutePath();
-		String pathToMediumProcessesForTest3WithAnnotation = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsForDataObjectTest, "MediumProcessesAnnotatedFolder")
-				.getAbsolutePath();
-		String pathToLargeProcessesForTest3WithAnnotation = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsForDataObjectTest, "LargeProcessesAnnotatedFolder")
-				.getAbsolutePath();
-
-		LinkedList<File> smallProcessesWithoutAnnotationTest3 = BatchFileGenerator.getModelsInOrderFromSourceFolder(
-				modelsToTakeFromEachFolderForTest3, pathToSmallProcessesForTest3WithAnnotation);
-		LinkedList<File> mediumProcessesWithoutAnnotationTest3 = BatchFileGenerator.getModelsInOrderFromSourceFolder(
-				modelsToTakeFromEachFolderForTest3, pathToMediumProcessesForTest3WithAnnotation);
-		LinkedList<File> largeProcessesWithoutAnnotationTest3 = BatchFileGenerator.getModelsInOrderFromSourceFolder(
-				modelsToTakeFromEachFolderForTest3, pathToLargeProcessesForTest3WithAnnotation);
-		LinkedList<File> allProcessesWithoutAnnotationTest3 = new LinkedList<File>();
-		allProcessesWithoutAnnotationTest3.addAll(smallProcessesWithoutAnnotationTest3);
-		allProcessesWithoutAnnotationTest3.addAll(mediumProcessesWithoutAnnotationTest3);
-		allProcessesWithoutAnnotationTest3.addAll(largeProcessesWithoutAnnotationTest3);
-
-		// annotate models with same amount of unique data objects per decision
-		int amountUniqueDataObjectsPerDecision = 4;
-
-		BatchFileGenerator.performDataObjectTest(allProcessesWithoutAnnotationTest3,
-				pathToFolderForModelsForDataObjectTest, amountUniqueDataObjectsPerDecision, upperBoundLocalMinWithBound,
-				amountThreads);
-
-		// Test 4_1 "killer constraints"
-		// performed on small and medium processes
-		// after that compare it to test 2 where those models have been run without
-		// constraints
-		boolean decisionTakerExcludeable = false;
-		String pathToSmallProcessesWithAnnotation = pathToSmallProcessesForTest2WithAnnotation + File.separatorChar
-				+ "ModelsForEvaluation";
-		LinkedList<File> smallProcessesFromTradeOffTest = BatchFileGenerator
-				.getAllModelsFromFolder(pathToSmallProcessesWithAnnotation);
-		String pathToMediumProcessesWithAnnotation = pathToMediumProcessesForTest2WithAnnotation + File.separatorChar
-				+ "ModelsForEvaluation";
-		LinkedList<File> mediumProcessesFromTradeOffTest = BatchFileGenerator
-				.getAllModelsFromFolder(pathToMediumProcessesWithAnnotation);
-
-		String pathToFolderForModelsForTest4_1 = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToRootFolder, "Test4_1-KillerConstraints").getAbsolutePath();
-		String pathToFolderForSmallModelsForTest4_1 = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "SmallModels").getAbsolutePath();
-		BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(smallProcessesFromTradeOffTest,
-				decisionTakerExcludeable, false, pathToFolderForSmallModelsForTest4_1, upperBoundLocalMinWithBound,
-				amountThreads);
-
-		String pathToFolderForMediumModelsForTest4_1 = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "MediumModels").getAbsolutePath();
-		BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(mediumProcessesFromTradeOffTest,
-				decisionTakerExcludeable, false, pathToFolderForMediumModelsForTest4_1, upperBoundLocalMinWithBound,
-				amountThreads);
-
-		// Test 4_2 -> Processes with probability to have exclude constraints
-		// performed on small and medium processes
-
-		int probabilityForGatewayToHaveConstraint = 30;
-		String pathToFolderForModelsForTest4_2 = CommonFunctionality.fileWithDirectoryAssurance(pathToRootFolder,
-				"Test4_2-constraintProbablity" + probabilityForGatewayToHaveConstraint).getAbsolutePath();
-		String pathToFolderForSmallModelsForTest4_2 = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2, "SmallModels").getAbsolutePath();
-		BatchFileGenerator.performTestWithExcludeConstraintsProbability(smallProcessesFromTradeOffTest,
-				decisionTakerExcludeable, false, probabilityForGatewayToHaveConstraint,
-				pathToFolderForSmallModelsForTest4_2, upperBoundLocalMinWithBound, amountThreads);
-
-		String pathToFolderForMediumModelsForTest4_2 = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2, "MediumModels").getAbsolutePath();
-		BatchFileGenerator.performTestWithExcludeConstraintsProbability(mediumProcessesFromTradeOffTest,
-				decisionTakerExcludeable, false, probabilityForGatewayToHaveConstraint,
-				pathToFolderForMediumModelsForTest4_2, upperBoundLocalMinWithBound, amountThreads);
-
-		// Test 5 - "mandatory participants"
-		// Search for the best set of verifiers
-		// take all models from trade off test
-		String pathToLargeProcessesWithAnnotation = pathToLargeProcessesForTest2WithAnnotation + File.separatorChar
-				+ "ModelsForEvaluation";
-		LinkedList<File> allProcessesFromTradeOffTest = new LinkedList<File>();
-		allProcessesFromTradeOffTest
-				.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToSmallProcessesWithAnnotation));
-		allProcessesFromTradeOffTest
-				.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToMediumProcessesWithAnnotation));
-		allProcessesFromTradeOffTest
-				.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToLargeProcessesWithAnnotation));
-
-		String pathToFolderForModelsForTest5 = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToRootFolder, "Test5_SearchForBestVerifiers").getAbsolutePath();
-
-		BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(allProcessesFromTradeOffTest, false,
-				pathToFolderForModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
-
-		// Test 6 - "real world processes"
-		// may contain exclude and mandatory participant constraint
-		// may contain dynamic writers
-		// has wider ranges for variables
-
-		List<Integer> dataObjectBoundsRealWorld = Arrays.asList(1, 6);
-		int dynamicWriterProb = 30;
-		int upperBoundParticipants = 8;
-		int lowerBoundTasks = 8;
-		int upperBoundTasks = 80;
-		int upperBoundXorGtws = 10;
-		int upperBoundParallelGtws = 6;
-		int amountProcesses = 100;
-		int minDataObjectsPerDecisionTest5 = 1;
-		int maxDataObjectsPerDecisionTest5 = 4;
-		int probabilityForGatewayToHaveExclConstraint = 30;
-		int lowerBoundAmountParticipantsToExclude = 0;
-		boolean decisionTakerExcludeableTest6 = true;
-		boolean alwaysMaxExclConstrained = false;
-		int probabilityForGatewayToHaveMandConstraint = 30;
-		int lowerBoundAmountParticipantsToBeMandatory = 0;
-		boolean decisionTakerMandatory = false;
-		boolean alwaysMaxMandConstrained = false;
-		List<Integer> writersOfProcessInPercent = Arrays.asList(10, 20, 30);
-		List<Integer> readersOfProcessInPercent = Arrays.asList(10, 20, 30);
-		int upperBoundLocalMinWithBound = 1;
-
-		String pathToRealWorldProcesses = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToRootFolder, "Test6-RealWorldProcesses").getAbsolutePath();
-		String pathToAnnotatedProcessesFolder = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToRealWorldProcesses, "AnnotatedModels").getAbsolutePath();
-
-		BatchFileGenerator.performTestWithRealWorldProcesses(pathToRealWorldProcesses, pathToAnnotatedProcessesFolder,
-				dynamicWriterProb, upperBoundParticipants, lowerBoundTasks, upperBoundTasks, upperBoundXorGtws,
-				upperBoundParallelGtws, amountProcesses, minDataObjectsPerDecisionTest5, maxDataObjectsPerDecisionTest5,
-				dataObjectBoundsRealWorld, writersOfProcessInPercent, readersOfProcessInPercent,
-				probabilityForGatewayToHaveExclConstraint, lowerBoundAmountParticipantsToExclude,
-				decisionTakerExcludeableTest6, alwaysMaxExclConstrained, probabilityForGatewayToHaveMandConstraint,
-				lowerBoundAmountParticipantsToBeMandatory, decisionTakerMandatory, alwaysMaxMandConstrained,
-				upperBoundLocalMinWithBound, amountThreads);
-
-		System.out.println("Everything finished!");
-		*/
+		 * String pathToFolderForModelsForTest1_2 = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToRootFolder,
+		 * "BoundaryTest2").getAbsolutePath();
+		 * 
+		 * // choose a model File directoryOfFiles = new
+		 * File(pathToFolderForModelsForTest1_1 + File.separatorChar +
+		 * "BoundaryTest_decision-4" + File.separatorChar + "annotated"); List<File>
+		 * listOfFiles = Arrays.asList(directoryOfFiles.listFiles()); File model =
+		 * CommonFunctionality.getRandomItem(listOfFiles); int newModelsPerIteration =
+		 * 5; BatchFileGenerator.performBoundaryTest2(model, votersPerDecision,
+		 * newModelsPerIteration, upperBoundLocalMinWithBound, boundForComparisons,
+		 * amountThreads, pathToFolderForModelsForTest1_2);
+		 * 
+		 * // Generate small, medium, large processes // generate 3 Classes -> small,
+		 * medium, large processes (without annotation) // put them into a new folder
+		 * into the root String pathToFolderForModelsWithoutAnnotation =
+		 * CommonFunctionality .fileWithDirectoryAssurance(pathToRootFolder,
+		 * "ProcessesWithoutAnnotation").getAbsolutePath();
+		 * 
+		 * String pathToSmallProcessesFolderWithoutAnnotation = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation,
+		 * "SmallProcessesFolder") .getAbsolutePath(); String
+		 * pathToMediumProcessesFolderWithoutAnnotation = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation,
+		 * "MediumProcessesFolder") .getAbsolutePath(); String
+		 * pathToLargeProcessesFolderWithoutAnnotation = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation,
+		 * "LargeProcessesFolder") .getAbsolutePath();
+		 * 
+		 * // for each processes folder -> generate 100 random processes // small
+		 * processes: 2-3 participants, 6-15 tasks, 1-2 xors, 0-2 parallels, 100 //
+		 * processes BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
+		 * pathToSmallProcessesFolderWithoutAnnotation, 2, 3, 6, 15, 1, 2, 0, 2, 100);
+		 * 
+		 * // medium processes: 3-4 participants, 16-30 tasks, 3-4 xors, 0-3 parallels,
+		 * 100 // processes BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
+		 * pathToMediumProcessesFolderWithoutAnnotation, 3, 4, 16, 30, 3, 4, 0, 3, 100);
+		 * 
+		 * // large processes: 4-5 participants, 31-60 tasks, 5-6 xors, 0-4, parallels,
+		 * 100 // processes BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
+		 * pathToLargeProcessesFolderWithoutAnnotation, 4, 5, 31, 60, 5, 6, 0, 4, 100);
+		 * 
+		 * // Test 2 - Measure impact of enforceability on privity and vice versa //
+		 * take x random models from small, medium and large processes // add
+		 * dataObjects with global sphere and 1 voter per decision // add
+		 * readers/writers combinations - generate new models (9 new models for // each)
+		 * // increase the amount of voters needed for decisions till the global sphere
+		 * of // that process is reached on all xors // increase privity requirements to
+		 * next stricter sphere for all dataObjects String pathToFolderForModelsForTest2
+		 * = CommonFunctionality .fileWithDirectoryAssurance(pathToRootFolder,
+		 * "Test2-TradeOff").getAbsolutePath(); int modelsToTakeFromEachFolder = 10;
+		 * String pathToSmallProcessesForTest2WithAnnotation = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsForTest2,
+		 * "SmallProcessesAnnotatedFolder") .getAbsolutePath(); String
+		 * pathToMediumProcessesForTest2WithAnnotation = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsForTest2,
+		 * "MediumProcessesAnnotatedFolder") .getAbsolutePath(); String
+		 * pathToLargeProcessesForTest2WithAnnotation = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsForTest2,
+		 * "LargeProcessesAnnotatedFolder") .getAbsolutePath();
+		 * 
+		 * LinkedList<File> smallProcessesWithoutAnnotation =
+		 * BatchFileGenerator.getModelsInOrderFromSourceFolder(
+		 * modelsToTakeFromEachFolder, pathToSmallProcessesFolderWithoutAnnotation);
+		 * LinkedList<File> mediumProcessesWithoutAnnotation =
+		 * BatchFileGenerator.getModelsInOrderFromSourceFolder(
+		 * modelsToTakeFromEachFolder, pathToMediumProcessesFolderWithoutAnnotation);
+		 * LinkedList<File> largeProcessesWithoutAnnotation =
+		 * BatchFileGenerator.getModelsInOrderFromSourceFolder(
+		 * modelsToTakeFromEachFolder, pathToLargeProcessesFolderWithoutAnnotation);
+		 * 
+		 * BatchFileGenerator.performTradeOffTest("small",
+		 * smallProcessesWithoutAnnotation, pathToSmallProcessesForTest2WithAnnotation,
+		 * dataObjectBoundsSmallProcesses, upperBoundLocalMinWithBound,
+		 * boundForComparisons, amountThreads);
+		 * BatchFileGenerator.performTradeOffTest("medium",
+		 * mediumProcessesWithoutAnnotation,
+		 * pathToMediumProcessesForTest2WithAnnotation, dataObjectBoundsMediumProcesses,
+		 * upperBoundLocalMinWithBound, boundForComparisons, amountThreads);
+		 * BatchFileGenerator.performTradeOffTest("large",
+		 * largeProcessesWithoutAnnotation, pathToLargeProcessesForTest2WithAnnotation,
+		 * dataObjectBoundsLargeProcesses, upperBoundLocalMinWithBound,
+		 * boundForComparisons, amountThreads);
+		 * 
+		 * // Test 3 - Measure impact of dataObjects // annotate unique gateways per
+		 * decision e.g. 5 unique data objects and 5 // decisions in the model -> 25
+		 * unique data objects // take one dataObject, loop through the others and
+		 * replace one object with that // dataObject in each iteration // on last step
+		 * each decision will only have that dataObject connected String
+		 * pathToFolderForModelsForDataObjectTest = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToRootFolder,
+		 * "Test3-ImpactOfDataObjects").getAbsolutePath();
+		 * 
+		 * int modelsToTakeFromEachFolderForTest3 = 10; String
+		 * pathToSmallProcessesForTest3WithAnnotation = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsForDataObjectTest,
+		 * "SmallProcessesAnnotatedFolder") .getAbsolutePath(); String
+		 * pathToMediumProcessesForTest3WithAnnotation = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsForDataObjectTest,
+		 * "MediumProcessesAnnotatedFolder") .getAbsolutePath(); String
+		 * pathToLargeProcessesForTest3WithAnnotation = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsForDataObjectTest,
+		 * "LargeProcessesAnnotatedFolder") .getAbsolutePath();
+		 * 
+		 * LinkedList<File> smallProcessesWithoutAnnotationTest3 =
+		 * BatchFileGenerator.getModelsInOrderFromSourceFolder(
+		 * modelsToTakeFromEachFolderForTest3,
+		 * pathToSmallProcessesForTest3WithAnnotation); LinkedList<File>
+		 * mediumProcessesWithoutAnnotationTest3 =
+		 * BatchFileGenerator.getModelsInOrderFromSourceFolder(
+		 * modelsToTakeFromEachFolderForTest3,
+		 * pathToMediumProcessesForTest3WithAnnotation); LinkedList<File>
+		 * largeProcessesWithoutAnnotationTest3 =
+		 * BatchFileGenerator.getModelsInOrderFromSourceFolder(
+		 * modelsToTakeFromEachFolderForTest3,
+		 * pathToLargeProcessesForTest3WithAnnotation); LinkedList<File>
+		 * allProcessesWithoutAnnotationTest3 = new LinkedList<File>();
+		 * allProcessesWithoutAnnotationTest3.addAll(
+		 * smallProcessesWithoutAnnotationTest3);
+		 * allProcessesWithoutAnnotationTest3.addAll(
+		 * mediumProcessesWithoutAnnotationTest3);
+		 * allProcessesWithoutAnnotationTest3.addAll(
+		 * largeProcessesWithoutAnnotationTest3);
+		 * 
+		 * // annotate models with same amount of unique data objects per decision int
+		 * amountUniqueDataObjectsPerDecision = 4;
+		 * 
+		 * BatchFileGenerator.performDataObjectTest(allProcessesWithoutAnnotationTest3,
+		 * pathToFolderForModelsForDataObjectTest, amountUniqueDataObjectsPerDecision,
+		 * upperBoundLocalMinWithBound, amountThreads);
+		 * 
+		 * // Test 4_1 "killer constraints" // performed on small and medium processes
+		 * // after that compare it to test 2 where those models have been run without
+		 * // constraints boolean decisionTakerExcludeable = false; String
+		 * pathToSmallProcessesWithAnnotation =
+		 * pathToSmallProcessesForTest2WithAnnotation + File.separatorChar +
+		 * "ModelsForEvaluation"; LinkedList<File> smallProcessesFromTradeOffTest =
+		 * BatchFileGenerator
+		 * .getAllModelsFromFolder(pathToSmallProcessesWithAnnotation); String
+		 * pathToMediumProcessesWithAnnotation =
+		 * pathToMediumProcessesForTest2WithAnnotation + File.separatorChar +
+		 * "ModelsForEvaluation"; LinkedList<File> mediumProcessesFromTradeOffTest =
+		 * BatchFileGenerator
+		 * .getAllModelsFromFolder(pathToMediumProcessesWithAnnotation);
+		 * 
+		 * String pathToFolderForModelsForTest4_1 = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToRootFolder,
+		 * "Test4_1-KillerConstraints").getAbsolutePath(); String
+		 * pathToFolderForSmallModelsForTest4_1 = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1,
+		 * "SmallModels").getAbsolutePath();
+		 * BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(
+		 * smallProcessesFromTradeOffTest, decisionTakerExcludeable, false,
+		 * pathToFolderForSmallModelsForTest4_1, upperBoundLocalMinWithBound,
+		 * amountThreads);
+		 * 
+		 * String pathToFolderForMediumModelsForTest4_1 = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1,
+		 * "MediumModels").getAbsolutePath();
+		 * BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(
+		 * mediumProcessesFromTradeOffTest, decisionTakerExcludeable, false,
+		 * pathToFolderForMediumModelsForTest4_1, upperBoundLocalMinWithBound,
+		 * amountThreads);
+		 * 
+		 * // Test 4_2 -> Processes with probability to have exclude constraints //
+		 * performed on small and medium processes
+		 * 
+		 * int probabilityForGatewayToHaveConstraint = 30; String
+		 * pathToFolderForModelsForTest4_2 =
+		 * CommonFunctionality.fileWithDirectoryAssurance(pathToRootFolder,
+		 * "Test4_2-constraintProbablity" +
+		 * probabilityForGatewayToHaveConstraint).getAbsolutePath(); String
+		 * pathToFolderForSmallModelsForTest4_2 = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2,
+		 * "SmallModels").getAbsolutePath();
+		 * BatchFileGenerator.performTestWithExcludeConstraintsProbability(
+		 * smallProcessesFromTradeOffTest, decisionTakerExcludeable, false,
+		 * probabilityForGatewayToHaveConstraint, pathToFolderForSmallModelsForTest4_2,
+		 * upperBoundLocalMinWithBound, amountThreads);
+		 * 
+		 * String pathToFolderForMediumModelsForTest4_2 = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2,
+		 * "MediumModels").getAbsolutePath();
+		 * BatchFileGenerator.performTestWithExcludeConstraintsProbability(
+		 * mediumProcessesFromTradeOffTest, decisionTakerExcludeable, false,
+		 * probabilityForGatewayToHaveConstraint, pathToFolderForMediumModelsForTest4_2,
+		 * upperBoundLocalMinWithBound, amountThreads);
+		 * 
+		 * // Test 5 - "mandatory participants" // Search for the best set of verifiers
+		 * // take all models from trade off test String
+		 * pathToLargeProcessesWithAnnotation =
+		 * pathToLargeProcessesForTest2WithAnnotation + File.separatorChar +
+		 * "ModelsForEvaluation"; LinkedList<File> allProcessesFromTradeOffTest = new
+		 * LinkedList<File>(); allProcessesFromTradeOffTest
+		 * .addAll(BatchFileGenerator.getAllModelsFromFolder(
+		 * pathToSmallProcessesWithAnnotation)); allProcessesFromTradeOffTest
+		 * .addAll(BatchFileGenerator.getAllModelsFromFolder(
+		 * pathToMediumProcessesWithAnnotation)); allProcessesFromTradeOffTest
+		 * .addAll(BatchFileGenerator.getAllModelsFromFolder(
+		 * pathToLargeProcessesWithAnnotation));
+		 * 
+		 * String pathToFolderForModelsForTest5 = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToRootFolder,
+		 * "Test5_SearchForBestVerifiers").getAbsolutePath();
+		 * 
+		 * BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(
+		 * allProcessesFromTradeOffTest, false, pathToFolderForModelsForTest5,
+		 * upperBoundLocalMinWithBound, amountThreads);
+		 * 
+		 * // Test 6 - "real world processes" // may contain exclude and mandatory
+		 * participant constraint // may contain dynamic writers // has wider ranges for
+		 * variables
+		 * 
+		 * List<Integer> dataObjectBoundsRealWorld = Arrays.asList(1, 6); int
+		 * dynamicWriterProb = 30; int upperBoundParticipants = 8; int lowerBoundTasks =
+		 * 8; int upperBoundTasks = 80; int upperBoundXorGtws = 10; int
+		 * upperBoundParallelGtws = 6; int amountProcesses = 100; int
+		 * minDataObjectsPerDecisionTest5 = 1; int maxDataObjectsPerDecisionTest5 = 4;
+		 * int probabilityForGatewayToHaveExclConstraint = 30; int
+		 * lowerBoundAmountParticipantsToExclude = 0; boolean
+		 * decisionTakerExcludeableTest6 = true; boolean alwaysMaxExclConstrained =
+		 * false; int probabilityForGatewayToHaveMandConstraint = 30; int
+		 * lowerBoundAmountParticipantsToBeMandatory = 0; boolean decisionTakerMandatory
+		 * = false; boolean alwaysMaxMandConstrained = false; List<Integer>
+		 * writersOfProcessInPercent = Arrays.asList(10, 20, 30); List<Integer>
+		 * readersOfProcessInPercent = Arrays.asList(10, 20, 30); int
+		 * upperBoundLocalMinWithBound = 1;
+		 * 
+		 * String pathToRealWorldProcesses = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToRootFolder,
+		 * "Test6-RealWorldProcesses").getAbsolutePath(); String
+		 * pathToAnnotatedProcessesFolder = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToRealWorldProcesses,
+		 * "AnnotatedModels").getAbsolutePath();
+		 * 
+		 * BatchFileGenerator.performTestWithRealWorldProcesses(
+		 * pathToRealWorldProcesses, pathToAnnotatedProcessesFolder, dynamicWriterProb,
+		 * upperBoundParticipants, lowerBoundTasks, upperBoundTasks, upperBoundXorGtws,
+		 * upperBoundParallelGtws, amountProcesses, minDataObjectsPerDecisionTest5,
+		 * maxDataObjectsPerDecisionTest5, dataObjectBoundsRealWorld,
+		 * writersOfProcessInPercent, readersOfProcessInPercent,
+		 * probabilityForGatewayToHaveExclConstraint,
+		 * lowerBoundAmountParticipantsToExclude, decisionTakerExcludeableTest6,
+		 * alwaysMaxExclConstrained, probabilityForGatewayToHaveMandConstraint,
+		 * lowerBoundAmountParticipantsToBeMandatory, decisionTakerMandatory,
+		 * alwaysMaxMandConstrained, upperBoundLocalMinWithBound, amountThreads);
+		 * 
+		 * System.out.println("Everything finished!");
+		 */
 	}
 
 	public static void performTestWithRealWorldProcesses(String pathWhereToCreateProcessesWithoutAnnotation,
@@ -533,6 +555,7 @@ public class BatchFileGenerator {
 				futures.add(future);
 				try {
 					future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
+					future.cancel(true);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -560,34 +583,46 @@ public class BatchFileGenerator {
 
 		executor.shutdown();
 	}
-	
-	public static void generateRandomProcessesWithFixedValuesAndExactlyMaxDecisionsAndMaxAmountParticipants(String pathForAddingRandomModels,
-			int maxAmountParticipants, int maxAmountTasks, int maxAmountXorSplits, int maxAmountParallelSplits,
-			int amountProcesses, ExecutorService executor) {
+
+	public static void generateRandomProcessesWithFixedValuesAndExactlyMaxDecisionsAndMaxAmountParticipants(
+			String pathForAddingRandomModels, int maxAmountParticipants, int maxAmountTasks, int maxAmountXorSplits,
+			int maxAmountParallelSplits, int amountProcesses, ExecutorService executor) {
 
 		for (int i = 1; i <= amountProcesses; i++) {
 
 			// will be written to the pathForAddingRandomModels
-
 			ProcessGenerator pGen;
+
 			try {
 
 				pGen = new ProcessGenerator(pathForAddingRandomModels, maxAmountParticipants, maxAmountTasks,
-						maxAmountXorSplits, maxAmountParallelSplits, probTask, probXorGtw, probParallelGtw,
-						probJoinGtw, nestingDepthFactor);
+						maxAmountXorSplits, maxAmountParallelSplits, probTask, probXorGtw, probParallelGtw, probJoinGtw,
+						nestingDepthFactor);
 
 				Future<File> future = executor.submit(pGen);
 				try {
 					File f = future.get(timeOutForProcessGeneratorInMin, TimeUnit.MINUTES);
 					System.out.println(f.getName() + " deployed successfully");
-					//there need to be exactly as many xor splits as maxAmountXorSplits
-					//there need to be exactly as many participants as maxAmountParticipants
-					BpmnModelInstance createdModel = Bpmn.readModelFromFile(f);				
-					if(CommonFunctionality.getAmountExclusiveGtwSplits(createdModel)!=maxAmountXorSplits || CommonFunctionality.getGlobalSphere(createdModel, false)!=maxAmountParticipants) {
-						//delete the model
-						System.out.println(f.getAbsolutePath()+"not exactly" +maxAmountXorSplits+" xor-splits. Deleted: "+f.delete());						
-					}					
-					
+					future.cancel(true);
+					// there need to be exactly as many xor splits as maxAmountXorSplits
+					// there need to be exactly as many participants as maxAmountParticipants
+					if (f != null && f.isFile()) {
+						BpmnModelInstance createdModel = Bpmn.readModelFromFile(f);
+
+						if (CommonFunctionality.getAmountExclusiveGtwSplits(createdModel) != maxAmountXorSplits) {
+							System.out.println(f.getName() + " deleted: " + f.delete() + "! Not exactly "
+									+ maxAmountXorSplits + " xor-splits!");
+							i--;
+							ProcessGenerator.decreaseProcessGeneratorId();
+
+						}
+						if (CommonFunctionality.getGlobalSphere(createdModel, false) != maxAmountParticipants) {
+							System.out.println(f.getName() + " deleted: " + f.delete() + "! Not exactly "
+									+ maxAmountParticipants + " participants!");
+							i--;
+							ProcessGenerator.decreaseProcessGeneratorId();
+						}
+					}
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -611,9 +646,6 @@ public class BatchFileGenerator {
 		}
 
 	}
-	
-	
-	
 
 	public static void generateRandomProcessesWithFixedValues(String pathForAddingRandomModels,
 			int maxAmountParticipants, int maxAmountMaxTasks, int maxAmountMaxXorSplits, int maxAmountMaxParallelSplits,
@@ -634,6 +666,7 @@ public class BatchFileGenerator {
 				try {
 					File f = future.get(timeOutForProcessGeneratorInMin, TimeUnit.MINUTES);
 					System.out.println(f.getName() + " deployed successfully");
+					future.cancel(true);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -681,6 +714,7 @@ public class BatchFileGenerator {
 				Future future = executor.submit(pGen);
 				try {
 					future.get(timeOutForProcessGeneratorInMin, TimeUnit.MINUTES);
+					future.cancel(true);
 				} catch (Exception e) {
 					e.printStackTrace();
 					future.cancel(true);
@@ -785,9 +819,9 @@ public class BatchFileGenerator {
 		return csvFile;
 	}
 
-	public static HashMap<Boolean, HashMap<String, Integer>> runAlgorithmsAndWriteResultsToCSV(API api, int limitForLocalMin,
-			int boundForComparisons, HashMap<String, Integer> timeOutOrHeapSpaceExceptionMap, ResultsToCSVWriter writer,
-			ExecutorService service) {
+	public static HashMap<Boolean, HashMap<String, Integer>> runAlgorithmsAndWriteResultsToCSV(API api,
+			int limitForLocalMin, int boundForComparisons, HashMap<String, Integer> timeOutOrHeapSpaceExceptionMap,
+			ResultsToCSVWriter writer, ExecutorService service) {
 		// write the result of an algorithm to an existing csv file
 		// clone api for algorithms
 
@@ -807,7 +841,7 @@ public class BatchFileGenerator {
 		HashMap<String, LinkedList<ProcessInstanceWithVoters>> pInstancesLocalMin = null;
 		HashMap<String, LinkedList<ProcessInstanceWithVoters>> pInstancesLocalMinWithMaxSolutions = null;
 		boolean heapSpaceError = false;
-		
+
 		try {
 
 			Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureBruteForce = service
@@ -837,11 +871,11 @@ public class BatchFileGenerator {
 				futureBruteForce.cancel(true);
 			} catch (Error e) {
 				System.gc();
-				if(e instanceof OutOfMemoryError) {
-				exceptionBruteForce = new HeapSpaceException(e.getMessage(), e.getCause());
-				timeOutOrHeapSpaceExceptionMap.put("bruteForce",
-						timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
-				System.err.println("BruteForce ran out of memory");				
+				if (e instanceof OutOfMemoryError) {
+					exceptionBruteForce = new HeapSpaceException(e.getMessage(), e.getCause());
+					timeOutOrHeapSpaceExceptionMap.put("bruteForce",
+							timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
+					System.err.println("BruteForce ran out of memory");
 				}
 				futureBruteForce.cancel(true);
 			}
@@ -878,11 +912,11 @@ public class BatchFileGenerator {
 				futureLocalMin.cancel(true);
 			} catch (Error e) {
 				System.gc();
-				if(e instanceof OutOfMemoryError) {
-				exceptionLocalMin = new HeapSpaceException(e.getMessage(), e.getCause());
-				timeOutOrHeapSpaceExceptionMap.put("localMin",
-						timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
-				System.err.println("LocalMin ran out of memory");
+				if (e instanceof OutOfMemoryError) {
+					exceptionLocalMin = new HeapSpaceException(e.getMessage(), e.getCause());
+					timeOutOrHeapSpaceExceptionMap.put("localMin",
+							timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
+					System.err.println("LocalMin ran out of memory");
 				}
 				futureLocalMin.cancel(true);
 			} finally {
@@ -920,11 +954,11 @@ public class BatchFileGenerator {
 				futureLocalMinWithMaxSolutions.cancel(true);
 			} catch (Error e) {
 				System.gc();
-				if(e instanceof OutOfMemoryError) {
-				exceptionLocalMinWithMaxSolutions = new HeapSpaceException(e.getMessage(), e.getCause());
-				timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions,
-						timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
-				System.err.println(localMinWithMaxSolutions + " ran out of memory");
+				if (e instanceof OutOfMemoryError) {
+					exceptionLocalMinWithMaxSolutions = new HeapSpaceException(e.getMessage(), e.getCause());
+					timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions,
+							timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
+					System.err.println(localMinWithMaxSolutions + " ran out of memory");
 				}
 				futureLocalMinWithMaxSolutions.cancel(true);
 			} finally {
@@ -1271,6 +1305,7 @@ public class BatchFileGenerator {
 
 						try {
 							future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
+							future.cancel(true);
 						} catch (InterruptedException e) {
 							// TODO Auto-generated catch block
 							future.cancel(true);
@@ -1406,9 +1441,9 @@ public class BatchFileGenerator {
 					amountReadersInPercent, amountDataObjectsToCreate);
 
 			// generate processes
-			BatchFileGenerator.generateRandomProcessesWithFixedValuesAndExactlyMaxDecisionsAndMaxAmountParticipants(pathToFolderForModelsWithDecisions, globalSphere,
-					amountTasksWithFactor, amountDecisionsToStart, amountParallelGtws, amountProcessesPerIteration,
-					executor);
+			BatchFileGenerator.generateRandomProcessesWithFixedValuesAndExactlyMaxDecisionsAndMaxAmountParticipants(
+					pathToFolderForModelsWithDecisions, globalSphere, amountTasksWithFactor, amountDecisionsToStart,
+					amountParallelGtws, amountProcessesPerIteration, executor);
 
 			// annotate the processes
 			File folder = new File(pathToFolderForModelsWithDecisions);
@@ -1416,7 +1451,7 @@ public class BatchFileGenerator {
 			listOfFiles.addAll(Arrays.asList(folder.listFiles()));
 
 			amountProcessesPerIteration = listOfFiles.size();
-			
+
 			String pathToFolderForModelsWithDecisionsAnnotated = CommonFunctionality
 					.fileWithDirectoryAssurance(pathToFolderForModelsWithDecisions, "annotated").getAbsolutePath();
 			Iterator<File> modelIter = listOfFiles.iterator();
@@ -1427,7 +1462,7 @@ public class BatchFileGenerator {
 				while (correctModel == false && tries < triesForModelAnnotater) {
 					File modelCopy = (File) CommonFunctionality.deepCopy(model);
 					ProcessModelAnnotater p;
-					System.out.println(model.getName()+", tries: "+tries);
+					System.out.println(model.getName() + ", tries: " + tries);
 					try {
 						p = new ProcessModelAnnotater(modelCopy.getAbsolutePath(),
 								pathToFolderForModelsWithDecisionsAnnotated, "_annotated");
@@ -1471,6 +1506,7 @@ public class BatchFileGenerator {
 							future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
 							System.out.println("Model annotated correctly!");
 							correctModel = true;
+							future.cancel(true);
 						} catch (Exception e) {
 							correctModel = false;
 							System.err.println("Exception in call method of ProcessModelAnnotater: ");
@@ -1494,21 +1530,21 @@ public class BatchFileGenerator {
 			// map annotated models
 			LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderForModelsWithDecisionsAnnotated,
 					writer);
-			
+
 			apiListSize = apiList.size();
 
 			// perform all algorithms and count the timeouts
 			for (API api : apiList) {
-				HashMap<Boolean, HashMap<String, Integer>> returnMap = BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api,
-						upperBoundSolutionsForLocalMinWithBound, boundForComparisons, timeOutOrHeapSpaceExceptionMap,
-						writer, executor);
-				if(returnMap.get(false)!=null) {
+				HashMap<Boolean, HashMap<String, Integer>> returnMap = BatchFileGenerator
+						.runAlgorithmsAndWriteResultsToCSV(api, upperBoundSolutionsForLocalMinWithBound,
+								boundForComparisons, timeOutOrHeapSpaceExceptionMap, writer, executor);
+				if (returnMap.get(false) != null) {
 					outOfMemoryError = true;
 					timeOutOrHeapSpaceExceptionMap = returnMap.get(false);
 				} else {
 					timeOutOrHeapSpaceExceptionMap = returnMap.get(true);
 				}
-				
+
 			}
 
 			System.out.println("Iteration" + amountDecisionsToStart + " end - timeOutsBruteForce: "
@@ -1516,10 +1552,8 @@ public class BatchFileGenerator {
 					+ timeOutOrHeapSpaceExceptionMap.get("localMin") + ", timeOutsLocalMinWithBound"
 					+ upperBoundSolutionsForLocalMinWithBound + ": "
 					+ timeOutOrHeapSpaceExceptionMap.get(localMinWithBound));
-			
+
 			amountDecisionsToStart++;
-			
-			
 
 		} while (timeOutOrHeapSpaceExceptionMap.get("bruteForce") < apiListSize
 				|| timeOutOrHeapSpaceExceptionMap.get("localMin") < apiListSize
@@ -1556,22 +1590,22 @@ public class BatchFileGenerator {
 			timeOutMap.put("localMin", 0);
 			timeOutMap.put(localMinWithBound, 0);
 
-			HashMap<Boolean, HashMap<String, Integer>> returnMap = BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, upperBoundSolutionsForLocalMin,
-					boundForComparisons, timeOutMap, writer, executor);
+			HashMap<Boolean, HashMap<String, Integer>> returnMap = BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(
+					api, upperBoundSolutionsForLocalMin, boundForComparisons, timeOutMap, writer, executor);
 			boolean outOfMemoryException = false;
-			if(returnMap.get(false)!=null) {
+			if (returnMap.get(false) != null) {
 				outOfMemoryException = true;
 				timeOutMap = returnMap.get(false);
 			} else {
 				timeOutMap = returnMap.get(true);
 			}
-			
+
 			System.out.println("timeOutsBruteForce: " + timeOutMap.get("bruteForce") + ", timeOutsLocalMin: "
 					+ timeOutMap.get("localMin") + ", timeOuts" + localMinWithBound + ": "
 					+ timeOutMap.get(localMinWithBound));
 
 			if ((timeOutMap.get("bruteForce") == 1 && timeOutMap.get("localMin") == 1
-					&& timeOutMap.get(localMinWithBound) == 1) || outOfMemoryException==true) {
+					&& timeOutMap.get(localMinWithBound) == 1) || outOfMemoryException == true) {
 				break;
 			}
 		}
