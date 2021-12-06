@@ -734,21 +734,25 @@ public class GUI {
 												if (exceptionBruteForce != null) {
 													leftPanel.add(
 															new JLabel("Exception: " + exceptionBruteForce.getMessage()));
+													leftPanel.add(new JLabel("Comparison against bruteForce not possible!"));
+												} else {
+													String comparison = CommonFunctionality
+															.compareResultsOfAlgorithmsForDifferentAPIs(
+																	pInstances.get(selectedAlgorithm),
+																	pInstancesBruteForce.get("bruteForce"), 1000000);
+													leftPanel.add(new JLabel("bruteForce: "
+															+ pInstancesBruteForce.get("bruteForce").size() + " solution(s)"));
+													LinkedList<ProcessInstanceWithVoters> cheapestBruteForceInstances = CommonFunctionality
+															.getCheapestProcessInstancesWithVoters(
+																	pInstancesBruteForce.get("bruteForce"));
+													leftPanel.add(new JLabel(
+															"Cost of cheapest solution(s): " + cheapestBruteForceInstances
+																	.getFirst().getCostForModelInstance()));
+													leftPanel.add(new JLabel("Cheapest solution(s) found:  " + comparison));
+												
+												
 												}
 
-												String comparison = CommonFunctionality
-														.compareResultsOfAlgorithmsForDifferentAPIs(
-																pInstances.get(selectedAlgorithm),
-																pInstancesBruteForce.get("bruteForce"), 1000000);
-												leftPanel.add(new JLabel("bruteForce: "
-														+ pInstancesBruteForce.get("bruteForce").size() + " solution(s)"));
-												LinkedList<ProcessInstanceWithVoters> cheapestBruteForceInstances = CommonFunctionality
-														.getCheapestProcessInstancesWithVoters(
-																pInstancesBruteForce.get("bruteForce"));
-												leftPanel.add(new JLabel(
-														"Cost of cheapest solution(s): " + cheapestBruteForceInstances
-																.getFirst().getCostForModelInstance()));
-												leftPanel.add(new JLabel("Cheapest solution(s) found:  " + comparison));
 											}
 											executor.shutdownNow();
 										}
@@ -758,9 +762,6 @@ public class GUI {
 
 										leftPanel.add(new JLabel("Model(s) stored in: "
 												+ props.getProperty("defaultDirectoryForStoringModels")));
-
-										// check if comparison against bruteforce is selected
-										
 
 										// check whether voting as construct or as annotation is selected
 										if (votingAsConstructBox.isSelected()) {

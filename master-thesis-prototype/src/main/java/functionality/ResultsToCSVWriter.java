@@ -135,7 +135,7 @@ public class ResultsToCSVWriter {
 			averageAmountVotersOfModel = CommonFunctionality.getAverageAmountVotersOfModel(api.getModelInstance()) + "";
 			globalSphereSize = CommonFunctionality.getGlobalSphere(api.getModelInstance(), api.modelWithLanes()) + "";
 			sphereSumOfModel = CommonFunctionality.getSphereSumOfModel(api.getModelInstance()) + "";
-			amountSolutions = api.getAmountPossibleCombinationsOfParticipants() + "";
+			amountSolutions = api.getAmountPossibleCombinationsOfParticipants();
 			deciderOrVerifier = api.getDeciderOrVerifier();
 			int readers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
@@ -260,7 +260,6 @@ public class ResultsToCSVWriter {
 			averageCostAllSolutions = CommonFunctionality.getAverageCostForAllModelInstances(pInstancesBruteForce) + "";
 
 			costCheapestSolutionBruteForce = cheapestBruteForceInst.get(0).getCostForModelInstance() + "";
-
 		}
 
 		String amountCheapestSolutionsLocalMinWithLimit = "null";
@@ -352,16 +351,28 @@ public class ResultsToCSVWriter {
 		String exceptionNameLocalMin = "null";
 		if (exceptionPerAlgorithm.get("localMin") != null) {
 			exceptionNameLocalMin = exceptionPerAlgorithm.get("localMin").getClass().getCanonicalName();
+		} else {
+			if (amountSolutions.contentEquals("null")) {
+				amountSolutions = bruteForceApi.getAmountPossibleCombinationsOfParticipants();
+			}
 		}
 		String exceptionNameBruteForce = "null";
 		if (exceptionPerAlgorithm.get("bruteForce") != null) {
 			exceptionNameBruteForce = exceptionPerAlgorithm.get("bruteForce").getClass().getCanonicalName();
+		} else {
+			if (amountSolutions.contentEquals("null")) {
+				amountSolutions = bruteForceApi.getAmountPossibleCombinationsOfParticipants();
+			}
 		}
 
 		String exceptionNameLocalMinWithLimit = "null";
 		if (exceptionPerAlgorithm.get(localMinWithLimitApi.getAlgorithmToPerform()) != null) {
 			exceptionNameLocalMinWithLimit = exceptionPerAlgorithm.get(localMinWithLimitApi.getAlgorithmToPerform())
 					.getClass().getCanonicalName();
+		} else {
+			if (amountSolutions.contentEquals("null")) {
+				amountSolutions = bruteForceApi.getAmountPossibleCombinationsOfParticipants();
+			}
 		}
 
 		String[] row = new String[] { fileName, pathToFile, exceptionNameLocalMin, exceptionNameBruteForce,
