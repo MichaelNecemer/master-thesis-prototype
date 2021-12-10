@@ -282,7 +282,9 @@ public class ResultsToCSVWriter {
 		String averageAmountVotersOfModel = "null";
 		String globalSphereSize = "null";
 		String sphereSumOfModel = "null";
-		String amountSolutions = "null";
+		String amountMaxSolutionsBruteForce = "null";
+		String amountMaxSolutionsLocalMin = "null";
+		String amountMaxSolutionsLocalMinWithLimit = "null";
 		String deciderOrVerifier = "null";
 		String amountReaders = "null";
 		String amountWriters = "null";
@@ -302,7 +304,6 @@ public class ResultsToCSVWriter {
 			globalSphereSize = CommonFunctionality.getGlobalSphere(bruteForceApi.getModelInstance(),
 					bruteForceApi.modelWithLanes()) + "";
 			sphereSumOfModel = CommonFunctionality.getSphereSumOfModel(bruteForceApi.getModelInstance()) + "";
-			amountSolutions = bruteForceApi.getAmountPossibleCombinationsOfParticipants();
 			deciderOrVerifier = bruteForceApi.getDeciderOrVerifier();
 			int readers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
@@ -352,17 +353,13 @@ public class ResultsToCSVWriter {
 		if (exceptionPerAlgorithm.get("localMin") != null) {
 			exceptionNameLocalMin = exceptionPerAlgorithm.get("localMin").getClass().getCanonicalName();
 		} else {
-			if (amountSolutions.contentEquals("null")) {
-				amountSolutions = bruteForceApi.getAmountPossibleCombinationsOfParticipants();
-			}
+			amountMaxSolutionsLocalMin = localMinApi.getAmountPossibleCombinationsOfParticipants();
 		}
 		String exceptionNameBruteForce = "null";
 		if (exceptionPerAlgorithm.get("bruteForce") != null) {
 			exceptionNameBruteForce = exceptionPerAlgorithm.get("bruteForce").getClass().getCanonicalName();
 		} else {
-			if (amountSolutions.contentEquals("null")) {
-				amountSolutions = bruteForceApi.getAmountPossibleCombinationsOfParticipants();
-			}
+			amountMaxSolutionsBruteForce = bruteForceApi.getAmountPossibleCombinationsOfParticipants();
 		}
 
 		String exceptionNameLocalMinWithLimit = "null";
@@ -370,9 +367,38 @@ public class ResultsToCSVWriter {
 			exceptionNameLocalMinWithLimit = exceptionPerAlgorithm.get(localMinWithLimitApi.getAlgorithmToPerform())
 					.getClass().getCanonicalName();
 		} else {
-			if (amountSolutions.contentEquals("null")) {
-				amountSolutions = bruteForceApi.getAmountPossibleCombinationsOfParticipants();
+			amountMaxSolutionsLocalMinWithLimit = localMinWithLimitApi.getAmountPossibleCombinationsOfParticipants();
+		}
+
+		LinkedList<String> amountMaxSolutionsList = new LinkedList<String>();
+		amountMaxSolutionsList.add(amountMaxSolutionsBruteForce);
+		amountMaxSolutionsList.add(amountMaxSolutionsLocalMin);
+		amountMaxSolutionsList.add(amountMaxSolutionsLocalMinWithLimit);
+		String amountSolutions = "null";
+		for (int i = 0; i < amountMaxSolutionsList.size() - 1; i++) {
+			String currStr = amountMaxSolutionsList.get(i);
+			String nextStr = amountMaxSolutionsList.get(i + 1);
+			int currStrInt = 0;
+			int nextStrInt = 0;
+			if(amountSolutions.contentEquals("null")) {
+				if(currStr.contentEquals("Overflow")||nextStr.contentEquals("Overflow")) {
+					amountSolutions="Overflow";
+				}
 			}
+			
+			if ((!currStr.contentEquals("null")) && (!currStr.contentEquals("Overflow"))) {
+				currStrInt = Integer.parseInt(currStr);
+			}
+
+			if ((!nextStr.contentEquals("null")) && (!nextStr.contentEquals("Overflow"))) {
+				nextStrInt = Integer.parseInt(nextStr);
+			}
+
+			if (nextStrInt > currStrInt) {
+				amountSolutions = nextStr;
+			} else if (nextStrInt < currStrInt) {
+				amountSolutions = currStr;
+			} 
 		}
 
 		String[] row = new String[] { fileName, pathToFile, exceptionNameLocalMin, exceptionNameBruteForce,
