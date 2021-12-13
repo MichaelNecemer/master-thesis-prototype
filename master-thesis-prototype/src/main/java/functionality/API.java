@@ -104,7 +104,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		this.costForLiftingFromWeakDynamicToStrongDynamic = cost.get(3);
 		this.algorithmToPerform = "bruteForce";
 		this.executionTimeMap = new HashMap<String, Double>();
-		this.amountPossibleCombinationsOfParticipants = "1";
+		this.amountPossibleCombinationsOfParticipants = "0";
 
 		System.out.println("API for: " + process.getName());
 		CommonFunctionality.isCorrectModel(modelInstance);
@@ -1621,6 +1621,10 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				currBrt.getCombinations().putIfAbsent(currBrt, list);
 
 				try {
+					if(this.amountPossibleCombinationsOfParticipants.contentEquals("0")) {
+						this.setAmountPossibleCombinationsOfParticipants("1");
+					}
+					
 					if (!this.amountPossibleCombinationsOfParticipants.contentEquals("Overflow")) {
 						int currAmountCombinationsOfParticipants = Math.multiplyExact(
 								Integer.parseInt(this.amountPossibleCombinationsOfParticipants), list.size());

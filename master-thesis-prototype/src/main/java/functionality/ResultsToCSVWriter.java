@@ -396,7 +396,7 @@ public class ResultsToCSVWriter {
 
 			if (nextStrInt > currStrInt) {
 				amountSolutions = nextStr;
-			} else if (nextStrInt < currStrInt) {
+			} else if (nextStrInt <= currStrInt) {
 				amountSolutions = currStr;
 			} 
 		}
