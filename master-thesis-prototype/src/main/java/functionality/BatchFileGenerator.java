@@ -108,7 +108,7 @@ public class BatchFileGenerator {
 		int minDataObjectsPerDecision = 1;
 		int maxDataObjectsPerDecision = 1;
 		String pathToFolderForModelsForTest1_1 = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTestDecisions").getAbsolutePath();
+				.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1").getAbsolutePath();
 		int votersPerDecision = 3;
 		int globalSphere = 5;
 		// the amount of possible combinations of voters for the process will be
@@ -133,7 +133,7 @@ public class BatchFileGenerator {
 		// end point -> x models where each task has a different participant connected
 
 		String pathToFolderForModelsForTest1_2 = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToRootFolder, "BoundaryTest2").getAbsolutePath();
+				.fileWithDirectoryAssurance(pathToRootFolder, "Test1_2-BoundaryTest2").getAbsolutePath();
 
 		// choose a model
 		File directoryOfFiles = new File(pathToFolderForModelsForTest1_1 + File.separatorChar
@@ -1254,7 +1254,7 @@ public class BatchFileGenerator {
 
 			for (int writerClass = 0; writerClass < percentageOfWritersClasses.size(); writerClass++) {
 				// for each model -> annotate it with small, medium, large amount of writers
-				BpmnModelInstance newModelInstance = Bpmn.readModelFromFile(newModel);
+				BpmnModelInstance newModelInstance = (BpmnModelInstance) CommonFunctionality.deepCopy(newModel);
 
 				int minAmountWriters = newModelInstance.getModelElementsByType(DataObjectReference.class).size();
 
