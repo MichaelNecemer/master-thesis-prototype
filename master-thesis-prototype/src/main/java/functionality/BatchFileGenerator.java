@@ -1254,7 +1254,7 @@ public class BatchFileGenerator {
 
 			for (int writerClass = 0; writerClass < percentageOfWritersClasses.size(); writerClass++) {
 				// for each model -> annotate it with small, medium, large amount of writers
-				BpmnModelInstance newModelInstance = (BpmnModelInstance) CommonFunctionality.deepCopy(newModel);
+				BpmnModelInstance newModelInstance = Bpmn.readModelFromFile(newModel);
 
 				int minAmountWriters = newModelInstance.getModelElementsByType(DataObjectReference.class).size();
 
@@ -1288,7 +1288,8 @@ public class BatchFileGenerator {
 
 						modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(),
 								pathToDestinationFolderForStoringModels, suffixBuilder.toString());
-
+						modelWithReadersAndWriters.setDataObjectsConnectedToBrts(true);
+						
 						// add the methods to be called
 						LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
 

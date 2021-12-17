@@ -1534,6 +1534,15 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	public String getDirectoryForNewFile() {
 		return this.directoryForNewFile;
+	}	
+	
+
+	public boolean isDataObjectsConnectedToBrts() {
+		return dataObjectsConnectedToBrts;
+	}
+
+	public void setDataObjectsConnectedToBrts(boolean dataObjectsConnectedToBrts) {
+		this.dataObjectsConnectedToBrts = dataObjectsConnectedToBrts;
 	}
 
 	@Override
