@@ -572,7 +572,6 @@ public class CommonFunctionality {
 			LinkedList<LinkedList<FlowNode>> parallelBranches, ParallelGateway pSplit) {
 		LinkedList<SequenceFlow> flowIntoBranch = new LinkedList<SequenceFlow>();
 		flowIntoBranch.addAll(pSplit.getOutgoing());
-
 		LinkedList<LinkedList<FlowNode>> combinedPaths = new LinkedList<LinkedList<FlowNode>>();
 		HashMap<SequenceFlow, LinkedList<LinkedList<FlowNode>>> map = new HashMap<SequenceFlow, LinkedList<LinkedList<FlowNode>>>();
 		FlowNode pJoin = null;
@@ -611,6 +610,7 @@ public class CommonFunctionality {
 
 		}
 
+		if(!map.isEmpty()) {
 		SequenceFlow key1 = map.keySet().iterator().next();
 
 		for (SequenceFlow key2 : map.keySet()) {
@@ -632,6 +632,7 @@ public class CommonFunctionality {
 				}
 			}
 
+		}
 		}
 
 		return combinedPaths;
