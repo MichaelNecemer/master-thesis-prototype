@@ -28,7 +28,7 @@ public class ResultsToCSVWriter {
 					CSVWriter.DEFAULT_ESCAPE_CHARACTER, CSVWriter.DEFAULT_LINE_END);
 
 			rows = new ArrayList<>();
-			String[] header = new String[] { "fileName", "pathToFile", "exceptionLocalMin", "exceptionBruteForce",
+			String[] header = new String[] { "fileName", "pathToFile", "logging", "exceptionLocalMin", "exceptionBruteForce",
 					"exceptionLocalMinWithLimit", "totalAmountSolutionsWithoutConstraints", "solution(s) bruteForce",
 					"solution(s) localMinimumAlgorithm", "solution(s) localMinimumAlgorithmWithLimit",
 					"amount cheapest solution(s) bruteForce", "costCheapestSolutionBruteForce",
@@ -181,7 +181,7 @@ public class ResultsToCSVWriter {
 			exceptionNameBruteForce = exceptionPerAlgorithm.get("bruteForce").getClass().getCanonicalName();
 		}
 
-		String[] row = new String[] { fileName, pathToFile, exceptionNameLocalMin, exceptionNameBruteForce,
+		String[] row = new String[] { fileName, pathToFile,"null", exceptionNameLocalMin, exceptionNameBruteForce,
 				amountSolutions, amountSolutionsBruteForce, amountCheapestSolutionsLocalMin,
 				amountCheapestSolutionsBruteForce, costCheapestSolution, averageCostAllSolutions, localMinAlgorithmTime,
 				bruteForceAlgorithmTime, timeDifference, "null", allPathsThroughProcess, amountReaders, amountWriters,
@@ -401,7 +401,7 @@ public class ResultsToCSVWriter {
 			} 
 		}
 
-		String[] row = new String[] { fileName, pathToFile, exceptionNameLocalMin, exceptionNameBruteForce,
+		String[] row = new String[] { fileName, pathToFile,"null", exceptionNameLocalMin, exceptionNameBruteForce,
 				exceptionNameLocalMinWithLimit, amountSolutions, amountSolutionsBruteForce,
 				amountCheapestSolutionsLocalMin, amountCheapestSolutionsLocalMinWithLimit,
 				amountCheapestSolutionsBruteForce, costCheapestSolutionBruteForce, costCheapestSolutionLocalMin,
@@ -427,11 +427,12 @@ public class ResultsToCSVWriter {
 
 	}
 
-	public void addNullValueRowForModel(String fileName, String pathToFile) {
+	public void addNullValueRowForModel(String fileName, String pathToFile, String log) {
 		String[] nullValueRow = new String[this.rows.get(0).length];
 		nullValueRow[0] = fileName;
 		nullValueRow[1] = pathToFile;
-		for (int i = 2; i < this.rows.get(0).length; i++) {
+		nullValueRow[2] = log;
+		for (int i = 3; i < this.rows.get(0).length; i++) {
 			nullValueRow[i] = "null";
 		}
 		this.rows.add(nullValueRow);

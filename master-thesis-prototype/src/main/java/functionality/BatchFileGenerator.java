@@ -118,12 +118,14 @@ public class BatchFileGenerator {
 		// since the cost of the models will have to be calculated for all the possible
 		// combinations
 		// this can be used to estimate the feasibility for other models
-		BatchFileGenerator.performBoundaryTest1_1(10, 0, votersPerDecision, globalSphere, upperBoundLocalMinWithBound,
-				6, 4, 0, 0, percentageOfWritersClasses.get(1), percentageOfReadersClasses.get(1),
-				minDataObjectsPerDecision, maxDataObjectsPerDecision, defaultSpheres, amountThreads,
-				pathToFolderForModelsForTest1_1);
-		System.out.println("BoundartyTest1_1 finished!");
-
+		/*
+		 * BatchFileGenerator.performBoundaryTest1_1(10, 0, votersPerDecision,
+		 * globalSphere, upperBoundLocalMinWithBound, 6, 4, 0, 0,
+		 * percentageOfWritersClasses.get(1), percentageOfReadersClasses.get(1),
+		 * minDataObjectsPerDecision, maxDataObjectsPerDecision, defaultSpheres,
+		 * amountThreads, pathToFolderForModelsForTest1_1);
+		 * System.out.println("BoundartyTest1_1 finished!");
+		 */
 		// Test 1.2 - Boundary Test 2
 		// choose a model from boundary test 1 that had no exceptions for all algorithms
 		// create x new models on each iteration till every task of the model has a
@@ -131,20 +133,21 @@ public class BatchFileGenerator {
 		// start with the globalSphereLowerBound e.g. 2 -> x models where each task has
 		// one of the 2 participants connected
 		// end point -> x models where each task has a different participant connected
-
-		String pathToFolderForModelsForTest1_2 = CommonFunctionality
-				.fileWithDirectoryAssurance(pathToRootFolder, "Test1_2-BoundaryTest2").getAbsolutePath();
-
-		// choose a model
-		File directoryOfFiles = new File(pathToFolderForModelsForTest1_1 + File.separatorChar
-				+ "BoundaryTest_decision-4" + File.separatorChar + "annotated");
-		List<File> listOfFiles = Arrays.asList(directoryOfFiles.listFiles());
-		File model = CommonFunctionality.getRandomItem(listOfFiles);
-		int newModelsPerIteration = 5;
-		BatchFileGenerator.performBoundaryTest1_2(model, votersPerDecision, newModelsPerIteration,
-				upperBoundLocalMinWithBound, boundForComparisons, amountThreads, pathToFolderForModelsForTest1_2);
-		System.out.println("BoundartyTest1_2 finished!");
-
+		/*
+		 * String pathToFolderForModelsForTest1_2 = CommonFunctionality
+		 * .fileWithDirectoryAssurance(pathToRootFolder,
+		 * "Test1_2-BoundaryTest2").getAbsolutePath();
+		 * 
+		 * // choose a model File directoryOfFiles = new
+		 * File(pathToFolderForModelsForTest1_1 + File.separatorChar +
+		 * "BoundaryTest_decision-4" + File.separatorChar + "annotated"); List<File>
+		 * listOfFiles = Arrays.asList(directoryOfFiles.listFiles()); File model =
+		 * CommonFunctionality.getRandomItem(listOfFiles); int newModelsPerIteration =
+		 * 5; BatchFileGenerator.performBoundaryTest1_2(model, votersPerDecision,
+		 * newModelsPerIteration, upperBoundLocalMinWithBound, boundForComparisons,
+		 * amountThreads, pathToFolderForModelsForTest1_2);
+		 * System.out.println("BoundartyTest1_2 finished!");
+		 */
 		// Generate small, medium, large processes
 		// generate 3 Classes -> small, medium, large processes (without annotation)
 		// put them into a new folder into the root
@@ -164,24 +167,25 @@ public class BatchFileGenerator {
 		// for each processes folder -> generate 100 random processes
 		// small processes: 2-3 participants, 6-15 tasks, 1-2 xors, 0-2 parallels, 100
 		// processes
-
-		ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
-
-		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation, 2, 3,
-				6, 15, 1, 2, 0, 2, 100, randomProcessGeneratorService);
-
-		// medium processes: 3-4 participants, 16-30 tasks, 3-4 xors, 0-3 parallels, 100
-		// processes
-		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToMediumProcessesFolderWithoutAnnotation, 3, 4,
-				16, 30, 3, 4, 0, 3, 100, randomProcessGeneratorService);
-
-		// large processes: 4-5 participants, 31-60 tasks, 5-6 xors, 0-4, parallels, 100
-		// processes
-		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation, 4, 5,
-				31, 60, 5, 6, 0, 4, 100, randomProcessGeneratorService);
-		randomProcessGeneratorService.shutdownNow();
-		System.out.println("All random processes generated!");
-
+		/*
+		 * ExecutorService randomProcessGeneratorService =
+		 * Executors.newFixedThreadPool(amountThreads);
+		 * 
+		 * BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
+		 * pathToSmallProcessesFolderWithoutAnnotation, 2, 3, 6, 15, 1, 2, 0, 2, 100,
+		 * randomProcessGeneratorService);
+		 * 
+		 * // medium processes: 3-4 participants, 16-30 tasks, 3-4 xors, 0-3 parallels,
+		 * 100 // processes BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
+		 * pathToMediumProcessesFolderWithoutAnnotation, 3, 4, 16, 30, 3, 4, 0, 3, 100,
+		 * randomProcessGeneratorService);
+		 * 
+		 * // large processes: 4-5 participants, 31-60 tasks, 5-6 xors, 0-4, parallels,
+		 * 100 // processes BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
+		 * pathToLargeProcessesFolderWithoutAnnotation, 4, 5, 31, 60, 5, 6, 0, 4, 100,
+		 * randomProcessGeneratorService); randomProcessGeneratorService.shutdownNow();
+		 * System.out.println("All random processes generated!");
+		 */
 		// Test 2 - Measure impact of enforceability on privity and vice versa
 		// take x random models from small, medium and large processes
 		// add dataObjects with global sphere and 1 voter per decision
@@ -752,29 +756,17 @@ public class BatchFileGenerator {
 			}
 		} else {
 			System.out.println("No annotated process models found in " + dir.getAbsolutePath());
-
 		}
 
 		for (String pathToFile : paths) {
-			Exception mappingException = null;
-			int triesToMap = 5;
-			while (triesToMap > 0) {
-				try {
-					API api = new API(pathToFile, cost);
-					apiList.add(api);
-					triesToMap = 0;
-
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					File f = new File(pathToFile);
-					System.err.println(f.getAbsolutePath() + " could not be mapped to api due to: " + e.getMessage());
-					triesToMap--;
-					mappingException = e;
-				}
-			}
-			if(mappingException!=null) {
+			try {
+				API api = new API(pathToFile, cost);
+				apiList.add(api);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
 				File f = new File(pathToFile);
-				writer.addNullValueRowForModel(f.getName(), f.getAbsolutePath());
+				writer.addNullValueRowForModel(f.getName(), f.getAbsolutePath(), e.getMessage());
+				System.err.println(f.getAbsolutePath() + " could not be mapped to api: " + e.getMessage());
 			}
 
 		}
@@ -1366,40 +1358,44 @@ public class BatchFileGenerator {
 
 		for (int modelIndex = 0; modelIndex < directoryList.length; modelIndex++) {
 			File annotatedModel = directoryList[modelIndex];
-			try {
-				BpmnModelInstance currModel = Bpmn.readModelFromFile(annotatedModel);
+			if (annotatedModel.isFile() && annotatedModel.getName().contains(".bpmn")) {
+				try {
+					BpmnModelInstance currModel = Bpmn.readModelFromFile(annotatedModel);
 
-				int globalSphereSize = CommonFunctionality.getGlobalSphere(currModel, false);
+					int globalSphereSize = CommonFunctionality.getGlobalSphere(currModel, false);
 
-				if (annotatedModel.getName().contains("sWsR") || annotatedModel.getName().contains("sWmR")
-						|| annotatedModel.getName().contains("sWlR") || annotatedModel.getName().contains("mWsR")
-						|| annotatedModel.getName().contains("mWmR") || annotatedModel.getName().contains("mWlR")
-						|| annotatedModel.getName().contains("lWsR") || annotatedModel.getName().contains("lWmR")
-						|| annotatedModel.getName().contains("lWlR")) {
+					if (annotatedModel.getName().contains("sWsR") || annotatedModel.getName().contains("sWmR")
+							|| annotatedModel.getName().contains("sWlR") || annotatedModel.getName().contains("mWsR")
+							|| annotatedModel.getName().contains("mWmR") || annotatedModel.getName().contains("mWlR")
+							|| annotatedModel.getName().contains("lWsR") || annotatedModel.getName().contains("lWmR")
+							|| annotatedModel.getName().contains("lWlR")) {
 
-					for (int spheresIndex = 0; spheresIndex < defaultSpheres.size(); spheresIndex++) {
-						String currentSphere = defaultSpheres.get(spheresIndex);
-						CommonFunctionality.increaseSpherePerDataObject(currModel, currentSphere);
+						for (int spheresIndex = 0; spheresIndex < defaultSpheres.size(); spheresIndex++) {
+							String currentSphere = defaultSpheres.get(spheresIndex);
+							CommonFunctionality.increaseSpherePerDataObject(currModel, currentSphere);
 
-						for (int votersAmountIndex = 1; votersAmountIndex <= globalSphereSize; votersAmountIndex++) {
-							String suffix = "_" + currentSphere + "_voters" + votersAmountIndex;
-							CommonFunctionality.increaseVotersPerDataObject(currModel, votersAmountIndex);
-							String modelName = annotatedModel.getName().substring(0,
-									annotatedModel.getName().indexOf(".bpmn"));
-							if (!CommonFunctionality.isCorrectModel(currModel)) {
-								votersAmountIndex--;
-							} else {
+							for (int votersAmountIndex = 1; votersAmountIndex <= globalSphereSize; votersAmountIndex++) {
+								String suffix = "_" + currentSphere + "_voters" + votersAmountIndex;
+								CommonFunctionality.increaseVotersPerDataObject(currModel, votersAmountIndex);
+								String modelName = annotatedModel.getName().substring(0,
+										annotatedModel.getName().indexOf(".bpmn"));
+								try {
+										
+									CommonFunctionality.writeChangesToFile(currModel, modelName,
+												pathToFolderWithModelsForEvaluation, suffix);
+										
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
 
-							CommonFunctionality.writeChangesToFile(currModel, modelName,
-									pathToFolderWithModelsForEvaluation, suffix);
 							}
+
 						}
 
 					}
-
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
-			} catch (Exception e) {
-				e.printStackTrace();
 			}
 
 		}
@@ -1472,6 +1468,7 @@ public class BatchFileGenerator {
 			String pathToFolderForModelsWithDecisionsAnnotated = CommonFunctionality
 					.fileWithDirectoryAssurance(pathToFolderForModelsWithDecisions, "annotated").getAbsolutePath();
 			Iterator<File> modelIter = listOfFiles.iterator();
+
 			while (modelIter.hasNext()) { // annotate the model
 				File model = modelIter.next();
 				boolean correctModel = false;

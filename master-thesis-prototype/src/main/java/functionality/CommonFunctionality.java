@@ -1599,7 +1599,7 @@ public class CommonFunctionality {
 
 	}
 
-	public static void writeChangesToFile(BpmnModelInstance modelInstance, String fileName,
+	public static File writeChangesToFile(BpmnModelInstance modelInstance, String fileName,
 			String directoryToStoreAnnotatedModel, String suffixName)
 			throws IOException, ParserConfigurationException, SAXException {
 		// validate and write model to file
@@ -1694,6 +1694,7 @@ public class CommonFunctionality {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		return file;
 	}
 
 	public static List<LinkedList<Integer>> computeRepartitionNumberWithResultBound(int maxAmount, int subParts,
