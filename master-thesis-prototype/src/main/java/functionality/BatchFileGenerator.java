@@ -756,15 +756,25 @@ public class BatchFileGenerator {
 		}
 
 		for (String pathToFile : paths) {
-			try {
-				API api = new API(pathToFile, cost);
-				apiList.add(api);
+			Exception mappingException = null;
+			int triesToMap = 5;
+			while (triesToMap > 0) {
+				try {
+					API api = new API(pathToFile, cost);
+					apiList.add(api);
+					triesToMap = 0;
 
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					File f = new File(pathToFile);
+					System.err.println(f.getAbsolutePath() + " could not be mapped to api due to: " + e.getMessage());
+					triesToMap--;
+					mappingException = e;
+				}
+			}
+			if(mappingException!=null) {
 				File f = new File(pathToFile);
 				writer.addNullValueRowForModel(f.getName(), f.getAbsolutePath());
-				System.err.println(f.getAbsolutePath() + " could not be mapped to api due to: " + e.getMessage());
 			}
 
 		}
@@ -1289,7 +1299,7 @@ public class BatchFileGenerator {
 						modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(),
 								pathToDestinationFolderForStoringModels, suffixBuilder.toString());
 						modelWithReadersAndWriters.setDataObjectsConnectedToBrts(true);
-						
+
 						// add the methods to be called
 						LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
 
@@ -1378,11 +1388,11 @@ public class BatchFileGenerator {
 									annotatedModel.getName().indexOf(".bpmn"));
 							if (!CommonFunctionality.isCorrectModel(currModel)) {
 								votersAmountIndex--;
-							}
+							} else {
 
 							CommonFunctionality.writeChangesToFile(currModel, modelName,
 									pathToFolderWithModelsForEvaluation, suffix);
-
+							}
 						}
 
 					}
