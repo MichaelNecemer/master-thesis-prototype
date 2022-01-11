@@ -61,10 +61,11 @@ public class ResultsToCSVWriter {
 		String localMinAlgorithmTime = "null";
 		String bruteForceAlgorithmTime = "null";
 		String timeDifference = "null";
+		String logging = "null";
 
 		if (api != null && pathToFile.contentEquals("null") && fileName.contentEquals("null")) {
 			pathToFile = api.getProcessFile().getAbsolutePath();
-			fileName = api.getProcessFile().getName();
+			fileName = api.getProcessFile().getName();			
 		}
 
 		for (Entry<String, LinkedList<ProcessInstanceWithVoters>> algorithmEntry : algorithmMap.entrySet()) {
@@ -203,7 +204,8 @@ public class ResultsToCSVWriter {
 
 		String pathToFile = bruteForceApi.getProcessFile().getAbsolutePath();
 		String fileName = bruteForceApi.getProcessFile().getName();
-
+		String logging = "null";
+		
 		LinkedList<ProcessInstanceWithVoters> pInstancesLocalMin = null;
 		LinkedList<ProcessInstanceWithVoters> pInstancesBruteForce = null;
 		LinkedList<ProcessInstanceWithVoters> pInstancesLocalMinWithLimit = null;
@@ -216,16 +218,60 @@ public class ResultsToCSVWriter {
 		if (algorithmMap.get(localMinApi.getAlgorithmToPerform()) != null) {
 			pInstancesLocalMin = algorithmMap.get(localMinApi.getAlgorithmToPerform());
 			localMinAlgorithmTime = localMinApi.getExecutionTimeLocalMinimumAlgorithm() + "";
+			for(ProcessInstanceWithVoters pInst: pInstancesLocalMin) {
+				for(BPMNBusinessRuleTask brt: localMinApi.getBusinessRuleTasks()) {
+					if(brt.getSuccessors().get(0).getSuccessors().size()==2) {
+						if(!pInst.getVotersMap().containsKey(brt)) {
+							//when a processInstance does not contain a brt needed for a decision
+							//log 
+							logging = "Not every decision has been calculated with localMinApi!";
+						}
+					}
+					
+				}
+				
+			}
+			
+		
 		}
 
 		if (algorithmMap.get(bruteForceApi.getAlgorithmToPerform()) != null) {
 			pInstancesBruteForce = algorithmMap.get(bruteForceApi.getAlgorithmToPerform());
 			bruteForceAlgorithmTime = bruteForceApi.getExecutionTimeBruteForceAlgorithm() + "";
+			for(ProcessInstanceWithVoters pInst: pInstancesBruteForce) {
+				for(BPMNBusinessRuleTask brt: bruteForceApi.getBusinessRuleTasks()) {
+					if(brt.getSuccessors().get(0).getSuccessors().size()==2) {
+						if(!pInst.getVotersMap().containsKey(brt)) {
+							//when a processInstance does not contain a brt needed for a decision
+							//log 
+							logging = "Not every decision has been calculated with bruteForce!";
+						}
+					}
+					
+				}
+				
+			}
+		
+		
 		}
 
 		if (algorithmMap.get(localMinWithLimitApi.getAlgorithmToPerform()) != null) {
 			pInstancesLocalMinWithLimit = algorithmMap.get(localMinWithLimitApi.getAlgorithmToPerform());
 			localMinWithLimitAlgorithmTime = localMinWithLimitApi.getExecutionTimeLocalMinimumAlgorithmWithLimit() + "";
+			for(ProcessInstanceWithVoters pInst: pInstancesLocalMinWithLimit) {
+				for(BPMNBusinessRuleTask brt: localMinWithLimitApi.getBusinessRuleTasks()) {
+					if(brt.getSuccessors().get(0).getSuccessors().size()==2) {
+						if(!pInst.getVotersMap().containsKey(brt)) {
+							//when a processInstance does not contain a brt needed for a decision
+							//log 
+							logging = "Not every decision has been calculated with localMinWithLimit!";
+						}
+					}
+					
+				}
+				
+			}
+		
 		}
 
 		if ((!localMinAlgorithmTime.contentEquals("null")) && (!bruteForceAlgorithmTime.contentEquals("null"))) {
@@ -345,7 +391,8 @@ public class ResultsToCSVWriter {
 				}
 			}
 
-			dependentBrts.append(dependentBrtsInProcess + "");
+			dependentBrts.append(dependentBrtsInProcess + "");	
+			
 
 		}
 
@@ -401,7 +448,7 @@ public class ResultsToCSVWriter {
 			} 
 		}
 
-		String[] row = new String[] { fileName, pathToFile,"null", exceptionNameLocalMin, exceptionNameBruteForce,
+		String[] row = new String[] { fileName, pathToFile,logging, exceptionNameLocalMin, exceptionNameBruteForce,
 				exceptionNameLocalMinWithLimit, amountSolutions, amountSolutionsBruteForce,
 				amountCheapestSolutionsLocalMin, amountCheapestSolutionsLocalMinWithLimit,
 				amountCheapestSolutionsBruteForce, costCheapestSolutionBruteForce, costCheapestSolutionLocalMin,

@@ -267,9 +267,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 					LinkedList<Task> tasksBeforeBrt = new LinkedList<Task>();
 					LinkedList<LinkedList<FlowNode>> pathsBetweenStartAndBrt = CommonFunctionality
 							.getAllPathsBetweenNodes(this.modelInstance,
-									this.modelInstance.getModelElementsByType(StartEvent.class).iterator().next(), task,
-									new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<FlowNode>(),
-									new LinkedList<LinkedList<FlowNode>>(), new LinkedList<LinkedList<FlowNode>>());
+									this.modelInstance.getModelElementsByType(StartEvent.class).iterator().next().getId(), task.getId());
 					for (LinkedList<FlowNode> subPath : pathsBetweenStartAndBrt) {
 						LinkedList<ExclusiveGateway> exclGtwStack = new LinkedList<ExclusiveGateway>();
 						LinkedList<ParallelGateway> paraGtwStack = new LinkedList<ParallelGateway>();
@@ -311,10 +309,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 								} else if (exclGtwStack.isEmpty() && !paraGtwStack.isEmpty()) {
 									// task has to be in same branch as brt!
 									LinkedList<LinkedList<FlowNode>> pathsBetweenTaskAndBrt = CommonFunctionality
-											.getAllPathsBetweenNodes(this.modelInstance, f, task,
-													new LinkedList<FlowNode>(), new LinkedList<FlowNode>(),
-													new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(),
-													new LinkedList<LinkedList<FlowNode>>());
+											.getAllPathsBetweenNodes(this.modelInstance, f.getId(), task.getId());
 									for (LinkedList<FlowNode> subPathFromTaskToBrt : pathsBetweenTaskAndBrt) {
 										for (FlowNode fNode : subPathFromTaskToBrt) {
 											if (fNode instanceof ParallelGateway) {

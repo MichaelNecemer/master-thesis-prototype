@@ -17,6 +17,7 @@ import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 
 import Mapping.BPMNDataObject;
+import Mapping.BPMNElement;
 import Mapping.BPMNExclusiveGateway;
 import Mapping.BPMNParticipant;
 import Mapping.ProcessInstanceWithVoters;
@@ -45,10 +46,10 @@ public class Main1 {
 	  chooser.getSelectedFile().getAbsolutePath();	  
 	  }*/
 	
-	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches1.bpmn";
-	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\EvaluationSetup\\Test3-ImpactOfDataObjects\\randomProcessModel1_annotated1.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches2.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel247_annotated1.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel2.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWsR_Strong-Dynamic_voters2.bpmn";
 
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	//String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop";
@@ -63,8 +64,9 @@ public class Main1 {
 	} catch (Exception e1) {
 		System.err.println(e1.getMessage());
 	}
-	File f = null;
+	//File f = null;
 	Exception ex = null;
+	/*
 	do {
 	try {
 		String pathToCreateAnnotatedFile = new File(pathToFile).getParent();
@@ -91,13 +93,15 @@ public class Main1 {
 	}
 	} while(ex!=null);
 	
-	
+	*/
 	//API
 	try {	
 		
+		File f = new File(pathToFile);
 		String pathToAnnotatedFile = f.getAbsolutePath();
 		a2 = new API(pathToAnnotatedFile, costForUpgradingSpheres);
-	
+		LinkedList<LinkedList<FlowNode>>nodes = a2.getAllPathsThroughProcess();
+		nodes.size();
 		
 	} catch (Exception e2) {
 		// TODO Auto-generated catch block
@@ -109,7 +113,7 @@ public class Main1 {
 	
 	
 	//use local minimum Algorithm to find cheapest combinations
-	/*
+	
 	LinkedList<ProcessInstanceWithVoters> pInstances = null;
 	try {
 		pInstances = a2.localMinimumAlgorithm();
@@ -144,7 +148,7 @@ public class Main1 {
 		// TODO Auto-generated catch block
 		e1.printStackTrace();
 	}
-	*/
+	
 	LinkedList<ProcessInstanceWithVoters> bruteForceSolutions = null;
 	try {
 		bruteForceSolutions = a2.bruteForceAlgorithm();
@@ -175,9 +179,8 @@ public class Main1 {
 	}
 
 
-	//System.out.println("Compare:" +CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstances, bruteForceSolutions, 1000000));
+	System.out.println("Compare:" +CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstances, bruteForceSolutions, 100000));
 	
-
 	
 	}
 }

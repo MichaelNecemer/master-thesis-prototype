@@ -24,6 +24,7 @@ import org.camunda.bpm.model.bpmn.instance.EndEvent;
 import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
 import org.camunda.bpm.model.bpmn.instance.ExtensionElements;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
+import org.camunda.bpm.model.bpmn.instance.Gateway;
 import org.camunda.bpm.model.bpmn.instance.Lane;
 import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
 import org.camunda.bpm.model.bpmn.instance.SendTask;
@@ -116,10 +117,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 		this.setDependentBrts();
 		this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
-				modelInstance.getModelElementsByType(StartEvent.class).iterator().next(),
-				modelInstance.getModelElementsByType(EndEvent.class).iterator().next(), new LinkedList<FlowNode>(),
-				new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(),
-				new LinkedList<LinkedList<FlowNode>>());
+				modelInstance.getModelElementsByType(StartEvent.class).iterator().next().getId(),
+				modelInstance.getModelElementsByType(EndEvent.class).iterator().next().getId());
 	}
 
 	private void mapAndCompute() throws Exception {
@@ -204,13 +203,11 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
-	private void setAllEffectivePathsForWriters() {
+	private void setAllEffectivePathsForWriters() throws NullPointerException, InterruptedException, Exception {
 		for (BPMNDataObject dataO : this.dataObjects) {
 			for (BPMNElement writerTask : dataO.getWriters()) {
 				HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> allEffectivePathsForWriter = this
-						.allEffectivePathsForWriters(dataO, writerTask, writerTask, this.bpmnEnd,
-								new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-								new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+						.allEffectivePathsForWriters(dataO, writerTask, writerTask, this.bpmnEnd);
 				BPMNTask currentWriterTask = (BPMNTask) writerTask;
 				currentWriterTask.setEffectivePaths(allEffectivePathsForWriter);
 
@@ -262,8 +259,9 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		return null;
 
 	}
+	
 
-	private void setRequiredUpgradeForArc(VoterForXorArc arcToBeAdded, ProcessInstanceWithVoters currInst,
+	public void setRequiredUpgradeForArc(VoterForXorArc arcToBeAdded, ProcessInstanceWithVoters currInst,
 			LinkedList<LinkedList<BPMNElement>> paths) throws NullPointerException, InterruptedException, Exception {
 		// get all the participants of the current process instance and check which
 		// updates would be necessary for arcToBeAdded
@@ -517,20 +515,15 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		System.out.println("Local Minimum Algorithm with Limit " + upperBoundSolutionsPerIteration
 				+ " generating all cheapest process instances: ");
 		long startTime = System.nanoTime();
-		LinkedList<ProcessInstanceWithVoters> cheapestCombinationsWithLimit = this
-				.goDFSthroughProcessBuildArcsAndGetVoters(true, upperBoundSolutionsPerIteration, this.bpmnStart,
-						this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
-						new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
-						new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>>(),
-						new LinkedList<VoterForXorArc>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-						new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-						new LinkedList<LinkedList<BPMNElement>>());
+		LinkedList<ProcessInstanceWithVoters> cheapestCombinationsWithLimit = new LinkedList<ProcessInstanceWithVoters>();
+		CommonFunctionality.getAllPathsForCamundaElementsBuildArcsAndGetVoters(this, true, upperBoundSolutionsPerIteration, new LinkedList<BPMNBusinessRuleTask>(), cheapestCombinationsWithLimit, modelInstance.getModelElementById(startEvent.iterator().next().getId()), modelInstance.getModelElementById(endEvent.iterator().next().getId()), new LinkedList<FlowNode>(),  new LinkedList<FlowNode>(),  new LinkedList<FlowNode>(),  new LinkedList<LinkedList<FlowNode>>(),  new LinkedList<LinkedList<FlowNode>>(),modelInstance.getModelElementById(endEvent.iterator().next().getId()));		
 		long stopTime = System.nanoTime();
 		long executionTime = stopTime - startTime;
 		double executionTimelocalMinAlgorithmWithLimitInSeconds = (double) executionTime / 1000000000;
 		String key = "localMinWithBound" + upperBoundSolutionsPerIteration;
 		this.executionTimeMap.put(key, executionTimelocalMinAlgorithmWithLimitInSeconds);
-
+		
+		
 		return cheapestCombinationsWithLimit;
 
 	}
@@ -551,17 +544,13 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		}
 		System.out.println("Local Minimum Algorithm generating all cheapest process instances: ");
 		long startTime = System.nanoTime();
-		LinkedList<ProcessInstanceWithVoters> cheapestCombinations = this.goDFSthroughProcessBuildArcsAndGetVoters(true,
-				0, this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
-				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
-				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>>(), new LinkedList<VoterForXorArc>(),
-				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+		LinkedList<ProcessInstanceWithVoters> cheapestCombinations = new LinkedList<ProcessInstanceWithVoters>();
+		CommonFunctionality.getAllPathsForCamundaElementsBuildArcsAndGetVoters(this, true, 0, new LinkedList<BPMNBusinessRuleTask>(), cheapestCombinations, modelInstance.getModelElementById(startEvent.iterator().next().getId()), modelInstance.getModelElementById(endEvent.iterator().next().getId()), new LinkedList<FlowNode>(),  new LinkedList<FlowNode>(),  new LinkedList<FlowNode>(),  new LinkedList<LinkedList<FlowNode>>(),  new LinkedList<LinkedList<FlowNode>>(),modelInstance.getModelElementById(endEvent.iterator().next().getId()));		
 		long stopTime = System.nanoTime();
 		long executionTime = stopTime - startTime;
 		double executionTimeLocalMinAlgorithmInSeconds = (double) executionTime / 1000000000;
 		this.executionTimeMap.put("localMin", executionTimeLocalMinAlgorithmInSeconds);
-
+	
 		return cheapestCombinations;
 
 	}
@@ -581,17 +570,14 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		}
 
 		long startTime = System.nanoTime();
-		LinkedList<ProcessInstanceWithVoters> pInstances = this.goDFSthroughProcessBuildArcsAndGetVoters(false, 0,
-				this.bpmnStart, this.bpmnEnd, null, new LinkedList<ProcessInstanceWithVoters>(),
-				new HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>>(),
-				new HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>>(), new LinkedList<VoterForXorArc>(),
-				new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-				new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+		LinkedList<ProcessInstanceWithVoters> allCombinations = new LinkedList<ProcessInstanceWithVoters>();
+		CommonFunctionality.getAllPathsForCamundaElementsBuildArcsAndGetVoters(this, false, 0, new LinkedList<BPMNBusinessRuleTask>(), allCombinations, modelInstance.getModelElementById(startEvent.iterator().next().getId()), modelInstance.getModelElementById(endEvent.iterator().next().getId()), new LinkedList<FlowNode>(),  new LinkedList<FlowNode>(),  new LinkedList<FlowNode>(),  new LinkedList<LinkedList<FlowNode>>(),  new LinkedList<LinkedList<FlowNode>>(),modelInstance.getModelElementById(endEvent.iterator().next().getId()));		
 		long stopTime = System.nanoTime();
 		long executionTime = stopTime - startTime;
 		double executionTimeBruteForceAlgorithmInSeconds = (double) executionTime / 1000000000;
 		this.executionTimeMap.put("bruteForce", executionTimeBruteForceAlgorithmInSeconds);
-		return pInstances;
+		
+		return allCombinations;
 
 	}
 
@@ -599,27 +585,28 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			BPMNBusinessRuleTask brt) throws NullPointerException, Exception {
 
 		double foundCurrentLastWriterCount = 0;
-		LinkedList<LinkedList<BPMNElement>> paths = this.getPathsWithMappedNodesFromCamundaNodes(CommonFunctionality
-				.getAllPathsBetweenNodes(this.modelInstance, this.modelInstance.getModelElementById(start.getId()),
-						this.modelInstance.getModelElementById(brt.getId()), new LinkedList<FlowNode>(),
-						new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>(),
-						new LinkedList<LinkedList<FlowNode>>()));
+		LinkedList<LinkedList<FlowNode>> paths = CommonFunctionality
+				.getAllPathsBetweenNodes(this.modelInstance, start.getId(),
+						brt.getId());
 
-		for (LinkedList<BPMNElement> pathList : paths) {
+		for (LinkedList<FlowNode> pathList : paths) {
 
 			for (int i = pathList.size() - 1; i > 0; i--) {
-				if (pathList.get(i).equals(currentLastWriter)) {
+				if (pathList.get(i).getId().equals(currentLastWriter.getId())) {
 					// go backwards through the list of paths between start and brt
 					// if lastWriter is found in the list increase the count
 					foundCurrentLastWriterCount++;
 					i = 0;
 				}
 
-				if (pathList.get(i) instanceof BPMNTask) {
-					BPMNTask currTask = (BPMNTask) pathList.get(i);
-					if (dataO.getWriters().contains(currTask) && !currTask.equals(currentLastWriter)) {
-						i = 0;
+				if (pathList.get(i) instanceof Task) {
+					Task currTask = (Task) pathList.get(i);
+					for(BPMNElement writer: dataO.getWriters()) {
+						if(writer.getId().contentEquals(currTask.getId())&&(!currTask.getId().contentEquals(currentLastWriter.getId()))) {
+							i=0;
+						}
 					}
+				
 				}
 			}
 
@@ -677,7 +664,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		return false;
 	}
 
-	public void addCostsForSqhereRequirements(BPMNBusinessRuleTask bpmnBrt, LinkedList<BPMNParticipant> participants) {
+	public void addCostsForSqhereRequirements(BPMNBusinessRuleTask bpmnBrt, LinkedList<BPMNParticipant> participants) throws NullPointerException, InterruptedException, Exception {
 
 		// Search for lastWriters of the connected data objects
 		for (BPMNDataObject dataO : bpmnBrt.getDataObjects()) {
@@ -686,9 +673,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			// now check if participants are in the required sphere of the reader at the
 			// position of the brt
 			for (BPMNTask writerTask : lastWriterList) {
-				LinkedList<LinkedList<BPMNElement>> paths = CommonFunctionality.allPathsBetweenNodesWithMappedNodes(
-						writerTask, bpmnBrt, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-						new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+				LinkedList<LinkedList<BPMNElement>> paths = this.getPathsWithMappedNodesFromCamundaNodes(CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance, writerTask.getId(),bpmnBrt.getId()));
 				String sphere = writerTask.getSphereAnnotation().get(dataO);
 				for (BPMNParticipant participant : participants) {
 
@@ -1654,235 +1639,11 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		return brtCombs;
 
 	}
+	
+	
 
-	public LinkedList<ProcessInstanceWithVoters> goDFSthroughProcessBuildArcsAndGetVoters(boolean localMin, int bound,
-			BPMNElement startNode, BPMNElement endNode, BPMNBusinessRuleTask lastFoundBrt,
-			LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters,
-			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> votersMap,
-			HashMap<BPMNBusinessRuleTask, LinkedList<RequiredUpgrade>> requiredUpdates,
-			LinkedList<VoterForXorArc> alreadyTakenVoters, LinkedList<BPMNElement> queue,
-			LinkedList<BPMNElement> parallelGtwQueue, LinkedList<BPMNElement> openSplitStack,
-			LinkedList<BPMNElement> currentPath, LinkedList<LinkedList<BPMNElement>> paths)
-			throws NullPointerException, InterruptedException, Exception {
-		// go DFS inside the XOR till corresponding join is found
 
-		try {
-			queue.add(startNode);
-
-			while (!(queue.isEmpty())) {
-				if (Thread.currentThread().isInterrupted()) {
-					System.err.println("Interrupted! " + Thread.currentThread().getName());
-					throw new InterruptedException();
-				}
-
-				if (lastFoundBrt == null) {
-					for (int i = currentPath.size() - 1; i >= 0; i--) {
-						BPMNElement el = currentPath.get(i);
-						if (el instanceof BPMNBusinessRuleTask) {
-							lastFoundBrt = (BPMNBusinessRuleTask) el;
-						}
-					}
-
-				}
-
-				BPMNElement element = queue.poll();
-				currentPath.add(element);
-
-				if (element.getId().equals(endNode.getId())) {
-
-					paths.add(currentPath);
-
-					if (endNode instanceof BPMNGateway && ((BPMNGateway) element).getPredecessors().size() >= 2) {
-
-						BPMNGateway joinGtw = (BPMNGateway) element;
-
-						// when a xor-join is found - poll the last opened xor gateway from the stack
-						BPMNGateway lastOpenedSplit = (BPMNGateway) openSplitStack.pollLast();
-
-						if (!openSplitStack.isEmpty()) {
-							if (!openSplitStack.contains(lastOpenedSplit)) {
-								// when the openSplitStack does not contain the lastOpenedSplit anymore, all
-								// branches to the joinGtw have been visited
-								// go from joinGtw to the Join of the last opened split in the stack
-								this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, bound, joinGtw,
-										this.getCorrespondingGtw((BPMNGateway) openSplitStack.getLast()), lastFoundBrt,
-										processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters,
-										queue, parallelGtwQueue, openSplitStack, currentPath, paths);
-
-							}
-						} else if (openSplitStack.isEmpty()) {
-							// when there are no open Xor gtws
-							// go from the successor of the element to bpmnEnd since the currentElement has
-							// already been added to the path
-							LinkedList<LinkedList<BPMNElement>> newPaths = new LinkedList<LinkedList<BPMNElement>>();
-
-							for (LinkedList<BPMNElement> path : paths) {
-								if (path.getLast().equals(element)) {
-									LinkedList<BPMNElement> newPathAfterXorJoin = new LinkedList<BPMNElement>();
-									newPathAfterXorJoin.addAll(path);
-									newPaths.add(newPathAfterXorJoin);
-								}
-							}
-
-							for (LinkedList<BPMNElement> newPath : newPaths) {
-								this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, bound,
-										element.getSuccessors().iterator().next(), this.bpmnEnd, lastFoundBrt,
-										processInstancesWithVoters, votersMap, requiredUpdates, alreadyTakenVoters,
-										queue, parallelGtwQueue, openSplitStack, newPath, paths);
-							}
-
-						}
-
-					}
-					element = queue.poll();
-					if (element == null && queue.isEmpty()) {
-						return processInstancesWithVoters;
-					}
-
-				}
-
-				if (element instanceof BPMNBusinessRuleTask) {
-					BPMNBusinessRuleTask currBrt = (BPMNBusinessRuleTask) element;
-					LinkedList<VoterForXorArc> arcsForCurrBrt = null;
-
-					if (currBrt.getVoterArcs().isEmpty()) {
-						// when brt is found and arcs have not been generated
-						try {
-							arcsForCurrBrt = generateArcsForXorSplitWithConstraints(currBrt);
-						} catch (Exception ex) {
-							throw ex;
-						}
-						currBrt.setVoterArcs(arcsForCurrBrt);
-
-						// check if there has been already a brt before
-						if (lastFoundBrt == null) {
-							for (VoterForXorArc voters : arcsForCurrBrt) {
-								// generate a new possible processInstance
-								ProcessInstanceWithVoters pInstance = new ProcessInstanceWithVoters();
-
-								this.setRequiredUpgradeForArc(voters, pInstance, paths);
-
-								pInstance.addVoterArc(voters);
-
-								if (localMin) {
-									this.insertIfCheapestWithBound(processInstancesWithVoters, pInstance, bound);
-
-								} else {
-									processInstancesWithVoters.add(pInstance);
-								}
-							}
-
-						} else {
-							// if there has already been a brt before the currBrt
-							LinkedList<LinkedList<Object>> toCombine = new LinkedList<LinkedList<Object>>();
-							LinkedList<ProcessInstanceWithVoters> newInstances = new LinkedList<ProcessInstanceWithVoters>();
-
-							// need to combine currBrtArcs with each existing possible process instance
-							LinkedList<Object> aK = new LinkedList<Object>();
-							for (ProcessInstanceWithVoters existingInstance : processInstancesWithVoters) {
-								aK.add(existingInstance);
-							}
-
-							toCombine.add(aK);
-
-							LinkedList<Object> aL = new LinkedList<Object>();
-							for (VoterForXorArc ar : arcsForCurrBrt) {
-								aL.add(ar);
-							}
-							toCombine.add(aL);
-
-							// list of all possible combinations of Voters for currBrt combined with all
-							// existing process instances
-							Collection<List<Object>> combs = Combination.permutations(toCombine);
-							ProcessInstanceWithVoters.setProcessID(0);
-
-							for (List list : combs) {
-								if (Thread.currentThread().isInterrupted()) {
-									System.err.println("Interrupted" + Thread.currentThread().getName());
-									throw new InterruptedException();
-								}
-
-								ProcessInstanceWithVoters newInstance = new ProcessInstanceWithVoters();
-								ProcessInstanceWithVoters currInst = (ProcessInstanceWithVoters) list.get(0);
-								VoterForXorArc currBrtCombArc = (VoterForXorArc) list.get(1);
-								for (VoterForXorArc curr : currInst.getListOfArcs()) {
-									VoterForXorArc newInstanceArc = new VoterForXorArc(curr.getBrt(),
-											curr.getXorSplit(), curr.getChosenCombinationOfParticipants());
-									newInstance.addVoterArc(newInstanceArc);
-								}
-								newInstance.getListOfRequiredUpgrades().addAll(currInst.getListOfRequiredUpgrades());
-								newInstance.setCostForModelInstance(currInst.getCostForModelInstance());
-								newInstance.setGlobalSphere(currInst.getGlobalSphere());
-								newInstance.setStaticSphere(currInst.getStaticSphere());
-								newInstance.setReadersOfDataObjects(currInst.getReadersOfDataObjects());
-								newInstance.setWritersOfDataObjects(currInst.getWritersOfDataObjects());
-								this.setRequiredUpgradeForArc(currBrtCombArc, newInstance, paths);
-
-								newInstance.addVoterArc(currBrtCombArc);
-								if (localMin) {
-									// when bound == 0 -> get all cheapest instances
-									// else e.g. bound == 3 -> get the first 3 cheapest instances
-
-									this.insertIfCheapestWithBound(newInstances, newInstance, bound);
-
-								} else {
-									newInstances.add(newInstance);
-								}
-
-							}
-
-							processInstancesWithVoters.clear();
-							processInstancesWithVoters.addAll(newInstances);
-
-						}
-
-						lastFoundBrt = currBrt;
-					}
-
-				}
-
-				if (element instanceof BPMNGateway && ((BPMNGateway) element).getSuccessors().size() >= 2) {
-					// add the xor split to the openXorStack 1 times for each outgoing paths
-					int amountOfOutgoingPaths = element.getSuccessors().size();
-					int i = 0;
-					while (i < amountOfOutgoingPaths) {
-						openSplitStack.add((BPMNGateway) element);
-						i++;
-					}
-
-				}
-
-				for (BPMNElement successor : element.getSuccessors()) {
-
-					if (element instanceof BPMNGateway && ((BPMNGateway) element).getSuccessors().size() >= 2) {
-						// when a split is found - go dfs till the corresponding join is found
-
-						BPMNGateway correspondingJoinGtw = this.getCorrespondingGtw((BPMNGateway) element);
-
-						LinkedList<BPMNElement> newPath = new LinkedList<BPMNElement>();
-						newPath.addAll(currentPath);
-
-						this.goDFSthroughProcessBuildArcsAndGetVoters(localMin, bound, successor, correspondingJoinGtw,
-								lastFoundBrt, processInstancesWithVoters, votersMap, requiredUpdates,
-								alreadyTakenVoters, queue, parallelGtwQueue, openSplitStack, newPath, paths);
-					} else {
-
-						queue.add(successor);
-
-					}
-
-				}
-
-			}
-
-			return processInstancesWithVoters;
-		} catch (Exception e) {
-			throw e;
-		}
-
-	}
-
-	private void insertIfCheapestWithBound(LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters,
+	public void insertIfCheapestWithBound(LinkedList<ProcessInstanceWithVoters> processInstancesWithVoters,
 			ProcessInstanceWithVoters currInstance, int bound) throws InterruptedException {
 		if (Thread.currentThread().isInterrupted()) {
 			System.err.println("Interrupted" + Thread.currentThread().getName());
@@ -1914,16 +1675,14 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	}
 
 	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> getEffectivePathsBetweenWriterAndTargetElement(
-			BPMNDataObject dataO, BPMNElement writerTask, BPMNElement targetElement, LinkedList<BPMNElement> stack,
-			LinkedList<BPMNElement> gtwStack, LinkedList<BPMNElement> currentPath,
-			LinkedList<LinkedList<BPMNElement>> paths) {
+			BPMNDataObject dataO, BPMNElement writerTask, BPMNElement targetElement) throws NullPointerException, InterruptedException, Exception {
 		// returns a hashmap with the keys true and false
 		// where key = true: contains all effective Paths from writerTask to currentBrt
 		// where key = false: contains all paths where another writer writes to same
 		// dataO between the writerTask and the currentBrt
 
-		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndTargetElement = CommonFunctionality
-				.allPathsBetweenNodesWithMappedNodes(writerTask, targetElement, stack, gtwStack, currentPath, paths);
+		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndTargetElement = this.getPathsWithMappedNodesFromCamundaNodes(CommonFunctionality
+				.getAllPathsBetweenNodes(this.modelInstance, writerTask.getId(), targetElement.getId()));
 		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> pathMap = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
 		LinkedList<LinkedList<BPMNElement>> effectivePaths = new LinkedList<LinkedList<BPMNElement>>();
 		LinkedList<LinkedList<BPMNElement>> nonEffectivePaths = new LinkedList<LinkedList<BPMNElement>>();
@@ -1957,17 +1716,15 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	}
 
 	public HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> allEffectivePathsForWriters(BPMNDataObject dataO,
-			BPMNElement writerTask, BPMNElement startNode, BPMNElement endNode, LinkedList<BPMNElement> stack,
-			LinkedList<BPMNElement> gtwStack, LinkedList<BPMNElement> currentPath,
-			LinkedList<LinkedList<BPMNElement>> paths) {
+			BPMNElement writerTask, BPMNElement startNode, BPMNElement endNode) throws NullPointerException, InterruptedException, Exception {
 		// returns a hashmap with the keys true and false
 		// where key = true: contains all effective Paths from writer to endNode
 		// where key = false: contains all paths where another writer writes to same
 		// dataO
 		// the participants on the path are set to be equal to the chosencombination
 		// given as parameter
-		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndEndEvent = CommonFunctionality
-				.allPathsBetweenNodesWithMappedNodes(startNode, endNode, stack, gtwStack, currentPath, paths);
+		LinkedList<LinkedList<BPMNElement>> allPathsBetweenWriterAndEndEvent = this.getPathsWithMappedNodesFromCamundaNodes(CommonFunctionality
+				.getAllPathsBetweenNodes(this.modelInstance, startNode.getId(),endNode.getId()));
 		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> pathMap = new HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>>();
 		LinkedList<LinkedList<BPMNElement>> effectivePaths = new LinkedList<LinkedList<BPMNElement>>();
 		LinkedList<LinkedList<BPMNElement>> nonEffectivePaths = new LinkedList<LinkedList<BPMNElement>>();
@@ -2013,6 +1770,16 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		for (FlowNode flowNode : this.modelInstance.getModelElementsByType(FlowNode.class)) {
 			if (flowNode.getId().equals(id)) {
 				return flowNode;
+			}
+		}
+		return null;
+	}
+	
+	
+	public BPMNElement getBPMNElementByFlowNodeId(String id) {
+		for (BPMNElement element : this.processElements) {
+			if (element.getId().equals(id)) {
+				return element;
 			}
 		}
 		return null;
@@ -2717,7 +2484,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	public String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(ProcessInstanceWithVoters currInst,
 			BPMNBusinessRuleTask currentBrt, BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,
-			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) {
+			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters) throws NullPointerException, InterruptedException, Exception {
 
 		if (writerTask == null || currentBrt == null || dataO == null) {
 			return "not existent";
@@ -2742,9 +2509,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 		// first step - get the effective paths between writerTask and currentBrt
 		HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePathsBetweenWriterTaskAndCurrentBrt = this
-				.getEffectivePathsBetweenWriterAndTargetElement(dataO, writerTask, currentBrt,
-						new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-						new LinkedList<LinkedList<BPMNElement>>());
+				.getEffectivePathsBetweenWriterAndTargetElement(dataO, writerTask, currentBrt);
 		String sphereForReader = this.getSphereOnPathBeforeCurrentBrt(currInst, currentBrt, writerTask, dataO, reader,
 				effectivePathsBetweenWriterTaskAndCurrentBrt, alreadyChosenVoters);
 
@@ -2919,13 +2684,17 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	}
 
 	public BPMNEndEvent getBpmnEnd() {
-		return bpmnEnd;
+		return this.bpmnEnd;
 	}
 
 	public void setBpmnEnd(BPMNEndEvent bpmnEnd) {
 		this.bpmnEnd = bpmnEnd;
 	}
 
+	public BPMNStartEvent getBpmnStart() {
+		return this.bpmnStart;
+	}
+	
 	public LinkedList<ProcessInstanceWithVoters> getProcessInstancesWithVoters() {
 		return processInstancesWithVoters;
 	}
@@ -3005,7 +2774,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			LinkedList<BPMNElement> mappedPath = new LinkedList<BPMNElement>();
 			for (FlowNode camundaNode : path) {
 				mappedPath.add(this.getNodeById(camundaNode.getId()));
-
 			}
 
 			mappedPaths.add(mappedPath);
@@ -3068,7 +2836,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	
 	@Override
 	public synchronized HashMap<String, LinkedList<ProcessInstanceWithVoters>> call()
-			throws NullPointerException, InterruptedException, Exception {
+			throws  NullPointerException, InterruptedException, Exception {
 		// TODO Auto-generated method stub
 
 		System.out.println("Call algorithm for: " + this.process.getAbsolutePath());

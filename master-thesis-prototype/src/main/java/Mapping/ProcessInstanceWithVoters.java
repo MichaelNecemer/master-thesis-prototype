@@ -279,7 +279,6 @@ public class ProcessInstanceWithVoters {
 	public static void setProcessID(int processID) {
 		ProcessInstanceWithVoters.processID = processID;
 	}
-	
-	
+		
 
 }
