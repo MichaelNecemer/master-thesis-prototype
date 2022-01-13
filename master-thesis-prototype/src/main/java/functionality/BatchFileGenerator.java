@@ -99,9 +99,9 @@ public class BatchFileGenerator {
 		String test5ToRun = "Test5ToRun";
 		String test6ToRun = "Test6ToRun";
 
-		methodsToRun.add(test1_1ToRun);
-		methodsToRun.add(test1_2ToRun);
-		methodsToRun.add(createRandomProcesses);
+		//methodsToRun.add(test1_1ToRun);
+		//methodsToRun.add(test1_2ToRun);
+		//methodsToRun.add(createRandomProcesses);
 		methodsToRun.add(test2ToRun);
 		methodsToRun.add(test3_ToRun);
 		methodsToRun.add(test4_1ToRun);
@@ -118,14 +118,13 @@ public class BatchFileGenerator {
 		String pathToLargeProcessesForTest2WithAnnotation = "";
 
 		File rootFolderDirectory = new File(pathToRootFolder);
-		for (File subFile : rootFolderDirectory.listFiles()) {
+		for (File subFile : rootFolderDirectory.listFiles(File::isDirectory)) {
 			String subFileName = subFile.getName();
 			if (subFileName.contentEquals("Test1_1-BoundaryTest1")) {
 				pathToFolderForModelsForTest1_1 = subFile.getAbsolutePath();
 			} else if (subFileName.contentEquals("ProcessesWithoutAnnotation")) {
-				File processesWithoutAnnotationDirectory = new File(subFile.getAbsolutePath());
-				for (File processesWithoutAnnotation : processesWithoutAnnotationDirectory.listFiles()) {
-					String processesWithoutAnnotationFolderName = processesWithoutAnnotationDirectory.getName();
+				for (File processesWithoutAnnotation : subFile.listFiles(File::isDirectory)) {
+					String processesWithoutAnnotationFolderName = processesWithoutAnnotation.getName();
 					if (processesWithoutAnnotationFolderName.contentEquals("SmallProcessesFolder")) {
 						pathToSmallProcessesFolderWithoutAnnotation = processesWithoutAnnotation.getAbsolutePath();
 					} else if (processesWithoutAnnotationFolderName.contentEquals("MediumProcessesFolder")) {
