@@ -93,7 +93,7 @@ public class BatchFileGenerator {
 		String test1_2ToRun = "Test1_2ToRun";
 		String createRandomProcesses = "createRandomProcesses";
 		String test2ToRun = "Test2ToRun";
-		String test3_ToRun = "Test3ToRun";
+		String test3ToRun = "Test3ToRun";
 		String test4_1ToRun = "Test4_1ToRun";
 		String test4_2ToRun = "Test4_2ToRun";
 		String test5ToRun = "Test5ToRun";
@@ -103,7 +103,7 @@ public class BatchFileGenerator {
 		//methodsToRun.add(test1_2ToRun);
 		//methodsToRun.add(createRandomProcesses);
 		methodsToRun.add(test2ToRun);
-		methodsToRun.add(test3_ToRun);
+		methodsToRun.add(test3ToRun);
 		methodsToRun.add(test4_1ToRun);
 		methodsToRun.add(test4_2ToRun);
 		methodsToRun.add(test5ToRun);
@@ -306,7 +306,7 @@ public class BatchFileGenerator {
 			}
 		}
 
-		if (methodsToRun.contains(test3_ToRun)) {
+		if (methodsToRun.contains(test3ToRun)) {
 			// Test 3 - Measure impact of dataObjects
 			// annotate unique gateways per decision e.g. 5 unique data objects and 5
 			// decisions in the model
@@ -314,6 +314,11 @@ public class BatchFileGenerator {
 			// take one dataObject, loop through the others and replace one object with that
 			// dataObject in each iteration
 			// on last step each decision will only have that dataObject connected
+			if (pathToSmallProcessesFolderWithoutAnnotation.isEmpty()
+					&& pathToMediumProcessesFolderWithoutAnnotation.isEmpty()
+					&& pathToLargeProcessesFolderWithoutAnnotation.isEmpty()) {
+				System.out.println(test3ToRun + " not performed! Generate random processes first!");
+			} else {
 			String pathToFolderForModelsForDataObjectTest = CommonFunctionality
 					.fileWithDirectoryAssurance(pathToRootFolder, "Test3-ImpactOfDataObjects").getAbsolutePath();
 
@@ -346,6 +351,7 @@ public class BatchFileGenerator {
 					pathToFolderForModelsForDataObjectTest, amountUniqueDataObjectsPerDecision,
 					upperBoundLocalMinWithBound, amountThreads);
 			System.out.println("Test 3 finished!");
+			}
 		}
 
 		if (methodsToRun.contains(test4_1ToRun)) {
