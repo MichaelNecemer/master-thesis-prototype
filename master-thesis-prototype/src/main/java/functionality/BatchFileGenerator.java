@@ -99,9 +99,9 @@ public class BatchFileGenerator {
 		String test5ToRun = "Test5ToRun";
 		String test6ToRun = "Test6ToRun";
 
-		//methodsToRun.add(test1_1ToRun);
-		//methodsToRun.add(test1_2ToRun);
-		//methodsToRun.add(createRandomProcesses);
+		methodsToRun.add(test1_1ToRun);
+		methodsToRun.add(test1_2ToRun);
+		methodsToRun.add(createRandomProcesses);
 		methodsToRun.add(test2ToRun);
 		methodsToRun.add(test3ToRun);
 		methodsToRun.add(test4_1ToRun);
@@ -323,22 +323,14 @@ public class BatchFileGenerator {
 					.fileWithDirectoryAssurance(pathToRootFolder, "Test3-ImpactOfDataObjects").getAbsolutePath();
 
 			int modelsToTakeFromEachFolderForTest3 = 10;
-			String pathToSmallProcessesForTest3WithAnnotation = CommonFunctionality
-					.fileWithDirectoryAssurance(pathToFolderForModelsForDataObjectTest, "SmallProcessesAnnotatedFolder")
-					.getAbsolutePath();
-			String pathToMediumProcessesForTest3WithAnnotation = CommonFunctionality.fileWithDirectoryAssurance(
-					pathToFolderForModelsForDataObjectTest, "MediumProcessesAnnotatedFolder").getAbsolutePath();
-			String pathToLargeProcessesForTest3WithAnnotation = CommonFunctionality
-					.fileWithDirectoryAssurance(pathToFolderForModelsForDataObjectTest, "LargeProcessesAnnotatedFolder")
-					.getAbsolutePath();
-
+			
 			LinkedList<File> smallProcessesWithoutAnnotationTest3 = BatchFileGenerator.getModelsInOrderFromSourceFolder(
-					modelsToTakeFromEachFolderForTest3, pathToSmallProcessesForTest3WithAnnotation);
+					modelsToTakeFromEachFolderForTest3, pathToSmallProcessesFolderWithoutAnnotation);
 			LinkedList<File> mediumProcessesWithoutAnnotationTest3 = BatchFileGenerator
 					.getModelsInOrderFromSourceFolder(modelsToTakeFromEachFolderForTest3,
-							pathToMediumProcessesForTest3WithAnnotation);
+							pathToMediumProcessesFolderWithoutAnnotation);
 			LinkedList<File> largeProcessesWithoutAnnotationTest3 = BatchFileGenerator.getModelsInOrderFromSourceFolder(
-					modelsToTakeFromEachFolderForTest3, pathToLargeProcessesForTest3WithAnnotation);
+					modelsToTakeFromEachFolderForTest3, pathToLargeProcessesFolderWithoutAnnotation);
 			LinkedList<File> allProcessesWithoutAnnotationTest3 = new LinkedList<File>();
 			allProcessesWithoutAnnotationTest3.addAll(smallProcessesWithoutAnnotationTest3);
 			allProcessesWithoutAnnotationTest3.addAll(mediumProcessesWithoutAnnotationTest3);
