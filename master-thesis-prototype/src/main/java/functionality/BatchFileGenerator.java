@@ -2,8 +2,6 @@ package functionality;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Method;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -12,7 +10,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -319,30 +316,32 @@ public class BatchFileGenerator {
 					&& pathToLargeProcessesFolderWithoutAnnotation.isEmpty()) {
 				System.out.println(test3ToRun + " not performed! Generate random processes first!");
 			} else {
-			String pathToFolderForModelsForDataObjectTest = CommonFunctionality
-					.fileWithDirectoryAssurance(pathToRootFolder, "Test3-ImpactOfDataObjects").getAbsolutePath();
+				String pathToFolderForModelsForDataObjectTest = CommonFunctionality
+						.fileWithDirectoryAssurance(pathToRootFolder, "Test3-ImpactOfDataObjects").getAbsolutePath();
 
-			int modelsToTakeFromEachFolderForTest3 = 10;
-			
-			LinkedList<File> smallProcessesWithoutAnnotationTest3 = BatchFileGenerator.getModelsInOrderFromSourceFolder(
-					modelsToTakeFromEachFolderForTest3, pathToSmallProcessesFolderWithoutAnnotation);
-			LinkedList<File> mediumProcessesWithoutAnnotationTest3 = BatchFileGenerator
-					.getModelsInOrderFromSourceFolder(modelsToTakeFromEachFolderForTest3,
-							pathToMediumProcessesFolderWithoutAnnotation);
-			LinkedList<File> largeProcessesWithoutAnnotationTest3 = BatchFileGenerator.getModelsInOrderFromSourceFolder(
-					modelsToTakeFromEachFolderForTest3, pathToLargeProcessesFolderWithoutAnnotation);
-			LinkedList<File> allProcessesWithoutAnnotationTest3 = new LinkedList<File>();
-			allProcessesWithoutAnnotationTest3.addAll(smallProcessesWithoutAnnotationTest3);
-			allProcessesWithoutAnnotationTest3.addAll(mediumProcessesWithoutAnnotationTest3);
-			allProcessesWithoutAnnotationTest3.addAll(largeProcessesWithoutAnnotationTest3);
+				int modelsToTakeFromEachFolderForTest3 = 10;
 
-			// annotate models with same amount of unique data objects per decision
-			int amountUniqueDataObjectsPerDecision = 4;
+				LinkedList<File> smallProcessesWithoutAnnotationTest3 = BatchFileGenerator
+						.getModelsInOrderFromSourceFolder(modelsToTakeFromEachFolderForTest3,
+								pathToSmallProcessesFolderWithoutAnnotation);
+				LinkedList<File> mediumProcessesWithoutAnnotationTest3 = BatchFileGenerator
+						.getModelsInOrderFromSourceFolder(modelsToTakeFromEachFolderForTest3,
+								pathToMediumProcessesFolderWithoutAnnotation);
+				LinkedList<File> largeProcessesWithoutAnnotationTest3 = BatchFileGenerator
+						.getModelsInOrderFromSourceFolder(modelsToTakeFromEachFolderForTest3,
+								pathToLargeProcessesFolderWithoutAnnotation);
+				LinkedList<File> allProcessesWithoutAnnotationTest3 = new LinkedList<File>();
+				allProcessesWithoutAnnotationTest3.addAll(smallProcessesWithoutAnnotationTest3);
+				allProcessesWithoutAnnotationTest3.addAll(mediumProcessesWithoutAnnotationTest3);
+				allProcessesWithoutAnnotationTest3.addAll(largeProcessesWithoutAnnotationTest3);
 
-			BatchFileGenerator.performDataObjectTest(allProcessesWithoutAnnotationTest3,
-					pathToFolderForModelsForDataObjectTest, amountUniqueDataObjectsPerDecision,
-					upperBoundLocalMinWithBound, amountThreads);
-			System.out.println("Test 3 finished!");
+				// annotate models with same amount of unique data objects per decision
+				int amountUniqueDataObjectsPerDecision = 4;
+
+				BatchFileGenerator.performDataObjectTest(allProcessesWithoutAnnotationTest3,
+						pathToFolderForModelsForDataObjectTest, amountUniqueDataObjectsPerDecision,
+						upperBoundLocalMinWithBound, amountThreads);
+				System.out.println("Test 3 finished!");
 			}
 		}
 
@@ -429,29 +428,37 @@ public class BatchFileGenerator {
 			// Search for the best set of verifiers
 			// take all models from trade off test
 
-			String pathToSmallProcessesWithAnnotation = pathToSmallProcessesForTest2WithAnnotation + File.separatorChar
-					+ "ModelsForEvaluation";
+			if (pathToSmallProcessesForTest2WithAnnotation.isEmpty()
+					&& pathToMediumProcessesForTest2WithAnnotation.isEmpty()
+					&& pathToLargeProcessesForTest2WithAnnotation.isEmpty()) {
+				System.out.println(test5ToRun + " not performed! Run test 2 first!");
 
-			String pathToMediumProcessesWithAnnotation = pathToMediumProcessesForTest2WithAnnotation
-					+ File.separatorChar + "ModelsForEvaluation";
+			} else {
+				String pathToSmallProcessesWithAnnotation = pathToSmallProcessesForTest2WithAnnotation
+						+ File.separatorChar + "ModelsForEvaluation";
 
-			String pathToLargeProcessesWithAnnotation = pathToLargeProcessesForTest2WithAnnotation + File.separatorChar
-					+ "ModelsForEvaluation";
+				String pathToMediumProcessesWithAnnotation = pathToMediumProcessesForTest2WithAnnotation
+						+ File.separatorChar + "ModelsForEvaluation";
 
-			LinkedList<File> allProcessesFromTradeOffTest = new LinkedList<File>();
-			allProcessesFromTradeOffTest
-					.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToSmallProcessesWithAnnotation));
-			allProcessesFromTradeOffTest
-					.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToMediumProcessesWithAnnotation));
-			allProcessesFromTradeOffTest
-					.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToLargeProcessesWithAnnotation));
+				String pathToLargeProcessesWithAnnotation = pathToLargeProcessesForTest2WithAnnotation
+						+ File.separatorChar + "ModelsForEvaluation";
 
-			String pathToFolderForModelsForTest5 = CommonFunctionality
-					.fileWithDirectoryAssurance(pathToRootFolder, "Test5_SearchForBestVerifiers").getAbsolutePath();
+				LinkedList<File> allProcessesFromTradeOffTest = new LinkedList<File>();
+				allProcessesFromTradeOffTest
+						.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToSmallProcessesWithAnnotation));
+				allProcessesFromTradeOffTest
+						.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToMediumProcessesWithAnnotation));
+				allProcessesFromTradeOffTest
+						.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToLargeProcessesWithAnnotation));
 
-			BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(allProcessesFromTradeOffTest, false,
-					pathToFolderForModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
-			System.out.println("Test 5 finished!");
+				String pathToFolderForModelsForTest5 = CommonFunctionality
+						.fileWithDirectoryAssurance(pathToRootFolder, "Test5_SearchForBestVerifiers").getAbsolutePath();
+
+				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(allProcessesFromTradeOffTest, false,
+						pathToFolderForModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
+				System.out.println("Test 5 finished!");
+
+			}
 		}
 
 		if (methodsToRun.contains(test6ToRun)) {
@@ -1188,11 +1195,11 @@ public class BatchFileGenerator {
 					int globalSphere = CommonFunctionality.getGlobalSphere(processModel, false);
 					int amountVotersUpperBound = ThreadLocalRandom.current().nextInt(2, globalSphere + 1);
 
-					File newModel = null;
 					boolean modelIsValid = false;
 					int sumDataObjectsToCreate = 0;
+					int triesPerModel = 100;
 					boolean skipModel = false;
-					while (modelIsValid == false && skipModel == false) {
+					while (modelIsValid == false && skipModel == false && triesPerModel > 0) {
 						try {
 							int percentageReaders = percentageOfReadersClasses.get(indexReaders);
 							int percentageWriters = percentageOfWritersClasses.get(indexWriters);
@@ -1260,7 +1267,7 @@ public class BatchFileGenerator {
 							System.err.println(e.getMessage());
 
 						}
-
+						triesPerModel--;
 					}
 				}
 			}
