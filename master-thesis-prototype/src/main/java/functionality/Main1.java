@@ -6,6 +6,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map.Entry;
 
 import javax.swing.BoxLayout;
@@ -49,7 +50,8 @@ public class Main1 {
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches2.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel2.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWsR_Strong-Dynamic_voters2.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWsR_Strong-Dynamic_voters2.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel106_annotated110amRamW_substituteIter1.bpmn";
 
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	//String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop";
@@ -96,7 +98,6 @@ public class Main1 {
 	*/
 	//API
 	try {	
-		
 		File f = new File(pathToFile);
 		String pathToAnnotatedFile = f.getAbsolutePath();
 		a2 = new API(pathToAnnotatedFile, costForUpgradingSpheres);
@@ -149,6 +150,43 @@ public class Main1 {
 		e1.printStackTrace();
 	}
 	
+	
+	LinkedList<ProcessInstanceWithVoters> pInstancesLocalMinWithBound = null;
+	try {
+		pInstancesLocalMinWithBound = a2.localMinimumAlgorithmWithLimit(1);
+		System.out.println("Amount of solutions found with localMinimumAlgorithmWithBound: "+pInstances.size());
+		
+		for(ProcessInstanceWithVoters pInstance:pInstancesLocalMinWithBound) {		
+		pInstance.printProcessInstance();
+		}
+		
+		//CommonFunctionality.generateNewModelsWithVotersAsBpmnConstruct(a2, pInstances, 3, "", true);
+		
+		//CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(a2, pInstances, 3, "");
+		
+		for(ProcessInstanceWithVoters pInstance: pInstancesLocalMinWithBound) {
+			StringBuilder sb = new StringBuilder();
+			for(VoterForXorArc a: pInstance.getListOfArcs()) {
+				
+				sb.append(a.getBrt().getName()+": ");
+				for(BPMNParticipant part: a.getChosenCombinationOfParticipants()) {
+					sb.append(part.getName()+", ");
+				}
+			}
+			
+			
+			sb.deleteCharAt(sb.length()-2);
+			System.out.println(sb.toString());
+		}
+	} catch (NullPointerException e1) {
+		// TODO Auto-generated catch block
+		e1.printStackTrace();
+	} catch (Exception e1) {
+		// TODO Auto-generated catch block
+		e1.printStackTrace();
+	}
+	
+	
 	LinkedList<ProcessInstanceWithVoters> bruteForceSolutions = null;
 	try {
 		bruteForceSolutions = a2.bruteForceAlgorithm();
@@ -179,8 +217,8 @@ public class Main1 {
 	}
 
 
-	System.out.println("Compare:" +CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstances, bruteForceSolutions, 100000));
-	
+	System.out.println("CompareLocalMinToBruteForce:" +CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstances, bruteForceSolutions, 100000));
+	System.out.println("CompareLocalMinWithBoundToBruteForce:" +CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstancesLocalMinWithBound, bruteForceSolutions, 100000));
 	
 	}
 }

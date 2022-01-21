@@ -1547,7 +1547,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		if (!Thread.currentThread().isInterrupted()) {
 			try {
 				if (methodsToRunWithinCall.isEmpty()) {
-					throw new Exception("No methods specifided to run within call!");
+					System.out.println("No methods specifided to run within call!");
 				}
 
 				for (Entry<String, Object[]> methodEntry : this.methodsToRunWithinCall.entrySet()) {

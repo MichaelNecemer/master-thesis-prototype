@@ -311,6 +311,8 @@ public class BatchFileGenerator {
 			// take one dataObject, loop through the others and replace one object with that
 			// dataObject in each iteration
 			// on last step each decision will only have that dataObject connected
+			// performed on small and medium processes			
+			
 			if (pathToSmallProcessesFolderWithoutAnnotation.isEmpty()
 					&& pathToMediumProcessesFolderWithoutAnnotation.isEmpty()
 					&& pathToLargeProcessesFolderWithoutAnnotation.isEmpty()) {
@@ -319,7 +321,7 @@ public class BatchFileGenerator {
 				String pathToFolderForModelsForDataObjectTest = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test3-ImpactOfDataObjects").getAbsolutePath();
 
-				int modelsToTakeFromEachFolderForTest3 = 10;
+				int modelsToTakeFromEachFolderForTest3 = 15;
 
 				LinkedList<File> smallProcessesWithoutAnnotationTest3 = BatchFileGenerator
 						.getModelsInOrderFromSourceFolder(modelsToTakeFromEachFolderForTest3,
@@ -327,13 +329,13 @@ public class BatchFileGenerator {
 				LinkedList<File> mediumProcessesWithoutAnnotationTest3 = BatchFileGenerator
 						.getModelsInOrderFromSourceFolder(modelsToTakeFromEachFolderForTest3,
 								pathToMediumProcessesFolderWithoutAnnotation);
-				LinkedList<File> largeProcessesWithoutAnnotationTest3 = BatchFileGenerator
-						.getModelsInOrderFromSourceFolder(modelsToTakeFromEachFolderForTest3,
-								pathToLargeProcessesFolderWithoutAnnotation);
+				//LinkedList<File> largeProcessesWithoutAnnotationTest3 = BatchFileGenerator
+					//	.getModelsInOrderFromSourceFolder(modelsToTakeFromEachFolderForTest3,
+						//		pathToLargeProcessesFolderWithoutAnnotation);
 				LinkedList<File> allProcessesWithoutAnnotationTest3 = new LinkedList<File>();
 				allProcessesWithoutAnnotationTest3.addAll(smallProcessesWithoutAnnotationTest3);
 				allProcessesWithoutAnnotationTest3.addAll(mediumProcessesWithoutAnnotationTest3);
-				allProcessesWithoutAnnotationTest3.addAll(largeProcessesWithoutAnnotationTest3);
+				//allProcessesWithoutAnnotationTest3.addAll(largeProcessesWithoutAnnotationTest3);
 
 				// annotate models with same amount of unique data objects per decision
 				int amountUniqueDataObjectsPerDecision = 4;
@@ -347,7 +349,6 @@ public class BatchFileGenerator {
 
 		if (methodsToRun.contains(test4_1ToRun)) {
 			// Test 4_1 "killer constraints"
-			// performed on small and medium processes
 			// after that compare it to test 2 where those models have been run without
 			// constraints
 			if (pathToSmallProcessesForTest2WithAnnotation.isEmpty()
@@ -364,7 +365,12 @@ public class BatchFileGenerator {
 						+ File.separatorChar + "ModelsForEvaluation";
 				LinkedList<File> mediumProcessesFromTradeOffTest = BatchFileGenerator
 						.getAllModelsFromFolder(pathToMediumProcessesWithAnnotation);
-
+				String pathToLargeProcessesWithAnnotation = pathToLargeProcessesForTest2WithAnnotation
+						+ File.separatorChar + "ModelsForEvaluation";
+				LinkedList<File> largeProcessesFromTradeOffTest = BatchFileGenerator
+						.getAllModelsFromFolder(pathToLargeProcessesWithAnnotation);
+				
+				
 				String pathToFolderForModelsForTest4_1 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test4_1-KillerConstraints").getAbsolutePath();
 				String pathToFolderForSmallModelsForTest4_1 = CommonFunctionality
@@ -378,6 +384,13 @@ public class BatchFileGenerator {
 				BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(mediumProcessesFromTradeOffTest,
 						decisionTakerExcludeable, false, pathToFolderForMediumModelsForTest4_1,
 						upperBoundLocalMinWithBound, amountThreads);
+				
+				String pathToFolderForLargeModelsForTest4_1 = CommonFunctionality
+						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "LargeModels").getAbsolutePath();
+				BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(largeProcessesFromTradeOffTest,
+						decisionTakerExcludeable, false, pathToFolderForLargeModelsForTest4_1,
+						upperBoundLocalMinWithBound, amountThreads);
+				
 				System.out.println("Test 4_1 finished!");
 			}
 		}
@@ -396,11 +409,9 @@ public class BatchFileGenerator {
 
 				String pathToFolderForModelsForTest4_2 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToRootFolder,
-								"Test4_2-constraintProbablity" + probabilityForGatewayToHaveConstraint)
+								"Test4_2-constraintProbability" + probabilityForGatewayToHaveConstraint)
 						.getAbsolutePath();
-				String pathToFolderForSmallModelsForTest4_2 = CommonFunctionality
-						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2, "SmallModels").getAbsolutePath();
-
+				
 				String pathToSmallProcessesWithAnnotation = pathToSmallProcessesForTest2WithAnnotation
 						+ File.separatorChar + "ModelsForEvaluation";
 				LinkedList<File> smallProcessesFromTradeOffTest = BatchFileGenerator
@@ -409,7 +420,13 @@ public class BatchFileGenerator {
 						+ File.separatorChar + "ModelsForEvaluation";
 				LinkedList<File> mediumProcessesFromTradeOffTest = BatchFileGenerator
 						.getAllModelsFromFolder(pathToMediumProcessesWithAnnotation);
-
+				String pathToLargeProcessesWithAnnotation = pathToLargeProcessesForTest2WithAnnotation
+						+ File.separatorChar + "ModelsForEvaluation";
+				LinkedList<File> largeProcessesFromTradeOffTest = BatchFileGenerator
+						.getAllModelsFromFolder(pathToLargeProcessesWithAnnotation);
+				
+				String pathToFolderForSmallModelsForTest4_2 = CommonFunctionality
+						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2, "SmallModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithExcludeConstraintsProbability(smallProcessesFromTradeOffTest,
 						decisionTakerExcludeable, false, probabilityForGatewayToHaveConstraint,
 						pathToFolderForSmallModelsForTest4_2, upperBoundLocalMinWithBound, amountThreads);
@@ -419,6 +436,13 @@ public class BatchFileGenerator {
 				BatchFileGenerator.performTestWithExcludeConstraintsProbability(mediumProcessesFromTradeOffTest,
 						decisionTakerExcludeable, false, probabilityForGatewayToHaveConstraint,
 						pathToFolderForMediumModelsForTest4_2, upperBoundLocalMinWithBound, amountThreads);
+				
+				String pathToFolderForLargeModelsForTest4_2 = CommonFunctionality
+						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2, "LargeModels").getAbsolutePath();
+				BatchFileGenerator.performTestWithExcludeConstraintsProbability(largeProcessesFromTradeOffTest,
+						decisionTakerExcludeable, false, probabilityForGatewayToHaveConstraint,
+						pathToFolderForLargeModelsForTest4_2, upperBoundLocalMinWithBound, amountThreads);
+				
 				System.out.println("Test 4_2 finished!");
 			}
 		}
@@ -537,7 +561,7 @@ public class BatchFileGenerator {
 				lowerBoundAmountParticipantsToBeMandatory, decisionTakerMandatory, alwaysMaxMandConstrained);
 
 		ExecutorService service = Executors.newFixedThreadPool(amountThreads);
-		File csv = BatchFileGenerator.createNewCSVFile(pathWhereToCreateAnnotatedProcesses, "real-world-processes");
+		File csv = BatchFileGenerator.createNewCSVFile(pathWhereToCreateAnnotatedProcesses, "test6_results");
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csv);
 		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(pathWhereToCreateAnnotatedProcesses,
 				upperBoundlocalMinWithBound, publicDecisionProb, writer, service);
@@ -1244,8 +1268,18 @@ public class BatchFileGenerator {
 
 								if (amountWritersToBeInserted <= amountTasks
 										&& amountReadersToBeInserted <= amountTasks) {
-									pModel.annotateModelWithFixedAmountOfReadersAndWriters(amountWritersToBeInserted,
-											amountReadersToBeInserted, 0, null);
+									// add the methods to be called
+									LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
+									
+									String firstMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
+									Object[] argumentsForFirstMethod= new Object[4];
+									argumentsForFirstMethod[0] = amountWritersToBeInserted;
+									argumentsForFirstMethod[1] = amountReadersToBeInserted;
+									argumentsForFirstMethod[2] = 0;
+									argumentsForFirstMethod[3] = defaultSpheres;
+									methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName, argumentsForFirstMethod);
+									pModel.setMethodsToRunWithinCall(methodsToBeCalledMap);
+									
 									Future<File> f = executor.submit(pModel);
 									try {
 										f.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
@@ -1287,7 +1321,7 @@ public class BatchFileGenerator {
 			}
 		}
 
-		File csvFile = BatchFileGenerator.createNewCSVFile(pathToDestinationFolderForStoringModels, "Test3");
+		File csvFile = BatchFileGenerator.createNewCSVFile(pathToDestinationFolderForStoringModels, "test3_results");
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator
@@ -1533,7 +1567,7 @@ public class BatchFileGenerator {
 		// perform the algorithms and generate csv file
 		ExecutorService service = Executors.newFixedThreadPool(amountThreadPools);
 		File file = BatchFileGenerator.createNewCSVFile(pathToFolderWithModelsForEvaluation,
-				"resultsOfTest2" + processType);
+				"test2_processType" + processType+"_results");
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(file);
 		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(pathToFolderWithModelsForEvaluation,
 				upperBoundSolutionsForLocalMinWithBound, boundForComparisons, writer, service);
@@ -1552,7 +1586,7 @@ public class BatchFileGenerator {
 		int amountParallelGtws = ThreadLocalRandom.current().nextInt(lowerBoundAmountParallelGtws,
 				upperBoundAmountParallelGtws + 1);
 
-		File csvFile = BatchFileGenerator.createNewCSVFile(pathToFolderForModelsForBoundaryTest, "Test1_1-results");
+		File csvFile = BatchFileGenerator.createNewCSVFile(pathToFolderForModelsForBoundaryTest, "test1_1-results");
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		HashMap<String, Integer> timeOutOrHeapSpaceExceptionMap = new HashMap<String, Integer>();
@@ -1713,7 +1747,7 @@ public class BatchFileGenerator {
 			int amountNewProcessesToCreatePerIteration, int upperBoundSolutionsForLocalMin, int boundForComparisons,
 			int amountThreadPools, String directoryToStore) {
 
-		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStore, "boundaryTest2Results");
+		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStore, "test1_2-results");
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 
@@ -1792,7 +1826,7 @@ public class BatchFileGenerator {
 
 		}
 
-		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStoreNewModels, "SearchForBestSetOfVerifiers");
+		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStoreNewModels, "test5_results");
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
@@ -1826,7 +1860,7 @@ public class BatchFileGenerator {
 
 		}
 
-		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStoreNewModels, "alwaysMaxConstrainedResults");
+		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStoreNewModels, "test4_1-results");
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
@@ -1859,7 +1893,7 @@ public class BatchFileGenerator {
 		}
 
 		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStoreNewModels,
-				"constraintProb" + probabilityForGatewayToHaveConstraint);
+				"test4_2-prob" + probabilityForGatewayToHaveConstraint+"_results");
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
