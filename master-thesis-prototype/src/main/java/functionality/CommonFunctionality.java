@@ -3438,19 +3438,18 @@ public class CommonFunctionality {
 	}
 
 	public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName,
-			int probabilityForGatewayToHaveConstraint,
-			boolean decisionTakerExcludeable, boolean alwaysMaxConstrained, boolean modelWithLanes,
-			String directoryToStore) throws Exception {
+			int probabilityForGatewayToHaveConstraint, boolean decisionTakerExcludeable, boolean alwaysMaxConstrained,
+			boolean modelWithLanes, String directoryToStore) throws Exception {
 		// upperBoundAmountParticipantsToExclude is the difference between the amount of
 		// needed voters and the global Sphere
 		// e.g. global sphere = 5, 3 people needed -> 2 is the max amount of
 		// participants to exclude
 
 		boolean constraintInserted = false;
-		
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
-			if (gtw.getOutgoing().size() == 2 && gtw.getIncoming().iterator().next().getSource() instanceof BusinessRuleTask) {
+			if (gtw.getOutgoing().size() == 2
+					&& gtw.getIncoming().iterator().next().getSource() instanceof BusinessRuleTask) {
 				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
@@ -3487,13 +3486,13 @@ public class CommonFunctionality {
 											randomAmountConstraintsForGtw = globalSphereSize - amountVotersNeeded;
 										} else {
 											int maxConstraint = globalSphereSize - amountVotersNeeded;
-											
-											if(maxConstraint<=0) {
-												//no constraints possible -> else model will not be valid
+
+											if (maxConstraint <= 0) {
+												// no constraints possible -> else model will not be valid
 												randomAmountConstraintsForGtw = 0;
 											} else {
-												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
-														1, maxConstraint + 1);
+												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(1,
+														maxConstraint + 1);
 											}
 
 										}
@@ -3552,15 +3551,18 @@ public class CommonFunctionality {
 				}
 			}
 		}
+		String suffix = "";
 		if (constraintInserted) {
-			String suffix = "";
 			if (alwaysMaxConstrained) {
 				suffix = "alwMaxExcl_Constrained";
 			} else if (!alwaysMaxConstrained) {
 				suffix = "excl_constrained";
 			}
-			CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, suffix);
+		} else {
+			suffix = "noConstraintsInserted";
 		}
+		CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, suffix);
+
 	}
 
 	public static void addMandatoryParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName,
@@ -3582,7 +3584,8 @@ public class CommonFunctionality {
 		}
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
-			if (gtw.getOutgoing().size() == 2 && gtw.getIncoming().iterator().next().getSource() instanceof BusinessRuleTask) {
+			if (gtw.getOutgoing().size() == 2
+					&& gtw.getIncoming().iterator().next().getSource() instanceof BusinessRuleTask) {
 				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
@@ -3709,15 +3712,19 @@ public class CommonFunctionality {
 				}
 			}
 		}
+		String suffix = "";
 		if (constraintInserted) {
-			String suffix = "";
+
 			if (alwaysMaxConstrained) {
 				suffix = "alwMaxMand_Constrained";
 			} else if (!alwaysMaxConstrained) {
 				suffix = "mand_constrained";
 			}
-			CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, suffix);
+		} else {
+			suffix = "noContraintsInserted";
 		}
+		CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, suffix);
+
 	}
 
 }
