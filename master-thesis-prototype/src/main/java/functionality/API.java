@@ -160,8 +160,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			for (BPMNDataObject dataO : brt.getDataObjects()) {
 				ArrayList<BPMNTask> lastWritersForDataO = this.getLastWriterListForDataObject(brt, dataO,
 						new ArrayList<BPMNTask>(), new LinkedList<BPMNElement>());
-				for (BPMNTask t : lastWritersForDataO) {
-				}
 				brt.getLastWriterList().putIfAbsent(dataO, lastWritersForDataO);
 			}
 		}
@@ -1036,6 +1034,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		if (globalSphere.isEmpty()) {
 			this.computeGlobalSphere();
 		}
+
 		for (TextAnnotation text : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 
 			String str = text.getTextContent();
@@ -1064,7 +1063,15 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		// when there is no default troubleShooter -> randomly choose one from the
 		// public sphere
 		if (this.troubleShooter == null) {
-			this.troubleShooter = CommonFunctionality.getRandomItem(publicSphere);
+			if(!publicSphere.isEmpty()) {
+				//each participant has been excluded for some decision
+				//no optimal default troubleshooter for all decisions
+				this.troubleShooter = CommonFunctionality.getRandomItem(publicSphere);
+			} else {
+				//create a new troubleshooter
+				BPMNParticipant defaultTroubleShooter = new BPMNParticipant("defaultTroubleShooterId_1","someTrustedThirdParty");
+				this.troubleShooter = defaultTroubleShooter;				
+			}
 		}
 
 	}
@@ -1571,7 +1578,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			// get all the possible combinations of participants for the brt
 			// consider the constraints e.g. participants may be excluded or mandatory
 			LinkedList<BPMNParticipant> participantsToCombine = new LinkedList<BPMNParticipant>();
-			participantsToCombine.addAll(this.publicSphere);
+			participantsToCombine.addAll(this.globalSphere);
 			LinkedList<BPMNParticipant> mandatoryParticipants = new LinkedList<BPMNParticipant>();
 
 			for (Constraint constraint : bpmnEx.getConstraints()) {
