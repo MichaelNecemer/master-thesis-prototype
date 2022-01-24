@@ -136,11 +136,11 @@ public class BatchFileGenerator {
 				for (File processesWithAnnotation : processesWithAnnotationDirectory.listFiles()) {
 					String processesWithAnnotationFolderName = processesWithAnnotationDirectory.getName();
 					if (processesWithAnnotationFolderName.contentEquals("SmallProcessesAnnotatedFolder")) {
-						pathToSmallProcessesFolderWithoutAnnotation = processesWithAnnotation.getAbsolutePath();
+						pathToSmallProcessesForTest2WithAnnotation = processesWithAnnotation.getAbsolutePath();
 					} else if (processesWithAnnotationFolderName.contentEquals("MediumProcessesAnnotatedFolder")) {
-						pathToMediumProcessesFolderWithoutAnnotation = processesWithAnnotation.getAbsolutePath();
+						pathToMediumProcessesForTest2WithAnnotation = processesWithAnnotation.getAbsolutePath();
 					} else if (processesWithAnnotationFolderName.contentEquals("LargeProcessesAnnotatedFolder")) {
-						pathToLargeProcessesFolderWithoutAnnotation = processesWithAnnotation.getAbsolutePath();
+						pathToLargeProcessesForTest2WithAnnotation = processesWithAnnotation.getAbsolutePath();
 					}
 				}
 			}
