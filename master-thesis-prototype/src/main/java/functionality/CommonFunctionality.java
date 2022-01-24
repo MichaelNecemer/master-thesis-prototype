@@ -3452,7 +3452,7 @@ public class CommonFunctionality {
 		}
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
-			if (gtw.getOutgoing().size() == 2 && gtw.getIncoming().iterator().next() instanceof BusinessRuleTask) {
+			if (gtw.getOutgoing().size() == 2 && gtw.getIncoming().iterator().next().getSource() instanceof BusinessRuleTask) {
 				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
@@ -3582,7 +3582,7 @@ public class CommonFunctionality {
 		}
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
-			if (gtw.getOutgoing().size() == 2 && gtw.getIncoming().iterator().next() instanceof BusinessRuleTask) {
+			if (gtw.getOutgoing().size() == 2 && gtw.getIncoming().iterator().next().getSource() instanceof BusinessRuleTask) {
 				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
