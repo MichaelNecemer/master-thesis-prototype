@@ -96,12 +96,12 @@ public class BatchFileGenerator {
 		String test5ToRun = "Test5ToRun";
 		String test6ToRun = "Test6ToRun";
 
-		methodsToRun.add(test1_1ToRun);
+		/*methodsToRun.add(test1_1ToRun);
 		methodsToRun.add(test1_2ToRun);
 		methodsToRun.add(createRandomProcesses);
 		methodsToRun.add(test2ToRun);
 		methodsToRun.add(test3ToRun);
-		methodsToRun.add(test4_1ToRun);
+		methodsToRun.add(test4_1ToRun);*/
 		methodsToRun.add(test4_2ToRun);
 		methodsToRun.add(test5ToRun);
 		methodsToRun.add(test6ToRun);
@@ -1850,7 +1850,7 @@ public class BatchFileGenerator {
 			try {
 				// will always be max. constrained
 				CommonFunctionality.addExcludeParticipantConstraintsOnModel(clone, fileName,
-						probabilityForGatewayToHaveConstraint, 1, decisionTakerExcludeable, true, modelWithLanes,
+						probabilityForGatewayToHaveConstraint, decisionTakerExcludeable, true, modelWithLanes,
 						directoryToStoreNewModels);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
@@ -1882,7 +1882,7 @@ public class BatchFileGenerator {
 
 			try {
 				CommonFunctionality.addExcludeParticipantConstraintsOnModel(clone, fileName,
-						probabilityForGatewayToHaveConstraint, 1, decisionTakerExcludeable, false, modelWithLanes,
+						probabilityForGatewayToHaveConstraint, decisionTakerExcludeable, false, modelWithLanes,
 						directoryToStoreNewModels);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block

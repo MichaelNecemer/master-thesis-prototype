@@ -3438,7 +3438,7 @@ public class CommonFunctionality {
 	}
 
 	public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName,
-			int probabilityForGatewayToHaveConstraint, int lowerBoundAmountParticipantsToExclude,
+			int probabilityForGatewayToHaveConstraint,
 			boolean decisionTakerExcludeable, boolean alwaysMaxConstrained, boolean modelWithLanes,
 			String directoryToStore) throws Exception {
 		// upperBoundAmountParticipantsToExclude is the difference between the amount of
@@ -3447,9 +3447,7 @@ public class CommonFunctionality {
 		// participants to exclude
 
 		boolean constraintInserted = false;
-		if (lowerBoundAmountParticipantsToExclude < 1) {
-			lowerBoundAmountParticipantsToExclude = 1;
-		}
+		
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getOutgoing().size() == 2 && gtw.getIncoming().iterator().next().getSource() instanceof BusinessRuleTask) {
@@ -3489,13 +3487,15 @@ public class CommonFunctionality {
 											randomAmountConstraintsForGtw = globalSphereSize - amountVotersNeeded;
 										} else {
 											int maxConstraint = globalSphereSize - amountVotersNeeded;
-
-											if (lowerBoundAmountParticipantsToExclude == maxConstraint) {
-												randomAmountConstraintsForGtw = lowerBoundAmountParticipantsToExclude;
+											
+											if(maxConstraint<=0) {
+												//no constraints possible -> else model will not be valid
+												randomAmountConstraintsForGtw = 0;
 											} else {
 												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
-														lowerBoundAmountParticipantsToExclude, maxConstraint + 1);
+														1, maxConstraint + 1);
 											}
+
 										}
 
 										Collections.shuffle(participantsToChooseFrom);
