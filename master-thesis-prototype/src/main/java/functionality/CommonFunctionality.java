@@ -1868,12 +1868,12 @@ public class CommonFunctionality {
 
 	public static List<LinkedList<Integer>> computeRepartitionNumberWithResultBound(int maxAmount, int subParts,
 			int threshold_number, int amountResults) throws Exception, InterruptedException {
-		
+
 		if (Thread.currentThread().isInterrupted()) {
 			System.err.println("Interrupted! " + Thread.currentThread().getName());
 			throw new InterruptedException();
 		}
-		
+
 		List<LinkedList<Integer>> resultRec = new LinkedList<LinkedList<Integer>>();
 
 		if (resultRec.size() == amountResults) {
