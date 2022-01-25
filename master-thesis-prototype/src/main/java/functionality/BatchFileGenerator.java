@@ -96,12 +96,12 @@ public class BatchFileGenerator {
 		String test5ToRun = "Test5ToRun";
 		String test6ToRun = "Test6ToRun";
 
-		/*methodsToRun.add(test1_1ToRun);
+		methodsToRun.add(test1_1ToRun);
 		methodsToRun.add(test1_2ToRun);
 		methodsToRun.add(createRandomProcesses);
 		methodsToRun.add(test2ToRun);
 		methodsToRun.add(test3ToRun);
-		methodsToRun.add(test4_1ToRun);*/
+		methodsToRun.add(test4_1ToRun);
 		methodsToRun.add(test4_2ToRun);
 		methodsToRun.add(test5ToRun);
 		methodsToRun.add(test6ToRun);
@@ -496,15 +496,21 @@ public class BatchFileGenerator {
 			int upperBoundTasks = 80;
 			int upperBoundXorGtws = 10;
 			int upperBoundParallelGtws = 6;
-			int amountProcesses = 100;
+			int amountProcesses = 3;
 			int minDataObjectsPerDecisionTest6 = dataObjectBoundsRealWorld.get(0);
 			int maxDataObjectsPerDecisionTest6 = dataObjectBoundsRealWorld.get(1);
 			int probabilityForGatewayToHaveExclConstraint = 30;
 			int lowerBoundAmountParticipantsToExclude = 0;
+			// upperBoundAmountParticipantsToExclude will be set inside the method
+			// accordingly
+			int upperBoundAmountParticipantsToExclude = -1;
 			boolean decisionTakerExcludeableTest6 = true;
 			boolean alwaysMaxExclConstrained = false;
 			int probabilityForGatewayToHaveMandConstraint = 30;
 			int lowerBoundAmountParticipantsToBeMandatory = 0;
+			// upperBoundAmountParticipantsToBeMandatory will be set inside the method
+			// accordingly
+			int upperBoundAmountParticipantsToBeMandatory = -1;
 			boolean decisionTakerMandatory = false;
 			boolean alwaysMaxMandConstrained = false;
 			List<Integer> writersOfProcessInPercent = Arrays.asList(10, 20, 30);
@@ -521,8 +527,9 @@ public class BatchFileGenerator {
 					upperBoundTasks, upperBoundXorGtws, upperBoundParallelGtws, amountProcesses,
 					minDataObjectsPerDecisionTest6, maxDataObjectsPerDecisionTest6, dataObjectBoundsRealWorld,
 					writersOfProcessInPercent, readersOfProcessInPercent, probabilityForGatewayToHaveExclConstraint,
-					lowerBoundAmountParticipantsToExclude, decisionTakerExcludeableTest6, alwaysMaxExclConstrained,
-					probabilityForGatewayToHaveMandConstraint, lowerBoundAmountParticipantsToBeMandatory,
+					lowerBoundAmountParticipantsToExclude, upperBoundAmountParticipantsToExclude,
+					decisionTakerExcludeableTest6, alwaysMaxExclConstrained, probabilityForGatewayToHaveMandConstraint,
+					lowerBoundAmountParticipantsToBeMandatory, upperBoundAmountParticipantsToBeMandatory,
 					decisionTakerMandatory, alwaysMaxMandConstrained, upperBoundLocalMinWithBound, amountThreads);
 			System.out.println("Test 6 finished!");
 		}
@@ -537,9 +544,10 @@ public class BatchFileGenerator {
 			int amountProcesses, int minDataObjectsPerDecision, int maxDataObjectsPerDecision,
 			List<Integer> dataObjectBoundsRealWorld, List<Integer> writersOfProcessInPercent,
 			List<Integer> readersOfProcessInPercent, int probabilityForGatewayToHaveExclConstraint,
-			int lowerBoundAmountParticipantsToExclude, boolean decisionTakerExcludeable,
-			boolean alwaysMaxExclConstrained, int probabilityForGatewayToHaveMandConstraint,
-			int lowerBoundAmountParticipantsToBeMandatory, boolean decisionTakerMandatory,
+			int lowerBoundAmountParticipantsToExclude, int upperBoundAmountParticipantsToExclude,
+			boolean decisionTakerExcludeable, boolean alwaysMaxExclConstrained,
+			int probabilityForGatewayToHaveMandConstraint, int lowerBoundAmountParticipantsToBeMandatory,
+			int upperBoundAmountParticipantsToBeMandatory, boolean decisionTakerMandatory,
 			boolean alwaysMaxMandConstrained, int upperBoundlocalMinWithBound, int amountThreads) {
 
 		ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
@@ -555,8 +563,9 @@ public class BatchFileGenerator {
 				writersOfProcessInPercent, readersOfProcessInPercent, 2, upperBoundParticipants,
 				minDataObjectsPerDecision, maxDataObjectsPerDecision, publicDecisionProb,
 				probabilityForGatewayToHaveExclConstraint, lowerBoundAmountParticipantsToExclude,
-				decisionTakerExcludeable, alwaysMaxExclConstrained, probabilityForGatewayToHaveMandConstraint,
-				lowerBoundAmountParticipantsToBeMandatory, decisionTakerMandatory, alwaysMaxMandConstrained);
+				lowerBoundAmountParticipantsToExclude, decisionTakerExcludeable, alwaysMaxExclConstrained,
+				probabilityForGatewayToHaveMandConstraint, lowerBoundAmountParticipantsToBeMandatory,
+				upperBoundAmountParticipantsToBeMandatory, decisionTakerMandatory, alwaysMaxMandConstrained);
 
 		ExecutorService service = Executors.newFixedThreadPool(amountThreads);
 		File csv = BatchFileGenerator.createNewCSVFile(pathWhereToCreateAnnotatedProcesses, "test6_results");
@@ -574,9 +583,10 @@ public class BatchFileGenerator {
 			List<Integer> readersOfProcessInPercent, int amountParticipantsPerDecisionLowerBound,
 			int amountParticipantsPerDecisionUpperBound, int minDataObjectsPerDecision, int maxDataObjectsPerDecision,
 			int publicDecisionProb, int probabilityForGatewayToHaveExcludeConstraint,
-			int lowerBoundAmountParticipantsToExclude, boolean decisionTakerExcludeable,
-			boolean alwaysMaxExclConstrained, int probabilityForGatewayToHaveMandConstraint,
-			int lowerBoundAmountParticipantsToBeMandatory, boolean decisionTakerMandatory,
+			int lowerBoundAmountParticipantsToExclude, int upperBoundAmountParticipantsToExclude,
+			boolean decisionTakerExcludeable, boolean alwaysMaxExclConstrained,
+			int probabilityForGatewayToHaveMandConstraint, int lowerBoundAmountParticipantsToBeMandatory,
+			int upperBoundAmountParticipantsToBeMandatory, boolean decisionTakerMandatory,
 			boolean alwaysMaxMandConstrained) {
 		// iterate through all files in the directory and annotate them
 
@@ -680,21 +690,37 @@ public class BatchFileGenerator {
 
 				if (probabilityForGatewayToHaveExcludeConstraint > 0) {
 					String fifthMethodToBeCalledName = "addExcludeParticipantConstraintsOnModel";
-					Object[] argumentsForFifthMethod = new Object[4];
+
+					// set upperBoundAmountParticipantsToExclude to be max globalSphereSize-1
+					if (upperBoundAmountParticipantsToExclude <= 0) {
+						upperBoundAmountParticipantsToExclude = ThreadLocalRandom.current()
+								.nextInt(lowerBoundAmountParticipantsToExclude, globalSphere);
+					}
+
+					Object[] argumentsForFifthMethod = new Object[5];
 					argumentsForFifthMethod[0] = probabilityForGatewayToHaveExcludeConstraint;
 					argumentsForFifthMethod[1] = lowerBoundAmountParticipantsToExclude;
-					argumentsForFifthMethod[2] = decisionTakerExcludeable;
-					argumentsForFifthMethod[3] = alwaysMaxExclConstrained;
+					argumentsForFifthMethod[2] = upperBoundAmountParticipantsToExclude;
+					argumentsForFifthMethod[3] = decisionTakerExcludeable;
+					argumentsForFifthMethod[4] = alwaysMaxExclConstrained;
 					methodsToBeCalledMap.putIfAbsent(fifthMethodToBeCalledName, argumentsForFifthMethod);
 				}
 
 				if (probabilityForGatewayToHaveMandConstraint > 0) {
 					String sixthMethodToBeCalledName = "addMandatoryParticipantConstraintsOnModel";
-					Object[] argumentsForSixthMethod = new Object[4];
+
+					// set upperBoundAmountParticipantsToExclude to be max globalSphereSize-1
+					if (upperBoundAmountParticipantsToBeMandatory <= 0) {
+						upperBoundAmountParticipantsToBeMandatory = ThreadLocalRandom.current()
+								.nextInt(lowerBoundAmountParticipantsToBeMandatory, globalSphere);
+					}
+
+					Object[] argumentsForSixthMethod = new Object[5];
 					argumentsForSixthMethod[0] = probabilityForGatewayToHaveMandConstraint;
 					argumentsForSixthMethod[1] = lowerBoundAmountParticipantsToBeMandatory;
-					argumentsForSixthMethod[2] = decisionTakerMandatory;
-					argumentsForSixthMethod[3] = alwaysMaxMandConstrained;
+					argumentsForSixthMethod[2] = upperBoundAmountParticipantsToBeMandatory;
+					argumentsForSixthMethod[3] = decisionTakerMandatory;
+					argumentsForSixthMethod[4] = alwaysMaxMandConstrained;
 					methodsToBeCalledMap.putIfAbsent(sixthMethodToBeCalledName, argumentsForSixthMethod);
 				}
 				// set the methods that will be run within the call method
@@ -1816,7 +1842,7 @@ public class BatchFileGenerator {
 
 			try {
 				CommonFunctionality.addMandatoryParticipantConstraintsOnModel(clone, fileName,
-						probabilityForGatwayToHaveMandPartConst, 1, true, false, modelWithLanes,
+						probabilityForGatwayToHaveMandPartConst, 1, 1, true, false, modelWithLanes,
 						directoryToStoreNewModels);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
@@ -1841,6 +1867,7 @@ public class BatchFileGenerator {
 			boolean decisionTakerExcludeable, boolean modelWithLanes, String directoryToStoreNewModels,
 			int upperBoundLocalMinWithBound, int amountThreads) {
 		int probabilityForGatewayToHaveConstraint = 100;
+		int lowerBoundAmountParticipantsToExcludePerGtw = 1;
 
 		for (File file : models) {
 			String fileName = file.getName();
@@ -1850,8 +1877,8 @@ public class BatchFileGenerator {
 			try {
 				// will always be max. constrained
 				CommonFunctionality.addExcludeParticipantConstraintsOnModel(clone, fileName,
-						probabilityForGatewayToHaveConstraint, decisionTakerExcludeable, true, modelWithLanes,
-						directoryToStoreNewModels);
+						probabilityForGatewayToHaveConstraint, lowerBoundAmountParticipantsToExcludePerGtw,
+						decisionTakerExcludeable, true, modelWithLanes, directoryToStoreNewModels);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -1874,6 +1901,7 @@ public class BatchFileGenerator {
 	public static void performTestWithExcludeConstraintsProbability(LinkedList<File> models,
 			boolean decisionTakerExcludeable, boolean modelWithLanes, int probabilityForGatewayToHaveConstraint,
 			String directoryToStoreNewModels, int upperBoundLocalMinWithBound, int amountThreads) {
+		int lowerBoundAmountParticipantsToExcludePerGtw = 1;
 
 		for (File file : models) {
 			String fileName = file.getName();
@@ -1882,8 +1910,8 @@ public class BatchFileGenerator {
 
 			try {
 				CommonFunctionality.addExcludeParticipantConstraintsOnModel(clone, fileName,
-						probabilityForGatewayToHaveConstraint, decisionTakerExcludeable, false, modelWithLanes,
-						directoryToStoreNewModels);
+						probabilityForGatewayToHaveConstraint, lowerBoundAmountParticipantsToExcludePerGtw,
+						decisionTakerExcludeable, false, modelWithLanes, directoryToStoreNewModels);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

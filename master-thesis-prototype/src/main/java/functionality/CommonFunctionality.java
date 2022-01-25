@@ -3438,14 +3438,20 @@ public class CommonFunctionality {
 	}
 
 	public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName,
-			int probabilityForGatewayToHaveConstraint, boolean decisionTakerExcludeable, boolean alwaysMaxConstrained,
-			boolean modelWithLanes, String directoryToStore) throws Exception {
+			int probabilityForGatewayToHaveConstraint, int lowerBoundAmountParticipantsToExcludePerGtw,
+			boolean decisionTakerExcludeable, boolean alwaysMaxConstrained, boolean modelWithLanes,
+			String directoryToStore) throws Exception {
 		// upperBoundAmountParticipantsToExclude is the difference between the amount of
 		// needed voters and the global Sphere
 		// e.g. global sphere = 5, 3 people needed -> 2 is the max amount of
 		// participants to exclude
 
+		if (lowerBoundAmountParticipantsToExcludePerGtw < 0) {
+			throw new Exception("LowerBoundAmountParticipantsToExclude must be >= 0!");
+		}
+
 		boolean constraintInserted = false;
+		boolean maxConstrainedModel = true;
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getOutgoing().size() == 2
@@ -3491,14 +3497,26 @@ public class CommonFunctionality {
 												// no constraints possible -> else model will not be valid
 												randomAmountConstraintsForGtw = 0;
 											} else {
-												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(1,
-														maxConstraint + 1);
+												if (lowerBoundAmountParticipantsToExcludePerGtw < maxConstraint) {
+													randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
+															lowerBoundAmountParticipantsToExcludePerGtw,
+															maxConstraint + 1);
+												} else {
+													// lowerBoundAmountParticipantsToExcludePerGtw is bigger than
+													// maxConstraint
+													// generate a new random between 0 and maxConstraint
+													randomAmountConstraintsForGtw = ThreadLocalRandom.current()
+															.nextInt(0, maxConstraint + 1);
+												}
 											}
 
 										}
 
 										Collections.shuffle(participantsToChooseFrom);
 										Iterator<String> partIter = participantsToChooseFrom.iterator();
+										if (randomAmountConstraintsForGtw < (globalSphereSize - amountVotersNeeded)) {
+											maxConstrainedModel = false;
+										}
 
 										for (int i = 0; i < randomAmountConstraintsForGtw; i++) {
 											if (partIter.hasNext()) {
@@ -3553,34 +3571,37 @@ public class CommonFunctionality {
 		}
 		String suffix = "";
 		if (constraintInserted) {
-			if (alwaysMaxConstrained) {
-				suffix = "alwMaxExcl_Constrained";
-			} else if (!alwaysMaxConstrained) {
+			if (maxConstrainedModel) {
+				suffix = "alwMaxExcl_constrained";
+			} else {
 				suffix = "excl_constrained";
 			}
 		} else {
-			suffix = "noConstraintsInserted";
+			suffix = "noExclConstraints";
 		}
 		CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, suffix);
 
 	}
 
 	public static void addMandatoryParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName,
-			int probabilityForGatewayToHaveConstraint, int lowerBoundAmountParticipantsToBeMandatory,
-			boolean decisionTakerMandatory, boolean alwaysMaxConstrained, boolean modelWithLanes,
-			String directoryToStore) throws Exception {
-		// upperBoundAmountParticipantsToBeMandatory is the difference between the
-		// amount of
-		// needed voters and the global Sphere
-		// e.g. 3 people needed -> max 3 constraints for mandatory participants for the
+			int probabilityForGatewayToHaveConstraint, int lowerBoundAmountParticipantsToBeMandatoryPerGtw,
+			int upperBoundAmountParticipantsToBeMandatoryPerGtw, boolean decisionTakerMandatory,
+			boolean alwaysMaxConstrained, boolean modelWithLanes, String directoryToStore) throws Exception {
+		// if upperBoundAmountParticipantsToBeMandatoryPerGtw is < 0:
+		// upperBoundAmountParticipantsToBeMandatoryPerGtw is the needed amount of
+		// voters for the gateway
+		// e.g. 3 people needed for voting -> 3 constraints for mandatory participants
+		// for the
 		// gtw
 		// if decisionTakerMandatory = true -> the participant of the brt will be
 		// mandatory
 		// else the mandatory participants will be chosen randomly from global sphere
 
 		boolean constraintInserted = false;
-		if (lowerBoundAmountParticipantsToBeMandatory < 1) {
-			lowerBoundAmountParticipantsToBeMandatory = 1;
+		boolean maxMandConstrained = true;
+
+		if (lowerBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
+			throw new Exception("lowerBoundAmountParticipantsToBeMandatoryPerGtw must be >= 0");
 		}
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
@@ -3590,6 +3611,8 @@ public class CommonFunctionality {
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
 					String decisionTakerName = brtBeforeGtw.getName();
+					String decisionTakerParticipant = decisionTakerName.substring(decisionTakerName.indexOf('[') + 1,
+							decisionTakerName.indexOf(']'));
 					LinkedList<String> participantsToChooseFrom = CommonFunctionality.getGlobalSphereList(modelInstance,
 							modelWithLanes);
 
@@ -3609,20 +3632,28 @@ public class CommonFunctionality {
 										if (alwaysMaxConstrained) {
 											randomAmountConstraintsForGtw = amountVotersNeeded;
 										} else {
-											int maxConstraint = amountVotersNeeded;
+											if (upperBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
+												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVotersNeeded;
+											}
 
-											if (lowerBoundAmountParticipantsToBeMandatory == maxConstraint) {
-												randomAmountConstraintsForGtw = lowerBoundAmountParticipantsToBeMandatory;
-											} else {
+											if (lowerBoundAmountParticipantsToBeMandatoryPerGtw < upperBoundAmountParticipantsToBeMandatoryPerGtw) {
 												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
-														lowerBoundAmountParticipantsToBeMandatory, maxConstraint + 1);
+														lowerBoundAmountParticipantsToBeMandatoryPerGtw,
+														upperBoundAmountParticipantsToBeMandatoryPerGtw + 1);
+											} else if (lowerBoundAmountParticipantsToBeMandatoryPerGtw == upperBoundAmountParticipantsToBeMandatoryPerGtw) {
+												randomAmountConstraintsForGtw = upperBoundAmountParticipantsToBeMandatoryPerGtw;
 											}
 										}
 
-										if (decisionTakerMandatory) {
+										if (randomAmountConstraintsForGtw != amountVotersNeeded) {
+											// if one decision in the model is not constrained to maximum
+											maxMandConstrained = false;
+										}
+
+										if (decisionTakerMandatory && randomAmountConstraintsForGtw > 0) {
 											// first mandatory participant will be the decision taker
 											String mandatoryParticipantConstraint = "[MandatoryParticipantConstraint] {"
-													+ decisionTakerName + "}";
+													+ decisionTakerParticipant + "}";
 											TextAnnotation constraintAnnotation = modelInstance
 													.newInstance(TextAnnotation.class);
 
@@ -3654,7 +3685,7 @@ public class CommonFunctionality {
 											modelInstance.getModelElementsByType(Plane.class).iterator().next()
 													.addChildElement(edge);
 											constraintInserted = true;
-											participantsToChooseFrom.remove(decisionTakerName);
+											participantsToChooseFrom.remove(decisionTakerParticipant);
 											randomAmountConstraintsForGtw--;
 										}
 
@@ -3714,14 +3745,13 @@ public class CommonFunctionality {
 		}
 		String suffix = "";
 		if (constraintInserted) {
-
-			if (alwaysMaxConstrained) {
-				suffix = "alwMaxMand_Constrained";
-			} else if (!alwaysMaxConstrained) {
+			if (maxMandConstrained) {
+				suffix = "max-mand_constrained";
+			} else {
 				suffix = "mand_constrained";
 			}
 		} else {
-			suffix = "noContraintsInserted";
+			suffix = "noMandConstraints";
 		}
 		CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, suffix);
 

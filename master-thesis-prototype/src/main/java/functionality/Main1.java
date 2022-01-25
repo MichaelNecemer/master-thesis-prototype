@@ -53,6 +53,7 @@ public class Main1 {
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWsR_Strong-Dynamic_voters2.bpmn";
 	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel106_annotated110amRamW_substituteIter1.bpmn";
 
+	
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	//String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop";
 		

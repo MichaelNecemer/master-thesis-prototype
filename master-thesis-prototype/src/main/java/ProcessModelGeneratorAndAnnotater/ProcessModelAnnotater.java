@@ -266,8 +266,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 				if (ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(task)) {
 					LinkedList<Task> tasksBeforeBrt = new LinkedList<Task>();
 					LinkedList<LinkedList<FlowNode>> pathsBetweenStartAndBrt = CommonFunctionality
-							.getAllPathsBetweenNodes(this.modelInstance,
-									this.modelInstance.getModelElementsByType(StartEvent.class).iterator().next().getId(), task.getId());
+							.getAllPathsBetweenNodes(this.modelInstance, this.modelInstance
+									.getModelElementsByType(StartEvent.class).iterator().next().getId(), task.getId());
 					for (LinkedList<FlowNode> subPath : pathsBetweenStartAndBrt) {
 						LinkedList<ExclusiveGateway> exclGtwStack = new LinkedList<ExclusiveGateway>();
 						LinkedList<ParallelGateway> paraGtwStack = new LinkedList<ParallelGateway>();
@@ -1234,8 +1234,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 	}
 
 	public void addExcludeParticipantConstraintsOnModel(int probabilityForGatewayToHaveConstraint,
-			int lowerBoundAmountParticipantsToExclude, boolean decisionTakerExcludeable, boolean alwaysMaxConstrained)
-			throws Exception {
+			int lowerBoundAmountParticipantsToExcludePerGtw, int upperBoundAmountParticipantsToExcludePerGtw,
+			boolean decisionTakerExcludeable, boolean alwaysMaxConstrained) throws Exception {
 		// upperBoundAmountParticipantsToExclude is the difference between the amount of
 		// needed voters and the global Sphere
 		// e.g. global sphere = 5, 3 people needed -> 2 is the max amount of
@@ -1244,8 +1244,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 			return;
 		}
 
-		if (lowerBoundAmountParticipantsToExclude < 1) {
-			lowerBoundAmountParticipantsToExclude = 1;
+		if (lowerBoundAmountParticipantsToExcludePerGtw < 1) {
+			lowerBoundAmountParticipantsToExcludePerGtw = 1;
 		}
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
@@ -1288,12 +1288,23 @@ public class ProcessModelAnnotater implements Callable<File> {
 										} else {
 											int maxConstraint = globalSphereSize - amountVotersNeeded;
 
-											if (lowerBoundAmountParticipantsToExclude == maxConstraint) {
-												randomAmountConstraintsForGtw = lowerBoundAmountParticipantsToExclude;
+											if (maxConstraint <= 0) {
+												// no constraints possible -> else model will not be valid
+												randomAmountConstraintsForGtw = 0;
 											} else {
-												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
-														lowerBoundAmountParticipantsToExclude, maxConstraint + 1);
+												if (lowerBoundAmountParticipantsToExcludePerGtw < maxConstraint) {
+													randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
+															lowerBoundAmountParticipantsToExcludePerGtw,
+															maxConstraint + 1);
+												} else {
+													// lowerBoundAmountParticipantsToExcludePerGtw is bigger than
+													// maxConstraint
+													// generate a new random between 0 and maxConstraint
+													randomAmountConstraintsForGtw = ThreadLocalRandom.current()
+															.nextInt(0, maxConstraint + 1);
+												}
 											}
+
 										}
 
 										Collections.shuffle(participantsToChooseFrom);
@@ -1352,8 +1363,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 	}
 
 	public void addMandatoryParticipantConstraintsOnModel(int probabilityForGatewayToHaveConstraint,
-			int lowerBoundAmountParticipantsToBeMandatory, boolean decisionTakerMandatory, boolean alwaysMaxConstrained)
-			throws Exception {
+			int lowerBoundAmountParticipantsToBeMandatoryPerGtw, int upperBoundAmountParticipantsToBeMandatoryPerGtw,
+			boolean decisionTakerMandatory, boolean alwaysMaxConstrained) throws Exception {
 		// upperBoundAmountParticipantsToBeMandatory is the difference between the
 		// amount of
 		// needed voters and the global Sphere
@@ -1366,8 +1377,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 			return;
 		}
 
-		if (lowerBoundAmountParticipantsToBeMandatory < 1) {
-			lowerBoundAmountParticipantsToBeMandatory = 1;
+		if (lowerBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
+			throw new Exception("lowerBoundAmountParticipantsToBeMandatoryPerGtw must be >= 0");
 		}
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
@@ -1396,17 +1407,20 @@ public class ProcessModelAnnotater implements Callable<File> {
 										if (alwaysMaxConstrained) {
 											randomAmountConstraintsForGtw = amountVotersNeeded;
 										} else {
-											int maxConstraint = amountVotersNeeded;
+											if (upperBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
+												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVotersNeeded;
+											}
 
-											if (lowerBoundAmountParticipantsToBeMandatory == maxConstraint) {
-												randomAmountConstraintsForGtw = lowerBoundAmountParticipantsToBeMandatory;
-											} else {
+											if (lowerBoundAmountParticipantsToBeMandatoryPerGtw < upperBoundAmountParticipantsToBeMandatoryPerGtw) {
 												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
-														lowerBoundAmountParticipantsToBeMandatory, maxConstraint + 1);
+														lowerBoundAmountParticipantsToBeMandatoryPerGtw,
+														upperBoundAmountParticipantsToBeMandatoryPerGtw + 1);
+											} else if (lowerBoundAmountParticipantsToBeMandatoryPerGtw == upperBoundAmountParticipantsToBeMandatoryPerGtw) {
+												randomAmountConstraintsForGtw = upperBoundAmountParticipantsToBeMandatoryPerGtw;
 											}
 										}
 
-										if (decisionTakerMandatory) {
+										if (decisionTakerMandatory && randomAmountConstraintsForGtw > 0) {
 											// first mandatory participant will be the decision taker
 											String mandatoryParticipantConstraint = "[MandatoryParticipantConstraint] {"
 													+ decisionTakerName + "}";
@@ -1529,8 +1543,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	public String getDirectoryForNewFile() {
 		return this.directoryForNewFile;
-	}	
-	
+	}
 
 	public boolean isDataObjectsConnectedToBrts() {
 		return dataObjectsConnectedToBrts;
