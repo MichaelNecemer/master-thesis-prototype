@@ -458,26 +458,39 @@ public class BatchFileGenerator {
 			} else {
 				String pathToSmallProcessesWithAnnotation = pathToSmallProcessesForTest2WithAnnotation
 						+ File.separatorChar + "ModelsForEvaluation";
-
+				LinkedList<File> smallProcessesFromTradeOffTest = BatchFileGenerator
+						.getAllModelsFromFolder(pathToSmallProcessesWithAnnotation);
 				String pathToMediumProcessesWithAnnotation = pathToMediumProcessesForTest2WithAnnotation
 						+ File.separatorChar + "ModelsForEvaluation";
-
+				LinkedList<File> mediumProcessesFromTradeOffTest = BatchFileGenerator
+						.getAllModelsFromFolder(pathToMediumProcessesWithAnnotation);
 				String pathToLargeProcessesWithAnnotation = pathToLargeProcessesForTest2WithAnnotation
-						+ File.separatorChar + "ModelsForEvaluation";
-
-				LinkedList<File> allProcessesFromTradeOffTest = new LinkedList<File>();
-				allProcessesFromTradeOffTest
-						.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToSmallProcessesWithAnnotation));
-				allProcessesFromTradeOffTest
-						.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToMediumProcessesWithAnnotation));
-				allProcessesFromTradeOffTest
-						.addAll(BatchFileGenerator.getAllModelsFromFolder(pathToLargeProcessesWithAnnotation));
-
+						+ File.separatorChar + "ModelsForEvaluation";	
+				LinkedList<File> largeProcessesFromTradeOffTest = BatchFileGenerator
+						.getAllModelsFromFolder(pathToLargeProcessesWithAnnotation);
+				
 				String pathToFolderForModelsForTest5 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test5_SearchForBestVerifiers").getAbsolutePath();
 
-				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(allProcessesFromTradeOffTest, false,
-						pathToFolderForModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
+				String pathToFolderForSmallModelsForTest5= CommonFunctionality
+						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "SmallModels").getAbsolutePath();
+				
+				String pathToFolderForMediumModelsForTest5= CommonFunctionality
+						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "MediumModels").getAbsolutePath();
+				
+				String pathToFolderForLargeModelsForTest5= CommonFunctionality
+						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "LargeModels").getAbsolutePath();
+												
+				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(smallProcessesFromTradeOffTest, false,
+						pathToFolderForSmallModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
+				
+				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(mediumProcessesFromTradeOffTest, false,
+						pathToFolderForMediumModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
+				
+				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(largeProcessesFromTradeOffTest, false,
+						pathToFolderForLargeModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
+				
+				
 				System.out.println("Test 5 finished!");
 
 			}
