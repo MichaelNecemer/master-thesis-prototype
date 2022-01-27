@@ -465,32 +465,31 @@ public class BatchFileGenerator {
 				LinkedList<File> mediumProcessesFromTradeOffTest = BatchFileGenerator
 						.getAllModelsFromFolder(pathToMediumProcessesWithAnnotation);
 				String pathToLargeProcessesWithAnnotation = pathToLargeProcessesForTest2WithAnnotation
-						+ File.separatorChar + "ModelsForEvaluation";	
+						+ File.separatorChar + "ModelsForEvaluation";
 				LinkedList<File> largeProcessesFromTradeOffTest = BatchFileGenerator
 						.getAllModelsFromFolder(pathToLargeProcessesWithAnnotation);
-				
+
 				String pathToFolderForModelsForTest5 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test5_SearchForBestVerifiers").getAbsolutePath();
 
-				String pathToFolderForSmallModelsForTest5= CommonFunctionality
+				String pathToFolderForSmallModelsForTest5 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "SmallModels").getAbsolutePath();
-				
-				String pathToFolderForMediumModelsForTest5= CommonFunctionality
+
+				String pathToFolderForMediumModelsForTest5 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "MediumModels").getAbsolutePath();
-				
-				String pathToFolderForLargeModelsForTest5= CommonFunctionality
+
+				String pathToFolderForLargeModelsForTest5 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "LargeModels").getAbsolutePath();
-												
+
 				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(smallProcessesFromTradeOffTest, false,
 						pathToFolderForSmallModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
-				
+
 				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(mediumProcessesFromTradeOffTest, false,
 						pathToFolderForMediumModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
-				
+
 				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(largeProcessesFromTradeOffTest, false,
 						pathToFolderForLargeModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
-				
-				
+
 				System.out.println("Test 5 finished!");
 
 			}
@@ -965,7 +964,7 @@ public class BatchFileGenerator {
 		return apiList;
 	}
 
-	public static LinkedList<API> mapFilesToAPI(LinkedList<File> files) {
+	public static LinkedList<API> mapFilesToAPI(LinkedList<File> files, ResultsToCSVWriter writer) {
 		// iterate through all files in the directory and run algorithms on annotated
 		// models
 		LinkedList<API> apiList = new LinkedList<API>();
@@ -986,7 +985,9 @@ public class BatchFileGenerator {
 
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
+				File f = new File(pathToFile);
+				writer.addNullValueRowForModel(f.getName(), f.getAbsolutePath(), e.getMessage());
+				System.err.println(f.getAbsolutePath() + " could not be mapped to api: " + e.getMessage());
 			}
 
 		}
@@ -1199,7 +1200,7 @@ public class BatchFileGenerator {
 
 	public static void runAlgorithmsAndWriteResultsToCSV(LinkedList<File> files, int upperBoundSolutionsForLocalMin,
 			int boundForComparisons, ResultsToCSVWriter writer, ExecutorService service) {
-		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(files);
+		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(files, writer);
 		if (!apiList.isEmpty()) {
 			for (API api : apiList) {
 				BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, upperBoundSolutionsForLocalMin,
