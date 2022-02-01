@@ -1365,9 +1365,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 	public void addMandatoryParticipantConstraintsOnModel(int probabilityForGatewayToHaveConstraint,
 			int lowerBoundAmountParticipantsToBeMandatoryPerGtw, int upperBoundAmountParticipantsToBeMandatoryPerGtw,
 			boolean decisionTakerMandatory, boolean alwaysMaxConstrained) throws Exception {
-		// upperBoundAmountParticipantsToBeMandatory is the difference between the
-		// amount of
-		// needed voters and the global Sphere
+		// upperBoundAmountParticipantsToBeMandatory is the amount of
+		// needed voters 
 		// e.g. 3 people needed -> max 3 constraints for mandatory participants for the
 		// gtw
 		// if decisionTakerMandatory = true -> the participant of the brt will be
@@ -1410,6 +1409,10 @@ public class ProcessModelAnnotater implements Callable<File> {
 											if (upperBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
 												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVotersNeeded;
 											}
+											
+											if (upperBoundAmountParticipantsToBeMandatoryPerGtw > amountVotersNeeded) {
+												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVotersNeeded;
+											}
 
 											if (lowerBoundAmountParticipantsToBeMandatoryPerGtw < upperBoundAmountParticipantsToBeMandatoryPerGtw) {
 												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
@@ -1417,7 +1420,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 														upperBoundAmountParticipantsToBeMandatoryPerGtw + 1);
 											} else if (lowerBoundAmountParticipantsToBeMandatoryPerGtw == upperBoundAmountParticipantsToBeMandatoryPerGtw) {
 												randomAmountConstraintsForGtw = upperBoundAmountParticipantsToBeMandatoryPerGtw;
-											}
+											} 
 										}
 
 										if (decisionTakerMandatory && randomAmountConstraintsForGtw > 0) {

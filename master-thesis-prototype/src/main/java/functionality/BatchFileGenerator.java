@@ -508,7 +508,7 @@ public class BatchFileGenerator {
 			int upperBoundTasks = 80;
 			int upperBoundXorGtws = 10;
 			int upperBoundParallelGtws = 6;
-			int amountProcesses = 3;
+			int amountProcesses = 500;
 			int minDataObjectsPerDecisionTest6 = dataObjectBoundsRealWorld.get(0);
 			int maxDataObjectsPerDecisionTest6 = dataObjectBoundsRealWorld.get(1);
 			int probabilityForGatewayToHaveExclConstraint = 30;
@@ -708,7 +708,7 @@ public class BatchFileGenerator {
 						upperBoundAmountParticipantsToExclude = ThreadLocalRandom.current()
 								.nextInt(lowerBoundAmountParticipantsToExclude, globalSphere);
 					}
-
+					
 					Object[] argumentsForFifthMethod = new Object[5];
 					argumentsForFifthMethod[0] = probabilityForGatewayToHaveExcludeConstraint;
 					argumentsForFifthMethod[1] = lowerBoundAmountParticipantsToExclude;
