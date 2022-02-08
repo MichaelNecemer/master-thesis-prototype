@@ -1059,9 +1059,18 @@ public class BatchFileGenerator {
 				futureBruteForce.cancel(true);
 			} catch (ExecutionException e) {
 				// TODO Auto-generated catch block
+				if(e.getCause() instanceof OutOfMemoryError) {
+					exceptionBruteForce = new HeapSpaceException(e.getMessage(), e.getCause());
+					timeOutOrHeapSpaceExceptionMap.put("bruteForce",
+							timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
+					System.err.println("BruteForce ran out of memory");
+					heapSpaceError=true;
+				} else {
 				exceptionBruteForce = (ExecutionException) e;
 				e.printStackTrace();
+				}
 				futureBruteForce.cancel(true);
+
 			} catch (TimeoutException e) {
 				// TODO Auto-generated catch block
 				exceptionBruteForce = (TimeoutException) e;
@@ -1101,9 +1110,18 @@ public class BatchFileGenerator {
 				futureLocalMin.cancel(true);
 			} catch (ExecutionException e) {
 				// TODO Auto-generated catch block
+				if(e.getCause() instanceof OutOfMemoryError) {
+					exceptionLocalMin = new HeapSpaceException(e.getMessage(), e.getCause());
+					timeOutOrHeapSpaceExceptionMap.put("localMin",
+							timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
+					System.err.println("LocalMin ran out of memory");
+					heapSpaceError=true;
+				} else {
 				exceptionLocalMin = (ExecutionException) e;
 				e.printStackTrace();
+				}
 				futureLocalMin.cancel(true);
+
 			} catch (TimeoutException e) {
 				// TODO Auto-generated catch block
 				exceptionLocalMin = (TimeoutException) e;
@@ -1144,8 +1162,16 @@ public class BatchFileGenerator {
 				futureLocalMinWithMaxSolutions.cancel(true);
 			} catch (ExecutionException e) {
 				// TODO Auto-generated catch block
+				if (e.getCause() instanceof OutOfMemoryError) {
+					exceptionLocalMinWithMaxSolutions = new HeapSpaceException(e.getMessage(), e.getCause());
+					timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions,
+							timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
+					System.err.println(localMinWithMaxSolutions + " ran out of memory");
+					heapSpaceError=true;
+				} else {
 				exceptionLocalMinWithMaxSolutions = (ExecutionException) e;
 				e.printStackTrace();
+				}
 				futureLocalMinWithMaxSolutions.cancel(true);
 			} catch (TimeoutException e) {
 				// TODO Auto-generated catch block
