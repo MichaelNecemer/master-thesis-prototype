@@ -38,7 +38,7 @@ public class ResultsToCSVWriter {
 					"deltaExecutionTime in sec (localMin - bruteForce)",
 					"deltaExecutionTime in sec (localMinWithLimit - bruteForce)",
 					"isCheapestSolutionOfLocalMinInBruteForce", "isCheapestSolutionOfLocalMinWithLimitInBruteForce",
-					"amountPaths", "amountReaders", "amountWriters", "amountReadersPerDataObject",
+					"amountPaths", "amountReaders", "amountWriters", "amountDataObjects", "averageAmountDataObjectsPerDecision","amountReadersPerDataObject",
 					"amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks",
 					"amountElements", "amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum",
 					"dependentBrts", "deciderOrVerifier" };
@@ -125,6 +125,8 @@ public class ResultsToCSVWriter {
 		String deciderOrVerifier = "null";
 		String amountReaders = "null";
 		String amountWriters = "null";
+		String amountDataObjects = "null";
+		String averageAmountDataObjectsPerDecision = "null";
 
 		if (api != null) {
 			allPathsThroughProcess = api.getAllPathsThroughProcess().size() + "";
@@ -138,6 +140,15 @@ public class ResultsToCSVWriter {
 			sphereSumOfModel = CommonFunctionality.getSphereSumOfModel(api.getModelInstance()) + "";
 			amountSolutions = api.getAmountPossibleCombinationsOfParticipants();
 			deciderOrVerifier = api.getDeciderOrVerifier();
+			amountDataObjects = api.getDataObjects().size()+"";
+		
+			double sumDataObjects = 0;
+			for(BPMNBusinessRuleTask brt: api.getBusinessRuleTasks()) {
+				sumDataObjects += brt.getDataObjects().size();
+			}
+			averageAmountDataObjectsPerDecision = sumDataObjects / api.getBusinessRuleTasks().size()+"";
+			
+			
 			int readers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
 					.getReadersForDataObjects(api.getModelInstance()).entrySet()) {
@@ -185,7 +196,7 @@ public class ResultsToCSVWriter {
 		String[] row = new String[] { fileName, pathToFile,"null", exceptionNameLocalMin, exceptionNameBruteForce,
 				amountSolutions, amountSolutionsBruteForce, amountCheapestSolutionsLocalMin,
 				amountCheapestSolutionsBruteForce, costCheapestSolution, averageCostAllSolutions, localMinAlgorithmTime,
-				bruteForceAlgorithmTime, timeDifference, "null", allPathsThroughProcess, amountReaders, amountWriters,
+				bruteForceAlgorithmTime, timeDifference, "null", allPathsThroughProcess, amountReaders, amountWriters, amountDataObjects, averageAmountDataObjectsPerDecision,
 				readersPerDataObject.toString(), writersPerDataObject.toString(), amountExclusiveGtwSplits,
 				amountParallelGtwSplits, amountTasks, amountElements, sumAmountVotersOfModel,
 				averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, deciderOrVerifier };
@@ -298,6 +309,12 @@ public class ResultsToCSVWriter {
 		String averageCostAllSolutions = "null";
 		String amountSolutionsBruteForce = "null";
 		String costCheapestSolutionBruteForce = "null";
+		String amountDataObjects =  "null"; 
+		String averageAmountDataObjectsPerDecision = "null";
+		
+	
+		
+		
 		if (pInstancesBruteForce != null && !pInstancesBruteForce.isEmpty()) {
 			LinkedList<ProcessInstanceWithVoters> cheapestBruteForceInst = CommonFunctionality
 					.getCheapestProcessInstancesWithVoters(pInstancesBruteForce);
@@ -336,6 +353,16 @@ public class ResultsToCSVWriter {
 		String amountWriters = "null";
 
 		if (bruteForceApi != null) {
+			amountDataObjects = bruteForceApi.getDataObjects().size()+"";
+			
+			double sumDataObjects = 0;
+			for(BPMNBusinessRuleTask brt: bruteForceApi.getBusinessRuleTasks()) {
+				sumDataObjects += brt.getDataObjects().size();
+			}
+			averageAmountDataObjectsPerDecision = sumDataObjects / bruteForceApi.getBusinessRuleTasks().size()+"";
+			
+			
+			
 			allPathsThroughProcess = bruteForceApi.getAllPathsThroughProcess().size() + "";
 			amountExclusiveGtwSplits = CommonFunctionality.getAmountExclusiveGtwSplits(bruteForceApi.getModelInstance())
 					+ "";
@@ -455,7 +482,7 @@ public class ResultsToCSVWriter {
 				costCheapestSolutionLocalMinWithLimit, averageCostAllSolutions, localMinAlgorithmTime,
 				localMinWithLimitAlgorithmTime, bruteForceAlgorithmTime, timeDifferenceLocalMinBruteForce,
 				timeDifferenceLocalMinWithLimitBruteForce, isCheapestSolutionInBruteForce,
-				isCheapestSolutionWithLimitInBruteForce, allPathsThroughProcess, amountReaders, amountWriters,
+				isCheapestSolutionWithLimitInBruteForce, allPathsThroughProcess, amountReaders, amountWriters, amountDataObjects, averageAmountDataObjectsPerDecision,
 				readersPerDataObject.toString(), writersPerDataObject.toString(), amountExclusiveGtwSplits,
 				amountParallelGtwSplits, amountTasks, amountElements, sumAmountVotersOfModel,
 				averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, dependentBrts.toString(),

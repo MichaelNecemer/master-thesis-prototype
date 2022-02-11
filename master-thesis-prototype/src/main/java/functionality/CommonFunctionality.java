@@ -3281,6 +3281,59 @@ public class CommonFunctionality {
 
 	}
 
+	public static void removeDataObjectsWithoutConnectionsToDecisionsFromModel(BpmnModelInstance modelInstance) {
+		LinkedList<DataObjectReference> daoRList = new LinkedList<DataObjectReference>();
+		daoRList.addAll(modelInstance.getModelElementsByType(DataObjectReference.class));
+		LinkedList<BusinessRuleTask> brtList = new LinkedList<BusinessRuleTask>();
+		brtList.addAll(modelInstance.getModelElementsByType(BusinessRuleTask.class));
+		LinkedList<DataObjectReference> daoRsFound = new LinkedList<DataObjectReference>();
+
+		for (BusinessRuleTask brt : brtList) {
+			Iterator<DataInputAssociation> diaIter = brt.getDataInputAssociations().iterator();
+			while (diaIter.hasNext()) {
+				DataInputAssociation dia = diaIter.next();
+				for (ItemAwareElement iae : dia.getSources()) {
+					DataObjectReference daoR = CommonFunctionality
+							.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
+					if (!daoRsFound.contains(daoR)) {
+						daoRsFound.add(daoR);
+					}
+
+				}
+			}
+
+		}
+
+		// remove all daoRs that have not been found
+		Iterator<DataObjectReference> daoRIter = daoRList.iterator();
+		while (daoRIter.hasNext()) {
+			DataObjectReference dao = daoRIter.next();
+			if (!daoRsFound.contains(dao)) {
+				String daoName = dao.getName();
+				String name = daoName.substring(daoName.indexOf('['), daoName.indexOf(']') + 1);
+				BpmnShape shape = CommonFunctionality.getShape(modelInstance, dao.getId());
+				shape.getParentElement().removeChildElement(shape);
+
+				Iterator<TextAnnotation>txIter = modelInstance.getModelElementsByType(TextAnnotation.class).iterator();
+				while(txIter.hasNext()) {
+					TextAnnotation tx = txIter.next();
+					if (tx.getTextContent().startsWith("Default: ")) {
+						if (tx.getTextContent().contains(name)) {
+							BpmnShape shape2 = CommonFunctionality.getShape(modelInstance, tx.getId());
+							shape2.getParentElement().removeChildElement(shape2);
+							tx.getParentElement().removeChildElement(tx);
+
+						}
+					}
+				}
+
+			}
+		}
+
+		
+		
+	}
+
 	public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnModelInstance modelInstance,
 			DataObjectReference substitute, String fileName, String directoryToStore) {
 		// choose a dataObject from a decision and substitute it
