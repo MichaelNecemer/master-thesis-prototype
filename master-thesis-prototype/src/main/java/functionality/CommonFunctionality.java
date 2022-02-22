@@ -3280,6 +3280,10 @@ public class CommonFunctionality {
 		}
 
 	}
+	
+	public static int getAmountDataObjects(BpmnModelInstance modelInstance) {
+		return modelInstance.getModelElementsByType(DataObjectReference.class).size();
+	}
 
 	public static void removeDataObjectsWithoutConnectionsToDecisionsFromModel(BpmnModelInstance modelInstance) {
 		LinkedList<DataObjectReference> daoRList = new LinkedList<DataObjectReference>();
@@ -3312,21 +3316,24 @@ public class CommonFunctionality {
 				String daoName = dao.getName();
 				String name = daoName.substring(daoName.indexOf('['), daoName.indexOf(']') + 1);
 				BpmnShape shape = CommonFunctionality.getShape(modelInstance, dao.getId());
+				if(shape!=null) {
 				shape.getParentElement().removeChildElement(shape);
-
+				}
 				Iterator<TextAnnotation>txIter = modelInstance.getModelElementsByType(TextAnnotation.class).iterator();
 				while(txIter.hasNext()) {
 					TextAnnotation tx = txIter.next();
 					if (tx.getTextContent().startsWith("Default: ")) {
 						if (tx.getTextContent().contains(name)) {
 							BpmnShape shape2 = CommonFunctionality.getShape(modelInstance, tx.getId());
+							if(shape2!=null) {
 							shape2.getParentElement().removeChildElement(shape2);
+							}
 							tx.getParentElement().removeChildElement(tx);
 
 						}
 					}
 				}
-
+				dao.getParentElement().removeChildElement(dao);
 			}
 		}
 
@@ -3340,8 +3347,11 @@ public class CommonFunctionality {
 		// if decision already has the substitute -> remove the random dataObject
 		// generate new model on each iteration
 
+
 		Collection<BusinessRuleTask> brtList = modelInstance.getModelElementsByType(BusinessRuleTask.class);
 		Iterator<BusinessRuleTask> brtIter = brtList.iterator();
+
+		int iteration = 0;
 
 		while (brtIter.hasNext()) {
 			BusinessRuleTask brt = brtIter.next();
@@ -3362,10 +3372,8 @@ public class CommonFunctionality {
 				}
 			}
 
-			int iteration = 0;
 
 			while (!toRemove.isEmpty()) {
-
 				// choose random dataObject to remove
 				DataObjectReference daoRToBeRemoved = CommonFunctionality.getRandomItem(toRemove);
 				Iterator<DataInputAssociation> diaIter = brt.getDataInputAssociations().iterator();
@@ -3437,14 +3445,18 @@ public class CommonFunctionality {
 											CommonFunctionality.getShape(modelInstance, t.getId()));
 
 								}
-
+								substituteAnnotatedAlready=true;
 							}
 
 							BpmnShape shape = CommonFunctionality.getShape(modelInstance, daoRToBeRemoved.getId());
 							shape.getParentElement().removeChildElement(shape);
 							// daoRToBeRemoved.getParentElement().removeChildElement(daoRToBeRemoved);
 							iteration++;
-
+							try {
+							CommonFunctionality.removeDataObjectsWithoutConnectionsToDecisionsFromModel(modelInstance);
+							} catch(Exception e) {
+							}
+							
 							try {
 								CommonFunctionality.writeChangesToFile(modelInstance, fileName, directoryToStore,
 										"substituteIter" + iteration);

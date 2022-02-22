@@ -140,7 +140,7 @@ public class ResultsToCSVWriter {
 			sphereSumOfModel = CommonFunctionality.getSphereSumOfModel(api.getModelInstance()) + "";
 			amountSolutions = api.getAmountPossibleCombinationsOfParticipants();
 			deciderOrVerifier = api.getDeciderOrVerifier();
-			amountDataObjects = api.getDataObjects().size()+"";
+			amountDataObjects = CommonFunctionality.getAmountDataObjects(api.getModelInstance())+"";
 		
 			double sumDataObjects = 0;
 			for(BPMNBusinessRuleTask brt: api.getBusinessRuleTasks()) {
@@ -353,7 +353,7 @@ public class ResultsToCSVWriter {
 		String amountWriters = "null";
 
 		if (bruteForceApi != null) {
-			amountDataObjects = bruteForceApi.getDataObjects().size()+"";
+			amountDataObjects = CommonFunctionality.getAmountDataObjects(bruteForceApi.getModelInstance())+"";
 			
 			double sumDataObjects = 0;
 			for(BPMNBusinessRuleTask brt: bruteForceApi.getBusinessRuleTasks()) {

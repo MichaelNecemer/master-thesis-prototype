@@ -321,7 +321,7 @@ public class BatchFileGenerator {
 				String pathToFolderForModelsForDataObjectTest = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test3-ImpactOfDataObjects").getAbsolutePath();
 
-				int modelsToTakeFromEachFolderForTest3 = 15;
+				int modelsToTakeFromEachFolderForTest3 = 1;
 
 				LinkedList<File> smallProcessesWithoutAnnotationTest3 = BatchFileGenerator
 						.getModelsInOrderFromSourceFolder(modelsToTakeFromEachFolderForTest3,
@@ -334,7 +334,7 @@ public class BatchFileGenerator {
 				// pathToLargeProcessesFolderWithoutAnnotation);
 				LinkedList<File> allProcessesWithoutAnnotationTest3 = new LinkedList<File>();
 				allProcessesWithoutAnnotationTest3.addAll(smallProcessesWithoutAnnotationTest3);
-				allProcessesWithoutAnnotationTest3.addAll(mediumProcessesWithoutAnnotationTest3);
+				//allProcessesWithoutAnnotationTest3.addAll(mediumProcessesWithoutAnnotationTest3);
 				// allProcessesWithoutAnnotationTest3.addAll(largeProcessesWithoutAnnotationTest3);
 
 				// annotate models with same amount of unique data objects per decision
@@ -376,19 +376,19 @@ public class BatchFileGenerator {
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "SmallModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(smallProcessesFromTradeOffTest,
 						decisionTakerExcludeable, false, pathToFolderForSmallModelsForTest4_1,
-						upperBoundLocalMinWithBound, amountThreads);
+						upperBoundLocalMinWithBound, "small", amountThreads);
 
 				String pathToFolderForMediumModelsForTest4_1 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "MediumModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(mediumProcessesFromTradeOffTest,
 						decisionTakerExcludeable, false, pathToFolderForMediumModelsForTest4_1,
-						upperBoundLocalMinWithBound, amountThreads);
+						upperBoundLocalMinWithBound, "medium", amountThreads);
 
 				String pathToFolderForLargeModelsForTest4_1 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "LargeModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(largeProcessesFromTradeOffTest,
 						decisionTakerExcludeable, false, pathToFolderForLargeModelsForTest4_1,
-						upperBoundLocalMinWithBound, amountThreads);
+						upperBoundLocalMinWithBound, "large", amountThreads);
 
 				System.out.println("Test 4_1 finished!");
 			}
@@ -428,19 +428,19 @@ public class BatchFileGenerator {
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2, "SmallModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithExcludeConstraintsProbability(smallProcessesFromTradeOffTest,
 						decisionTakerExcludeable, false, probabilityForGatewayToHaveConstraint,
-						pathToFolderForSmallModelsForTest4_2, upperBoundLocalMinWithBound, amountThreads);
+						pathToFolderForSmallModelsForTest4_2, upperBoundLocalMinWithBound, "small", amountThreads);
 
 				String pathToFolderForMediumModelsForTest4_2 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2, "MediumModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithExcludeConstraintsProbability(mediumProcessesFromTradeOffTest,
 						decisionTakerExcludeable, false, probabilityForGatewayToHaveConstraint,
-						pathToFolderForMediumModelsForTest4_2, upperBoundLocalMinWithBound, amountThreads);
+						pathToFolderForMediumModelsForTest4_2, upperBoundLocalMinWithBound, "medium", amountThreads);
 
 				String pathToFolderForLargeModelsForTest4_2 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2, "LargeModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithExcludeConstraintsProbability(largeProcessesFromTradeOffTest,
 						decisionTakerExcludeable, false, probabilityForGatewayToHaveConstraint,
-						pathToFolderForLargeModelsForTest4_2, upperBoundLocalMinWithBound, amountThreads);
+						pathToFolderForLargeModelsForTest4_2, upperBoundLocalMinWithBound, "large", amountThreads);
 
 				System.out.println("Test 4_2 finished!");
 			}
@@ -483,13 +483,13 @@ public class BatchFileGenerator {
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "LargeModels").getAbsolutePath();
 
 				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(smallProcessesFromTradeOffTest, false,
-						pathToFolderForSmallModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
+						pathToFolderForSmallModelsForTest5, upperBoundLocalMinWithBound, "small", amountThreads);
 
 				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(mediumProcessesFromTradeOffTest, false,
-						pathToFolderForMediumModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
+						pathToFolderForMediumModelsForTest5, upperBoundLocalMinWithBound, "medium", amountThreads);
 
 				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(largeProcessesFromTradeOffTest, false,
-						pathToFolderForLargeModelsForTest5, upperBoundLocalMinWithBound, amountThreads);
+						pathToFolderForLargeModelsForTest5, upperBoundLocalMinWithBound, "large", amountThreads);
 
 				System.out.println("Test 5 finished!");
 
@@ -1921,7 +1921,7 @@ public class BatchFileGenerator {
 	}
 
 	public static void performTestWithSearchForSetOfBestVerifiers(LinkedList<File> models, boolean modelWithLanes,
-			String directoryToStoreNewModels, int upperBoundLocalMinWithBound, int amountThreads) {
+			String directoryToStoreNewModels, int upperBoundLocalMinWithBound, String suffixCSV, int amountThreads) {
 		// the decision taker must always be part of the verifiers
 		int probabilityForGatwayToHaveMandPartConst = 100;
 
@@ -1941,7 +1941,7 @@ public class BatchFileGenerator {
 
 		}
 
-		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStoreNewModels, "test5_results");
+		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStoreNewModels, "test5_results_"+suffixCSV);
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
@@ -1955,7 +1955,7 @@ public class BatchFileGenerator {
 
 	public static void performTestWithMaxPossibleExcludeConstraints(LinkedList<File> models,
 			boolean decisionTakerExcludeable, boolean modelWithLanes, String directoryToStoreNewModels,
-			int upperBoundLocalMinWithBound, int amountThreads) {
+			int upperBoundLocalMinWithBound, String suffixCSV, int amountThreads) {
 		int probabilityForGatewayToHaveConstraint = 100;
 		int lowerBoundAmountParticipantsToExcludePerGtw = 1;
 
@@ -1976,7 +1976,7 @@ public class BatchFileGenerator {
 
 		}
 
-		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStoreNewModels, "test4_1-results");
+		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStoreNewModels, "test4_1-results_"+suffixCSV);
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
@@ -1990,7 +1990,7 @@ public class BatchFileGenerator {
 
 	public static void performTestWithExcludeConstraintsProbability(LinkedList<File> models,
 			boolean decisionTakerExcludeable, boolean modelWithLanes, int probabilityForGatewayToHaveConstraint,
-			String directoryToStoreNewModels, int upperBoundLocalMinWithBound, int amountThreads) {
+			String directoryToStoreNewModels, int upperBoundLocalMinWithBound, String suffixCSV, int amountThreads) {
 		int lowerBoundAmountParticipantsToExcludePerGtw = 1;
 
 		for (File file : models) {
@@ -2010,7 +2010,7 @@ public class BatchFileGenerator {
 		}
 
 		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStoreNewModels,
-				"test4_2-prob" + probabilityForGatewayToHaveConstraint + "_results");
+				"test4_2-prob" + probabilityForGatewayToHaveConstraint + "_results_"+suffixCSV);
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
