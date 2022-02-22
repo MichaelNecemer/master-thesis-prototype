@@ -321,7 +321,7 @@ public class BatchFileGenerator {
 				String pathToFolderForModelsForDataObjectTest = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test3-ImpactOfDataObjects").getAbsolutePath();
 
-				int modelsToTakeFromEachFolderForTest3 = 1;
+				int modelsToTakeFromEachFolderForTest3 = 15;
 
 				LinkedList<File> smallProcessesWithoutAnnotationTest3 = BatchFileGenerator
 						.getModelsInOrderFromSourceFolder(modelsToTakeFromEachFolderForTest3,
@@ -334,7 +334,7 @@ public class BatchFileGenerator {
 				// pathToLargeProcessesFolderWithoutAnnotation);
 				LinkedList<File> allProcessesWithoutAnnotationTest3 = new LinkedList<File>();
 				allProcessesWithoutAnnotationTest3.addAll(smallProcessesWithoutAnnotationTest3);
-				//allProcessesWithoutAnnotationTest3.addAll(mediumProcessesWithoutAnnotationTest3);
+				allProcessesWithoutAnnotationTest3.addAll(mediumProcessesWithoutAnnotationTest3);
 				// allProcessesWithoutAnnotationTest3.addAll(largeProcessesWithoutAnnotationTest3);
 
 				// annotate models with same amount of unique data objects per decision
