@@ -1116,7 +1116,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				for (BPMNDataObject bpmndo : element.getDataObjects()) {
 					// Map the default Spheres for the data objects to the corresponding writing
 					// tasks
-					if (bpmndo.getName().substring(1, 3).equals(dataObject) && bpmndo.getWriters().contains(element)) {
+					if (bpmndo.getNameIdWithoutBrackets().equals(dataObject) && bpmndo.getWriters().contains(element)) {
 						// attach the defaultSphere to the dataObject
 
 						if (bpmndo.getDefaultSphere().isEmpty()) {
@@ -1135,7 +1135,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						String s2 = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 
 						// Check if it is the right data object
-						if (bpmndo.getName().substring(1, 3).equals(s)) {
+						if (bpmndo.getNameIdWithoutBrackets().equals(s)) {
 							element.getSphereAnnotation().put(bpmndo, s2);
 						}
 

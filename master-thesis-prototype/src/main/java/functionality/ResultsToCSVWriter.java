@@ -29,7 +29,7 @@ public class ResultsToCSVWriter {
 
 			rows = new ArrayList<>();
 			String[] header = new String[] { "fileName", "pathToFile", "logging", "exceptionLocalMin", "exceptionBruteForce",
-					"exceptionLocalMinWithLimit", "totalAmountSolutionsWithoutConstraints", "solution(s) bruteForce",
+					"exceptionLocalMinWithLimit", "totalAmountSolutions", "solution(s) bruteForce",
 					"solution(s) localMinimumAlgorithm", "solution(s) localMinimumAlgorithmWithLimit",
 					"amount cheapest solution(s) bruteForce", "costCheapestSolutionBruteForce",
 					"costCheapestSolutionLocalMin", "costCheapestSolutionLocalMinWithLimit",
