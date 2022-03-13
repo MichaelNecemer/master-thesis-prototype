@@ -1,8 +1,11 @@
 package functionality;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -93,10 +96,10 @@ import Mapping.VoterForXorArc;
 
 public class CommonFunctionality {
 
-	public static boolean isCorrectModel(BpmnModelInstance modelInstance) throws Exception {
+	public static synchronized void isCorrectModel(BpmnModelInstance modelInstance) throws Exception {
 		// does correctness checking of the process model
 		// e.g. 1 Start and 1 End Event
-		boolean correctModel = true;
+
 		if (!CommonFunctionality.checkIfOnlyOneStartEventAndEventEvent(modelInstance)) {
 			throw new Exception("Model must have exactly 1 Start and 1 End Event");
 		}
@@ -106,8 +109,6 @@ public class CommonFunctionality {
 		if (!CommonFunctionality.isModelBlockStructured(modelInstance)) {
 			throw new Exception("Model must be block structured!");
 		}
-
-		return correctModel;
 
 	}
 
@@ -492,50 +493,49 @@ public class CommonFunctionality {
 		return noDups;
 	}
 
-	public static boolean isModelValid(BpmnModelInstance modelInstance) throws NullPointerException, Exception {
+	public static void isModelValid(BpmnModelInstance modelInstance) throws Exception {
 		// model must have a writer on each path to a reader
 		// model can not have a reader/writer in a parallel branch when there is a
 		// writer in the other one
 		// readers in both branches are allowed if there is no writer in any branch
-		boolean isModelValid = true;
 
 		LinkedList<LinkedList<FlowNode>> allProcessPaths = CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
 				modelInstance.getModelElementsByType(StartEvent.class).iterator().next().getId(),
 				modelInstance.getModelElementsByType(EndEvent.class).iterator().next().getId());
 
 		for (LinkedList<FlowNode> path : allProcessPaths) {
-			LinkedList<FlowNode> openParallelSplits = new LinkedList<FlowNode>();
-			LinkedList<FlowNode> pathToCurrTask = new LinkedList<FlowNode>();
 			for (int i = 0; i < path.size(); i++) {
 				FlowNode f = path.get(i);
-				pathToCurrTask.add(f);
-				if (f instanceof ParallelGateway && f.getOutgoing().size() >= 2) {
-					// parallel Split found on path
-					openParallelSplits.add(f);
 
-				}
-				if (f instanceof ParallelGateway && f.getIncoming().size() >= 2) {
-					// parallel Join found on path
-					openParallelSplits.pollLast();
-				}
 				if (f instanceof Task) {
 					Task currTask = (Task) f;
 					if (!currTask.getDataInputAssociations().isEmpty()) {
 						// task is a reader
-
 						for (DataInputAssociation dia : currTask.getDataInputAssociations()) {
 							for (ItemAwareElement iae : dia.getSources()) {
-								// check if there is a writer to the dataObject on the pathToReader
-								boolean writerOnPath = false;
-								for (FlowNode pathToReaderNode : pathToCurrTask) {
-									if (pathToReaderNode instanceof Task) {
-										if (CommonFunctionality.isWriterForDataObject((Task) pathToReaderNode, iae)) {
-											writerOnPath = true;
-										}
+								// check if there is a writer to the dataObject on the pathsToReader
+								boolean writersOnPaths = true;
+								LinkedList<LinkedList<FlowNode>> pathsToReader = CommonFunctionality
+										.getAllPathsBetweenNodes(modelInstance, modelInstance
+												.getModelElementsByType(StartEvent.class).iterator().next().getId(),
+												currTask.getId());
 
+								for (LinkedList<FlowNode> pathToReader : pathsToReader) {
+									boolean writerOnPath = false;
+									for (FlowNode nodeOnPathToReader : pathToReader) {
+										if (nodeOnPathToReader instanceof Task) {
+											if (CommonFunctionality.isWriterForDataObject((Task) nodeOnPathToReader,
+													iae)) {
+												writerOnPath = true;
+											}
+										}
+									}
+									if (!writerOnPath) {
+										writersOnPaths = false;
 									}
 								}
-								if (writerOnPath == false) {
+
+								if (writersOnPaths == false) {
 									throw new Exception("Not a writer before every reader!");
 								}
 
@@ -544,94 +544,103 @@ public class CommonFunctionality {
 						}
 
 					}
-
 					if (!currTask.getDataOutputAssociations().isEmpty()) {
 						// currTask is a writer
 						// check if currTask is inside a parallel Branch
 						// if yes, check if there is a reader/writer in the other branch
+						LinkedList<LinkedList<FlowNode>> pathsToWriter = CommonFunctionality.getAllPathsBetweenNodes(
+								modelInstance,
+								modelInstance.getModelElementsByType(StartEvent.class).iterator().next().getId(),
+								currTask.getId());
 
-						if (!openParallelSplits.isEmpty()) {
-							// currTask is in a parallel Branch
-							// for the lastOpened parallelSplit:
-							// check if there are readers/writers in the other branch
-							// if so - model is not valid
+						for (LinkedList<FlowNode> pathToWriter : pathsToWriter) {
+							HashMap<ParallelGateway, FlowNode> branchOfCurrTask = new HashMap<ParallelGateway, FlowNode>();
+							LinkedList<ParallelGateway> openParallelSplits = new LinkedList<ParallelGateway>();
+							for (int index = 0; index < pathToWriter.size(); index++) {
+								FlowNode nodeOnPathToWriter = pathToWriter.get(index);
 
-							LinkedList<FlowNode> currOpenPSplits = new LinkedList<FlowNode>();
-							currOpenPSplits.addAll(openParallelSplits);
-							boolean insidePBranch = false;
-							LinkedList<FlowNode> currPBranchPath = new LinkedList<FlowNode>();
-							ListIterator<FlowNode> currOpenPSplitsIter = currOpenPSplits
-									.listIterator(currOpenPSplits.size());
-							while (currOpenPSplitsIter.hasPrevious()) {
-								FlowNode currentLastPSplit = currOpenPSplitsIter.previous();
+								if (nodeOnPathToWriter instanceof ParallelGateway
+										&& nodeOnPathToWriter.getOutgoing().size() >= 2) {
+									// parallel Split found on path
+									openParallelSplits.add((ParallelGateway) nodeOnPathToWriter);
+									branchOfCurrTask.putIfAbsent((ParallelGateway) nodeOnPathToWriter,
+											pathToWriter.get(index + 1));
+								}
+								if (nodeOnPathToWriter instanceof ParallelGateway
+										&& nodeOnPathToWriter.getIncoming().size() >= 2) {
+									// parallel Join found on path
+									openParallelSplits.pollLast();
+								}
+							}
 
-								for (int j = 0; j < path.size(); j++) {
-									FlowNode otherNode = path.get(j);
-									if (insidePBranch) {
-										currPBranchPath.add(otherNode);
+							if (!openParallelSplits.isEmpty()) {
+								// writer is inside parallel branch
+								// check other branches for readers/writers to same data object
+								for (ParallelGateway openPSplit : openParallelSplits) {
+									FlowNode successorOfOtherBranch = null;
+									for (SequenceFlow outgoingSeq : openPSplit.getOutgoing()) {
+										FlowNode successor = outgoingSeq.getTarget();
+										for (Entry<ParallelGateway, FlowNode> entry : branchOfCurrTask.entrySet()) {
+											if (entry.getKey().equals(openPSplit)) {
+												if (!successor.equals(entry.getValue())) {
+													// first node in other branch found
+													successorOfOtherBranch = successor;
+												}
+											}
+
+										}
+
 									}
 
-									if (otherNode instanceof ParallelGateway && otherNode.equals(currentLastPSplit)) {
-										currPBranchPath.add(otherNode);
-										insidePBranch = true;
-									} else if (otherNode instanceof ParallelGateway
-											&& CommonFunctionality.getCorrespondingGtw(modelInstance,
-													(Gateway) currentLastPSplit) == otherNode) {
-										if (!currPBranchPath.contains(currTask)) {
-											// end of parallelSplit reached on other branch than currTask is - which is
-											// a writer
-											// check if this branch contains a reader or writer to the same dataObject
+									LinkedList<LinkedList<FlowNode>> branchOfSuccessorPaths = CommonFunctionality
+											.getAllPathsBetweenNodes(modelInstance, successorOfOtherBranch.getId(),
+													CommonFunctionality.getCorrespondingGtw(modelInstance, openPSplit)
+															.getId());
+									for (LinkedList<FlowNode> branch : branchOfSuccessorPaths) {
+										for (int nodeIndex = 0; nodeIndex < branch.size(); nodeIndex++) {
+											FlowNode nodeInsideBranch = branch.get(nodeIndex);
 
-											Iterator<FlowNode> subPathNodeIter = currPBranchPath.iterator();
-											while (subPathNodeIter.hasNext()) {
-												FlowNode subPathNode = subPathNodeIter.next();
-												if (subPathNode instanceof Task) {
-													for (DataOutputAssociation dao : currTask
-															.getDataOutputAssociations()) {
-														ItemAwareElement iae = dao.getTarget();
-														if (CommonFunctionality.isReaderForDataObject(
-																(Task) subPathNode, iae) == true) {
-															// subPathNode is reader in other parallel branch than
-															// currTask
-															throw new Exception("Invalid reader: "
-																	+ subPathNode.getName() + "and writer "
-																	+ currTask.getName()
-																	+ " dependencies due to parallel branching!");
-														}
-														if (CommonFunctionality.isWriterForDataObject(
-																(Task) subPathNode, iae) == true) {
-															// subPathNode is writer in other parallel branch than
-															// currTask
-															throw new Exception("Invalid writer: "
-																	+ subPathNode.getName() + "and writer "
-																	+ currTask.getName()
-																	+ " dependencies due to parallel branching!");
-														}
-
+											if (nodeInsideBranch instanceof Task) {
+												for (DataOutputAssociation dao : currTask.getDataOutputAssociations()) {
+													ItemAwareElement iae = dao.getTarget();
+													if (CommonFunctionality.isReaderForDataObject(
+															(Task) nodeInsideBranch, iae) == true) {
+														// subPathNode is reader in other parallel branch than
+														// currTask
+														throw new Exception(
+																"Invalid reader: " + nodeInsideBranch.getName()
+																		+ "and writer " + currTask.getName()
+																		+ " dependencies due to parallel branching!");
+													}
+													if (CommonFunctionality.isWriterForDataObject(
+															(Task) nodeInsideBranch, iae) == true) {
+														// subPathNode is writer in other parallel branch than
+														// currTask
+														throw new Exception(
+																"Invalid writer: " + nodeInsideBranch.getName()
+																		+ "and writer " + currTask.getName()
+																		+ " dependencies due to parallel branching!");
 													}
 
 												}
 
 											}
-											// other branch has been checked for writers/readers
-											currOpenPSplitsIter.remove();
 										}
-										insidePBranch = false;
-										currPBranchPath = new LinkedList<FlowNode>();
 
 									}
 
 								}
+
 							}
 
 						}
 
 					}
+
 				}
 
 			}
 		}
-		return isModelValid;
 	}
 
 	public static LinkedList<LinkedList<FlowNode>> getAllPathsForCamundaElements(BpmnModelInstance modelInstance,
@@ -3280,7 +3289,7 @@ public class CommonFunctionality {
 		}
 
 	}
-	
+
 	public static int getAmountDataObjects(BpmnModelInstance modelInstance) {
 		return modelInstance.getModelElementsByType(DataObjectReference.class).size();
 	}
@@ -3316,17 +3325,17 @@ public class CommonFunctionality {
 				String daoName = dao.getName();
 				String name = daoName.substring(daoName.indexOf('['), daoName.indexOf(']') + 1);
 				BpmnShape shape = CommonFunctionality.getShape(modelInstance, dao.getId());
-				if(shape!=null) {
-				shape.getParentElement().removeChildElement(shape);
+				if (shape != null) {
+					shape.getParentElement().removeChildElement(shape);
 				}
-				Iterator<TextAnnotation>txIter = modelInstance.getModelElementsByType(TextAnnotation.class).iterator();
-				while(txIter.hasNext()) {
+				Iterator<TextAnnotation> txIter = modelInstance.getModelElementsByType(TextAnnotation.class).iterator();
+				while (txIter.hasNext()) {
 					TextAnnotation tx = txIter.next();
 					if (tx.getTextContent().startsWith("Default: ")) {
 						if (tx.getTextContent().contains(name)) {
 							BpmnShape shape2 = CommonFunctionality.getShape(modelInstance, tx.getId());
-							if(shape2!=null) {
-							shape2.getParentElement().removeChildElement(shape2);
+							if (shape2 != null) {
+								shape2.getParentElement().removeChildElement(shape2);
 							}
 							tx.getParentElement().removeChildElement(tx);
 
@@ -3337,8 +3346,6 @@ public class CommonFunctionality {
 			}
 		}
 
-		
-		
 	}
 
 	public static void substituteOneDataObjectPerIterationAndWriteNewModels(BpmnModelInstance modelInstance,
@@ -3346,7 +3353,6 @@ public class CommonFunctionality {
 		// choose a dataObject from a decision and substitute it
 		// if decision already has the substitute -> remove the random dataObject
 		// generate new model on each iteration
-
 
 		Collection<BusinessRuleTask> brtList = modelInstance.getModelElementsByType(BusinessRuleTask.class);
 		Iterator<BusinessRuleTask> brtIter = brtList.iterator();
@@ -3371,7 +3377,6 @@ public class CommonFunctionality {
 
 				}
 			}
-
 
 			while (!toRemove.isEmpty()) {
 				// choose random dataObject to remove
@@ -3445,7 +3450,7 @@ public class CommonFunctionality {
 											CommonFunctionality.getShape(modelInstance, t.getId()));
 
 								}
-								substituteAnnotatedAlready=true;
+								substituteAnnotatedAlready = true;
 							}
 
 							BpmnShape shape = CommonFunctionality.getShape(modelInstance, daoRToBeRemoved.getId());
@@ -3453,10 +3458,11 @@ public class CommonFunctionality {
 							// daoRToBeRemoved.getParentElement().removeChildElement(daoRToBeRemoved);
 							iteration++;
 							try {
-							CommonFunctionality.removeDataObjectsWithoutConnectionsToDecisionsFromModel(modelInstance);
-							} catch(Exception e) {
+								CommonFunctionality
+										.removeDataObjectsWithoutConnectionsToDecisionsFromModel(modelInstance);
+							} catch (Exception e) {
 							}
-							
+
 							try {
 								CommonFunctionality.writeChangesToFile(modelInstance, fileName, directoryToStore,
 										"substituteIter" + iteration);

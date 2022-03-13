@@ -483,66 +483,6 @@ public class ProcessGenerator implements Callable {
 
 	}
 
-	private void connectBranchesToJoin(FlowNode insideBranch) {
-
-		Gateway split = insideBranch.builder().findLastGateway();
-		String joinId = "";
-
-		if (split.getId().contains("_split") && split instanceof ExclusiveGateway) {
-			joinId = split.getName() + "_join";
-			if (this.modelInstance.getModelElementById("joinId") == null) {
-				insideBranch.builder().exclusiveGateway(joinId);
-			}
-		} else if (split.getId().contains("_split") && split instanceof ParallelGateway) {
-			joinId = split.getName() + "_join";
-			if (this.modelInstance.getModelElementById("joinId") == null) {
-				insideBranch.builder().parallelGateway(joinId);
-			}
-		}
-
-		// get the sequenceFlow going from split to first node of the branch of the
-		// insideBranch Node
-		SequenceFlow oneFlowFromSplitToNode = null;
-		LinkedList<SequenceFlow> sFlows = new LinkedList<SequenceFlow>();
-		sFlows.addAll(insideBranch.getIncoming());
-		while (!sFlows.isEmpty()) {
-			SequenceFlow currFlow = sFlows.pollLast();
-			if (currFlow.getSource().equals(split)) {
-				oneFlowFromSplitToNode = currFlow;
-				break;
-			} else {
-				sFlows.addAll(currFlow.getSource().getIncoming());
-			}
-		}
-
-		// connect the other path(s) to the join too
-		Collection<SequenceFlow> otherPaths = split.getOutgoing();
-		otherPaths.remove(oneFlowFromSplitToNode);
-
-		if (otherPaths.isEmpty()) {
-			// no other paths from split onwards
-			// connect the xor-split to the xor-join
-			split.builder().connectTo(joinId);
-		}
-
-		for (SequenceFlow otherPathFlow : otherPaths) {
-			// get last element on this branch
-			LinkedList<FlowNode> queue = new LinkedList<FlowNode>();
-			queue.add(otherPathFlow.getTarget());
-			while (!queue.isEmpty()) {
-				FlowNode currentNode = queue.pollLast();
-				if (currentNode.getOutgoing().isEmpty()) {
-					currentNode.builder().connectTo(joinId);
-
-				} else {
-					for (SequenceFlow seq : currentNode.getOutgoing()) {
-						queue.add(seq.getTarget());
-					}
-				}
-			}
-		}
-
-	}
 
 	private int getRandomInt(int min, int max) {
 		int randomInt = ThreadLocalRandom.current().nextInt(min, max + 1);
@@ -661,5 +601,6 @@ public class ProcessGenerator implements Callable {
 	public static void decreaseProcessGeneratorId() {
 		processGeneratorId--;
 	}
+	
 
 }

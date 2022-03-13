@@ -804,6 +804,11 @@ public class GUI {
 
 						} catch (Exception e2) {
 							// TODO Auto-generated catch block
+							frame.getContentPane().remove(leftPanel);
+							frame.getContentPane().remove(rightPanel);
+							leftPanel = new JPanel();
+							leftPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+							leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.PAGE_AXIS));
 							leftPanel.add(new JLabel("Error: " + e2.getMessage()));
 							frame.add(leftPanel);
 

@@ -307,16 +307,12 @@ public class ProcessModelAnnotater implements Callable<File> {
 									// f is conditional -> can not be a lastWriter
 									insert = false;
 								} else if (exclGtwStack.isEmpty() && !paraGtwStack.isEmpty()) {
-									// task has to be in same branch as brt!
+									// f is unconditional and on the path to brt 
+									// there are parallels in between
 									LinkedList<LinkedList<FlowNode>> pathsBetweenTaskAndBrt = CommonFunctionality
 											.getAllPathsBetweenNodes(this.modelInstance, f.getId(), task.getId());
-									for (LinkedList<FlowNode> subPathFromTaskToBrt : pathsBetweenTaskAndBrt) {
-										for (FlowNode fNode : subPathFromTaskToBrt) {
-											if (fNode instanceof ParallelGateway) {
-												insert = false;
-												break;
-											}
-										}
+									if(pathsBetweenTaskAndBrt.isEmpty()) {
+										insert = false;
 									}
 
 								}
