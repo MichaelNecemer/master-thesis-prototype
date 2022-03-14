@@ -5,9 +5,12 @@ import java.awt.GridLayout;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
@@ -47,16 +50,18 @@ public class Main1 {
 	  chooser.getSelectedFile().getAbsolutePath();	  
 	  }*/
 	
-	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches2.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel2.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWsR_Strong-Dynamic_voters2.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel106_annotated110amRamW_substituteIter1.bpmn";
-
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWmR_Static_voters2_mand_constrained.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test\\randomProcessModel47_annotated1_annotated56lWlR_Global_voters2.bpmn";
 	
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	//String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop";
-		
+	
+	
+	
 	
 	//ProcessGenerator 
 	try {
@@ -99,11 +104,7 @@ public class Main1 {
 	*/
 	//API
 	try {	
-		File f = new File(pathToFile);
-		String pathToAnnotatedFile = f.getAbsolutePath();
-		a2 = new API(pathToAnnotatedFile, costForUpgradingSpheres);
-		LinkedList<LinkedList<FlowNode>>nodes = a2.getAllPathsThroughProcess();
-		nodes.size();
+		a2 = new API(pathToFile, costForUpgradingSpheres);
 		
 	} catch (Exception e2) {
 		// TODO Auto-generated catch block
