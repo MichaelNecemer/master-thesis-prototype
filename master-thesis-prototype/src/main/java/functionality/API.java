@@ -231,24 +231,24 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 						.get(true);
 				for (LinkedList<BPMNElement> effectivePathList : effectivePaths) {
 					boolean toBeChecked = true;
-						for (BPMNElement currEl : effectivePathList) {
-							if (toBeChecked) {
+					for (BPMNElement currEl : effectivePathList) {
+						if (toBeChecked) {
 							if (currEl instanceof BPMNTask) {
 								BPMNTask currTask = (BPMNTask) currEl;
-								// when currTask is a writer 
+								// when currTask is a writer
 								// add it as reader and don't check further
 								// since readers/writers afterwards depend on data written by the currTask
 								if (dataO.getWriters().contains(currTask)
 										&& currTask.getDataObjects().contains(dataO)) {
-									if(!currTask.equals(writerTask)) {									
-									toBeChecked = false;
+									if (!currTask.equals(writerTask)) {
+										toBeChecked = false;
 									}
 									if (!currentWriterTask.getEffectiveReaders().contains(currTask)) {
 										currentWriterTask.getEffectiveReaders().add(currTask);
 									}
 								}
-								
-								//currTask is a reader
+
+								// currTask is a reader
 								if (dataO.getReaders().contains(currTask)
 										&& currTask.getDataObjects().contains(dataO)) {
 									if (!currentWriterTask.getEffectiveReaders().contains(currTask)) {
@@ -2533,7 +2533,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		return sphereForReaderAfterCurrentBrt;
 
 	}
-	
+
 	public String getSphereForParticipantOnEffectivePathsWithAlreadyChosenVoters(ProcessInstanceWithVoters currInst,
 			BPMNBusinessRuleTask currentBrt, BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,
 			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters)
@@ -2587,7 +2587,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		return sphereForEffectiveReader;
 	}
 
-	
 	private String getSphereOnPathBeforeCurrentBrt(ProcessInstanceWithVoters currInst, BPMNBusinessRuleTask currentBrt,
 			BPMNElement writerTask, BPMNDataObject dataO, BPMNParticipant reader,
 			HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths,
