@@ -191,9 +191,9 @@ public class BatchFileGenerator {
 			// since the cost of the models will have to be calculated for all the possible
 			// combinations
 			// this can be used to estimate the feasibility for other models
-
+			int tasksFactor = 4;
 			BatchFileGenerator.performBoundaryTest1_1(10, 0, votersPerDecision, globalSphere,
-					upperBoundLocalMinWithBound, 6, 4, 0, 0, percentageOfWritersClasses.get(1),
+					upperBoundLocalMinWithBound, 6, tasksFactor, 0, 0, percentageOfWritersClasses.get(1),
 					percentageOfReadersClasses.get(1), minDataObjectsPerDecision, maxDataObjectsPerDecision,
 					defaultSpheres, amountThreads, pathToFolderForModelsForTest1_1);
 
@@ -247,27 +247,36 @@ public class BatchFileGenerator {
 					.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "LargeProcessesFolder")
 					.getAbsolutePath();
 
-			// for each processes folder -> generate 100 random processes
+			// for each processes folder -> generate 100 random processes e.g. small -> 50
+			// with 1 decision, 50 with 2 decisions
 			// small processes: 5 participants, 6-15 tasks, 1-2 xors, 0-2 parallels, 100
 			// processes
+			int amountProcessesToCreatePerDecision = 50;
 
 			ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
 
-			BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation, 5,
-					5, 6, 15, amountXorsSmallProcessesBounds.get(0), amountXorsSmallProcessesBounds.get(1), 0, 2, 100,
-					randomProcessGeneratorService);
+			for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
+				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation,
+						5, 5, 6, 15, i, i, 0, 2, amountProcessesToCreatePerDecision, randomProcessGeneratorService,
+						true);
+			}
 
 			// medium processes: 5 participants, 16-30 tasks, 3-4 xors, 0-3 parallels, 100
 			// processes
-			BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToMediumProcessesFolderWithoutAnnotation, 5,
-					5, 16, 30, amountXorsMediumProcessesBounds.get(0), amountXorsMediumProcessesBounds.get(1), 0, 3,
-					100, randomProcessGeneratorService);
+			for (int i = amountXorsMediumProcessesBounds.get(0); i <= amountXorsMediumProcessesBounds.get(1); i++) {
+				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
+						pathToMediumProcessesFolderWithoutAnnotation, 5, 5, 16, 30, i, i, 0, 3,
+						amountProcessesToCreatePerDecision, randomProcessGeneratorService, true);
+			}
 
 			// large processes: 5 participants, 31-60 tasks, 5-6 xors, 0-4, parallels, 100
 			// processes
-			BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation, 5,
-					5, 31, 60, amountXorsLargeProcessesBounds.get(0), amountXorsLargeProcessesBounds.get(1), 0, 4, 100,
-					randomProcessGeneratorService);
+			for (int i = amountXorsLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
+				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation,
+						5, 5, 31, 60, i, i, 0, 4, amountProcessesToCreatePerDecision, randomProcessGeneratorService,
+						true);
+			}
+
 			randomProcessGeneratorService.shutdownNow();
 			System.out.println("All random processes generated!");
 		}
@@ -601,7 +610,7 @@ public class BatchFileGenerator {
 		ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
 		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathWhereToCreateProcessesWithoutAnnotation, 2,
 				upperBoundParticipants, lowerBoundTasks, upperBoundTasks, 1, upperBoundXorGtws, 0,
-				upperBoundParallelGtws, amountProcesses, randomProcessGeneratorService);
+				upperBoundParallelGtws, amountProcesses, randomProcessGeneratorService, false);
 		randomProcessGeneratorService.shutdownNow();
 
 		int publicDecisionProb = 0;
@@ -810,7 +819,7 @@ public class BatchFileGenerator {
 	public static void generateRandomProcessesWithinGivenRanges(String pathToFiles, int lowerBoundParticipants,
 			int upperBoundParticipants, int lowerBoundTasks, int upperBoundTasks, int lowerBoundXorGtws,
 			int upperBoundXorGtws, int lowerBoundParallelGtws, int upperBoundParallelGtws, int amountProcesses,
-			ExecutorService executor) {
+			ExecutorService executor, boolean testForBrtsBeforeXors) {
 
 		for (int i = 1; i <= amountProcesses; i++) {
 
@@ -878,35 +887,38 @@ public class BatchFileGenerator {
 
 						}
 
-						int amountNodesToBeInserted = 0;
-						FlowNode nodeAfterStartEvent = createdModel.getModelElementsByType(StartEvent.class).iterator()
-								.next();
-						if (nodeAfterStartEvent instanceof ParallelGateway
-								|| nodeAfterStartEvent instanceof ExclusiveGateway) {
-							// task will have to be inserted in front of it
-							amountNodesToBeInserted++;
-						}
-
-						for (ExclusiveGateway gtw : createdModel.getModelElementsByType(ExclusiveGateway.class)) {
-							if (gtw.getOutgoing().size() >= 2) {
-								// if xor is a split
-								ExclusiveGateway split = gtw;
-								FlowNode nodeBeforeXorSplit = split.getIncoming().iterator().next().getSource();
-								if (!(nodeBeforeXorSplit instanceof Task)) {
-									// there must be a brt inserted before
-									amountNodesToBeInserted++;
-								}
+						if (testForBrtsBeforeXors) {
+							int amountNodesToBeInserted = 0;
+							FlowNode nodeAfterStartEvent = createdModel.getModelElementsByType(StartEvent.class)
+									.iterator().next();
+							if (nodeAfterStartEvent instanceof ParallelGateway
+									|| nodeAfterStartEvent instanceof ExclusiveGateway) {
+								// task will have to be inserted in front of it
+								amountNodesToBeInserted++;
 							}
 
-						}
+							for (ExclusiveGateway gtw : createdModel.getModelElementsByType(ExclusiveGateway.class)) {
+								if (gtw.getOutgoing().size() >= 2) {
+									// if xor is a split
+									ExclusiveGateway split = gtw;
+									FlowNode nodeBeforeXorSplit = split.getIncoming().iterator().next().getSource();
+									if (!(nodeBeforeXorSplit instanceof Task)) {
+										// there must be a brt inserted before
+										amountNodesToBeInserted++;
+									}
+								}
 
-						int amountTasksOfModelAfterNodesToBeInserted = tasksOfCreatedModel + amountNodesToBeInserted;
-						if (amountTasksOfModelAfterNodesToBeInserted > upperBoundTasks) {
-							deleteModel = true;
-							System.out.println("Tasks of model after nodes to be inserted: "
-									+ amountTasksOfModelAfterNodesToBeInserted + " > upperBoundTasks "
-									+ upperBoundTasks);
+							}
 
+							int amountTasksOfModelAfterNodesToBeInserted = tasksOfCreatedModel
+									+ amountNodesToBeInserted;
+							if (amountTasksOfModelAfterNodesToBeInserted > upperBoundTasks) {
+								deleteModel = true;
+								System.out.println("Tasks of model after nodes to be inserted: "
+										+ amountTasksOfModelAfterNodesToBeInserted + " > upperBoundTasks "
+										+ upperBoundTasks);
+
+							}
 						}
 
 						if (deleteModel) {
@@ -935,7 +947,7 @@ public class BatchFileGenerator {
 				e.printStackTrace();
 			}
 
-			System.out.println("randomProcess" + i + " deployed in " + pathToFiles);
+			System.out.println("randomProcess" + ProcessGenerator.processGeneratorId() + " deployed in " + pathToFiles);
 		}
 
 	}
@@ -1753,7 +1765,7 @@ public class BatchFileGenerator {
 			BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToFolderForModelsWithDecisions,
 					globalSphere, globalSphere, amountTasksWithFactor, amountTasksWithFactor, amountDecisionsToStart,
 					amountDecisionsToStart, amountParallelGtws, amountParallelGtws, amountProcessesPerIteration,
-					executor);
+					executor, false);
 
 			// annotate the processes
 			File folder = new File(pathToFolderForModelsWithDecisions);

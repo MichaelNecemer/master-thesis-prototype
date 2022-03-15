@@ -602,5 +602,9 @@ public class ProcessGenerator implements Callable {
 		processGeneratorId--;
 	}
 	
+	public static int processGeneratorId() {
+		return processGeneratorId;
+	}
+	
 
 }
