@@ -1546,106 +1546,116 @@ public class BatchFileGenerator {
 				tries--;
 			}
 
-			if (newModel != null) {
-				for (int writerClass = 0; writerClass < percentageOfWritersClasses.size(); writerClass++) {
-					// for each model -> annotate it with small, medium, large amount of writers
-					BpmnModelInstance newModelInstance = Bpmn.readModelFromFile(newModel);
+			if (newModel != null) {				
+					for (int writerClass = 0; writerClass < percentageOfWritersClasses.size(); writerClass++) {
+						// for each model -> annotate it with small, medium, large amount of writers
+						BpmnModelInstance newModelInstance = Bpmn.readModelFromFile(newModel);
 
-					int minAmountWriters = newModelInstance.getModelElementsByType(DataObjectReference.class).size();
+						int minAmountWriters = newModelInstance.getModelElementsByType(DataObjectReference.class)
+								.size();
 
-					int amountWriterTasksToBeInserted = CommonFunctionality.getAmountFromPercentageWithMinimum(
-							amountTasks, percentageOfWritersClasses.get(writerClass), minAmountWriters);
+						int amountWriterTasksToBeInserted = CommonFunctionality.getAmountFromPercentageWithMinimum(
+								amountTasks, percentageOfWritersClasses.get(writerClass), minAmountWriters);
 
-					for (int readerClass = 0; readerClass < percentageOfReadersClasses.size(); readerClass++) {
-						// for each model -> annotate it with small, medium, large amount of readers
-						int amountReaderTasksToBeInserted = CommonFunctionality.getAmountFromPercentage(amountTasks,
-								percentageOfReadersClasses.get(readerClass));
-						StringBuilder suffixBuilder = new StringBuilder();
+						for (int readerClass = 0; readerClass < percentageOfReadersClasses.size(); readerClass++) {
+							// for each model -> annotate it with small, medium, large amount of readers
+							int triesForInsertingReadersAndWriters = 50;
+							boolean modelAnnotatedCorrectly = false;
+							while (triesForInsertingReadersAndWriters > 0 && modelAnnotatedCorrectly==false) {
 
-						if (writerClass == 0) {
-							suffixBuilder.append("sW");
-						} else if (writerClass == 1) {
-							suffixBuilder.append("mW");
-						} else if (writerClass == 2) {
-							suffixBuilder.append("lW");
-						}
+							int amountReaderTasksToBeInserted = CommonFunctionality.getAmountFromPercentage(amountTasks,
+									percentageOfReadersClasses.get(readerClass));
+							StringBuilder suffixBuilder = new StringBuilder();
 
-						if (readerClass == 0) {
-							suffixBuilder.append("sR");
-						} else if (readerClass == 1) {
-							suffixBuilder.append("mR");
-						} else if (readerClass == 2) {
-							suffixBuilder.append("lR");
-						}
-
-						int currAmountReaderTasksInModel = newModelInstance
-								.getModelElementsByType(DataInputAssociation.class).size();
-						boolean insertWriters = true;
-						if (currAmountReaderTasksInModel > amountReaderTasksToBeInserted) {
-							// model out of bound
-							insertWriters = false;
-						}
-
-						if (amountWriterTasksToBeInserted > percentageOfWritersClasses.get(writerClass)) {
-							// model out of bound
-							insertWriters = false;
-						}
-
-						if (insertWriters) {
-							ProcessModelAnnotater modelWithReadersAndWriters;
-							try {
-
-								modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(),
-										pathToDestinationFolderForStoringModels, suffixBuilder.toString());
-								modelWithReadersAndWriters.setDataObjectsConnectedToBrts(true);
-
-								// add the methods to be called
-								LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
-
-								String firstMethodToBeCalledName = "addNamesForOutgoingFlowsOfXorSplits";
-								Object[] argumentsForFirstMethod = new Object[1];
-								argumentsForFirstMethod[0] = defaultNamesSeqFlowsXorSplits;
-								methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName, argumentsForFirstMethod);
-
-								String secondMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
-								Object[] argumentsForSecondMethod = new Object[4];
-								argumentsForSecondMethod[0] = amountWriterTasksToBeInserted;
-								argumentsForSecondMethod[1] = amountReaderTasksToBeInserted;
-								argumentsForSecondMethod[2] = 0;
-								argumentsForSecondMethod[3] = emptySphere;
-								methodsToBeCalledMap.putIfAbsent(secondMethodToBeCalledName, argumentsForSecondMethod);
-
-								modelWithReadersAndWriters.setMethodsToRunWithinCall(methodsToBeCalledMap);
-
-								Future<File> future = executor.submit(modelWithReadersAndWriters);
-
-								try {
-									future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
-									future.cancel(true);
-								} catch (InterruptedException e) {
-									// TODO Auto-generated catch block
-									future.cancel(true);
-									e.printStackTrace();
-									readerClass--;
-								} catch (ExecutionException e) {
-									// TODO Auto-generated catch block
-									System.err.println(e.getMessage());
-									future.cancel(true);
-									readerClass--;
-								} catch (TimeoutException e) {
-									// TODO Auto-generated catch block
-									future.cancel(true);
-									e.printStackTrace();
-
-								}
-
-							} catch (Exception e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-								readerClass--;
+							if (writerClass == 0) {
+								suffixBuilder.append("sW");
+							} else if (writerClass == 1) {
+								suffixBuilder.append("mW");
+							} else if (writerClass == 2) {
+								suffixBuilder.append("lW");
 							}
-						}
 
+							if (readerClass == 0) {
+								suffixBuilder.append("sR");
+							} else if (readerClass == 1) {
+								suffixBuilder.append("mR");
+							} else if (readerClass == 2) {
+								suffixBuilder.append("lR");
+							}
+
+							int currAmountReaderTasksInModel = newModelInstance
+									.getModelElementsByType(DataInputAssociation.class).size();
+							boolean insertWriters = true;
+							if (currAmountReaderTasksInModel > amountReaderTasksToBeInserted) {
+								// model out of bound
+								insertWriters = false;
+							}
+
+							if (amountWriterTasksToBeInserted > percentageOfWritersClasses.get(writerClass)) {
+								// model out of bound
+								insertWriters = false;
+							}
+
+							if (insertWriters) {
+								ProcessModelAnnotater modelWithReadersAndWriters;
+								try {
+
+									modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(),
+											pathToDestinationFolderForStoringModels, suffixBuilder.toString());
+									modelWithReadersAndWriters.setDataObjectsConnectedToBrts(true);
+
+									// add the methods to be called
+									LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
+
+									String firstMethodToBeCalledName = "addNamesForOutgoingFlowsOfXorSplits";
+									Object[] argumentsForFirstMethod = new Object[1];
+									argumentsForFirstMethod[0] = defaultNamesSeqFlowsXorSplits;
+									methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName,
+											argumentsForFirstMethod);
+
+									String secondMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
+									Object[] argumentsForSecondMethod = new Object[4];
+									argumentsForSecondMethod[0] = amountWriterTasksToBeInserted;
+									argumentsForSecondMethod[1] = amountReaderTasksToBeInserted;
+									argumentsForSecondMethod[2] = 0;
+									argumentsForSecondMethod[3] = emptySphere;
+									methodsToBeCalledMap.putIfAbsent(secondMethodToBeCalledName,
+											argumentsForSecondMethod);
+
+									modelWithReadersAndWriters.setMethodsToRunWithinCall(methodsToBeCalledMap);
+
+									Future<File> future = executor.submit(modelWithReadersAndWriters);
+
+									try {
+										future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
+										future.cancel(true);
+										modelAnnotatedCorrectly=true;
+									} catch (InterruptedException e) {
+										// TODO Auto-generated catch block
+										future.cancel(true);
+										e.printStackTrace();
+										readerClass--;
+									} catch (ExecutionException e) {
+										// TODO Auto-generated catch block
+										System.err.println(e.getMessage());
+										future.cancel(true);
+										readerClass--;
+									} catch (TimeoutException e) {
+										// TODO Auto-generated catch block
+										future.cancel(true);
+										e.printStackTrace();
+
+									}
+
+								} catch (Exception e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+									readerClass--;
+								}
+							}
+							triesForInsertingReadersAndWriters--;
+							System.out.println("Tries for annotating model: "+triesForInsertingReadersAndWriters);
+						}
 					}
 				}
 			}
