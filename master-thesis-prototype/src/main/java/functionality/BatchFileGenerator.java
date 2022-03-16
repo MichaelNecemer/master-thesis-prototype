@@ -252,7 +252,7 @@ public class BatchFileGenerator {
 			// with 1 decision, 50 with 2 decisions
 			// small processes: 5 participants, 6-15 tasks, 1-2 xors, 0-2 parallels, 100
 			// processes
-			int amountProcessesToCreatePerDecision = 5;
+			int amountProcessesToCreatePerDecision = 50;
 
 			ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
 			
@@ -299,7 +299,7 @@ public class BatchFileGenerator {
 			} else {
 				String pathToFolderForModelsForTest2 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test2-TradeOff").getAbsolutePath();
-				int modelsToTakePerDecision = 1;
+				int modelsToTakePerDecision = 20;
 				pathToSmallProcessesForTest2WithAnnotation = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "SmallProcessesAnnotatedFolder")
 						.getAbsolutePath();
@@ -1595,8 +1595,10 @@ public class BatchFileGenerator {
 								// model out of bound
 								insertWriters = false;
 							}
-
-							if (amountWriterTasksToBeInserted > percentageOfWritersClasses.get(writerClass)) {
+						
+							int amountWriterTasksForPercentage = CommonFunctionality.getAmountFromPercentage(amountTasks,
+									percentageOfWritersClasses.get(writerClass));
+							if (amountWriterTasksToBeInserted > amountWriterTasksForPercentage) {
 								// model out of bound
 								insertWriters = false;
 							}
