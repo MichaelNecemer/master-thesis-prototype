@@ -862,7 +862,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 					if (!(nodeBeforeXorSplit instanceof BusinessRuleTask)) {
 						// new businessRuletask needs to be inserted
-						// delete old sequence flow
+						// delete old sequence flow					
 						if (nodeBeforeXorSplit instanceof Task) {
 							// the fluent builder doesn't work on tasks
 							// change the task to a manual task and after using the fluent api change it
@@ -911,7 +911,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 							String nameForBrt = "InsertedBrt" + idForBrt;
 							if (!modelWithLanes) {
-								// add a random participantName to the nameForBr
+								// add a random participantName to the nameForBrt
 								nameForBrt += CommonFunctionality.getRandomItem(differentParticipants);
 							}
 

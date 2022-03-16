@@ -22,6 +22,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
+import org.camunda.bpm.model.bpmn.instance.BusinessRuleTask;
 import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
@@ -46,7 +47,7 @@ public class BatchFileGenerator {
 	static int timeOutForApiInMin = 3;
 
 	// how often will the modelAnnotater try to annotate the model if it fails
-	static int triesForModelAnnotater = 5;
+	static int triesForModelAnnotater = 15;
 
 	// bound for the bounded localMinAlgorithm
 	static int upperBoundLocalMinWithBound = 1;
@@ -251,10 +252,10 @@ public class BatchFileGenerator {
 			// with 1 decision, 50 with 2 decisions
 			// small processes: 5 participants, 6-15 tasks, 1-2 xors, 0-2 parallels, 100
 			// processes
-			int amountProcessesToCreatePerDecision = 50;
+			int amountProcessesToCreatePerDecision = 5;
 
 			ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
-
+			
 			for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation,
 						5, 5, 6, 15, i, i, 0, 2, amountProcessesToCreatePerDecision, randomProcessGeneratorService,
@@ -268,7 +269,7 @@ public class BatchFileGenerator {
 						pathToMediumProcessesFolderWithoutAnnotation, 5, 5, 16, 30, i, i, 0, 3,
 						amountProcessesToCreatePerDecision, randomProcessGeneratorService, true);
 			}
-
+			
 			// large processes: 5 participants, 31-60 tasks, 5-6 xors, 0-4, parallels, 100
 			// processes
 			for (int i = amountXorsLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
@@ -298,7 +299,7 @@ public class BatchFileGenerator {
 			} else {
 				String pathToFolderForModelsForTest2 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test2-TradeOff").getAbsolutePath();
-				int modelsToTakePerDecision = 20;
+				int modelsToTakePerDecision = 1;
 				pathToSmallProcessesForTest2WithAnnotation = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "SmallProcessesAnnotatedFolder")
 						.getAbsolutePath();
@@ -309,20 +310,21 @@ public class BatchFileGenerator {
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "LargeProcessesAnnotatedFolder")
 						.getAbsolutePath();
 
+				
 				LinkedList<File> smallProcessesWithoutAnnotation = new LinkedList<File>();
 				for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
 					smallProcessesWithoutAnnotation
 							.addAll(BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
 									modelsToTakePerDecision, i, pathToSmallProcessesFolderWithoutAnnotation));
 				}
-
+	
 				LinkedList<File> mediumProcessesWithoutAnnotation = new LinkedList<File>();
 				for (int i = amountXorsMediumProcessesBounds.get(0); i <= amountXorsMediumProcessesBounds.get(1); i++) {
 					mediumProcessesWithoutAnnotation
 							.addAll(BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
 									modelsToTakePerDecision, i, pathToMediumProcessesFolderWithoutAnnotation));
 				}
-
+				
 				LinkedList<File> largeProcessesWithoutAnnotation = new LinkedList<File>();
 				for (int i = amountXorsLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
 					largeProcessesWithoutAnnotation
@@ -333,12 +335,14 @@ public class BatchFileGenerator {
 				BatchFileGenerator.performTradeOffTest("small", smallProcessesWithoutAnnotation,
 						pathToSmallProcessesForTest2WithAnnotation, dataObjectBoundsSmallProcesses,
 						upperBoundLocalMinWithBound, boundForComparisons, amountThreads);
+				
 				BatchFileGenerator.performTradeOffTest("medium", mediumProcessesWithoutAnnotation,
 						pathToMediumProcessesForTest2WithAnnotation, dataObjectBoundsMediumProcesses,
 						upperBoundLocalMinWithBound, boundForComparisons, amountThreads);
 				BatchFileGenerator.performTradeOffTest("large", largeProcessesWithoutAnnotation,
 						pathToLargeProcessesForTest2WithAnnotation, dataObjectBoundsLargeProcesses,
 						upperBoundLocalMinWithBound, boundForComparisons, amountThreads);
+				
 				System.out.println("Test 2 finished!");
 			}
 		}
@@ -892,8 +896,8 @@ public class BatchFileGenerator {
 							FlowNode nodeAfterStartEvent = createdModel.getModelElementsByType(StartEvent.class)
 									.iterator().next();
 							if (nodeAfterStartEvent instanceof ParallelGateway
-									|| nodeAfterStartEvent instanceof ExclusiveGateway) {
-								// task will have to be inserted in front of it
+									|| nodeAfterStartEvent instanceof ExclusiveGateway || nodeAfterStartEvent instanceof BusinessRuleTask) {
+								// writer task + brt will have to be inserted in front of it
 								amountNodesToBeInserted++;
 							}
 
@@ -917,7 +921,6 @@ public class BatchFileGenerator {
 								System.out.println("Tasks of model after nodes to be inserted: "
 										+ amountTasksOfModelAfterNodesToBeInserted + " > upperBoundTasks "
 										+ upperBoundTasks);
-
 							}
 						}
 
@@ -1337,6 +1340,7 @@ public class BatchFileGenerator {
 							}
 							ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
 									pathToDestinationFolderForStoringModels, suffix);
+							amountTasks = CommonFunctionality.getAmountTasks(pModel.getModelInstance());
 
 							sumDataObjectsToCreate = amountUniqueDataObjectsPerDecision * amountDecisions;
 							if (amountTasks > sumDataObjectsToCreate) {
@@ -1493,12 +1497,12 @@ public class BatchFileGenerator {
 			File newModel = null;
 			boolean modelIsValid = false;
 			int amountRandomCountDataObjectsToCreate = 0;
-			int tries = 10;
-			while (modelIsValid == false && tries > 0) {
+			int tries = 0;
+			while (modelIsValid == false && tries < triesForModelAnnotater) {
 				try {
 					ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
 							pathToDestinationFolderForStoringModels, "");
-
+		
 					// randomly generate dataObjects in the range [DataObjects, maxCountDataObjects]
 					amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(dataObjectBounds.get(0),
 							dataObjectBounds.get(1) + 1);
@@ -1519,6 +1523,7 @@ public class BatchFileGenerator {
 					// e.g. if it has 21 tasks and 30% is max readers for large processes -> max 7
 					// readers
 					BpmnModelInstance newModelInst = Bpmn.readModelFromFile(newModel.getAbsoluteFile());
+					amountTasks = CommonFunctionality.getAmountTasks(newModelInst);
 					int currAmountReaders = newModelInst.getModelElementsByType(DataInputAssociation.class).size();
 					if (currAmountReaders > CommonFunctionality.getAmountFromPercentage(amountTasks,
 							percentageOfReadersClasses.get(2))) {
@@ -1543,7 +1548,7 @@ public class BatchFileGenerator {
 				} catch (Exception e) {
 					System.err.println(e.getMessage());
 				}
-				tries--;
+				tries++;
 			}
 
 			if (newModel != null) {				
@@ -1562,7 +1567,7 @@ public class BatchFileGenerator {
 							int triesForInsertingReadersAndWriters = 50;
 							boolean modelAnnotatedCorrectly = false;
 							while (triesForInsertingReadersAndWriters > 0 && modelAnnotatedCorrectly==false) {
-
+							Exception ex = null;
 							int amountReaderTasksToBeInserted = CommonFunctionality.getAmountFromPercentage(amountTasks,
 									percentageOfReadersClasses.get(readerClass));
 							StringBuilder suffixBuilder = new StringBuilder();
@@ -1599,7 +1604,6 @@ public class BatchFileGenerator {
 							if (insertWriters) {
 								ProcessModelAnnotater modelWithReadersAndWriters;
 								try {
-
 									modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(),
 											pathToDestinationFolderForStoringModels, suffixBuilder.toString());
 									modelWithReadersAndWriters.setDataObjectsConnectedToBrts(true);
@@ -1625,7 +1629,6 @@ public class BatchFileGenerator {
 									modelWithReadersAndWriters.setMethodsToRunWithinCall(methodsToBeCalledMap);
 
 									Future<File> future = executor.submit(modelWithReadersAndWriters);
-
 									try {
 										future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
 										future.cancel(true);
@@ -1634,27 +1637,34 @@ public class BatchFileGenerator {
 										// TODO Auto-generated catch block
 										future.cancel(true);
 										e.printStackTrace();
-										readerClass--;
+										ex = e;
 									} catch (ExecutionException e) {
 										// TODO Auto-generated catch block
 										System.err.println(e.getMessage());
 										future.cancel(true);
-										readerClass--;
+										ex = e;
 									} catch (TimeoutException e) {
 										// TODO Auto-generated catch block
 										future.cancel(true);
 										e.printStackTrace();
-
+										ex = e;
 									}
 
 								} catch (Exception e) {
 									// TODO Auto-generated catch block
 									e.printStackTrace();
-									readerClass--;
+									ex = e;
 								}
+								if(ex!=null) {
+									triesForInsertingReadersAndWriters--;
+									System.out.println("Tries left for annotating model: "+triesForInsertingReadersAndWriters);
+								}
+								
+							} else {
+								//model can not be annotated with the current readers/writers combination
+								//skip this combination
+								triesForInsertingReadersAndWriters=0;
 							}
-							triesForInsertingReadersAndWriters--;
-							System.out.println("Tries for annotating model: "+triesForInsertingReadersAndWriters);
 						}
 					}
 				}
