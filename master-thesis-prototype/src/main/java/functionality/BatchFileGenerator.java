@@ -120,7 +120,7 @@ public class BatchFileGenerator {
 		methodsToRun.add(test4_1ToRun);
 		methodsToRun.add(test4_2ToRun);
 		methodsToRun.add(test5ToRun);
-		methodsToRun.add(test6ToRun);
+		methodsToRun.add(test6ToRun);		
 
 		String pathToFolderForModelsForTest1_1 = "";
 		String pathToSmallProcessesFolderWithoutAnnotation = "";
@@ -313,23 +313,26 @@ public class BatchFileGenerator {
 				
 				LinkedList<File> smallProcessesWithoutAnnotation = new LinkedList<File>();
 				for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
-					smallProcessesWithoutAnnotation
-							.addAll(BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
-									modelsToTakePerDecision, i, pathToSmallProcessesFolderWithoutAnnotation));
+					LinkedList<File>smallProcessesToAdd = BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
+							modelsToTakePerDecision, i, pathToSmallProcessesFolderWithoutAnnotation);
+					smallProcessesWithoutAnnotation.addAll(smallProcessesToAdd);
+					System.out.println(smallProcessesToAdd.size()+" small processes with: "+i+" decisions added!");
 				}
 	
 				LinkedList<File> mediumProcessesWithoutAnnotation = new LinkedList<File>();
 				for (int i = amountXorsMediumProcessesBounds.get(0); i <= amountXorsMediumProcessesBounds.get(1); i++) {
-					mediumProcessesWithoutAnnotation
-							.addAll(BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
-									modelsToTakePerDecision, i, pathToMediumProcessesFolderWithoutAnnotation));
+					LinkedList<File>mediumProcessestoAdd = BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
+							modelsToTakePerDecision, i, pathToMediumProcessesFolderWithoutAnnotation);
+					mediumProcessesWithoutAnnotation.addAll(mediumProcessestoAdd);
+					System.out.println(mediumProcessestoAdd.size()+" medium processes with: "+i+" decisions added!");
 				}
 				
 				LinkedList<File> largeProcessesWithoutAnnotation = new LinkedList<File>();
 				for (int i = amountXorsLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
-					largeProcessesWithoutAnnotation
-							.addAll(BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
-									modelsToTakePerDecision, i, pathToLargeProcessesFolderWithoutAnnotation));
+					LinkedList<File>largeProcessesToAdd = BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
+							modelsToTakePerDecision, i, pathToLargeProcessesFolderWithoutAnnotation);
+					largeProcessesWithoutAnnotation.addAll(largeProcessesToAdd);
+					System.out.println(largeProcessesToAdd.size()+" large processes with: "+i+" decisions added!");
 				}
 
 				BatchFileGenerator.performTradeOffTest("small", smallProcessesWithoutAnnotation,
@@ -1451,17 +1454,20 @@ public class BatchFileGenerator {
 		listOfFiles.addAll(Arrays.asList(folder.listFiles()));
 
 		LinkedList<File> modelsFromSourceFolder = new LinkedList<File>();
-		for (int i = 0; i < amountModelsPerDecision; i++) {
-			File model = listOfFiles.get(i);
+		for(int listOfFilesIndex = 0; listOfFilesIndex < listOfFiles.size(); listOfFilesIndex++) {
+			if(modelsFromSourceFolder.size()==amountModelsPerDecision) {
+				break;
+			}
+			File model = listOfFiles.get(listOfFilesIndex);
 			if (!model.getName().contains(".csv")) {
 				BpmnModelInstance modelInst = Bpmn.readModelFromFile(model);
 				int modelInstDecisions = CommonFunctionality.getAmountExclusiveGtwSplits(modelInst);
 				if (modelInstDecisions == amountDecisions) {
 					modelsFromSourceFolder.add(model);
-				}
+				} 
 			}
 		}
-
+		
 		return modelsFromSourceFolder;
 	}
 
