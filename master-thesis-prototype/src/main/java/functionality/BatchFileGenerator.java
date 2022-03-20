@@ -338,7 +338,6 @@ public class BatchFileGenerator {
 				BatchFileGenerator.performTradeOffTest("small", smallProcessesWithoutAnnotation,
 						pathToSmallProcessesForTest2WithAnnotation, dataObjectBoundsSmallProcesses,
 						upperBoundLocalMinWithBound, boundForComparisons, amountThreads);
-				
 				BatchFileGenerator.performTradeOffTest("medium", mediumProcessesWithoutAnnotation,
 						pathToMediumProcessesForTest2WithAnnotation, dataObjectBoundsMediumProcesses,
 						upperBoundLocalMinWithBound, boundForComparisons, amountThreads);
@@ -826,7 +825,7 @@ public class BatchFileGenerator {
 	public static void generateRandomProcessesWithinGivenRanges(String pathToFiles, int lowerBoundParticipants,
 			int upperBoundParticipants, int lowerBoundTasks, int upperBoundTasks, int lowerBoundXorGtws,
 			int upperBoundXorGtws, int lowerBoundParallelGtws, int upperBoundParallelGtws, int amountProcesses,
-			ExecutorService executor, boolean testForBrtsBeforeXors) {
+			ExecutorService executor, boolean testForNodesBeforeGtws) {
 
 		for (int i = 1; i <= amountProcesses; i++) {
 
@@ -894,25 +893,21 @@ public class BatchFileGenerator {
 
 						}
 
-						if (testForBrtsBeforeXors) {
+						if (testForNodesBeforeGtws) {
 							int amountNodesToBeInserted = 0;
 							FlowNode nodeAfterStartEvent = createdModel.getModelElementsByType(StartEvent.class)
 									.iterator().next();
 							if (nodeAfterStartEvent instanceof ParallelGateway
 									|| nodeAfterStartEvent instanceof ExclusiveGateway || nodeAfterStartEvent instanceof BusinessRuleTask) {
-								// writer task + brt will have to be inserted in front of it
+								// writer task will be inserted in front
 								amountNodesToBeInserted++;
 							}
 
 							for (ExclusiveGateway gtw : createdModel.getModelElementsByType(ExclusiveGateway.class)) {
 								if (gtw.getOutgoing().size() >= 2) {
 									// if xor is a split
-									ExclusiveGateway split = gtw;
-									FlowNode nodeBeforeXorSplit = split.getIncoming().iterator().next().getSource();
-									if (!(nodeBeforeXorSplit instanceof Task)) {
-										// there must be a brt inserted before
-										amountNodesToBeInserted++;
-									}
+									// there must be a brt inserted before
+										amountNodesToBeInserted++;									
 								}
 
 							}
@@ -1537,7 +1532,8 @@ public class BatchFileGenerator {
 					}
 
 					// check if newmodel can have the min % of writers
-					// e.g. 21 tasks and 10% min readers -> 3 readers
+					// for each data object - 1 writer
+					// e.g. 21 tasks and 10% min writers -> 3 readers
 					int minAmountWritersNeeded = newModelInst.getModelElementsByType(DataObjectReference.class).size();
 					if (minAmountWritersNeeded > CommonFunctionality.getAmountFromPercentage(amountTasks,
 							percentageOfWritersClasses.get(0))) {
@@ -1557,7 +1553,7 @@ public class BatchFileGenerator {
 				tries++;
 			}
 
-			if (newModel != null) {				
+			if (newModel != null) {		
 					for (int writerClass = 0; writerClass < percentageOfWritersClasses.size(); writerClass++) {
 						// for each model -> annotate it with small, medium, large amount of writers
 						BpmnModelInstance newModelInstance = Bpmn.readModelFromFile(newModel);
@@ -1572,11 +1568,10 @@ public class BatchFileGenerator {
 							// for each model -> annotate it with small, medium, large amount of readers
 							int triesForInsertingReadersAndWriters = 50;
 							boolean modelAnnotatedCorrectly = false;
-							while (triesForInsertingReadersAndWriters > 0 && modelAnnotatedCorrectly==false) {
 							Exception ex = null;
 							int amountReaderTasksToBeInserted = CommonFunctionality.getAmountFromPercentage(amountTasks,
 									percentageOfReadersClasses.get(readerClass));
-							StringBuilder suffixBuilder = new StringBuilder();
+							StringBuilder suffixBuilder = new StringBuilder();						
 
 							if (writerClass == 0) {
 								suffixBuilder.append("sW");
@@ -1585,7 +1580,7 @@ public class BatchFileGenerator {
 							} else if (writerClass == 2) {
 								suffixBuilder.append("lW");
 							}
-
+							
 							if (readerClass == 0) {
 								suffixBuilder.append("sR");
 							} else if (readerClass == 1) {
@@ -1593,7 +1588,10 @@ public class BatchFileGenerator {
 							} else if (readerClass == 2) {
 								suffixBuilder.append("lR");
 							}
-
+							
+							
+							String suffix = suffixBuilder.toString();
+							
 							int currAmountReaderTasksInModel = newModelInstance
 									.getModelElementsByType(DataInputAssociation.class).size();
 							boolean insertWriters = true;
@@ -1610,10 +1608,11 @@ public class BatchFileGenerator {
 							}
 
 							if (insertWriters) {
+								while (triesForInsertingReadersAndWriters > 0 && modelAnnotatedCorrectly==false) {
 								ProcessModelAnnotater modelWithReadersAndWriters;
 								try {
 									modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(),
-											pathToDestinationFolderForStoringModels, suffixBuilder.toString());
+											pathToDestinationFolderForStoringModels, suffix);
 									modelWithReadersAndWriters.setDataObjectsConnectedToBrts(true);
 
 									// add the methods to be called
@@ -1668,11 +1667,11 @@ public class BatchFileGenerator {
 									System.out.println("Tries left for annotating model: "+triesForInsertingReadersAndWriters);
 								}
 								
-							} else {
-								//model can not be annotated with the current readers/writers combination
-								//skip this combination
-								triesForInsertingReadersAndWriters=0;
-							}
+							} 
+						}	else {
+							//model can not be annotated with the current readers/writers combination
+							//skip this combination
+							triesForInsertingReadersAndWriters=0;
 						}
 					}
 				}
