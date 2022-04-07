@@ -140,7 +140,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 					} else {
 						boundedValue = ThreadLocalRandom.current().nextInt(minDataObjectsPerDecision,
 								(upperBoundAnnotatedDataObjects + 1));
-
 					}
 
 					if (allDataObjectsUniquePerGtw) {

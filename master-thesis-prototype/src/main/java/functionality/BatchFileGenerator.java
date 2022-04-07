@@ -120,7 +120,7 @@ public class BatchFileGenerator {
 		methodsToRun.add(test4_1ToRun);
 		methodsToRun.add(test4_2ToRun);
 		methodsToRun.add(test5ToRun);
-		methodsToRun.add(test6ToRun);		
+		methodsToRun.add(test6ToRun);
 
 		String pathToFolderForModelsForTest1_1 = "";
 		String pathToSmallProcessesFolderWithoutAnnotation = "";
@@ -255,7 +255,7 @@ public class BatchFileGenerator {
 			int amountProcessesToCreatePerDecision = 50;
 
 			ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
-			
+
 			for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation,
 						5, 5, 6, 15, i, i, 0, 2, amountProcessesToCreatePerDecision, randomProcessGeneratorService,
@@ -269,7 +269,7 @@ public class BatchFileGenerator {
 						pathToMediumProcessesFolderWithoutAnnotation, 5, 5, 16, 30, i, i, 0, 3,
 						amountProcessesToCreatePerDecision, randomProcessGeneratorService, true);
 			}
-			
+
 			// large processes: 5 participants, 31-60 tasks, 5-6 xors, 0-4, parallels, 100
 			// processes
 			for (int i = amountXorsLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
@@ -310,29 +310,34 @@ public class BatchFileGenerator {
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "LargeProcessesAnnotatedFolder")
 						.getAbsolutePath();
 
-				
 				LinkedList<File> smallProcessesWithoutAnnotation = new LinkedList<File>();
 				for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
-					LinkedList<File>smallProcessesToAdd = BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
-							modelsToTakePerDecision, i, pathToSmallProcessesFolderWithoutAnnotation);
+					LinkedList<File> smallProcessesToAdd = BatchFileGenerator
+							.getModelsInOrderFromSourceFolderWithExactAmountDecision(modelsToTakePerDecision, i,
+									pathToSmallProcessesFolderWithoutAnnotation);
 					smallProcessesWithoutAnnotation.addAll(smallProcessesToAdd);
-					System.out.println(smallProcessesToAdd.size()+" small processes with: "+i+" decisions added!");
+					System.out
+							.println(smallProcessesToAdd.size() + " small processes with: " + i + " decisions added!");
 				}
-	
+
 				LinkedList<File> mediumProcessesWithoutAnnotation = new LinkedList<File>();
 				for (int i = amountXorsMediumProcessesBounds.get(0); i <= amountXorsMediumProcessesBounds.get(1); i++) {
-					LinkedList<File>mediumProcessestoAdd = BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
-							modelsToTakePerDecision, i, pathToMediumProcessesFolderWithoutAnnotation);
+					LinkedList<File> mediumProcessestoAdd = BatchFileGenerator
+							.getModelsInOrderFromSourceFolderWithExactAmountDecision(modelsToTakePerDecision, i,
+									pathToMediumProcessesFolderWithoutAnnotation);
 					mediumProcessesWithoutAnnotation.addAll(mediumProcessestoAdd);
-					System.out.println(mediumProcessestoAdd.size()+" medium processes with: "+i+" decisions added!");
+					System.out.println(
+							mediumProcessestoAdd.size() + " medium processes with: " + i + " decisions added!");
 				}
-				
+
 				LinkedList<File> largeProcessesWithoutAnnotation = new LinkedList<File>();
 				for (int i = amountXorsLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
-					LinkedList<File>largeProcessesToAdd = BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
-							modelsToTakePerDecision, i, pathToLargeProcessesFolderWithoutAnnotation);
+					LinkedList<File> largeProcessesToAdd = BatchFileGenerator
+							.getModelsInOrderFromSourceFolderWithExactAmountDecision(modelsToTakePerDecision, i,
+									pathToLargeProcessesFolderWithoutAnnotation);
 					largeProcessesWithoutAnnotation.addAll(largeProcessesToAdd);
-					System.out.println(largeProcessesToAdd.size()+" large processes with: "+i+" decisions added!");
+					System.out
+							.println(largeProcessesToAdd.size() + " large processes with: " + i + " decisions added!");
 				}
 
 				BatchFileGenerator.performTradeOffTest("small", smallProcessesWithoutAnnotation,
@@ -344,7 +349,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.performTradeOffTest("large", largeProcessesWithoutAnnotation,
 						pathToLargeProcessesForTest2WithAnnotation, dataObjectBoundsLargeProcesses,
 						upperBoundLocalMinWithBound, boundForComparisons, amountThreads);
-				
+
 				System.out.println("Test 2 finished!");
 			}
 		}
@@ -368,32 +373,53 @@ public class BatchFileGenerator {
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test3-ImpactOfDataObjects").getAbsolutePath();
 
 				int modelsToTakePerDecision = 10;
-
+				LinkedList<Integer> allDecisions = new LinkedList<Integer>();
+				// annotate models with max amount of unique dataObjects
+				int amountUniqueDataObjectsPerDecision = 3;
+				int maxAmountUniqueDataObjects = amountXorsMediumProcessesBounds.get(1)
+						* amountUniqueDataObjectsPerDecision;
+								
 				LinkedList<File> smallProcessesWithoutAnnotationTest3 = new LinkedList<File>();
 				for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
-					smallProcessesWithoutAnnotationTest3
-							.addAll(BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
-									modelsToTakePerDecision, i, pathToSmallProcessesFolderWithoutAnnotation));
+					smallProcessesWithoutAnnotationTest3.addAll(
+							BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecisionsAndMinTasks(
+									modelsToTakePerDecision, i, maxAmountUniqueDataObjects,
+									pathToSmallProcessesFolderWithoutAnnotation));
+					if (!allDecisions.contains(i)) {
+						allDecisions.add(i);
+					}
 				}
 
 				LinkedList<File> mediumProcessesWithoutAnnotationTest3 = new LinkedList<File>();
 				for (int i = amountXorsMediumProcessesBounds.get(0); i <= amountXorsMediumProcessesBounds.get(1); i++) {
-					mediumProcessesWithoutAnnotationTest3
-							.addAll(BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecision(
-									modelsToTakePerDecision, i, pathToMediumProcessesFolderWithoutAnnotation));
+					mediumProcessesWithoutAnnotationTest3.addAll(
+							BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecisionsAndMinTasks(
+									modelsToTakePerDecision, i, maxAmountUniqueDataObjects,
+									pathToMediumProcessesFolderWithoutAnnotation));
+					if (!allDecisions.contains(i)) {
+						allDecisions.add(i);
+					}
 				}
 
 				LinkedList<File> allProcessesWithoutAnnotationTest3 = new LinkedList<File>();
 				allProcessesWithoutAnnotationTest3.addAll(smallProcessesWithoutAnnotationTest3);
 				allProcessesWithoutAnnotationTest3.addAll(mediumProcessesWithoutAnnotationTest3);
 
-				// annotate models with same amount of unique data objects per decision
-				int amountUniqueDataObjectsPerDecision = 4;
+				boolean performTest = true;
+				for (int i = 1; i <= allDecisions.getLast(); i++) {
+					int modulo = maxAmountUniqueDataObjects % i;
+					if (modulo != 0) {
+						System.err.println(maxAmountUniqueDataObjects + "%" + i + "=" + modulo + "! Should be 0!");
+						performTest = false;
+					}
+				}
 
-				BatchFileGenerator.performDataObjectTest(allProcessesWithoutAnnotationTest3,
-						pathToFolderForModelsForDataObjectTest, amountUniqueDataObjectsPerDecision,
-						upperBoundLocalMinWithBound, amountThreads);
-				System.out.println("Test 3 finished!");
+				if (performTest) {
+					BatchFileGenerator.performDataObjectTest(allProcessesWithoutAnnotationTest3,
+							pathToFolderForModelsForDataObjectTest, maxAmountUniqueDataObjects,
+							upperBoundLocalMinWithBound, amountThreads);
+					System.out.println("Test 3 finished!");
+				}
 			}
 		}
 
@@ -898,7 +924,8 @@ public class BatchFileGenerator {
 							FlowNode nodeAfterStartEvent = createdModel.getModelElementsByType(StartEvent.class)
 									.iterator().next();
 							if (nodeAfterStartEvent instanceof ParallelGateway
-									|| nodeAfterStartEvent instanceof ExclusiveGateway || nodeAfterStartEvent instanceof BusinessRuleTask) {
+									|| nodeAfterStartEvent instanceof ExclusiveGateway
+									|| nodeAfterStartEvent instanceof BusinessRuleTask) {
 								// writer task will be inserted in front
 								amountNodesToBeInserted++;
 							}
@@ -907,7 +934,7 @@ public class BatchFileGenerator {
 								if (gtw.getOutgoing().size() >= 2) {
 									// if xor is a split
 									// there must be a brt inserted before
-										amountNodesToBeInserted++;									
+									amountNodesToBeInserted++;
 								}
 
 							}
@@ -1281,10 +1308,10 @@ public class BatchFileGenerator {
 	}
 
 	public static void performDataObjectTest(LinkedList<File> processes, String pathToDestinationFolderForStoringModels,
-			int amountUniqueDataObjectsPerDecision, int upperBoundLocalMinWithBound, int amountThreadPools)
-			throws IOException {
+			int maxAmountUniqueDataObjects, int upperBoundLocalMinWithBound, int amountThreadPools) throws IOException {
 		// each decision has unique dataObject sets of same size
-		// e.g. model has 4 decisions -> and each decision has 3 DataObjects -> 12
+		// e.g. model has 3 decisions -> and maxAmountUniqueDataObjects = 12 -> each
+		// decision will have 4 unique dataObjects
 		// unique dataObjects need to be connected
 		// -> at least 12 readers and 12 writers needed, since every data object will
 		// have to be first written and then get read by some brt
@@ -1312,7 +1339,6 @@ public class BatchFileGenerator {
 					int amountVotersUpperBound = ThreadLocalRandom.current().nextInt(2, globalSphere + 1);
 
 					boolean modelIsValid = false;
-					int sumDataObjectsToCreate = 0;
 					int triesPerModel = 100;
 					boolean skipModel = false;
 					while (modelIsValid == false && skipModel == false && triesPerModel > 0) {
@@ -1340,13 +1366,13 @@ public class BatchFileGenerator {
 									pathToDestinationFolderForStoringModels, suffix);
 							amountTasks = CommonFunctionality.getAmountTasks(pModel.getModelInstance());
 
-							sumDataObjectsToCreate = amountUniqueDataObjectsPerDecision * amountDecisions;
-							if (amountTasks > sumDataObjectsToCreate) {
-								pModel.generateDataObjects(sumDataObjectsToCreate, sphere);
-								pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(amountUniqueDataObjectsPerDecision,
-										amountUniqueDataObjectsPerDecision, 2, amountVotersUpperBound, 0, true);
-								int amountWritersNeededForDataObjects = sumDataObjectsToCreate;
-								int amountReadersNeededForDataObjects = sumDataObjectsToCreate;
+							if (amountTasks > maxAmountUniqueDataObjects) {
+								int minDataObjectsPerDecision = maxAmountUniqueDataObjects / amountDecisions;
+								pModel.generateDataObjects(maxAmountUniqueDataObjects, sphere);
+								pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision,
+										minDataObjectsPerDecision, 2, amountVotersUpperBound, 0, true);
+								int amountWritersNeededForDataObjects = maxAmountUniqueDataObjects;
+								int amountReadersNeededForDataObjects = maxAmountUniqueDataObjects;
 
 								// additional readers and writers to be inserted
 								int amountAdditionalWriters = CommonFunctionality.getAmountFromPercentage(amountTasks,
@@ -1449,8 +1475,8 @@ public class BatchFileGenerator {
 		listOfFiles.addAll(Arrays.asList(folder.listFiles()));
 
 		LinkedList<File> modelsFromSourceFolder = new LinkedList<File>();
-		for(int listOfFilesIndex = 0; listOfFilesIndex < listOfFiles.size(); listOfFilesIndex++) {
-			if(modelsFromSourceFolder.size()==amountModelsPerDecision) {
+		for (int listOfFilesIndex = 0; listOfFilesIndex < listOfFiles.size(); listOfFilesIndex++) {
+			if (modelsFromSourceFolder.size() == amountModelsPerDecision) {
 				break;
 			}
 			File model = listOfFiles.get(listOfFilesIndex);
@@ -1459,10 +1485,35 @@ public class BatchFileGenerator {
 				int modelInstDecisions = CommonFunctionality.getAmountExclusiveGtwSplits(modelInst);
 				if (modelInstDecisions == amountDecisions) {
 					modelsFromSourceFolder.add(model);
-				} 
+				}
 			}
 		}
-		
+
+		return modelsFromSourceFolder;
+	}
+
+	public static LinkedList<File> getModelsInOrderFromSourceFolderWithExactAmountDecisionsAndMinTasks(
+			int amountModelsPerDecision, int amountDecisions, int minAmountTasks, String pathToSourceFolder) {
+		File folder = new File(pathToSourceFolder);
+		LinkedList<File> listOfFiles = new LinkedList<File>();
+		listOfFiles.addAll(Arrays.asList(folder.listFiles()));
+
+		LinkedList<File> modelsFromSourceFolder = new LinkedList<File>();
+		for (int listOfFilesIndex = 0; listOfFilesIndex < listOfFiles.size(); listOfFilesIndex++) {
+			if (modelsFromSourceFolder.size() == amountModelsPerDecision) {
+				break;
+			}
+			File model = listOfFiles.get(listOfFilesIndex);
+			if (!model.getName().contains(".csv")) {
+				BpmnModelInstance modelInst = Bpmn.readModelFromFile(model);
+				int modelInstDecisions = CommonFunctionality.getAmountExclusiveGtwSplits(modelInst);
+				int amountTasks = CommonFunctionality.getAmountTasks(modelInst);
+				if (modelInstDecisions == amountDecisions && amountTasks >= minAmountTasks) {
+					modelsFromSourceFolder.add(model);
+				}
+			}
+		}
+
 		return modelsFromSourceFolder;
 	}
 
@@ -1503,7 +1554,7 @@ public class BatchFileGenerator {
 				try {
 					ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
 							pathToDestinationFolderForStoringModels, "");
-		
+
 					// randomly generate dataObjects in the range [DataObjects, maxCountDataObjects]
 					amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(dataObjectBounds.get(0),
 							dataObjectBounds.get(1) + 1);
@@ -1553,62 +1604,60 @@ public class BatchFileGenerator {
 				tries++;
 			}
 
-			if (newModel != null) {		
-					for (int writerClass = 0; writerClass < percentageOfWritersClasses.size(); writerClass++) {
-						// for each model -> annotate it with small, medium, large amount of writers
-						BpmnModelInstance newModelInstance = Bpmn.readModelFromFile(newModel);
+			if (newModel != null) {
+				for (int writerClass = 0; writerClass < percentageOfWritersClasses.size(); writerClass++) {
+					// for each model -> annotate it with small, medium, large amount of writers
+					BpmnModelInstance newModelInstance = Bpmn.readModelFromFile(newModel);
 
-						int minAmountWriters = newModelInstance.getModelElementsByType(DataObjectReference.class)
-								.size();
+					int minAmountWriters = newModelInstance.getModelElementsByType(DataObjectReference.class).size();
 
-						int amountWriterTasksToBeInserted = CommonFunctionality.getAmountFromPercentageWithMinimum(
-								amountTasks, percentageOfWritersClasses.get(writerClass), minAmountWriters);
+					int amountWriterTasksToBeInserted = CommonFunctionality.getAmountFromPercentageWithMinimum(
+							amountTasks, percentageOfWritersClasses.get(writerClass), minAmountWriters);
 
-						for (int readerClass = 0; readerClass < percentageOfReadersClasses.size(); readerClass++) {
-							// for each model -> annotate it with small, medium, large amount of readers
-							int triesForInsertingReadersAndWriters = 50;
-							boolean modelAnnotatedCorrectly = false;
-							Exception ex = null;
-							int amountReaderTasksToBeInserted = CommonFunctionality.getAmountFromPercentage(amountTasks,
-									percentageOfReadersClasses.get(readerClass));
-							StringBuilder suffixBuilder = new StringBuilder();						
+					for (int readerClass = 0; readerClass < percentageOfReadersClasses.size(); readerClass++) {
+						// for each model -> annotate it with small, medium, large amount of readers
+						int triesForInsertingReadersAndWriters = 50;
+						boolean modelAnnotatedCorrectly = false;
+						Exception ex = null;
+						int amountReaderTasksToBeInserted = CommonFunctionality.getAmountFromPercentage(amountTasks,
+								percentageOfReadersClasses.get(readerClass));
+						StringBuilder suffixBuilder = new StringBuilder();
 
-							if (writerClass == 0) {
-								suffixBuilder.append("sW");
-							} else if (writerClass == 1) {
-								suffixBuilder.append("mW");
-							} else if (writerClass == 2) {
-								suffixBuilder.append("lW");
-							}
-							
-							if (readerClass == 0) {
-								suffixBuilder.append("sR");
-							} else if (readerClass == 1) {
-								suffixBuilder.append("mR");
-							} else if (readerClass == 2) {
-								suffixBuilder.append("lR");
-							}
-							
-							
-							String suffix = suffixBuilder.toString();
-							
-							int currAmountReaderTasksInModel = newModelInstance
-									.getModelElementsByType(DataInputAssociation.class).size();
-							boolean insertWriters = true;
-							if (currAmountReaderTasksInModel > amountReaderTasksToBeInserted) {
-								// model out of bound
-								insertWriters = false;
-							}
-						
-							int amountWriterTasksForPercentage = CommonFunctionality.getAmountFromPercentage(amountTasks,
-									percentageOfWritersClasses.get(writerClass));
-							if (amountWriterTasksToBeInserted > amountWriterTasksForPercentage) {
-								// model out of bound
-								insertWriters = false;
-							}
+						if (writerClass == 0) {
+							suffixBuilder.append("sW");
+						} else if (writerClass == 1) {
+							suffixBuilder.append("mW");
+						} else if (writerClass == 2) {
+							suffixBuilder.append("lW");
+						}
 
-							if (insertWriters) {
-								while (triesForInsertingReadersAndWriters > 0 && modelAnnotatedCorrectly==false) {
+						if (readerClass == 0) {
+							suffixBuilder.append("sR");
+						} else if (readerClass == 1) {
+							suffixBuilder.append("mR");
+						} else if (readerClass == 2) {
+							suffixBuilder.append("lR");
+						}
+
+						String suffix = suffixBuilder.toString();
+
+						int currAmountReaderTasksInModel = newModelInstance
+								.getModelElementsByType(DataInputAssociation.class).size();
+						boolean insertWriters = true;
+						if (currAmountReaderTasksInModel > amountReaderTasksToBeInserted) {
+							// model out of bound
+							insertWriters = false;
+						}
+
+						int amountWriterTasksForPercentage = CommonFunctionality.getAmountFromPercentage(amountTasks,
+								percentageOfWritersClasses.get(writerClass));
+						if (amountWriterTasksToBeInserted > amountWriterTasksForPercentage) {
+							// model out of bound
+							insertWriters = false;
+						}
+
+						if (insertWriters) {
+							while (triesForInsertingReadersAndWriters > 0 && modelAnnotatedCorrectly == false) {
 								ProcessModelAnnotater modelWithReadersAndWriters;
 								try {
 									modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(),
@@ -1639,7 +1688,7 @@ public class BatchFileGenerator {
 									try {
 										future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
 										future.cancel(true);
-										modelAnnotatedCorrectly=true;
+										modelAnnotatedCorrectly = true;
 									} catch (InterruptedException e) {
 										// TODO Auto-generated catch block
 										future.cancel(true);
@@ -1662,16 +1711,17 @@ public class BatchFileGenerator {
 									e.printStackTrace();
 									ex = e;
 								}
-								if(ex!=null) {
+								if (ex != null) {
 									triesForInsertingReadersAndWriters--;
-									System.out.println("Tries left for annotating model: "+triesForInsertingReadersAndWriters);
+									System.out.println(
+											"Tries left for annotating model: " + triesForInsertingReadersAndWriters);
 								}
-								
-							} 
-						}	else {
-							//model can not be annotated with the current readers/writers combination
-							//skip this combination
-							triesForInsertingReadersAndWriters=0;
+
+							}
+						} else {
+							// model can not be annotated with the current readers/writers combination
+							// skip this combination
+							triesForInsertingReadersAndWriters = 0;
 						}
 					}
 				}
