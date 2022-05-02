@@ -1190,7 +1190,8 @@ public class CommonFunctionality {
 										curr.getChosenCombinationOfParticipants());
 								newInstance.addVoterArc(newInstanceArc);
 							}
-							newInstance.getListOfRequiredUpgrades().addAll(currInst.getListOfRequiredUpgrades());
+							//newInstance.getListOfRequiredUpgrades().addAll(currInst.getListOfRequiredUpgrades());
+							newInstance.getRequiredUpgrades().putAll(currInst.getRequiredUpgrades());
 							newInstance.setCostForModelInstance(currInst.getCostForModelInstance());
 							newInstance.setGlobalSphere(currInst.getGlobalSphere());
 							newInstance.setStaticSphere(currInst.getStaticSphere());
@@ -1303,7 +1304,6 @@ public class CommonFunctionality {
 		if (gtw.getName().isEmpty() || gtw.getName().equals(null)) {
 			throw new Exception("Corresponding gtws must be named accordingly!");
 		}
-
 		Gateway correspondingGtw = null;
 		if (gtw.getIncoming().size() >= 2 && gtw.getOutgoing().size() == 1) {
 			// gtw is a join
@@ -1355,7 +1355,6 @@ public class CommonFunctionality {
 				correspondingGtw = joinGtw;
 			}
 		}
-
 		return correspondingGtw;
 
 	}
@@ -3827,5 +3826,83 @@ public class CommonFunctionality {
 		CommonFunctionality.writeChangesToFile(modelInstance, modelName, directoryToStore, suffix);
 
 	}
+	
+	public static String getNecessaryUpdate(String currentSphere, String requiredSphere) {
+		String necessaryUpdate = "";
+		if(!atLeastInSphere(currentSphere,requiredSphere)) {
+			if(requiredSphere.contentEquals("Strong-Dynamic")) {
+				if(currentSphere.contentEquals("Public")) {
+					necessaryUpdate="publicToSD";
+				} else if(currentSphere.contentEquals("Global")) {
+					necessaryUpdate="globalToSD";
+				} else if(currentSphere.contentEquals("Static")) {
+					necessaryUpdate="staticToSD";
+				} else if(currentSphere.contentEquals("Weak-Dynamic")) {
+					necessaryUpdate="wdToSD";
+				}
+			}
+			
+			else if(requiredSphere.contentEquals("Weak-Dynamic")) {
+				if(currentSphere.contentEquals("Public")) {
+					necessaryUpdate="publicToWD";
+				} else if(currentSphere.contentEquals("Global")) {
+					necessaryUpdate="globalToWD";
+				} else if(currentSphere.contentEquals("Static")) {
+					necessaryUpdate="staticToWD";
+				} 
+			}
+			else if(requiredSphere.contentEquals("Static")) {
+				if(currentSphere.contentEquals("Public")) {
+					necessaryUpdate="publicToStatic";
+				} else if(currentSphere.contentEquals("Global")) {
+					necessaryUpdate="globalToStatic";
+				} 
+			}
+			
+			else if(requiredSphere.contentEquals("Global")) {
+				if(currentSphere.contentEquals("Public")) {
+					necessaryUpdate="publicToGlobal";
+				} 
+			}
+			
+		}
+		
+		
+		return necessaryUpdate;		
+	}
+	
+	public static boolean atLeastInSphere(String currentSphere, String requiredSphere) {
+		// return true if requiredSphere comprises the currentSphere
+		// if currentSphere e.g. WD and requiredSphere SD return false
+
+		// basic comparison -> if the spheres are the same, return true
+		if (requiredSphere.contentEquals(currentSphere)) {
+			return true;
+		} else {
+			if (requiredSphere.contentEquals("Strong-Dynamic")) {
+				return false;
+			}
+
+			else if (requiredSphere.contentEquals("Weak-Dynamic")) {
+				if (currentSphere.contentEquals("Strong-Dynamic")) {
+					return true;
+				}
+			} else if (requiredSphere.contentEquals("Static")) {
+				if (currentSphere.contentEquals("Weak-Dynamic") || currentSphere.contentEquals("Strong-Dynamic")) {
+					return true;
+				}
+
+			} else if (requiredSphere.contentEquals("Global")) {
+				if (currentSphere.contentEquals("Static") || currentSphere.contentEquals("Weak-Dynamic")
+						|| currentSphere.contentEquals("Strong-Dynamic")) {
+					return true;
+
+				}
+			}
+		}
+		return false;
+
+	}
+
 
 }

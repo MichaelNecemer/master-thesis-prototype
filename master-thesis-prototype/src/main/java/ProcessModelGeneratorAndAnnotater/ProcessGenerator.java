@@ -3,13 +3,14 @@ package ProcessModelGeneratorAndAnnotater;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
-import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -19,14 +20,14 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
+import org.camunda.bpm.model.bpmn.instance.EndEvent;
 import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import org.camunda.bpm.model.bpmn.instance.Gateway;
 import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
-import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
+import org.camunda.bpm.model.bpmn.instance.Task;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -35,458 +36,361 @@ import org.w3c.dom.NodeList;
 import functionality.CommonFunctionality;
 
 public class ProcessGenerator implements Callable {
-	// generates a new Process Model using the camunda fluent API
-	// the model can than be annotated using the ProcessModelAnnotater
 
 	private static int processGeneratorId = 1;
 	private int processId;
 	private static int run = 1;
 	private BpmnModelInstance modelInstance;
-	private LinkedList<String> participantNames;
-
-	private static int taskId;
-	private static int xorGtwId;
-	private static int parallelGtwId;
-	private int[] taskProbArray;
-	private int[] xorProbArray;
-	private int[] parallelProbArray;
-	private int nestingDepthFactor;
-	private FlowNode startEvent;
-	private int amountTasksLeft;
-	private int amountXorsLeft;
-	private int amountParallelsLeft;
-	private int minXorSplits;
-
-	private LinkedList<String> possibleNodeTypes;
-	private LinkedList<InsertionConstruct> insertionConstructs;
-	private int probJoinGtw;
 	private String directoryToStore;
+	private int taskId;
+	private int xorGtwId;
+	private int parallelGtwId;
+	private FlowNode startEvent;
+	private int amountParticipants;
+	private LinkedList<String> participantNames;
+	private int amountTasksToBeInserted;
+	private int amountXorsToBeInserted;
+	private int amountParallelsToBeInserted;
+	private LinkedList<String> possibleNodeTypes;
+	private LinkedList<LinkedList<FlowNode>> allPaths;
+	private int probabilityForJoinGtw;
+	private int nestingDepthFactor;
+	private HashMap<String, Integer[]> percentagesForNodesToBeDrawn;
 
-	public ProcessGenerator(String directoryToStore, int amountParticipants, int amountTasksLeft, int amountXorsLeft,
-			int amountParallelsLeft, int probTask, int probXorGtw, int probParallelGtw, int probJoinGtw,
-			int nestingDepthFactor) throws Exception {
+	public ProcessGenerator(String directoryToStore, int amountParticipants, int amountTasksToBeInserted,
+			int amountXorsToBeInserted, int amountParallelsToBeInserted, int taskProb, int xorSplitProb,
+			int parallelSplitProb, int probabilityForJoinGtw, int nestingDepthFactor) throws Exception {
 		// process model will have 1 StartEvent and 1 EndEvent
+		if (taskProb + xorSplitProb + parallelSplitProb > 100) {
+			throw new Exception("taskProb+xorSplitProb+parallelSplitProb!=100");
+		}
+		this.processId = processGeneratorId++;
+		this.directoryToStore = directoryToStore;
+
 		this.participantNames = new LinkedList<String>();
 		for (int i = 0; i < amountParticipants; i++) {
 			String participantName = "Participant_" + (i + 1);
 			participantNames.add(participantName);
 		}
 
-		this.probJoinGtw = probJoinGtw;
-		this.amountParallelsLeft = amountParallelsLeft;
-		this.amountTasksLeft = amountTasksLeft;
-		this.amountXorsLeft = amountXorsLeft;
-		this.minXorSplits = 0;
-
-		this.insertionConstructs = new LinkedList<InsertionConstruct>();
-
-		this.nestingDepthFactor = nestingDepthFactor;
-
-		this.processId = processGeneratorId++;
-
-		if (probTask == 0) {
-			throw new Exception("Process can not be created without tasks!");
-		}
-
-		this.directoryToStore = directoryToStore;
-		taskId = 1;
-		xorGtwId = 1;
-		parallelGtwId = 1;
-
-		taskProbArray = new int[2];
-		taskProbArray[0] = 0;
-		taskProbArray[1] = probTask - 1;
-
-		xorProbArray = new int[2];
-		xorProbArray[0] = probTask;
-		xorProbArray[1] = (probTask + probXorGtw - 1);
-
-		parallelProbArray = new int[2];
-		parallelProbArray[0] = (probTask + probXorGtw);
-		parallelProbArray[1] = (probTask + probXorGtw + probParallelGtw - 1);
-
+		this.amountParticipants = amountParticipants;
+		this.amountTasksToBeInserted = amountTasksToBeInserted;
+		this.amountXorsToBeInserted = amountXorsToBeInserted;
+		this.amountParallelsToBeInserted = amountParallelsToBeInserted;
+		this.taskId = 1;
+		this.xorGtwId = 1;
+		this.parallelGtwId = 1;
 		this.modelInstance = Bpmn.createProcess("Process_" + run).startEvent("startEvent_1").done();
 		this.startEvent = (FlowNode) modelInstance.getModelElementById("startEvent_1");
-
 		this.possibleNodeTypes = new LinkedList<String>();
-		this.possibleNodeTypes.add("Task");
-		this.possibleNodeTypes.add("ExclusiveGateway");
-		this.possibleNodeTypes.add("ParallelGateway");
-
-	}
-
-	public ProcessGenerator(String directoryToStore, int amountParticipants, int amountTasksLeft, int amountXorsLeft,
-			int amountParallelsLeft, int probTask, int probXorGtw, int probParallelGtw, int probJoinGtw,
-			int nestingDepthFactor, int minXorSplits) throws Exception {
-		// process model will have 1 StartEvent and 1 EndEvent
-		this.participantNames = new LinkedList<String>();
-		for (int i = 0; i < amountParticipants; i++) {
-			String participantName = "Participant_" + (i + 1);
-			participantNames.add(participantName);
-		}
-
-		this.probJoinGtw = probJoinGtw;
-		this.amountParallelsLeft = amountParallelsLeft;
-		this.amountTasksLeft = amountTasksLeft;
-		this.amountXorsLeft = amountXorsLeft;
-		this.minXorSplits = minXorSplits;
-
-		this.insertionConstructs = new LinkedList<InsertionConstruct>();
-
+		this.probabilityForJoinGtw = probabilityForJoinGtw;
 		this.nestingDepthFactor = nestingDepthFactor;
-
-		this.processId = processGeneratorId++;
-
-		if (probTask == 0) {
-			throw new Exception("Process can not be created without tasks!");
+		if (amountTasksToBeInserted > 0) {
+			this.possibleNodeTypes.add("Task");
+		}
+		if (amountXorsToBeInserted > 0) {
+			this.possibleNodeTypes.add("ExclusiveGateway_split");
+		}
+		if (amountParallelsToBeInserted > 0) {
+			this.possibleNodeTypes.add("ParallelGateway_split");
 		}
 
-		this.directoryToStore = directoryToStore;
-		taskId = 1;
-		xorGtwId = 1;
-		parallelGtwId = 1;
+		this.allPaths = new LinkedList<LinkedList<FlowNode>>();
+		// create starting path for generate process method
+		LinkedList<FlowNode> startingPoint = new LinkedList<FlowNode>();
+		startingPoint.add(this.startEvent);
+		this.allPaths.add(startingPoint);
 
-		taskProbArray = new int[2];
-		taskProbArray[0] = 0;
-		taskProbArray[1] = probTask - 1;
+		this.percentagesForNodesToBeDrawn = new HashMap<String, Integer[]>();
+		Integer[] taskProbsArray = new Integer[2];
+		taskProbsArray[0] = 0;
+		taskProbsArray[1] = taskProb - 1;
+		this.percentagesForNodesToBeDrawn.putIfAbsent("Task", taskProbsArray);
 
-		xorProbArray = new int[2];
-		xorProbArray[0] = probTask;
-		xorProbArray[1] = (probTask + probXorGtw - 1);
+		Integer[] xorProbsArray = new Integer[2];
+		xorProbsArray[0] = taskProb;
+		xorProbsArray[1] = (taskProb + xorSplitProb - 1);
+		this.percentagesForNodesToBeDrawn.putIfAbsent("ExclusiveGateway_split", xorProbsArray);
 
-		parallelProbArray = new int[2];
-		parallelProbArray[0] = (probTask + probXorGtw);
-		parallelProbArray[1] = (probTask + probXorGtw + probParallelGtw - 1);
-
-		this.modelInstance = Bpmn.createProcess("Process_" + run).startEvent("startEvent_1").done();
-		this.startEvent = (FlowNode) modelInstance.getModelElementById("startEvent_1");
-
-		this.possibleNodeTypes = new LinkedList<String>();
-		this.possibleNodeTypes.add("Task");
-		this.possibleNodeTypes.add("ExclusiveGateway");
-		this.possibleNodeTypes.add("ParallelGateway");
-
+		Integer[] parallelProbsArray = new Integer[2];
+		parallelProbsArray[0] = taskProb + xorSplitProb;
+		parallelProbsArray[1] = (taskProb + xorSplitProb + parallelSplitProb - 1);
+		this.percentagesForNodesToBeDrawn.putIfAbsent("ParallelGateway_split", parallelProbsArray);
 	}
 
-	private void goDfs(FlowNode startNode, FlowNode endNode, int amountTasksLeft, int amountXorsLeft,
-			int amountParallelsLeft, LinkedList<String> possibleNodeTypesToBeInserted, LinkedList<FlowNode> queue,
-			LinkedList<FlowNode> openGatewayStack, int nestingDepthFactor) {
+	private void generateProcess(LinkedList<LinkedList<FlowNode>> allPaths, LinkedList<String> possibleNodeTypes,
+			int amountTasksToBeInsertedLeft, int amountXorsToBeInsertedLeft, int amountParallelsToBeInsertedLeft) {
 
-		queue.add(startNode);
-		while (!(queue.isEmpty())) {
-			FlowNode currentNode = queue.pollLast();
-			List<FlowNode> listDistinct = openGatewayStack.stream().distinct().collect(Collectors.toList());
+		boolean pathToBeAdded = true;
+		LinkedList<FlowNode> openGatewayStack = new LinkedList<FlowNode>();
+		LinkedList<FlowNode> openXorSplitStack = new LinkedList<FlowNode>();
+		// get a random path where EndEvent has not been added)
+		int in = 1;
 
-			int branchingFactor = this.probJoinGtw + (listDistinct.size() * nestingDepthFactor);
-
-			LinkedList<String> nodeTypesToBeInserted = this.computeNodesToBeInserted(possibleNodeTypesToBeInserted,
-					amountTasksLeft, amountXorsLeft, amountParallelsLeft);
-
-			InsertionConstruct nextConstructToBeAdded = this.getNextNodeToAdd(currentNode, nodeTypesToBeInserted,
-					amountTasksLeft, amountXorsLeft, amountParallelsLeft, branchingFactor, openGatewayStack, queue);
-
-			FlowNode addedNode = null;
-			// append the nextNodeToBeAdded to the currentNode
-			if (nextConstructToBeAdded != null) {
-
-				if (nextConstructToBeAdded.getType().contentEquals("Task")) {
-					currentNode.builder().manualTask(nextConstructToBeAdded.getId())
-							.name(nextConstructToBeAdded.getName());
-					amountTasksLeft--;
-				} else if (nextConstructToBeAdded.getType().contentEquals("ExclusiveGateway")) {
-					if (this.modelInstance.getModelElementById(nextConstructToBeAdded.getId()) == null) {
-						currentNode.builder().exclusiveGateway(nextConstructToBeAdded.getId())
-								.name(nextConstructToBeAdded.getName());
-						if (nextConstructToBeAdded.getId().contains("_split")) {
-							amountXorsLeft--;
-						}
-					} else {
-						// check if the currentNode has already been connected to the nextNode
-						boolean alreadyConnected = false;
-						for (SequenceFlow seq : currentNode.getOutgoing()) {
-							if (seq.getTarget()
-									.equals(modelInstance.getModelElementById(nextConstructToBeAdded.getId()))) {
-								alreadyConnected = true;
-							}
-						}
-
-						if (alreadyConnected == false) {
-							currentNode.builder().connectTo(nextConstructToBeAdded.getId());
-						}
-					}
-
-				} else if (nextConstructToBeAdded.getType().contentEquals("ParallelGateway")) {
-					if (this.modelInstance.getModelElementById(nextConstructToBeAdded.getId()) == null) {
-
-						currentNode.builder().parallelGateway(nextConstructToBeAdded.getId())
-								.name(nextConstructToBeAdded.getName());
-						if (nextConstructToBeAdded.getId().contains("_split")) {
-							amountParallelsLeft--;
-						}
-					} else {
-						// check if the currentNode has already been connected to the nextNode
-						boolean alreadyConnected = false;
-						for (SequenceFlow seq : currentNode.getOutgoing()) {
-							if (seq.getTarget()
-									.equals(this.modelInstance.getModelElementById(nextConstructToBeAdded.getId()))) {
-								alreadyConnected = true;
-							}
-						}
-						if (alreadyConnected == false) {
-							if (currentNode instanceof ParallelGateway) {
-								// if the currentNode is a parallelsplit - append a task between it and the join
-								Random rand = new Random();
-								String uniqueTaskId = "task_" + taskId;
-								String participantName = this.participantNames
-										.get(rand.nextInt(participantNames.size()));
-								String taskName = uniqueTaskId + " [" + participantName + "]";
-								InsertionConstruct ic = new InsertionConstruct(uniqueTaskId, taskName, "Task");
-								this.insertionConstructs.add(ic);
-								taskId++;
-								amountTasksLeft--;
-								currentNode.builder().manualTask(ic.getId()).name(ic.getName())
-										.connectTo(nextConstructToBeAdded.getId());
-
-							} else {
-								currentNode.builder().connectTo(nextConstructToBeAdded.getId());
-							}
-						}
-					}
-				}
-				addedNode = this.modelInstance.getModelElementById(nextConstructToBeAdded.getId());
-
-				if (addedNode instanceof Gateway && addedNode.getId().contains("_split")) {
-					queue.add(addedNode);
-					openGatewayStack.add(addedNode);
-					openGatewayStack.add(addedNode);
-				}
-
-				if (addedNode instanceof Gateway && addedNode.getId().contains("_join")) {
-
-					// when a join is found - poll the last opened Gateway from the stack
-					Gateway lastOpenedSplit = (Gateway) openGatewayStack.pollLast();
-
-					if (!openGatewayStack.contains(lastOpenedSplit)) {
-						// when the openGatewayStack does not contain the lastOpenedSplit anymore, all
-						// branches to the joinGtw have been visited
-						// add the join gtw to the queue
-
-						String id = lastOpenedSplit.getName();
-						id += "_join";
-						queue.add(this.modelInstance.getModelElementById(id));
-					}
-
-				} else {
-
-					// add the nextNode on the stack
-					queue.add(addedNode);
-				}
-			} else {
-				// return of nextNode function is null
-				// append endEvent
-				if (currentNode instanceof Gateway && currentNode.getId().contains("_split")) {
-					String idOfJoin = currentNode.getName() + "_join";
-					if (this.modelInstance.getModelElementById(idOfJoin) != null) {
-						currentNode.builder().connectTo(idOfJoin).endEvent().id("endEvent_1");
-					} else {
-						currentNode.builder().exclusiveGateway(idOfJoin).endEvent().id("endEvent_1");
-					}
-				} else {
-					currentNode.builder().endEvent().id("endEvent_1").name("endEvent_1");
-				}
-				return;
-
+		System.out.println("TEST");
+		for (LinkedList<FlowNode> p : allPaths) {
+			System.out.println("***********************");
+			System.out.println("path " + in);
+			for (FlowNode f : p) {
+				System.out.println(f.getName());
 			}
-
+			in++;
 		}
+
+		LinkedList<FlowNode> path = new LinkedList<FlowNode>();
+		path.addAll(this.getRandomPathNotFullyBuilt(allPaths));
+		allPaths.remove(path);
+		if (path.isEmpty()) {
+			return;
+		}
+
+		FlowNode currentEntryPoint = path.getLast();
+		for (FlowNode f : path) {
+			if (f instanceof Gateway) {
+				if (f.getId().contains("_split")) {
+					openGatewayStack.add(f);
+					openXorSplitStack.add(f);
+				}
+				if (f.getId().contains("_join")) {
+					openGatewayStack.pollLast();
+					if (f instanceof ExclusiveGateway) {
+						openXorSplitStack.pollLast();
+					}
+				}
+			}
+		}
+
+		LinkedList<String> nodeTypesToBeInserted = this.computeNodesToBeInserted(amountTasksToBeInsertedLeft,
+				amountXorsToBeInsertedLeft, amountParallelsToBeInsertedLeft, currentEntryPoint, openGatewayStack);
+
+		int branchingFactor = this.probabilityForJoinGtw + (openGatewayStack.size() * this.nestingDepthFactor);
+
+		boolean splitAdded = false;
+		InsertionConstruct nextConstructToBeAdded = this.getNextNodeToAdd(branchingFactor, nodeTypesToBeInserted,
+				openGatewayStack, path);
+
+		FlowNode addedNode = null;
+		// append the nextNodeToBeAdded to the currentNode
+		if (nextConstructToBeAdded != null) {
+			if (nextConstructToBeAdded.getType().contentEquals("Task")) {
+				currentEntryPoint.builder().manualTask(nextConstructToBeAdded.getId())
+						.name(nextConstructToBeAdded.getName());
+				amountTasksToBeInsertedLeft--;
+			} else if (nextConstructToBeAdded.getType().contains("ExclusiveGateway")) {
+				ExclusiveGateway xorGtwToBeAdded = this.modelInstance
+						.getModelElementById(nextConstructToBeAdded.getId());
+				if (xorGtwToBeAdded == null) {
+					currentEntryPoint.builder().exclusiveGateway(nextConstructToBeAdded.getId())
+							.name(nextConstructToBeAdded.getName());
+				}
+				if (nextConstructToBeAdded.getType().contentEquals("ExclusiveGateway_split")) {
+					amountXorsToBeInsertedLeft--;
+					splitAdded = true;
+				} else if (nextConstructToBeAdded.getType().contentEquals("ExclusiveGateway_join")) {
+					if (xorGtwToBeAdded != null) {
+						currentEntryPoint.builder().connectTo(xorGtwToBeAdded.getId());
+						// do not add this path as entry point
+						pathToBeAdded = false;
+					}
+				}
+
+			} else if (nextConstructToBeAdded.getType().contains("ParallelGateway")) {
+				ParallelGateway pGtwToBeAdded = this.modelInstance.getModelElementById(nextConstructToBeAdded.getId());
+				if (pGtwToBeAdded == null) {
+					currentEntryPoint.builder().parallelGateway(nextConstructToBeAdded.getId())
+							.name(nextConstructToBeAdded.getName());
+				}
+				if (nextConstructToBeAdded.getType().contentEquals("ParallelGateway_split")) {
+					amountParallelsToBeInsertedLeft--;
+					splitAdded = true;
+				} else if (nextConstructToBeAdded.getType().contentEquals("ParallelGateway_join")) {
+					if (pGtwToBeAdded != null) {
+						currentEntryPoint.builder().connectTo(pGtwToBeAdded.getId());
+						// do not add this path as entry point
+						pathToBeAdded = false;
+					}
+				}
+
+			} else if (nextConstructToBeAdded.getType().contains("EndEvent")) {
+				EndEvent endEvent = this.modelInstance.getModelElementById(nextConstructToBeAdded.getId());
+				if (endEvent == null) {
+					currentEntryPoint.builder().endEvent(nextConstructToBeAdded.getId())
+							.name(nextConstructToBeAdded.getName());
+				} else {
+					currentEntryPoint.builder().connectTo(endEvent.getId());
+				}
+			}
+			addedNode = this.modelInstance.getModelElementById(nextConstructToBeAdded.getId());
+		}
+
+		LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
+		newPaths.addAll(allPaths);
+		path.add(addedNode);
+		if (!(path.getLast() instanceof EndEvent)) {
+			if (pathToBeAdded) {
+				newPaths.add(path);
+				if (splitAdded) {
+					// new object of that path will be added again since there can be 2 branches
+					LinkedList<FlowNode> samePathNewObject = new LinkedList<FlowNode>();
+					samePathNewObject.addAll(path);
+					newPaths.add(samePathNewObject);
+				}
+			}
+		}
+		if (newPaths.isEmpty()) {
+			return;
+		}
+
+		this.generateProcess(newPaths, nodeTypesToBeInserted, amountTasksToBeInsertedLeft, amountXorsToBeInsertedLeft,
+				amountParallelsToBeInsertedLeft);
 
 	}
 
-	private LinkedList<String> computeNodesToBeInserted(LinkedList<String> nodeTypes, int amountTasksLeft,
-			int amountXorsLeft, int amountParallelsLeft) {
+	private LinkedList<FlowNode> getRandomPathNotFullyBuilt(LinkedList<LinkedList<FlowNode>> currentPaths) {
+		LinkedList<LinkedList<FlowNode>> pathsToChooseFrom = new LinkedList<LinkedList<FlowNode>>();
+		for (LinkedList<FlowNode> currentPath : currentPaths) {
+			if (!(currentPath.getLast() instanceof EndEvent)) {
+				pathsToChooseFrom.add(currentPath);
+			}
+		}
+		if (pathsToChooseFrom.isEmpty()) {
+			return new LinkedList<FlowNode>();
+		}
+		int randomNum = ThreadLocalRandom.current().nextInt(0, pathsToChooseFrom.size());
+		return pathsToChooseFrom.get(randomNum);
+	}
+
+	private LinkedList<String> computeNodesToBeInserted(int amountTasksLeft, int amountXorsLeft,
+			int amountParallelsLeft, FlowNode currentEntryPoint, LinkedList<FlowNode> openGtwStack) {
 		// check if nodeTypes can still be inserted e.g. a xor-split can only be
 		// inserted if there is still at least a flowNode to be inserted
 		LinkedList<String> nodeList = new LinkedList<String>();
-		nodeList.addAll(nodeTypes);
+
+		if (!openGtwStack.isEmpty()) {
+			if (currentEntryPoint.equals(openGtwStack.getLast())) {
+				// currentEntryPoint is a split
+				if (currentEntryPoint instanceof ParallelGateway) {
+					// there must be an element after parallel split in both branches
+					// in order for the join to be added
+				} else if (currentEntryPoint instanceof ExclusiveGateway) {
+					// there must be an element on one of both xor-splits branches before adding the
+					// join
+					if (currentEntryPoint.getOutgoing().size() >= 1) {
+						nodeList.add("ExclusiveGateway_join");
+					}
+				}
+
+			} else {
+				// currentEntryPoint is in branch
+				FlowNode lastOpenedSplit = openGtwStack.getLast();
+				if (lastOpenedSplit instanceof ParallelGateway) {
+					nodeList.add("ParallelGateway_join");
+				} else if (lastOpenedSplit instanceof ExclusiveGateway) {
+					nodeList.add("ExclusiveGateway_join");
+				}
+			}
+		}
+
+		if (amountXorsLeft > 0) {
+			nodeList.add("ExclusiveGateway_split");
+		}
+
+		if (amountParallelsLeft > 0) {
+			nodeList.add("ParallelGateway_split");
+		}
+
 		if (amountTasksLeft <= 0) {
 			// no tasks can be inserted anymore
 			// no parallel and xor splits can be inserted anymore too
-			nodeList.remove("ParallelGateway");
-			nodeList.remove("ExclusiveGateway");
+			nodeList.remove("ParallelGateway_split");
+			nodeList.remove("ExclusiveGateway_split");
 			nodeList.remove("Task");
 		}
 
-		if (amountXorsLeft <= 0) {
-			nodeList.remove("ExclusiveGateway");
+		if (amountTasksLeft > 0) {
+			nodeList.add("Task");
 		}
-
-		if (amountParallelsLeft <= 0) {
-			nodeList.remove("ParallelGateway");
-		}
-
 		return nodeList;
 
 	}
 
-	private InsertionConstruct getNextNodeToAdd(FlowNode currentNode, LinkedList<String> possibleNodeTypesToBeInserted,
-			int amountTasksLeft, int amountXorsLeft, int amountParallelsLeft, int branchingFactor,
-			LinkedList<FlowNode> openSplitStack, LinkedList<FlowNode> queue) {
-		// randomly choose next flowNode to be inserted into process out of the possible
-		// nodeTypes
-		// branchingFactor may lead to adding a join node - and closing the
-		// currentBranch
-
-		if (openSplitStack.isEmpty() && queue.isEmpty() && possibleNodeTypesToBeInserted.isEmpty()) {
-			return null;
-		}
+	private InsertionConstruct getNextNodeToAdd(int branchingFactor, LinkedList<String> possibleNodeTypes,
+			LinkedList<FlowNode> lastOpenedGtws, LinkedList<FlowNode> path) {
 
 		InsertionConstruct nextNode = null;
+		if (possibleNodeTypes.isEmpty()) {
+			nextNode = new InsertionConstruct("endEvent_1", "", "EndEvent");
+			return nextNode;
+		}
 
-		// if we are inside a parallel branch
-		// both branches should have a node before adding them to the join node
-		// if we are inside a xor branch
-		// check if at least in one branch is a node before adding the join node
-		if (!openSplitStack.isEmpty()) {
-
-			boolean callFinishCurrentBranch = false;
-			FlowNode lastOpenedSplit = openSplitStack.getLast();
-
-			if (lastOpenedSplit.getId().contains("_split") && lastOpenedSplit.getOutgoing().size() >= 1) {
-				// when there is an open branch already after a xor-split
-				// call the function to choose whether to close it or not
-				callFinishCurrentBranch = true;
-				if (lastOpenedSplit instanceof ParallelGateway) {
-					// call the function only if there is on each outgoing branch an element
-					if (currentNode.equals(lastOpenedSplit)) {
-						if (currentNode.getOutgoing().size() <= 1) {
-							callFinishCurrentBranch = false;
-						}
-					}
-				}
-			}
-
-			if (possibleNodeTypesToBeInserted.isEmpty()) {
-				// openSplitStack is not empty && there are no NodeTypes left to be inserted
-				// -> open split needs to be closed
-				callFinishCurrentBranch = true;
-			}
-
-			if (callFinishCurrentBranch) {
-				boolean addJoin = finishCurrentBranch(possibleNodeTypesToBeInserted, branchingFactor, openSplitStack);
-
-				if (addJoin) {
-					// add a join to the last opened split
-					String joinName = lastOpenedSplit.getName();
-					String joinId = joinName + "_join";
-					if (this.modelInstance.getModelElementById(joinId) == null) {
-						if (lastOpenedSplit instanceof ExclusiveGateway) {
-							nextNode = new InsertionConstruct(joinId, joinName, "ExclusiveGateway");
-						} else if (lastOpenedSplit instanceof ParallelGateway) {
-							nextNode = new InsertionConstruct(joinId, joinName, "ParallelGateway");
-						}
-						this.insertionConstructs.add(nextNode);
-
-					} else {
-						// if the join has already been added to the model
-						nextNode = this.getInsertionConstruct(joinId);
-
-					}
-
-				}
-				if (nextNode != null) {
+		if(this.modelInstance.getModelElementById("endEvent_1")==null) {
+			if(possibleNodeTypes.size()==1&&possibleNodeTypes.get(0).contentEquals("Task")) {
+				//if there are only tasks available for this path
+				//and endEvent has not been visited
+				//randomly add task or the endEvent
+				int randomNum = ThreadLocalRandom.current().nextInt(0, 99);
+				Integer[]taskProbs = this.percentagesForNodesToBeDrawn.get("Task");
+				if(randomNum>=taskProbs[0]&&randomNum<=taskProbs[1]) {
+					//task chosen
+					Random rand = new Random();
+					String uniqueTaskId = "task_" + this.taskId;
+					String participantName = this.participantNames.get(rand.nextInt(participantNames.size()));
+					String taskName = uniqueTaskId + " [" + participantName + "]";
+					nextNode = new InsertionConstruct(uniqueTaskId, taskName, "Task");
+					this.taskId++;
+				} else {
+					//endEvent chosen
+					nextNode = new InsertionConstruct("endEvent_1", "", "EndEvent");
 					return nextNode;
-				}
+				}				
 			}
+			
 		}
-
-		int randomInt = 0;
-		boolean insert = false;
-		while (insert == false) {
-			randomInt = this.getRandomInt(0, 99);
-			if (randomInt >= taskProbArray[0] && randomInt <= taskProbArray[1]
-					&& possibleNodeTypesToBeInserted.contains("Task")) {
-				insert = true;
-			} else if (randomInt >= xorProbArray[0] && randomInt <= xorProbArray[1]
-					&& possibleNodeTypesToBeInserted.contains("ExclusiveGateway")) {
-				insert = true;
-			} else if (randomInt >= parallelProbArray[0] && randomInt <= parallelProbArray[1]
-					&& possibleNodeTypesToBeInserted.contains("ParallelGateway")) {
-				insert = true;
-			}
-
-		}
-
-		if (randomInt >= taskProbArray[0] && randomInt <= taskProbArray[1]) {
-			// create a task
-			// randomly add a participant to the name of the task
-			if (possibleNodeTypesToBeInserted.contains("Task")) {
-				Random rand = new Random();
-				String uniqueTaskId = "task_" + taskId;
-				String participantName = this.participantNames.get(rand.nextInt(participantNames.size()));
-				String taskName = uniqueTaskId + " [" + participantName + "]";
-				nextNode = new InsertionConstruct(uniqueTaskId, taskName, "Task");
-				this.insertionConstructs.add(nextNode);
-				taskId++;
-			}
-		} else if (randomInt >= xorProbArray[0] && randomInt <= xorProbArray[1]) {
-			if (amountXorsLeft > 0 && amountTasksLeft >= 1
-					&& possibleNodeTypesToBeInserted.contains("ExclusiveGateway")) {
-				// create new xor-split if there is at least a task left to be inserted
-
-				String name = "exclusiveGateway_" + xorGtwId;
-				String uniqueXorGtwIdSplit = "exclusiveGateway_" + xorGtwId + "_split";
-
-				nextNode = new InsertionConstruct(uniqueXorGtwIdSplit, name, "ExclusiveGateway");
-				this.insertionConstructs.add(nextNode);
-				xorGtwId++;
-			}
-		} else if (randomInt >= parallelProbArray[0] && randomInt <= parallelProbArray[1]) {
-			// create new parallel-split
-			if (amountParallelsLeft > 0 && amountTasksLeft >= 2
-					&& possibleNodeTypesToBeInserted.contains("ParallelGateway")) {
-				String name = "parallelGateway_" + parallelGtwId;
-				String uniqueParallelGtwIdSplit = "parallelGateway_" + parallelGtwId + "_split";
-				nextNode = new InsertionConstruct(uniqueParallelGtwIdSplit, name, "ParallelGateway");
-				this.insertionConstructs.add(nextNode);
-				parallelGtwId++;
-			}
+		
+		// String nodeType = this.getRandomItem(possibleNodeTypes);
+		String nodeType = this.getRandomNode(branchingFactor, possibleNodeTypes);
+		if (nodeType.contentEquals("ParallelGateway_join")) {
+			ParallelGateway lastOpenedParallelSplit = (ParallelGateway) lastOpenedGtws.getLast();
+			String joinName = lastOpenedParallelSplit.getName();
+			String joinId = joinName + "_join";
+			nextNode = new InsertionConstruct(joinId, joinName, "ParallelGateway_join");
+		} else if (nodeType.contentEquals("ExclusiveGateway_join")) {
+			ExclusiveGateway lastOpenedXorSplit = (ExclusiveGateway) lastOpenedGtws.getLast();
+			String joinName = lastOpenedXorSplit.getName();
+			String joinId = joinName + "_join";
+			nextNode = new InsertionConstruct(joinId, joinName, "ExclusiveGateway_join");
+		} else if (nodeType.contentEquals("ExclusiveGateway_split")) {
+			String name = "exclusiveGateway_" + this.xorGtwId;
+			String uniqueXorGtwIdSplit = "exclusiveGateway_" + this.xorGtwId + "_split";
+			nextNode = new InsertionConstruct(uniqueXorGtwIdSplit, name, "ExclusiveGateway_split");
+			this.xorGtwId++;
+		} else if (nodeType.contentEquals("ParallelGateway_split")) {
+			String name = "parallelGateway_" + parallelGtwId;
+			String uniqueParallelGtwIdSplit = "parallelGateway_" + this.parallelGtwId + "_split";
+			nextNode = new InsertionConstruct(uniqueParallelGtwIdSplit, name, "ParallelGateway_split");
+			this.parallelGtwId++;
+		} else if (nodeType.contentEquals("Task")) {
+			Random rand = new Random();
+			String uniqueTaskId = "task_" + this.taskId;
+			String participantName = this.participantNames.get(rand.nextInt(participantNames.size()));
+			String taskName = uniqueTaskId + " [" + participantName + "]";
+			nextNode = new InsertionConstruct(uniqueTaskId, taskName, "Task");
+			this.taskId++;
 		}
 
 		return nextNode;
 	}
 
-	private InsertionConstruct getInsertionConstruct(String id) {
-		for (InsertionConstruct ic : this.insertionConstructs) {
-			if (ic.getId().contentEquals(id)) {
-				return ic;
-			}
-		}
-		return null;
-	}
-
-	private boolean finishCurrentBranch(LinkedList<String> possibleNodeTypesToBeInserted, int branchingFactor,
-			LinkedList<FlowNode> openXorStack) {
-		// possibility to finish current branch is increased with nesting depth
-		// nesting depth is the amount of openXors on the stack
-
-		if (possibleNodeTypesToBeInserted.isEmpty()) {
-			return true;
-		}
-
-		int randomInt = this.getRandomInt(0, 99);
-
-		if (branchingFactor >= randomInt) {
-			return true;
-		}
-
-		return false;
-
-	}
-
-
-	private int getRandomInt(int min, int max) {
-		int randomInt = ThreadLocalRandom.current().nextInt(min, max + 1);
-		return randomInt;
+	public void clearCurrentModelInstance() {
+		this.modelInstance = Bpmn.createProcess("Process_" + run).startEvent("startEvent_1").done();
+		this.startEvent = (FlowNode) modelInstance.getModelElementById("startEvent_1");
+		LinkedList<FlowNode> startingPoint = new LinkedList<FlowNode>();
+		startingPoint.add(startEvent);
+		this.allPaths.clear();
+		this.allPaths.add(startingPoint);
+		this.taskId = 1;
+		this.xorGtwId = 1;
+		this.parallelGtwId = 1;
 	}
 
 	private File writeChangesToFile() throws NullPointerException, Exception {
@@ -502,8 +406,6 @@ public class ProcessGenerator implements Callable {
 		String fileName = "randomProcessModel" + this.processId + ".bpmn";
 
 		File file = CommonFunctionality.createFileWithinDirectory(pathOfProcessFile, fileName);
-
-		System.out.println("FileCreated: " + file.createNewFile());
 
 		Bpmn.writeModelToFile(file, this.modelInstance);
 
@@ -564,47 +466,86 @@ public class ProcessGenerator implements Callable {
 		return file;
 	}
 
-	@Override
-	public File call() throws Exception {
-		// TODO Auto-generated method stub
-		while (!Thread.currentThread().isInterrupted()) {
-			this.goDfs(this.startEvent, null, amountTasksLeft, amountXorsLeft, amountParallelsLeft,
-					this.possibleNodeTypes, new LinkedList<FlowNode>(), new LinkedList<FlowNode>(), nestingDepthFactor);
-			double exclusiveGatewaysGenerated = this.modelInstance.getModelElementsByType(ExclusiveGateway.class)
-					.size();
-			if (exclusiveGatewaysGenerated / 2 >= this.minXorSplits) {
-				try {
-					File f = writeChangesToFile();
-					if (f != null) {
-						return f;
-					}
-				} catch (Exception e) {
-					System.out.println(e.getMessage());
-					System.out.println("Generated Model not valid! Trying again!");
+	private <T> T getRandomItem(List<T> list) {
+		int randomIndex = ThreadLocalRandom.current().nextInt(0, list.size());
+		return list.get(randomIndex);
+	}
 
-				}
+	private String getRandomNode(int branchingFactor, List<String> possibleNodesToChooseFrom) {
+		String nodeToReturn = null;
+		if (possibleNodesToChooseFrom.size() == 1) {
+			return possibleNodesToChooseFrom.get(0);
+		}
 
+		if (possibleNodesToChooseFrom.contains("ExclusiveGateway_join")||possibleNodesToChooseFrom.contains("ParallelGateway_join")) {
+				for (String str2 : possibleNodesToChooseFrom) {
+						if (str2.contains("_join")) {
+							int randomInt = ThreadLocalRandom.current().nextInt(0, 99);
+							if (branchingFactor >= randomInt) {
+								// join will be added
+								nodeToReturn = str2;
+								return nodeToReturn;
+							}
+						}			
 			}
-			// if no valid model has been generated -> try generating a new one
-			this.clearCurrentModelInstance();
+		}
+
+		while (nodeToReturn == null) {
+			int randomInt = ThreadLocalRandom.current().nextInt(0, 99);
+			for (Entry<String, Integer[]> entry : this.percentagesForNodesToBeDrawn.entrySet()) {
+				Integer[] currProbs = entry.getValue();
+				String nodeType = entry.getKey();
+				if (randomInt >= currProbs[0] && randomInt <= currProbs[1]
+						&& possibleNodesToChooseFrom.contains(nodeType)) {
+					nodeToReturn = entry.getKey();
+					return nodeToReturn;
+				}
+			}
+
 		}
 
 		return null;
-	}
 
-	public void clearCurrentModelInstance() {
-		this.modelInstance = Bpmn.createProcess("Process_" + run).startEvent("startEvent_1").done();
-		this.startEvent = (FlowNode) modelInstance.getModelElementById("startEvent_1");
-		this.insertionConstructs = new LinkedList<InsertionConstruct>();
 	}
 
 	public static void decreaseProcessGeneratorId() {
 		processGeneratorId--;
 	}
-	
-	public static int processGeneratorId() {
-		return processGeneratorId;
+
+	public int getProcessId() {
+		return this.processId;
 	}
-	
+
+	@Override
+	public File call() throws Exception {
+		// TODO Auto-generated method stub
+		boolean modelIsValid = false;
+		while (!Thread.currentThread().isInterrupted() && !modelIsValid) {
+			this.generateProcess(this.allPaths, this.possibleNodeTypes, this.amountTasksToBeInserted,
+					this.amountXorsToBeInserted, this.amountParallelsToBeInserted);
+			int xorSplits = CommonFunctionality.getAmountExclusiveGtwSplits(this.modelInstance);
+			int parallelGtwsGenerated = CommonFunctionality.getAmountParallelGtwSplits(this.modelInstance);
+			int amountTasks = this.modelInstance.getModelElementsByType(Task.class).size();
+			int globalSphere = CommonFunctionality.getGlobalSphere(this.modelInstance, false);
+
+			if (xorSplits == this.amountXorsToBeInserted && parallelGtwsGenerated == this.amountParallelsToBeInserted
+					&& amountTasks == this.amountTasksToBeInserted && globalSphere == this.amountParticipants) {
+				try {
+					File f = writeChangesToFile();
+					if (f != null) {
+						System.out.println("File written: " + f.getAbsolutePath());
+						return f;
+					}
+				} catch (Exception e) {
+					System.out.println(e.getMessage());
+					System.out.println("Generated Model not valid! Trying again!");
+				}
+			}
+			// if no valid model has been generated -> try generating a new one
+			this.clearCurrentModelInstance();
+		}
+		return null;
+
+	}
 
 }

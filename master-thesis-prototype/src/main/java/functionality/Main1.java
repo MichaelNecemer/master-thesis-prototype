@@ -51,12 +51,13 @@ public class Main1 {
 	  }*/
 	
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches1.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\testeroni.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsInParallelBranches.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel2.bpmn";
-	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWsR_Strong-Dynamic_voters2.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWmR_Static_voters4.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWmR_Static_voters2_mand_constrained.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test\\randomProcessModel47_annotated1_annotated56lWlR_Global_voters2.bpmn";
-	
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\camunda-diagrams\\diagram_2.bpmn";
 	ArrayList<Double> costForUpgradingSpheres = new ArrayList<>(Arrays.asList(10.0, 5.0, 3.0, 2.0));
 	//String pathForAddingRandomModels = "C:\\Users\\Micha\\OneDrive\\Desktop";
 	
@@ -65,7 +66,7 @@ public class Main1 {
 	
 	//ProcessGenerator 
 	try {
-		//ProcesGenerator g= new ProcessGenerator(pathForAddingRandomModels,4000, 15, 20, 40, 18,50,30,20,20,5);
+		//ProcesGenerator g= new ProcessGenerator();
 	
 
 	
@@ -109,6 +110,7 @@ public class Main1 {
 	} catch (Exception e2) {
 		// TODO Auto-generated catch block
 		System.err.println("Exception in API: "+e2.getMessage());
+		e2.printStackTrace();
 
 	}
 
@@ -119,7 +121,8 @@ public class Main1 {
 	
 	LinkedList<ProcessInstanceWithVoters> pInstances = null;
 	try {
-		pInstances = a2.localMinimumAlgorithm();
+		API localMinimumAPI = (API) CommonFunctionality.deepCopy(a2);
+		pInstances = localMinimumAPI.localMinimumAlgorithm();
 		System.out.println("Amount of solutions found with localMinimumAlgorithm: "+pInstances.size());
 		
 		for(ProcessInstanceWithVoters pInstance:pInstances) {		
@@ -155,8 +158,9 @@ public class Main1 {
 	
 	LinkedList<ProcessInstanceWithVoters> pInstancesLocalMinWithBound = null;
 	try {
-		pInstancesLocalMinWithBound = a2.localMinimumAlgorithmWithLimit(1);
-		System.out.println("Amount of solutions found with localMinimumAlgorithmWithBound: "+pInstances.size());
+		API localMinimumAPIWithBound = (API) CommonFunctionality.deepCopy(a2);
+		pInstancesLocalMinWithBound = localMinimumAPIWithBound.localMinimumAlgorithmWithLimit(1);
+		System.out.println("Amount of solutions found with localMinimumAlgorithmWithBound: "+pInstancesLocalMinWithBound.size());
 		
 		for(ProcessInstanceWithVoters pInstance:pInstancesLocalMinWithBound) {		
 		pInstance.printProcessInstance();
@@ -194,11 +198,9 @@ public class Main1 {
 		bruteForceSolutions = a2.bruteForceAlgorithm();
 		System.out.println("Solutions found with BruteForce: "+bruteForceSolutions.size());
 		System.out.println("Cheapest brute Force solutions: "+CommonFunctionality.getCheapestProcessInstancesWithVoters(bruteForceSolutions).size());
-		for(ProcessInstanceWithVoters pInstance:CommonFunctionality.getCheapestProcessInstancesWithVoters(bruteForceSolutions)) {		
+		for(ProcessInstanceWithVoters pInstance:bruteForceSolutions) {		
 			pInstance.printProcessInstance();
-			}
-		
-		
+			}		
 	} catch (NullPointerException e) {
 		// TODO Auto-generated catch block
 		e.printStackTrace();
