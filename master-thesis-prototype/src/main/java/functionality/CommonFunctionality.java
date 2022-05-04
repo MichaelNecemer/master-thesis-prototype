@@ -1327,10 +1327,10 @@ public class CommonFunctionality {
 			if (splitGtw == null) {
 				throw new Exception("Names of corresponding split and join gtws have to be equal!");
 			}
-			if (splitGtw.getIncoming().size() == 1 && splitGtw.getOutgoing().size() >= 2) {
+			if (splitGtw.getIncoming().size() == 1 && splitGtw.getOutgoing().size() == 2) {
 				correspondingGtw = splitGtw;
 			}
-		} else if (gtw.getIncoming().size() == 1 && gtw.getOutgoing().size() >= 2) {
+		} else if (gtw.getIncoming().size() == 1 && gtw.getOutgoing().size() == 2) {
 			// gtw is a split
 			StringBuilder joinGtwId = new StringBuilder();
 			if (gtw.getId().contains("_split")) {
@@ -1339,7 +1339,7 @@ public class CommonFunctionality {
 				// it must have the same name but ==1 outgoing and >=2 incoming
 				for (Gateway gateway : modelInstance.getModelElementsByType(Gateway.class)) {
 					if (gateway.getName().contentEquals(gtw.getName())) {
-						if (gateway.getIncoming().size() >= 2 && gateway.getOutgoing().size() == 1) {
+						if (gateway.getIncoming().size() == 2 && gateway.getOutgoing().size() == 1) {
 							joinGtwId.append(gateway.getId());
 							break;
 						}
@@ -1351,7 +1351,7 @@ public class CommonFunctionality {
 			if (joinGtw == null) {
 				throw new Exception("Names of corresponding split and join gtws have to be equal!");
 			}
-			if (joinGtw.getIncoming().size() >= 2 && joinGtw.getOutgoing().size() == 1) {
+			if (joinGtw.getIncoming().size() == 2 && joinGtw.getOutgoing().size() == 1) {
 				correspondingGtw = joinGtw;
 			}
 		}
@@ -1362,6 +1362,7 @@ public class CommonFunctionality {
 	public static boolean isModelBlockStructured(BpmnModelInstance modelInstance)
 			throws NullPointerException, Exception {
 		if (modelInstance.getModelElementsByType(Gateway.class).size() % 2 != 0) {
+			System.out.println("!!!");
 			return false;
 		}
 		for (Gateway gtw : modelInstance.getModelElementsByType(Gateway.class)) {
@@ -1370,10 +1371,49 @@ public class CommonFunctionality {
 					return false;
 				}
 			} catch (Exception ex) {
+				ex.printStackTrace();
 				return false;
 			}
 		}
 		return true;
+	}
+	
+	public static boolean testGatewaysForElements(BpmnModelInstance modelInstance) throws NullPointerException, Exception {
+		boolean branchesCorrect = true;
+		for(Gateway gtw: modelInstance.getModelElementsByType(Gateway.class)) {
+			if(gtw instanceof ParallelGateway) {
+				if(gtw.getOutgoing().size()==2&&gtw.getIncoming().size()==1) {
+					Gateway parallelJoin = CommonFunctionality.getCorrespondingGtw(modelInstance, gtw);
+					int parallelJoinSuccessor = gtw.getOutgoing().size();
+					for(SequenceFlow s: gtw.getOutgoing()) {
+						if(!s.getTarget().equals(parallelJoin)) {
+							parallelJoinSuccessor--;
+						}
+					}					
+					if(parallelJoinSuccessor>0) {
+						//one of the branches has the join as direct successor
+						return false;
+					}
+				}
+				
+			} else if(gtw instanceof ExclusiveGateway) {
+				if(gtw.getOutgoing().size()==2&&gtw.getIncoming().size()==1) {
+					Gateway xorJoin = CommonFunctionality.getCorrespondingGtw(modelInstance, gtw);
+					boolean xorJoinSuccessor = true;
+					for(SequenceFlow s: gtw.getOutgoing()) {
+						if(!s.getTarget().equals(xorJoin)) {
+							xorJoinSuccessor=false;
+						}
+					}
+					if(xorJoinSuccessor) {
+						//both branches have the xorJoin as direct successor
+						return false;
+					}
+				}
+			}
+			
+		}
+		return branchesCorrect;
 	}
 
 	public static int getAmountExclusiveGtwSplits(BpmnModelInstance modelInstance) {

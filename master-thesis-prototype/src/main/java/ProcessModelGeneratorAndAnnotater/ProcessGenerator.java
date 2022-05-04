@@ -123,20 +123,7 @@ public class ProcessGenerator implements Callable {
 
 		boolean pathToBeAdded = true;
 		LinkedList<FlowNode> openGatewayStack = new LinkedList<FlowNode>();
-		LinkedList<FlowNode> openXorSplitStack = new LinkedList<FlowNode>();
-		// get a random path where EndEvent has not been added)
-		int in = 1;
-
-		System.out.println("TEST");
-		for (LinkedList<FlowNode> p : allPaths) {
-			System.out.println("***********************");
-			System.out.println("path " + in);
-			for (FlowNode f : p) {
-				System.out.println(f.getName());
-			}
-			in++;
-		}
-
+		// get a random path where EndEvent has not been added		
 		LinkedList<FlowNode> path = new LinkedList<FlowNode>();
 		path.addAll(this.getRandomPathNotFullyBuilt(allPaths));
 		allPaths.remove(path);
@@ -149,13 +136,9 @@ public class ProcessGenerator implements Callable {
 			if (f instanceof Gateway) {
 				if (f.getId().contains("_split")) {
 					openGatewayStack.add(f);
-					openXorSplitStack.add(f);
 				}
 				if (f.getId().contains("_join")) {
 					openGatewayStack.pollLast();
-					if (f instanceof ExclusiveGateway) {
-						openXorSplitStack.pollLast();
-					}
 				}
 			}
 		}
@@ -207,6 +190,7 @@ public class ProcessGenerator implements Callable {
 					if (pGtwToBeAdded != null) {
 						currentEntryPoint.builder().connectTo(pGtwToBeAdded.getId());
 						// do not add this path as entry point
+						// if there is already one with the same join
 						pathToBeAdded = false;
 					}
 				}
@@ -216,8 +200,6 @@ public class ProcessGenerator implements Callable {
 				if (endEvent == null) {
 					currentEntryPoint.builder().endEvent(nextConstructToBeAdded.getId())
 							.name(nextConstructToBeAdded.getName());
-				} else {
-					currentEntryPoint.builder().connectTo(endEvent.getId());
 				}
 			}
 			addedNode = this.modelInstance.getModelElementById(nextConstructToBeAdded.getId());
@@ -262,34 +244,7 @@ public class ProcessGenerator implements Callable {
 
 	private LinkedList<String> computeNodesToBeInserted(int amountTasksLeft, int amountXorsLeft,
 			int amountParallelsLeft, FlowNode currentEntryPoint, LinkedList<FlowNode> openGtwStack) {
-		// check if nodeTypes can still be inserted e.g. a xor-split can only be
-		// inserted if there is still at least a flowNode to be inserted
 		LinkedList<String> nodeList = new LinkedList<String>();
-
-		if (!openGtwStack.isEmpty()) {
-			if (currentEntryPoint.equals(openGtwStack.getLast())) {
-				// currentEntryPoint is a split
-				if (currentEntryPoint instanceof ParallelGateway) {
-					// there must be an element after parallel split in both branches
-					// in order for the join to be added
-				} else if (currentEntryPoint instanceof ExclusiveGateway) {
-					// there must be an element on one of both xor-splits branches before adding the
-					// join
-					if (currentEntryPoint.getOutgoing().size() >= 1) {
-						nodeList.add("ExclusiveGateway_join");
-					}
-				}
-
-			} else {
-				// currentEntryPoint is in branch
-				FlowNode lastOpenedSplit = openGtwStack.getLast();
-				if (lastOpenedSplit instanceof ParallelGateway) {
-					nodeList.add("ParallelGateway_join");
-				} else if (lastOpenedSplit instanceof ExclusiveGateway) {
-					nodeList.add("ExclusiveGateway_join");
-				}
-			}
-		}
 
 		if (amountXorsLeft > 0) {
 			nodeList.add("ExclusiveGateway_split");
@@ -310,6 +265,16 @@ public class ProcessGenerator implements Callable {
 		if (amountTasksLeft > 0) {
 			nodeList.add("Task");
 		}
+
+		if (!openGtwStack.isEmpty()) {
+			FlowNode lastOpenedSplit = openGtwStack.getLast();
+			if (lastOpenedSplit instanceof ExclusiveGateway) {
+				nodeList.add("ExclusiveGateway_join");
+			} else if (lastOpenedSplit instanceof ParallelGateway) {
+				nodeList.add("ParallelGateway_join");
+			}
+		} 
+
 		return nodeList;
 
 	}
@@ -323,30 +288,32 @@ public class ProcessGenerator implements Callable {
 			return nextNode;
 		}
 
-		if(this.modelInstance.getModelElementById("endEvent_1")==null) {
-			if(possibleNodeTypes.size()==1&&possibleNodeTypes.get(0).contentEquals("Task")) {
-				//if there are only tasks available for this path
-				//and endEvent has not been visited
-				//randomly add task or the endEvent
+		if (this.modelInstance.getModelElementById("endEvent_1") == null) {
+			if (lastOpenedGtws.isEmpty() && possibleNodeTypes.size() == 1
+					&& possibleNodeTypes.get(0).contentEquals("Task")) {
+				// if there are only tasks available for this path
+				// and endEvent has not been visited
+				// randomly add task or the endEvent
 				int randomNum = ThreadLocalRandom.current().nextInt(0, 99);
-				Integer[]taskProbs = this.percentagesForNodesToBeDrawn.get("Task");
-				if(randomNum>=taskProbs[0]&&randomNum<=taskProbs[1]) {
-					//task chosen
+				Integer[] taskProbs = this.percentagesForNodesToBeDrawn.get("Task");
+				if (randomNum >= taskProbs[0] && randomNum <= taskProbs[1]) {
+					// task chosen
 					Random rand = new Random();
 					String uniqueTaskId = "task_" + this.taskId;
 					String participantName = this.participantNames.get(rand.nextInt(participantNames.size()));
 					String taskName = uniqueTaskId + " [" + participantName + "]";
 					nextNode = new InsertionConstruct(uniqueTaskId, taskName, "Task");
 					this.taskId++;
+					return nextNode;
 				} else {
-					//endEvent chosen
+					// endEvent chosen
 					nextNode = new InsertionConstruct("endEvent_1", "", "EndEvent");
 					return nextNode;
-				}				
+				}
 			}
-			
+
 		}
-		
+
 		// String nodeType = this.getRandomItem(possibleNodeTypes);
 		String nodeType = this.getRandomNode(branchingFactor, possibleNodeTypes);
 		if (nodeType.contentEquals("ParallelGateway_join")) {
@@ -396,10 +363,16 @@ public class ProcessGenerator implements Callable {
 	private File writeChangesToFile() throws NullPointerException, Exception {
 		// validate and write model to file
 		// add the generated models to the given directory
-
 		if (!CommonFunctionality.isModelBlockStructured(this.modelInstance)) {
 			throw new Exception("Model not block structured!");
 		}
+		
+		//check if parallel branches have at least 1 element
+		//check if one of both xor branches has at least 1 element
+		if(!CommonFunctionality.testGatewaysForElements(this.modelInstance)) {
+			throw new Exception("Branches have not the minimum amount of elements before join!");
+		}
+		
 
 		Bpmn.validateModel(this.modelInstance);
 		String pathOfProcessFile = this.directoryToStore;
@@ -477,16 +450,14 @@ public class ProcessGenerator implements Callable {
 			return possibleNodesToChooseFrom.get(0);
 		}
 
-		if (possibleNodesToChooseFrom.contains("ExclusiveGateway_join")||possibleNodesToChooseFrom.contains("ParallelGateway_join")) {
-				for (String str2 : possibleNodesToChooseFrom) {
-						if (str2.contains("_join")) {
-							int randomInt = ThreadLocalRandom.current().nextInt(0, 99);
-							if (branchingFactor >= randomInt) {
-								// join will be added
-								nodeToReturn = str2;
-								return nodeToReturn;
-							}
-						}			
+		// check with branchingFactor if join will be added
+		for (String nodeType : possibleNodesToChooseFrom) {
+			if (nodeType.contains("_join")) {
+				int randomInt = ThreadLocalRandom.current().nextInt(0, 99);
+				if (branchingFactor >= randomInt) {
+					// join will be added
+					return nodeType;
+				}
 			}
 		}
 
@@ -520,6 +491,7 @@ public class ProcessGenerator implements Callable {
 	public File call() throws Exception {
 		// TODO Auto-generated method stub
 		boolean modelIsValid = false;
+		int tries = 1;
 		while (!Thread.currentThread().isInterrupted() && !modelIsValid) {
 			this.generateProcess(this.allPaths, this.possibleNodeTypes, this.amountTasksToBeInserted,
 					this.amountXorsToBeInserted, this.amountParallelsToBeInserted);
@@ -535,10 +507,14 @@ public class ProcessGenerator implements Callable {
 					if (f != null) {
 						System.out.println("File written: " + f.getAbsolutePath());
 						return f;
+					} else {
+						System.out.println("Try "+tries+": model did not satisfy specified amounts! Trying again!");
+						tries++;
 					}
 				} catch (Exception e) {
 					System.out.println(e.getMessage());
-					System.out.println("Generated Model not valid! Trying again!");
+					System.out.println("Try "+tries+": generated Model not valid! Trying again!");
+					tries++;
 				}
 			}
 			// if no valid model has been generated -> try generating a new one
