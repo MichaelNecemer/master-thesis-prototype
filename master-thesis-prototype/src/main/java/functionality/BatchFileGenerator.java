@@ -47,7 +47,7 @@ public class BatchFileGenerator {
 	static int timeOutForApiInMin = 3;
 
 	// how often will the modelAnnotater try to annotate the model if it fails
-	static int triesForModelAnnotater = 15;
+	static int triesForModelAnnotater = 50;
 
 	// bound for the bounded localMinAlgorithm
 	static int upperBoundLocalMinWithBound = 1;
@@ -66,15 +66,13 @@ public class BatchFileGenerator {
 
 	// bounds for ProcessModelAnnotater
 	static LinkedList<Integer> dataObjectBoundsSmallProcesses = new LinkedList<Integer>(Arrays.asList(1, 2));
-	static LinkedList<Integer> dataObjectBoundsMediumProcesses = new LinkedList<Integer>(Arrays.asList(1, 3));
-	static LinkedList<Integer> dataObjectBoundsLargeProcesses = new LinkedList<Integer>(Arrays.asList(1, 4));
+	static LinkedList<Integer> dataObjectBoundsMediumProcesses = new LinkedList<Integer>(Arrays.asList(1, 4));
+	static LinkedList<Integer> dataObjectBoundsLargeProcesses = new LinkedList<Integer>(Arrays.asList(1, 6));
 
 	static LinkedList<String> defaultSpheres = new LinkedList<String>(
 			Arrays.asList("Global", "Static", "Weak-Dynamic", "Strong-Dynamic"));
 	static LinkedList<String> defaultNamesSeqFlowsXorSplits = new LinkedList<String>(Arrays.asList("true", "false"));
 	static int dynamicWriterProb = 0;
-	static int readerProb = 30;
-	static int writerProb = 20;
 	static int probPublicSphere = 0;
 
 	// bounds for "small", "medium", "large" amountOfWriters classes in percentage
@@ -94,8 +92,8 @@ public class BatchFileGenerator {
 	static ArrayList<Integer> amountXorsLargeProcessesBounds = new ArrayList<>(Arrays.asList(5, 6));
 
 	// bounds for nestingDepthFactor and probJoinGtw
-	static ArrayList<Integer> nestingDepthFactorBounds = new ArrayList<>(Arrays.asList(1, 50));
-	static ArrayList<Integer> probJoinGtwBounds = new ArrayList<>(Arrays.asList(1, 50));
+	static ArrayList<Integer> nestingDepthFactorBounds = new ArrayList<>(Arrays.asList(1, 25));
+	static ArrayList<Integer> probJoinGtwBounds = new ArrayList<>(Arrays.asList(1, 25));
 
 	public static void main(String[] args) throws Exception {
 		String pathToRootFolder = CommonFunctionality.fileWithDirectoryAssurance(root, "EvaluationSetup")
@@ -248,33 +246,28 @@ public class BatchFileGenerator {
 					.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "LargeProcessesFolder")
 					.getAbsolutePath();
 
-			// for each processes folder -> generate 100 random processes e.g. small -> 50
-			// with 1 decision, 50 with 2 decisions
-			// small processes: 5 participants, 6-15 tasks, 1-2 xors, 0-2 parallels, 100
-			// processes
 			int amountProcessesToCreatePerDecision = 50;
 
 			ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
 
+			// small processes: 5 participants, 6-15 tasks, 1-2 xors, 0-2 parallels
 			for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation,
 						5, 5, 6, 15, i, i, 0, 2, amountProcessesToCreatePerDecision, randomProcessGeneratorService,
 						true);
 			}
 
-			// medium processes: 5 participants, 16-30 tasks, 3-4 xors, 0-3 parallels, 100
-			// processes
+			// medium processes: 5 participants, 16-30 tasks, 3-4 xors, 0-3 parallels
 			for (int i = amountXorsMediumProcessesBounds.get(0); i <= amountXorsMediumProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
 						pathToMediumProcessesFolderWithoutAnnotation, 5, 5, 16, 30, i, i, 0, 3,
 						amountProcessesToCreatePerDecision, randomProcessGeneratorService, true);
 			}
 
-			// large processes: 5 participants, 31-60 tasks, 5-6 xors, 0-4, parallels, 100
-			// processes
+			// large processes: 5 participants, 31-45 tasks, 5-6 xors, 0-4, parallels
 			for (int i = amountXorsLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation,
-						5, 5, 31, 60, i, i, 0, 4, amountProcessesToCreatePerDecision, randomProcessGeneratorService,
+						5, 5, 31, 45, i, i, 0, 4, amountProcessesToCreatePerDecision, randomProcessGeneratorService,
 						true);
 			}
 
@@ -299,7 +292,7 @@ public class BatchFileGenerator {
 			} else {
 				String pathToFolderForModelsForTest2 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test2-TradeOff").getAbsolutePath();
-				int modelsToTakePerDecision = 20;
+				int modelsToTakePerDecision = 5;
 				pathToSmallProcessesForTest2WithAnnotation = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "SmallProcessesAnnotatedFolder")
 						.getAbsolutePath();
@@ -356,9 +349,7 @@ public class BatchFileGenerator {
 
 		if (methodsToRun.contains(test3ToRun)) {
 			// Test 3 - Measure impact of dataObjects
-			// annotate unique gateways per decision e.g. 5 unique data objects and 5
-			// decisions in the model
-			// -> 25 unique data objects
+			// annotate unique data objects for each decision
 			// take one dataObject, loop through the others and replace one object with that
 			// dataObject in each iteration
 			// on last step each decision will only have that dataObject connected
@@ -372,53 +363,76 @@ public class BatchFileGenerator {
 				String pathToFolderForModelsForDataObjectTest = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test3-ImpactOfDataObjects").getAbsolutePath();
 
+				boolean enoughModelsFound = true;
 				int modelsToTakePerDecision = 10;
 				LinkedList<Integer> allDecisions = new LinkedList<Integer>();
 				// annotate models with max amount of unique dataObjects
 				int amountUniqueDataObjectsPerDecision = 3;
 				int maxAmountUniqueDataObjects = amountXorsMediumProcessesBounds.get(1)
 						* amountUniqueDataObjectsPerDecision;
-								
+
 				LinkedList<File> smallProcessesWithoutAnnotationTest3 = new LinkedList<File>();
 				for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
-					smallProcessesWithoutAnnotationTest3.addAll(
-							BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecisionsAndMinTasks(
-									modelsToTakePerDecision, i, maxAmountUniqueDataObjects,
-									pathToSmallProcessesFolderWithoutAnnotation));
-					if (!allDecisions.contains(i)) {
-						allDecisions.add(i);
+					if (enoughModelsFound) {
+						LinkedList<File> smallProcessesFound = BatchFileGenerator
+								.getModelsInOrderFromSourceFolderWithExactAmountDecisionsAndMinTasks(
+										modelsToTakePerDecision, i, maxAmountUniqueDataObjects,
+										pathToSmallProcessesFolderWithoutAnnotation);
+						if (smallProcessesFound.size() < modelsToTakePerDecision) {
+							System.err.println("Only " + smallProcessesFound.size() + " smallProcesses with " + i
+									+ " decisions found instead of " + modelsToTakePerDecision);
+							enoughModelsFound = false;
+						} else {
+							smallProcessesWithoutAnnotationTest3.addAll(smallProcessesFound);
+
+							if (!allDecisions.contains(i)) {
+								allDecisions.add(i);
+							}
+						}
 					}
 				}
 
 				LinkedList<File> mediumProcessesWithoutAnnotationTest3 = new LinkedList<File>();
 				for (int i = amountXorsMediumProcessesBounds.get(0); i <= amountXorsMediumProcessesBounds.get(1); i++) {
-					mediumProcessesWithoutAnnotationTest3.addAll(
-							BatchFileGenerator.getModelsInOrderFromSourceFolderWithExactAmountDecisionsAndMinTasks(
-									modelsToTakePerDecision, i, maxAmountUniqueDataObjects,
-									pathToMediumProcessesFolderWithoutAnnotation));
-					if (!allDecisions.contains(i)) {
-						allDecisions.add(i);
+					if (enoughModelsFound) {
+						LinkedList<File> mediumProcessesFound = BatchFileGenerator
+								.getModelsInOrderFromSourceFolderWithExactAmountDecisionsAndMinTasks(
+										modelsToTakePerDecision, i, maxAmountUniqueDataObjects,
+										pathToMediumProcessesFolderWithoutAnnotation);
+						if (mediumProcessesFound.size() < modelsToTakePerDecision) {
+							System.err.println("Only " + mediumProcessesFound.size() + " mediumProcesses with " + i
+									+ " decisions found instead of " + modelsToTakePerDecision);
+							enoughModelsFound = false;
+						} else {
+							mediumProcessesWithoutAnnotationTest3.addAll(mediumProcessesFound);
+							if (!allDecisions.contains(i)) {
+								allDecisions.add(i);
+							}
+						}
 					}
 				}
 
-				LinkedList<File> allProcessesWithoutAnnotationTest3 = new LinkedList<File>();
-				allProcessesWithoutAnnotationTest3.addAll(smallProcessesWithoutAnnotationTest3);
-				allProcessesWithoutAnnotationTest3.addAll(mediumProcessesWithoutAnnotationTest3);
+				if (enoughModelsFound == false) {
+					LinkedList<File> allProcessesWithoutAnnotationTest3 = new LinkedList<File>();
+					allProcessesWithoutAnnotationTest3.addAll(smallProcessesWithoutAnnotationTest3);
+					allProcessesWithoutAnnotationTest3.addAll(mediumProcessesWithoutAnnotationTest3);
 
-				boolean performTest = true;
-				for (int i = 1; i <= allDecisions.getLast(); i++) {
-					int modulo = maxAmountUniqueDataObjects % i;
-					if (modulo != 0) {
-						System.err.println(maxAmountUniqueDataObjects + "%" + i + "=" + modulo + "! Should be 0!");
-						performTest = false;
+					boolean performTest = true;
+
+					for (int i = 1; i <= allDecisions.getLast(); i++) {
+						int modulo = maxAmountUniqueDataObjects % i;
+						if (modulo != 0) {
+							System.err.println(maxAmountUniqueDataObjects + "%" + i + "=" + modulo + "! Should be 0!");
+							performTest = false;
+						}
 					}
-				}
 
-				if (performTest) {
-					BatchFileGenerator.performDataObjectTest(allProcessesWithoutAnnotationTest3,
-							pathToFolderForModelsForDataObjectTest, maxAmountUniqueDataObjects,
-							upperBoundLocalMinWithBound, amountThreads);
-					System.out.println("Test 3 finished!");
+					if (performTest) {
+						BatchFileGenerator.performDataObjectTest(allProcessesWithoutAnnotationTest3,
+								pathToFolderForModelsForDataObjectTest, maxAmountUniqueDataObjects,
+								upperBoundLocalMinWithBound, amountThreads);
+						System.out.println("Test 3 finished!");
+					}
 				}
 			}
 		}
@@ -473,7 +487,6 @@ public class BatchFileGenerator {
 		if (methodsToRun.contains(test4_2ToRun)) {
 			// Test 4_2 -> Processes with probability to have exclude constraints
 			// performed on small and medium processes
-
 			if (pathToSmallProcessesForTest2WithAnnotation.isEmpty()
 					&& pathToMediumProcessesForTest2WithAnnotation.isEmpty()
 					&& pathToLargeProcessesForTest2WithAnnotation.isEmpty()) {
@@ -857,23 +870,28 @@ public class BatchFileGenerator {
 
 			int randomAmountParticipantsWithinBounds = ThreadLocalRandom.current().nextInt(lowerBoundParticipants,
 					upperBoundParticipants + 1);
-			int randomAmountMaxTasksWithinBounds = ThreadLocalRandom.current().nextInt(lowerBoundTasks,
+			int randomAmountTasksWithinBounds = ThreadLocalRandom.current().nextInt(lowerBoundTasks,
 					upperBoundTasks + 1);
-			int randomAmountMaxXorSplitsWithinBounds = ThreadLocalRandom.current().nextInt(lowerBoundXorGtws,
+			int randomAmountXorSplitsWithinBounds = ThreadLocalRandom.current().nextInt(lowerBoundXorGtws,
 					upperBoundXorGtws + 1);
-			int randomAmountMaxParallelSplitsWithinBounds = ThreadLocalRandom.current().nextInt(lowerBoundParallelGtws,
+			int randomAmountParallelSplitsWithinBounds = ThreadLocalRandom.current().nextInt(lowerBoundParallelGtws,
 					upperBoundParallelGtws + 1);
 
+			// substract the amount of max xors that will be inserted
+			// since brts will have to be inserted afterwards
+			// also substract 1, if a tasks needs to be inserted after start node
+			randomAmountTasksWithinBounds = randomAmountTasksWithinBounds - randomAmountXorSplitsWithinBounds - 1;
+			int processId = 0;
 			try {
 				int nestingDepthFactor = ThreadLocalRandom.current().nextInt(nestingDepthFactorBounds.get(0),
 						nestingDepthFactorBounds.get(1) + 1);
 				int probJoinGtw = ThreadLocalRandom.current().nextInt(probJoinGtwBounds.get(0),
 						probJoinGtwBounds.get(1) + 1);
-
 				ProcessGenerator pGen = new ProcessGenerator(pathToFiles, randomAmountParticipantsWithinBounds,
-						randomAmountMaxTasksWithinBounds, randomAmountMaxXorSplitsWithinBounds,
-						randomAmountMaxParallelSplitsWithinBounds, probTask, probXorGtw, probParallelGtw, probJoinGtw,
-						nestingDepthFactor, lowerBoundXorGtws);
+						randomAmountTasksWithinBounds, randomAmountXorSplitsWithinBounds,
+						randomAmountParallelSplitsWithinBounds, probTask, probXorGtw, probParallelGtw, probJoinGtw,
+						nestingDepthFactor);
+				processId = pGen.getProcessId();
 				Future<File> future = executor.submit(pGen);
 				try {
 					File f = future.get(timeOutForProcessGeneratorInMin, TimeUnit.MINUTES);
@@ -885,44 +903,12 @@ public class BatchFileGenerator {
 						BpmnModelInstance createdModel = Bpmn.readModelFromStream(inputStream);
 						inputStream.close();
 						boolean deleteModel = false;
-
-						int decisionsOfCreatedModel = CommonFunctionality.getAmountExclusiveGtwSplits(createdModel);
-						if (decisionsOfCreatedModel < lowerBoundXorGtws
-								|| decisionsOfCreatedModel > upperBoundXorGtws) {
-							deleteModel = true;
-							System.out.println("Xors of model: " + decisionsOfCreatedModel + " out of range ["
-									+ lowerBoundXorGtws + "," + upperBoundXorGtws + "]!");
-
-						}
-
-						int globalSphereOfCreatedModel = CommonFunctionality.getGlobalSphere(createdModel, false);
-						if (globalSphereOfCreatedModel < lowerBoundParticipants
-								|| globalSphereOfCreatedModel > upperBoundParticipants) {
-							deleteModel = true;
-							System.out.println("Participants of model: " + globalSphereOfCreatedModel
-									+ " out of range [" + lowerBoundParticipants + "," + upperBoundParticipants + "]!");
-						}
-
-						int parallelGtwsOfCreatedModel = CommonFunctionality.getAmountParallelGtwSplits(createdModel);
-						if (parallelGtwsOfCreatedModel < lowerBoundParallelGtws
-								|| parallelGtwsOfCreatedModel > upperBoundParallelGtws) {
-							deleteModel = true;
-							System.out.println("Parallel gtws of model: " + parallelGtwsOfCreatedModel
-									+ " out of range [" + lowerBoundParallelGtws + "," + upperBoundParallelGtws + "]!");
-						}
-
 						int tasksOfCreatedModel = createdModel.getModelElementsByType(Task.class).size();
-						if (tasksOfCreatedModel < lowerBoundTasks || tasksOfCreatedModel > upperBoundTasks) {
-							deleteModel = true;
-							System.out.println("Tasks of model: " + tasksOfCreatedModel + " out of range ["
-									+ lowerBoundTasks + "," + upperBoundTasks + "]!");
-
-						}
 
 						if (testForNodesBeforeGtws) {
 							int amountNodesToBeInserted = 0;
 							FlowNode nodeAfterStartEvent = createdModel.getModelElementsByType(StartEvent.class)
-									.iterator().next();
+									.iterator().next().getOutgoing().iterator().next().getTarget();
 							if (nodeAfterStartEvent instanceof ParallelGateway
 									|| nodeAfterStartEvent instanceof ExclusiveGateway
 									|| nodeAfterStartEvent instanceof BusinessRuleTask) {
@@ -933,7 +919,7 @@ public class BatchFileGenerator {
 							for (ExclusiveGateway gtw : createdModel.getModelElementsByType(ExclusiveGateway.class)) {
 								if (gtw.getOutgoing().size() >= 2) {
 									// if xor is a split
-									// there must be a brt inserted before
+									// there will be a brt inserted before
 									amountNodesToBeInserted++;
 								}
 
@@ -946,6 +932,11 @@ public class BatchFileGenerator {
 								System.out.println("Tasks of model after nodes to be inserted: "
 										+ amountTasksOfModelAfterNodesToBeInserted + " > upperBoundTasks "
 										+ upperBoundTasks);
+							} else if (amountTasksOfModelAfterNodesToBeInserted < lowerBoundTasks) {
+								deleteModel = true;
+								System.out.println("Tasks of model after nodes to be inserted: "
+										+ amountTasksOfModelAfterNodesToBeInserted + " < lowerBoundTasks "
+										+ lowerBoundTasks);
 							}
 						}
 
@@ -975,7 +966,7 @@ public class BatchFileGenerator {
 				e.printStackTrace();
 			}
 
-			System.out.println("randomProcess" + ProcessGenerator.processGeneratorId() + " deployed in " + pathToFiles);
+			System.out.println("randomProcess" + processId + " deployed in " + pathToFiles);
 		}
 
 	}
@@ -1033,7 +1024,6 @@ public class BatchFileGenerator {
 			try {
 				API api = new API(pathToFile, cost);
 				apiList.add(api);
-
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				File f = new File(pathToFile);
@@ -1570,34 +1560,7 @@ public class BatchFileGenerator {
 							.removeDataObjectsWithoutConnectionsToDecisionsFromModel(pModel.getModelInstance());
 
 					newModel = pModel.writeChangesToFileWithoutCorrectnessCheck();
-					boolean deleteModel = false;
-					// check if newmodel is within the max % of readers
-					// e.g. if it has 21 tasks and 30% is max readers for large processes -> max 7
-					// readers
-					BpmnModelInstance newModelInst = Bpmn.readModelFromFile(newModel.getAbsoluteFile());
-					amountTasks = CommonFunctionality.getAmountTasks(newModelInst);
-					int currAmountReaders = newModelInst.getModelElementsByType(DataInputAssociation.class).size();
-					if (currAmountReaders > CommonFunctionality.getAmountFromPercentage(amountTasks,
-							percentageOfReadersClasses.get(2))) {
-						deleteModel = true;
-					}
-
-					// check if newmodel can have the min % of writers
-					// for each data object - 1 writer
-					// e.g. 21 tasks and 10% min writers -> 3 readers
-					int minAmountWritersNeeded = newModelInst.getModelElementsByType(DataObjectReference.class).size();
-					if (minAmountWritersNeeded > CommonFunctionality.getAmountFromPercentage(amountTasks,
-							percentageOfWritersClasses.get(0))) {
-						deleteModel = true;
-					}
-
-					if (deleteModel) {
-						newModel.getAbsoluteFile().delete();
-						newModel = null;
-					} else {
-						modelIsValid = true;
-					}
-
+					modelIsValid = true;
 				} catch (Exception e) {
 					System.err.println(e.getMessage());
 				}

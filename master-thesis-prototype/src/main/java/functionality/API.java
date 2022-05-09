@@ -186,8 +186,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 							if (entry2.getKey().equals(entry.getKey())) {
 								// check if both brts have (partially) the same lastwriters
 								if (entry2.getValue().contains(lastWriter)) {
-									if ((!brt.getPotentiallyDependentBrts().contains(brt2))) {
-										brt.getPotentiallyDependentBrts().add(brt2);
+									if ((!brt2.getPotentiallyDependentBrts().contains(brt))) {
+										brt2.getPotentiallyDependentBrts().add(brt);
 									}
 								}
 							}

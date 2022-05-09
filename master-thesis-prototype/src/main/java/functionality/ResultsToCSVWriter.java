@@ -158,7 +158,7 @@ public class ResultsToCSVWriter {
 			}
 
 			amountReaders = readers + "";
-			readersPerDataObject = (sumDataObjects / readers) + "";
+			readersPerDataObject = (readers/sumDataObjects) + "";
 
 			double writers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
@@ -168,7 +168,7 @@ public class ResultsToCSVWriter {
 				}
 			}
 			amountWriters = writers + "";
-			writersPerDataObject = (sumDataObjects / writers) + "";
+			writersPerDataObject = (writers/sumDataObjects) + "";
 
 		}
 
@@ -368,7 +368,7 @@ public class ResultsToCSVWriter {
 			}
 
 			amountReaders = readers + "";
-			readersPerDataObject = (sumDataObjects / readers) + "";
+			readersPerDataObject = (readers/sumDataObjects) + "";
 
 			double writers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
@@ -378,7 +378,7 @@ public class ResultsToCSVWriter {
 				}
 			}
 			amountWriters = writers + "";
-			writersPerDataObject = (sumDataObjects / writers) + "";
+			writersPerDataObject = (writers/sumDataObjects) + "";
 
 			boolean dependentBrtsInProcess = false;
 			for (BPMNBusinessRuleTask brt : bruteForceApi.getBusinessRuleTasks()) {

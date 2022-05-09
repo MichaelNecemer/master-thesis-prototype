@@ -50,8 +50,7 @@ public class Main1 {
 	  chooser.getSelectedFile().getAbsolutePath();	  
 	  }*/
 	
-	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches1.bpmn";
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\testeroni.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsInParallelBranches.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel2.bpmn";

@@ -123,7 +123,7 @@ public class ProcessGenerator implements Callable {
 
 		boolean pathToBeAdded = true;
 		LinkedList<FlowNode> openGatewayStack = new LinkedList<FlowNode>();
-		// get a random path where EndEvent has not been added		
+		// get a random path where EndEvent has not been added
 		LinkedList<FlowNode> path = new LinkedList<FlowNode>();
 		path.addAll(this.getRandomPathNotFullyBuilt(allPaths));
 		allPaths.remove(path);
@@ -204,18 +204,19 @@ public class ProcessGenerator implements Callable {
 			}
 			addedNode = this.modelInstance.getModelElementById(nextConstructToBeAdded.getId());
 		}
-
 		LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
 		newPaths.addAll(allPaths);
-		path.add(addedNode);
-		if (!(path.getLast() instanceof EndEvent)) {
-			if (pathToBeAdded) {
-				newPaths.add(path);
-				if (splitAdded) {
-					// new object of that path will be added again since there can be 2 branches
-					LinkedList<FlowNode> samePathNewObject = new LinkedList<FlowNode>();
-					samePathNewObject.addAll(path);
-					newPaths.add(samePathNewObject);
+		if (addedNode != null) {
+			path.add(addedNode);
+			if (!(path.getLast() instanceof EndEvent)) {
+				if (pathToBeAdded) {
+					newPaths.add(path);
+					if (splitAdded) {
+						// new object of that path will be added again since there can be 2 branches
+						LinkedList<FlowNode> samePathNewObject = new LinkedList<FlowNode>();
+						samePathNewObject.addAll(path);
+						newPaths.add(samePathNewObject);
+					}
 				}
 			}
 		}
@@ -273,7 +274,7 @@ public class ProcessGenerator implements Callable {
 			} else if (lastOpenedSplit instanceof ParallelGateway) {
 				nodeList.add("ParallelGateway_join");
 			}
-		} 
+		}
 
 		return nodeList;
 
@@ -366,13 +367,12 @@ public class ProcessGenerator implements Callable {
 		if (!CommonFunctionality.isModelBlockStructured(this.modelInstance)) {
 			throw new Exception("Model not block structured!");
 		}
-		
-		//check if parallel branches have at least 1 element
-		//check if one of both xor branches has at least 1 element
-		if(!CommonFunctionality.testGatewaysForElements(this.modelInstance)) {
+
+		// check if parallel branches have at least 1 element
+		// check if one of both xor branches has at least 1 element
+		if (!CommonFunctionality.testGatewaysForElements(this.modelInstance)) {
 			throw new Exception("Branches have not the minimum amount of elements before join!");
 		}
-		
 
 		Bpmn.validateModel(this.modelInstance);
 		String pathOfProcessFile = this.directoryToStore;
@@ -508,12 +508,12 @@ public class ProcessGenerator implements Callable {
 						System.out.println("File written: " + f.getAbsolutePath());
 						return f;
 					} else {
-						System.out.println("Try "+tries+": model did not satisfy specified amounts! Trying again!");
+						System.out.println("Try " + tries + ": model did not satisfy specified amounts! Trying again!");
 						tries++;
 					}
 				} catch (Exception e) {
 					System.out.println(e.getMessage());
-					System.out.println("Try "+tries+": generated Model not valid! Trying again!");
+					System.out.println("Try " + tries + ": generated Model not valid! Trying again!");
 					tries++;
 				}
 			}
