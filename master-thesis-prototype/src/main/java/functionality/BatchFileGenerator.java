@@ -118,7 +118,7 @@ public class BatchFileGenerator {
 		methodsToRun.add(test4_1ToRun);
 		methodsToRun.add(test4_2ToRun);
 		methodsToRun.add(test5ToRun);
-		methodsToRun.add(test6ToRun);
+		//methodsToRun.add(test6ToRun);
 
 		String pathToFolderForModelsForTest1_1 = "";
 		String pathToSmallProcessesFolderWithoutAnnotation = "";
