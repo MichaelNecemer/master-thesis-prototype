@@ -1085,10 +1085,10 @@ public class BatchFileGenerator {
 		boolean heapSpaceError = false;
 
 		try {
+			if (runBruteForce) {
 			Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureBruteForce = service
 					.submit(bruteForceApi);
 			Exception exceptionBruteForce = null;
-			if (runBruteForce) {
 				try {
 					pInstancesBruteForce = futureBruteForce.get(timeOutForApiInMin, TimeUnit.MINUTES);
 					algorithmMap.putAll(pInstancesBruteForce);
@@ -1137,9 +1137,9 @@ public class BatchFileGenerator {
 					futureBruteForce.cancel(true);
 				}
 			}
+			if (runLocalMin) {
 			Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureLocalMin = service.submit(localMinApi);
 			Exception exceptionLocalMin = null;
-			if (runLocalMin) {
 				try {
 					pInstancesLocalMin = futureLocalMin.get(timeOutForApiInMin, TimeUnit.MINUTES);
 					algorithmMap.putAll(pInstancesLocalMin);
@@ -1186,10 +1186,10 @@ public class BatchFileGenerator {
 					futureLocalMin.cancel(true);
 				}
 			}
+			if (runLocalMinWithBound) {
 			Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureLocalMinWithMaxSolutions = service
 					.submit(localMinWithMaxSolutionsApi);
-			Exception exceptionLocalMinWithMaxSolutions = null;
-			if (runLocalMinWithBound) {
+			Exception exceptionLocalMinWithMaxSolutions = null;			
 				try {
 					pInstancesLocalMinWithMaxSolutions = futureLocalMinWithMaxSolutions.get(timeOutForApiInMin,
 							TimeUnit.MINUTES);
