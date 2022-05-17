@@ -118,7 +118,7 @@ public class BatchFileGenerator {
 		methodsToRun.add(test4_1ToRun);
 		methodsToRun.add(test4_2ToRun);
 		methodsToRun.add(test5ToRun);
-		//methodsToRun.add(test6ToRun);
+		// methodsToRun.add(test6ToRun);
 
 		String pathToFolderForModelsForTest1_1 = "";
 		String pathToSmallProcessesFolderWithoutAnnotation = "";
@@ -672,7 +672,7 @@ public class BatchFileGenerator {
 		ExecutorService service = Executors.newFixedThreadPool(amountThreads);
 		File csv = BatchFileGenerator.createNewCSVFile(pathWhereToCreateAnnotatedProcesses, "test6_results");
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csv);
-		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(pathWhereToCreateAnnotatedProcesses,
+		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(pathWhereToCreateAnnotatedProcesses, true, true, true,
 				upperBoundlocalMinWithBound, publicDecisionProb, writer, service);
 		writer.writeRowsToCSVAndcloseWriter();
 		service.shutdownNow();
@@ -1061,8 +1061,9 @@ public class BatchFileGenerator {
 	}
 
 	public static synchronized HashMap<Boolean, HashMap<String, Integer>> runAlgorithmsAndWriteResultsToCSV(API api,
-			int limitForLocalMin, int boundForComparisons, HashMap<String, Integer> timeOutOrHeapSpaceExceptionMap,
-			ResultsToCSVWriter writer, ExecutorService service) {
+			boolean runBruteForce, boolean runLocalMin, boolean runLocalMinWithBound, int limitForLocalMin,
+			int boundForComparisons, HashMap<String, Integer> timeOutOrHeapSpaceExceptionMap, ResultsToCSVWriter writer,
+			ExecutorService service) {
 		// write the result of an algorithm to an existing csv file
 		// clone api for algorithms
 
@@ -1084,158 +1085,158 @@ public class BatchFileGenerator {
 		boolean heapSpaceError = false;
 
 		try {
-
 			Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureBruteForce = service
 					.submit(bruteForceApi);
 			Exception exceptionBruteForce = null;
-			try {
-				pInstancesBruteForce = futureBruteForce.get(timeOutForApiInMin, TimeUnit.MINUTES);
-				algorithmMap.putAll(pInstancesBruteForce);
-				System.out.println("BruteForceSolutions: " + pInstancesBruteForce.get("bruteForce").size());
-				futureBruteForce.cancel(true);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				exceptionBruteForce = (InterruptedException) e;
-				e.printStackTrace();
-				futureBruteForce.cancel(true);
-			} catch (ExecutionException e) {
-				// TODO Auto-generated catch block
-				if (e.getCause() instanceof OutOfMemoryError) {
-					exceptionBruteForce = new HeapSpaceException(e.getMessage(), e.getCause());
-					timeOutOrHeapSpaceExceptionMap.put("bruteForce",
-							timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
-					System.err.println("BruteForce ran out of memory");
-					heapSpaceError = true;
-				} else {
-					exceptionBruteForce = (ExecutionException) e;
+			if (runBruteForce) {
+				try {
+					pInstancesBruteForce = futureBruteForce.get(timeOutForApiInMin, TimeUnit.MINUTES);
+					algorithmMap.putAll(pInstancesBruteForce);
+					System.out.println("BruteForceSolutions: " + pInstancesBruteForce.get("bruteForce").size());
+					futureBruteForce.cancel(true);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					exceptionBruteForce = (InterruptedException) e;
 					e.printStackTrace();
-				}
-				futureBruteForce.cancel(true);
+					futureBruteForce.cancel(true);
+				} catch (ExecutionException e) {
+					// TODO Auto-generated catch block
+					if (e.getCause() instanceof OutOfMemoryError) {
+						exceptionBruteForce = new HeapSpaceException(e.getMessage(), e.getCause());
+						timeOutOrHeapSpaceExceptionMap.put("bruteForce",
+								timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
+						System.err.println("BruteForce ran out of memory");
+						heapSpaceError = true;
+					} else {
+						exceptionBruteForce = (ExecutionException) e;
+						e.printStackTrace();
+					}
+					futureBruteForce.cancel(true);
 
-			} catch (TimeoutException e) {
-				// TODO Auto-generated catch block
-				exceptionBruteForce = (TimeoutException) e;
-				timeOutOrHeapSpaceExceptionMap.put("bruteForce",
-						timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
-				System.err.println("Timeout for bruteForce!");
-				futureBruteForce.cancel(true);
-			} catch (Error e) {
-				System.gc();
-				if (e instanceof OutOfMemoryError) {
-					exceptionBruteForce = new HeapSpaceException(e.getMessage(), e.getCause());
+				} catch (TimeoutException e) {
+					// TODO Auto-generated catch block
+					exceptionBruteForce = (TimeoutException) e;
 					timeOutOrHeapSpaceExceptionMap.put("bruteForce",
 							timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
-					System.err.println("BruteForce ran out of memory");
-					heapSpaceError = true;
+					System.err.println("Timeout for bruteForce!");
+					futureBruteForce.cancel(true);
+				} catch (Error e) {
+					System.gc();
+					if (e instanceof OutOfMemoryError) {
+						exceptionBruteForce = new HeapSpaceException(e.getMessage(), e.getCause());
+						timeOutOrHeapSpaceExceptionMap.put("bruteForce",
+								timeOutOrHeapSpaceExceptionMap.getOrDefault("bruteForce", 0) + 1);
+						System.err.println("BruteForce ran out of memory");
+						heapSpaceError = true;
+					}
+					futureBruteForce.cancel(true);
 				}
-				futureBruteForce.cancel(true);
-			}
 
-			finally {
-				exceptionPerAlgorithm.putIfAbsent("bruteForce", exceptionBruteForce);
-				futureBruteForce.cancel(true);
+				finally {
+					exceptionPerAlgorithm.putIfAbsent("bruteForce", exceptionBruteForce);
+					futureBruteForce.cancel(true);
+				}
 			}
-
 			Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureLocalMin = service.submit(localMinApi);
 			Exception exceptionLocalMin = null;
-
-			try {
-				pInstancesLocalMin = futureLocalMin.get(timeOutForApiInMin, TimeUnit.MINUTES);
-				algorithmMap.putAll(pInstancesLocalMin);
-				System.out.println("LocalMinInstances: " + pInstancesLocalMin.get("localMin").size());
-				futureLocalMin.cancel(true);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				exceptionLocalMin = (InterruptedException) e;
-				e.printStackTrace();
-				futureLocalMin.cancel(true);
-			} catch (ExecutionException e) {
-				// TODO Auto-generated catch block
-				if (e.getCause() instanceof OutOfMemoryError) {
-					exceptionLocalMin = new HeapSpaceException(e.getMessage(), e.getCause());
-					timeOutOrHeapSpaceExceptionMap.put("localMin",
-							timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
-					System.err.println("LocalMin ran out of memory");
-					heapSpaceError = true;
-				} else {
-					exceptionLocalMin = (ExecutionException) e;
+			if (runLocalMin) {
+				try {
+					pInstancesLocalMin = futureLocalMin.get(timeOutForApiInMin, TimeUnit.MINUTES);
+					algorithmMap.putAll(pInstancesLocalMin);
+					System.out.println("LocalMinInstances: " + pInstancesLocalMin.get("localMin").size());
+					futureLocalMin.cancel(true);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					exceptionLocalMin = (InterruptedException) e;
 					e.printStackTrace();
-				}
-				futureLocalMin.cancel(true);
+					futureLocalMin.cancel(true);
+				} catch (ExecutionException e) {
+					// TODO Auto-generated catch block
+					if (e.getCause() instanceof OutOfMemoryError) {
+						exceptionLocalMin = new HeapSpaceException(e.getMessage(), e.getCause());
+						timeOutOrHeapSpaceExceptionMap.put("localMin",
+								timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
+						System.err.println("LocalMin ran out of memory");
+						heapSpaceError = true;
+					} else {
+						exceptionLocalMin = (ExecutionException) e;
+						e.printStackTrace();
+					}
+					futureLocalMin.cancel(true);
 
-			} catch (TimeoutException e) {
-				// TODO Auto-generated catch block
-				exceptionLocalMin = (TimeoutException) e;
-				timeOutOrHeapSpaceExceptionMap.put("localMin",
-						timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
-				System.err.println("Timeout for localMin!");
-				futureLocalMin.cancel(true);
-			} catch (Error e) {
-				System.gc();
-				if (e instanceof OutOfMemoryError) {
-					exceptionLocalMin = new HeapSpaceException(e.getMessage(), e.getCause());
+				} catch (TimeoutException e) {
+					// TODO Auto-generated catch block
+					exceptionLocalMin = (TimeoutException) e;
 					timeOutOrHeapSpaceExceptionMap.put("localMin",
 							timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
-					System.err.println("LocalMin ran out of memory");
-					heapSpaceError = true;
+					System.err.println("Timeout for localMin!");
+					futureLocalMin.cancel(true);
+				} catch (Error e) {
+					System.gc();
+					if (e instanceof OutOfMemoryError) {
+						exceptionLocalMin = new HeapSpaceException(e.getMessage(), e.getCause());
+						timeOutOrHeapSpaceExceptionMap.put("localMin",
+								timeOutOrHeapSpaceExceptionMap.getOrDefault("localMin", 0) + 1);
+						System.err.println("LocalMin ran out of memory");
+						heapSpaceError = true;
+					}
+					futureLocalMin.cancel(true);
+				} finally {
+					exceptionPerAlgorithm.putIfAbsent("localMin", exceptionLocalMin);
+					futureLocalMin.cancel(true);
 				}
-				futureLocalMin.cancel(true);
-			} finally {
-				exceptionPerAlgorithm.putIfAbsent("localMin", exceptionLocalMin);
-				futureLocalMin.cancel(true);
 			}
-
 			Future<HashMap<String, LinkedList<ProcessInstanceWithVoters>>> futureLocalMinWithMaxSolutions = service
 					.submit(localMinWithMaxSolutionsApi);
 			Exception exceptionLocalMinWithMaxSolutions = null;
-
-			try {
-				pInstancesLocalMinWithMaxSolutions = futureLocalMinWithMaxSolutions.get(timeOutForApiInMin,
-						TimeUnit.MINUTES);
-				algorithmMap.putAll(pInstancesLocalMinWithMaxSolutions);
-				System.out.println("LocalMinInstances with bound: "
-						+ pInstancesLocalMinWithMaxSolutions.get(localMinWithMaxSolutions).size());
-				futureLocalMinWithMaxSolutions.cancel(true);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				exceptionLocalMinWithMaxSolutions = (InterruptedException) e;
-				e.printStackTrace();
-				futureLocalMinWithMaxSolutions.cancel(true);
-			} catch (ExecutionException e) {
-				// TODO Auto-generated catch block
-				if (e.getCause() instanceof OutOfMemoryError) {
-					exceptionLocalMinWithMaxSolutions = new HeapSpaceException(e.getMessage(), e.getCause());
-					timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions,
-							timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
-					System.err.println(localMinWithMaxSolutions + " ran out of memory");
-					heapSpaceError = true;
-				} else {
-					exceptionLocalMinWithMaxSolutions = (ExecutionException) e;
+			if (runLocalMinWithBound) {
+				try {
+					pInstancesLocalMinWithMaxSolutions = futureLocalMinWithMaxSolutions.get(timeOutForApiInMin,
+							TimeUnit.MINUTES);
+					algorithmMap.putAll(pInstancesLocalMinWithMaxSolutions);
+					System.out.println("LocalMinInstances with bound: "
+							+ pInstancesLocalMinWithMaxSolutions.get(localMinWithMaxSolutions).size());
+					futureLocalMinWithMaxSolutions.cancel(true);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					exceptionLocalMinWithMaxSolutions = (InterruptedException) e;
 					e.printStackTrace();
-				}
-				futureLocalMinWithMaxSolutions.cancel(true);
-			} catch (TimeoutException e) {
-				// TODO Auto-generated catch block
-				exceptionLocalMinWithMaxSolutions = (TimeoutException) e;
-				timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions,
-						timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
-				System.err.println("Timeout for " + localMinWithMaxSolutions + "!");
-				futureLocalMinWithMaxSolutions.cancel(true);
-			} catch (Error e) {
-				System.gc();
-				if (e instanceof OutOfMemoryError) {
-					exceptionLocalMinWithMaxSolutions = new HeapSpaceException(e.getMessage(), e.getCause());
+					futureLocalMinWithMaxSolutions.cancel(true);
+				} catch (ExecutionException e) {
+					// TODO Auto-generated catch block
+					if (e.getCause() instanceof OutOfMemoryError) {
+						exceptionLocalMinWithMaxSolutions = new HeapSpaceException(e.getMessage(), e.getCause());
+						timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions,
+								timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
+						System.err.println(localMinWithMaxSolutions + " ran out of memory");
+						heapSpaceError = true;
+					} else {
+						exceptionLocalMinWithMaxSolutions = (ExecutionException) e;
+						e.printStackTrace();
+					}
+					futureLocalMinWithMaxSolutions.cancel(true);
+				} catch (TimeoutException e) {
+					// TODO Auto-generated catch block
+					exceptionLocalMinWithMaxSolutions = (TimeoutException) e;
 					timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions,
 							timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
-					System.err.println(localMinWithMaxSolutions + " ran out of memory");
-					heapSpaceError = true;
+					System.err.println("Timeout for " + localMinWithMaxSolutions + "!");
+					futureLocalMinWithMaxSolutions.cancel(true);
+				} catch (Error e) {
+					System.gc();
+					if (e instanceof OutOfMemoryError) {
+						exceptionLocalMinWithMaxSolutions = new HeapSpaceException(e.getMessage(), e.getCause());
+						timeOutOrHeapSpaceExceptionMap.put(localMinWithMaxSolutions,
+								timeOutOrHeapSpaceExceptionMap.getOrDefault(localMinWithMaxSolutions, 0) + 1);
+						System.err.println(localMinWithMaxSolutions + " ran out of memory");
+						heapSpaceError = true;
+					}
+					futureLocalMinWithMaxSolutions.cancel(true);
+				} finally {
+					exceptionPerAlgorithm.putIfAbsent(localMinWithMaxSolutions, exceptionLocalMinWithMaxSolutions);
+					futureLocalMinWithMaxSolutions.cancel(true);
 				}
-				futureLocalMinWithMaxSolutions.cancel(true);
-			} finally {
-				exceptionPerAlgorithm.putIfAbsent(localMinWithMaxSolutions, exceptionLocalMinWithMaxSolutions);
-				futureLocalMinWithMaxSolutions.cancel(true);
 			}
-
 		} catch (Exception e) {
 			System.err.println("Some other exception has happened!");
 			e.printStackTrace();
@@ -1268,13 +1269,15 @@ public class BatchFileGenerator {
 
 	}
 
-	public static void runAlgorithmsAndWriteResultsToCSV(LinkedList<File> files, int upperBoundSolutionsForLocalMin,
+	public static void runAlgorithmsAndWriteResultsToCSV(LinkedList<File> files, boolean runBruteForce,
+			boolean runLocalMin, boolean runLocalMinWithBound, int upperBoundSolutionsForLocalMin,
 			int boundForComparisons, ResultsToCSVWriter writer, ExecutorService service) {
 		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(files, writer);
 		if (!apiList.isEmpty()) {
 			for (API api : apiList) {
-				BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, upperBoundSolutionsForLocalMin,
-						boundForComparisons, new HashMap<String, Integer>(), writer, service);
+				BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, runBruteForce, runLocalMin,
+						runLocalMinWithBound, upperBoundSolutionsForLocalMin, boundForComparisons,
+						new HashMap<String, Integer>(), writer, service);
 			}
 		} else {
 			System.out.println("No Algorithms have been run successfully on annotated models");
@@ -1282,14 +1285,15 @@ public class BatchFileGenerator {
 
 	}
 
-	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels,
-			int upperBoundSolutionsForLocalMin, int boundForComparisons, ResultsToCSVWriter writer,
-			ExecutorService service) {
+	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels, boolean runBruteForce,
+			boolean runLocalMin, boolean runLocalMinWithBound, int upperBoundSolutionsForLocalMin,
+			int boundForComparisons, ResultsToCSVWriter writer, ExecutorService service) {
 		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithAnnotatedModels, writer);
 		if (!apiList.isEmpty()) {
 			for (API api : apiList) {
-				BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, upperBoundSolutionsForLocalMin,
-						boundForComparisons, new HashMap<String, Integer>(), writer, service);
+				BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, runBruteForce, runLocalMin,
+						runLocalMinWithBound, upperBoundSolutionsForLocalMin, boundForComparisons,
+						new HashMap<String, Integer>(), writer, service);
 			}
 		} else {
 			System.out.println("No Algorithms have been run successfully on annotated models");
@@ -1437,8 +1441,8 @@ public class BatchFileGenerator {
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator
 				.getAllModelsFromFolder(pathToDestinationFolderForStoringModels);
 		executor = Executors.newFixedThreadPool(amountThreads);
-		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, upperBoundLocalMinWithBound,
-				boundForComparisons, writer, executor);
+		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, true, true, true,
+				upperBoundLocalMinWithBound, boundForComparisons, writer, executor);
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 	}
@@ -1753,7 +1757,7 @@ public class BatchFileGenerator {
 		File file = BatchFileGenerator.createNewCSVFile(pathToFolderWithModelsForEvaluation,
 				"test2_processType" + processType + "_results");
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(file);
-		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(pathToFolderWithModelsForEvaluation,
+		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(pathToFolderWithModelsForEvaluation, true, true, true,
 				upperBoundSolutionsForLocalMinWithBound, boundForComparisons, writer, service);
 		service.shutdownNow();
 		writer.writeRowsToCSVAndcloseWriter();
@@ -1778,7 +1782,9 @@ public class BatchFileGenerator {
 		String localMinWithBound = "localMinWithBound" + upperBoundSolutionsForLocalMinWithBound;
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 		boolean outOfMemoryError = false;
-		int apiListSize = amountProcessesPerIteration;
+		boolean runBruteForce = true;
+		boolean runLocalMin = true;
+		boolean runLocalMinWithBound = true;
 
 		do {
 			timeOutOrHeapSpaceExceptionMap.clear();
@@ -1894,13 +1900,12 @@ public class BatchFileGenerator {
 			LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderForModelsWithDecisionsAnnotated,
 					writer);
 
-			apiListSize = apiList.size();
-
 			// perform all algorithms and count the timeouts
 			for (API api : apiList) {
 				HashMap<Boolean, HashMap<String, Integer>> returnMap = BatchFileGenerator
-						.runAlgorithmsAndWriteResultsToCSV(api, upperBoundSolutionsForLocalMinWithBound,
-								boundForComparisons, timeOutOrHeapSpaceExceptionMap, writer, executor);
+						.runAlgorithmsAndWriteResultsToCSV(api, runBruteForce, runLocalMin, runLocalMinWithBound,
+								upperBoundSolutionsForLocalMinWithBound, boundForComparisons,
+								timeOutOrHeapSpaceExceptionMap, writer, executor);
 				if (returnMap.get(true) != null) {
 					outOfMemoryError = true;
 					timeOutOrHeapSpaceExceptionMap = returnMap.get(true);
@@ -1908,6 +1913,18 @@ public class BatchFileGenerator {
 					timeOutOrHeapSpaceExceptionMap = returnMap.get(false);
 				}
 
+			}
+
+			if (!apiList.isEmpty()) {
+				if (timeOutOrHeapSpaceExceptionMap.get("bruteForce") == apiList.size()) {
+					runBruteForce = false;
+				}
+				if (timeOutOrHeapSpaceExceptionMap.get("localMin") == apiList.size()) {
+					runLocalMin = false;
+				}
+				if (timeOutOrHeapSpaceExceptionMap.get(localMinWithBound) == apiList.size()) {
+					runLocalMinWithBound = false;
+				}
 			}
 
 			System.out.println("Iteration" + amountDecisionsToStart + " end - timeOutsBruteForce: "
@@ -1918,9 +1935,7 @@ public class BatchFileGenerator {
 
 			amountDecisionsToStart++;
 
-		} while (timeOutOrHeapSpaceExceptionMap.get("bruteForce") < apiListSize
-				|| timeOutOrHeapSpaceExceptionMap.get("localMin") < apiListSize
-				|| timeOutOrHeapSpaceExceptionMap.get(localMinWithBound) < apiListSize || outOfMemoryError == false);
+		} while (runBruteForce || runLocalMin || runLocalMinWithBound && !outOfMemoryError);
 
 		executor.shutdownNow();
 
@@ -1954,7 +1969,7 @@ public class BatchFileGenerator {
 			timeOutMap.put(localMinWithBound, 0);
 
 			HashMap<Boolean, HashMap<String, Integer>> returnMap = BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(
-					api, upperBoundSolutionsForLocalMin, boundForComparisons, timeOutMap, writer, executor);
+					api, true, true, true, upperBoundSolutionsForLocalMin, boundForComparisons, timeOutMap, writer, executor);
 			if (returnMap.get(true) != null) {
 				outOfMemoryException = true;
 				timeOutMap = returnMap.get(true);
@@ -2015,8 +2030,8 @@ public class BatchFileGenerator {
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
-		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, upperBoundLocalMinWithBound,
-				boundForComparisons, writer, executor);
+		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, true, true, true,
+				upperBoundLocalMinWithBound, boundForComparisons, writer, executor);
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 
@@ -2050,8 +2065,8 @@ public class BatchFileGenerator {
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
-		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, upperBoundLocalMinWithBound,
-				boundForComparisons, writer, executor);
+		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, true, true, true,
+				upperBoundLocalMinWithBound, boundForComparisons, writer, executor);
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 
@@ -2084,8 +2099,8 @@ public class BatchFileGenerator {
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
-		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, upperBoundLocalMinWithBound,
-				boundForComparisons, writer, executor);
+		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, true, true, true,
+				upperBoundLocalMinWithBound, boundForComparisons, writer, executor);
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 
