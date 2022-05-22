@@ -2102,5 +2102,9 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		}
 		return null;
 	}
+	
+	public int getPathsThroughProcess() {
+		return this.pathsThroughProcess.size();
+	}
 
 }

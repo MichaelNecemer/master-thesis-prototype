@@ -41,7 +41,7 @@ public class ResultsToCSVWriter {
 					"amountPaths", "amountReaders", "amountWriters", "amountDataObjects",
 					"averageAmountDataObjectsPerDecision", "amountReadersPerDataObject", "amountWritersPerDataObject",
 					"amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements",
-					"amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum", "dependentBrts",
+					"amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum", "dependentBrts","pathsThroughProcess",
 					"deciderOrVerifier" };
 			this.rows.add(header);
 
@@ -128,6 +128,7 @@ public class ResultsToCSVWriter {
 		String amountWriters = "null";
 		String amountDataObjects = "null";
 		String averageAmountDataObjectsPerDecision = "null";
+		String pathsThroughProcess = "null";
 
 		if (api != null) {
 			allPathsThroughProcess = api.getAllPathsThroughProcess().size() + "";
@@ -169,7 +170,7 @@ public class ResultsToCSVWriter {
 			}
 			amountWriters = writers + "";
 			writersPerDataObject = (writers/sumDataObjects) + "";
-
+			pathsThroughProcess = api.getPathsThroughProcess()+"";
 		}
 
 		String exceptionNameLocalMin = "null";
@@ -187,7 +188,7 @@ public class ResultsToCSVWriter {
 				bruteForceAlgorithmTime, timeDifference, "null", allPathsThroughProcess, amountReaders, amountWriters,
 				amountDataObjects, averageAmountDataObjectsPerDecision, readersPerDataObject, writersPerDataObject,
 				amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks, amountElements, sumAmountVotersOfModel,
-				averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, deciderOrVerifier };
+				averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, pathsThroughProcess, deciderOrVerifier };
 
 		this.rows.add(row);
 
@@ -213,10 +214,14 @@ public class ResultsToCSVWriter {
 		String localMinWithLimitAlgorithmTime = "null";
 		String timeDifferenceLocalMinBruteForce = "null";
 		String timeDifferenceLocalMinWithLimitBruteForce = "null";
+		String pathsThroughProcess = "null";
 
 		if (algorithmMap.get(localMinApi.getAlgorithmToPerform()) != null) {
 			pInstancesLocalMin = algorithmMap.get(localMinApi.getAlgorithmToPerform());
 			localMinAlgorithmTime = localMinApi.getExecutionTimeLocalMinimumAlgorithm() + "";
+			if(pathsThroughProcess.contentEquals("null")) {
+				pathsThroughProcess = localMinApi.getPathsThroughProcess()+"";
+			}
 			for (ProcessInstanceWithVoters pInst : pInstancesLocalMin) {
 				for (BPMNBusinessRuleTask brt : localMinApi.getBusinessRuleTasks()) {
 					if (brt.getSuccessors().get(0).getSuccessors().size() == 2) {
@@ -236,6 +241,9 @@ public class ResultsToCSVWriter {
 		if (algorithmMap.get(bruteForceApi.getAlgorithmToPerform()) != null) {
 			pInstancesBruteForce = algorithmMap.get(bruteForceApi.getAlgorithmToPerform());
 			bruteForceAlgorithmTime = bruteForceApi.getExecutionTimeBruteForceAlgorithm() + "";
+			if(pathsThroughProcess.contentEquals("null")) {
+				pathsThroughProcess = bruteForceApi.getPathsThroughProcess()+"";
+			}
 			for (ProcessInstanceWithVoters pInst : pInstancesBruteForce) {
 				for (BPMNBusinessRuleTask brt : bruteForceApi.getBusinessRuleTasks()) {
 					if (brt.getSuccessors().get(0).getSuccessors().size() == 2) {
@@ -255,6 +263,9 @@ public class ResultsToCSVWriter {
 		if (algorithmMap.get(localMinWithLimitApi.getAlgorithmToPerform()) != null) {
 			pInstancesLocalMinWithLimit = algorithmMap.get(localMinWithLimitApi.getAlgorithmToPerform());
 			localMinWithLimitAlgorithmTime = localMinWithLimitApi.getExecutionTimeLocalMinimumAlgorithmWithLimit() + "";
+			if(pathsThroughProcess.contentEquals("null")) {
+				pathsThroughProcess = localMinWithLimitApi.getPathsThroughProcess()+"";
+			}
 			for (ProcessInstanceWithVoters pInst : pInstancesLocalMinWithLimit) {
 				for (BPMNBusinessRuleTask brt : localMinWithLimitApi.getBusinessRuleTasks()) {
 					if (brt.getSuccessors().get(0).getSuccessors().size() == 2) {
@@ -304,7 +315,6 @@ public class ResultsToCSVWriter {
 			amountCheapestSolutionsBruteForce = cheapestBruteForceInst.size() + "";
 			amountSolutionsBruteForce = pInstancesBruteForce.size() + "";
 			averageCostAllSolutions = CommonFunctionality.getAverageCostForAllModelInstances(pInstancesBruteForce) + "";
-
 			costCheapestSolutionBruteForce = cheapestBruteForceInst.get(0).getCostForModelInstance() + "";
 		}
 
@@ -454,7 +464,7 @@ public class ResultsToCSVWriter {
 				isCheapestSolutionWithLimitInBruteForce, allPathsThroughProcess, amountReaders, amountWriters,
 				amountDataObjects, averageAmountDataObjectsPerDecision, readersPerDataObject, writersPerDataObject,
 				amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks, amountElements, sumAmountVotersOfModel,
-				averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, dependentBrts.toString(),
+				averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, dependentBrts.toString(), pathsThroughProcess,
 				deciderOrVerifier };
 
 		this.rows.add(row);
