@@ -227,8 +227,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 	}
 
-	public void setRequiredUpgradeForArc(VoterForXorArc arcToBeAdded, ProcessInstanceWithVoters currInst,
-			LinkedList<LinkedList<BPMNElement>> paths) throws NullPointerException, InterruptedException, Exception {
+	public void setRequiredUpgradesForArc(VoterForXorArc arcToBeAdded, ProcessInstanceWithVoters currInst) throws NullPointerException, InterruptedException, Exception {
 		// get all the participants of the current process instance and check which
 		// updates would be necessary for arcToBeAdded
 		HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenVoters = currInst.getVotersMap();
@@ -2106,5 +2105,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 	public int getPathsThroughProcess() {
 		return this.pathsThroughProcess.size();
 	}
-
+	
+	
+	
 }

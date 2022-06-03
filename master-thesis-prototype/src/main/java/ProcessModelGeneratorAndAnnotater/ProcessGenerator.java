@@ -48,6 +48,7 @@ public class ProcessGenerator implements Callable {
 	private FlowNode startEvent;
 	private int amountParticipants;
 	private LinkedList<String> participantNames;
+	private LinkedList<String> participantsUsed;
 	private int amountTasksToBeInserted;
 	private int amountXorsToBeInserted;
 	private int amountParallelsToBeInserted;
@@ -64,6 +65,9 @@ public class ProcessGenerator implements Callable {
 		if (taskProb + xorSplitProb + parallelSplitProb > 100) {
 			throw new Exception("taskProb+xorSplitProb+parallelSplitProb!=100");
 		}
+		if (amountParticipants > amountTasksToBeInserted) {
+			throw new Exception("amountParticipants can not be > amountTasks");
+		}
 		this.processId = processGeneratorId++;
 		this.directoryToStore = directoryToStore;
 
@@ -72,7 +76,7 @@ public class ProcessGenerator implements Callable {
 			String participantName = "Participant_" + (i + 1);
 			participantNames.add(participantName);
 		}
-
+		this.participantsUsed = new LinkedList<String>();
 		this.amountParticipants = amountParticipants;
 		this.amountTasksToBeInserted = amountTasksToBeInserted;
 		this.amountXorsToBeInserted = amountXorsToBeInserted;
@@ -149,8 +153,8 @@ public class ProcessGenerator implements Callable {
 		int branchingFactor = this.probabilityForJoinGtw + (openGatewayStack.size() * this.nestingDepthFactor);
 
 		boolean splitAdded = false;
-		InsertionConstruct nextConstructToBeAdded = this.getNextNodeToAdd(branchingFactor, nodeTypesToBeInserted,
-				openGatewayStack, path);
+		InsertionConstruct nextConstructToBeAdded = this.getNextNodeToAdd(amountTasksToBeInsertedLeft, branchingFactor,
+				nodeTypesToBeInserted, openGatewayStack, path);
 
 		FlowNode addedNode = null;
 		// append the nextNodeToBeAdded to the currentNode
@@ -280,41 +284,55 @@ public class ProcessGenerator implements Callable {
 
 	}
 
-	private InsertionConstruct getNextNodeToAdd(int branchingFactor, LinkedList<String> possibleNodeTypes,
-			LinkedList<FlowNode> lastOpenedGtws, LinkedList<FlowNode> path) {
+	private InsertionConstruct getNextNodeToAdd(int amountTasksToBeInsertedLeft, int branchingFactor,
+			LinkedList<String> possibleNodeTypes, LinkedList<FlowNode> lastOpenedGtws, LinkedList<FlowNode> path) {
 
 		InsertionConstruct nextNode = null;
 		if (possibleNodeTypes.isEmpty()) {
 			nextNode = new InsertionConstruct("endEvent_1", "", "EndEvent");
 			return nextNode;
 		}
+		if (this.amountXorsToBeInserted > 0 || this.amountParallelsToBeInserted > 0) {
 
-		if (this.modelInstance.getModelElementById("endEvent_1") == null) {
-			if (lastOpenedGtws.isEmpty() && possibleNodeTypes.size() == 1
-					&& possibleNodeTypes.get(0).contentEquals("Task")) {
-				// if there are only tasks available for this path
-				// and endEvent has not been visited
-				// randomly add task or the endEvent
-				int randomNum = ThreadLocalRandom.current().nextInt(0, 99);
-				Integer[] taskProbs = this.percentagesForNodesToBeDrawn.get("Task");
-				if (randomNum >= taskProbs[0] && randomNum <= taskProbs[1]) {
-					// task chosen
-					Random rand = new Random();
-					String uniqueTaskId = "task_" + this.taskId;
-					String participantName = this.participantNames.get(rand.nextInt(participantNames.size()));
-					String taskName = uniqueTaskId + " [" + participantName + "]";
-					nextNode = new InsertionConstruct(uniqueTaskId, taskName, "Task");
-					this.taskId++;
-					return nextNode;
-				} else {
-					// endEvent chosen
-					nextNode = new InsertionConstruct("endEvent_1", "", "EndEvent");
-					return nextNode;
+			if (this.modelInstance.getModelElementById("endEvent_1") == null) {
+
+				if (lastOpenedGtws.isEmpty() && possibleNodeTypes.size() == 1
+						&& possibleNodeTypes.get(0).contentEquals("Task")) {
+					// if there are only tasks available for this path
+					// and endEvent has not been visited
+					// randomly add task or the endEvent
+					int randomNum = ThreadLocalRandom.current().nextInt(0, 99);
+					Integer[] taskProbs = this.percentagesForNodesToBeDrawn.get("Task");
+					if (randomNum >= taskProbs[0] && randomNum <= taskProbs[1]) {
+						// task chosen
+						String uniqueTaskId = "task_" + this.taskId;
+						String participantName = "";
+						Random rand = new Random();
+						int participantsNotInserted = this.participantNames.size() - this.participantsUsed.size();
+						if (amountTasksToBeInsertedLeft <= participantsNotInserted) {
+							LinkedList<String> availableNames = new LinkedList<String>();
+							availableNames.addAll(this.participantNames);
+							availableNames.removeAll(this.participantsUsed);
+							participantName = availableNames.get(rand.nextInt(availableNames.size()));
+						} else {
+							participantName = this.participantNames.get(rand.nextInt(participantNames.size()));
+						}
+						String taskName = uniqueTaskId + " [" + participantName + "]";
+						nextNode = new InsertionConstruct(uniqueTaskId, taskName, "Task");
+						this.taskId++;
+						if (!this.participantsUsed.contains(participantName)) {
+							this.participantsUsed.add(participantName);
+						}
+						return nextNode;
+					} else {
+						// endEvent chosen
+						nextNode = new InsertionConstruct("endEvent_1", "", "EndEvent");
+						return nextNode;
+					}
 				}
+
 			}
-
 		}
-
 		// String nodeType = this.getRandomItem(possibleNodeTypes);
 		String nodeType = this.getRandomNode(branchingFactor, possibleNodeTypes);
 		if (nodeType.contentEquals("ParallelGateway_join")) {
@@ -338,12 +356,24 @@ public class ProcessGenerator implements Callable {
 			nextNode = new InsertionConstruct(uniqueParallelGtwIdSplit, name, "ParallelGateway_split");
 			this.parallelGtwId++;
 		} else if (nodeType.contentEquals("Task")) {
-			Random rand = new Random();
 			String uniqueTaskId = "task_" + this.taskId;
-			String participantName = this.participantNames.get(rand.nextInt(participantNames.size()));
+			String participantName = "";
+			Random rand = new Random();
+			int participantsNotInserted = this.participantNames.size() - this.participantsUsed.size();
+			if (amountTasksToBeInsertedLeft <= participantsNotInserted) {
+				LinkedList<String> availableNames = new LinkedList<String>();
+				availableNames.addAll(this.participantNames);
+				availableNames.removeAll(this.participantsUsed);
+				participantName = availableNames.get(rand.nextInt(availableNames.size()));
+			} else {
+				participantName = this.participantNames.get(rand.nextInt(participantNames.size()));
+			}
 			String taskName = uniqueTaskId + " [" + participantName + "]";
 			nextNode = new InsertionConstruct(uniqueTaskId, taskName, "Task");
 			this.taskId++;
+			if (!this.participantsUsed.contains(participantName)) {
+				this.participantsUsed.add(participantName);
+			}
 		}
 
 		return nextNode;
@@ -359,6 +389,7 @@ public class ProcessGenerator implements Callable {
 		this.taskId = 1;
 		this.xorGtwId = 1;
 		this.parallelGtwId = 1;
+		this.participantsUsed.clear();
 	}
 
 	private File writeChangesToFile() throws NullPointerException, Exception {
@@ -366,6 +397,12 @@ public class ProcessGenerator implements Callable {
 		// add the generated models to the given directory
 		if (!CommonFunctionality.isModelBlockStructured(this.modelInstance)) {
 			throw new Exception("Model not block structured!");
+		}
+		
+		for(Task task:this.modelInstance.getModelElementsByType(Task.class)) {
+			if(task.getIncoming().size()>1) {
+				throw new Exception("Task can not have >1 incoming edges");
+			}
 		}
 
 		// check if parallel branches have at least 1 element

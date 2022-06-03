@@ -17,6 +17,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import org.camunda.bpm.model.bpmn.Bpmn;
+import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 
@@ -50,9 +52,11 @@ public class Main1 {
 	  chooser.getSelectedFile().getAbsolutePath();	  
 	  }*/
 	
-	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Dokumente\\brtsIn2branches1.bpmn";
+	String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\brtsIn2branches1.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\modelle\\brtsInParallelBranches.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\preprocessed\\randomProcessModel1.bpmn";
+	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\preprocessed\\test_parallel_preprocessed.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_parallel2.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWmR_Static_voters4.bpmn";
 	//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWmR_Static_voters2_mand_constrained.bpmn";
@@ -104,8 +108,12 @@ public class Main1 {
 	*/
 	//API
 	try {	
-		a2 = new API(pathToFile, costForUpgradingSpheres);
-		
+		//a2 = new API(pathToFile, costForUpgradingSpheres);
+		File f = new File(pathToFile);
+		BpmnModelInstance mInst = Bpmn.readModelFromFile(f);
+		BpmnModelInstance preprocessedM = CommonFunctionality.preprocessModel(mInst);
+		File f2 = CommonFunctionality.writeChangesToFile(preprocessedM, f.getName(), "C:\\Users\\Micha\\OneDrive\\Desktop\\preprocessed", "preprocessed");
+		a2 = new API (f2.getAbsolutePath(), costForUpgradingSpheres);
 	} catch (Exception e2) {
 		// TODO Auto-generated catch block
 		System.err.println("Exception in API: "+e2.getMessage());

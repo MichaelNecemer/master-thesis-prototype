@@ -1785,6 +1785,7 @@ public class BatchFileGenerator {
 		boolean runBruteForce = true;
 		boolean runLocalMin = true;
 		boolean runLocalMinWithBound = true;
+		boolean finishTest = false;
 
 		do {
 			timeOutOrHeapSpaceExceptionMap.clear();
@@ -1934,8 +1935,13 @@ public class BatchFileGenerator {
 					+ timeOutOrHeapSpaceExceptionMap.get(localMinWithBound));
 
 			amountDecisionsToStart++;
+			
+			 
+			if(runBruteForce==false&&runLocalMin==false&&runLocalMinWithBound==false) {
+				finishTest = true;
+			}
 
-		} while (runBruteForce || runLocalMin || runLocalMinWithBound && !outOfMemoryError);
+		} while ((!finishTest)&&(!outOfMemoryError));
 
 		executor.shutdownNow();
 
