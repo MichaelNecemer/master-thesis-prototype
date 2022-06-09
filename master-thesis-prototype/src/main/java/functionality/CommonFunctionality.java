@@ -379,6 +379,13 @@ public class CommonFunctionality {
 		int randomIndex = random.nextInt(listSize);
 		return list.get(randomIndex);
 	}
+	
+	public static <T> T getRandomItem(Set<T> set) {
+		// convert set to list
+		List<T> list = new LinkedList<T>();
+		list.addAll(set);
+		return getRandomItem(list);		
+	}
 
 	private static LinkedList<LinkedList<FlowNode>> combineParallelBranches(BpmnModelInstance modelInstance,
 			LinkedList<LinkedList<FlowNode>> parallelBranches, ParallelGateway pSplit) {
@@ -4301,7 +4308,7 @@ public class CommonFunctionality {
 		return null;
 	}
 	
-
+	
 	
 
 }
