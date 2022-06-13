@@ -17,6 +17,7 @@ public class PModelWithAdditionalActors {
 	private HashMap<BPMNDataObject, HashSet<BPMNParticipant>> staticSphere;
 	private HashMap<BPMNDataObject, HashSet<BPMNParticipant>> staticSphereWithAdditionalActors;
 	private HashMap<BPMNDataObject, HashSet<BPMNParticipant>> deltaStaticSphere;
+	private HashMap<BPMNDataObject, LinkedList<WD_SphereEntry>> wdSphere;
 	private double alphaMeasureParameter;
 	private double alphaMeasurePenalty;	
 	
@@ -33,7 +34,7 @@ public class PModelWithAdditionalActors {
 		this.staticSphere = new HashMap<BPMNDataObject, HashSet<BPMNParticipant>>();
 		this.staticSphereWithAdditionalActors = new HashMap<BPMNDataObject, HashSet<BPMNParticipant>>();
 		this.deltaStaticSphere = new HashMap<BPMNDataObject, HashSet<BPMNParticipant>>();
-
+		this.wdSphere = new HashMap<BPMNDataObject, LinkedList<WD_SphereEntry>>();
 	}	
 	
 	public void computeStaticSphereWithAdditionalActors() {
@@ -92,6 +93,20 @@ public class PModelWithAdditionalActors {
 		this.alphaMeasurePenalty = alphaMeasurePenalty;
 	}
 	
+	public LinkedList<AdditionalActors> getAdditionalActorsList(){
+		return this.additionalActors;
+	}
+	
+	
+	
+	public HashMap<BPMNDataObject, LinkedList<WD_SphereEntry>> getWdSphere() {
+		return wdSphere;
+	}
+
+	public void setWdSphere(HashMap<BPMNDataObject, LinkedList<WD_SphereEntry>> wdSphere) {
+		this.wdSphere = wdSphere;
+	}
+
 	public void printAlphaMeasure() {
 		StringBuilder sb = new StringBuilder();
 		sb.append("Delta static sphere: ");
