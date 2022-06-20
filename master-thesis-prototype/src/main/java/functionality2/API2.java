@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -78,11 +79,13 @@ public class API2 {
 	private LinkedList<LinkedList<FlowNode>> pathsThroughProcess;
 	private String weakDynamicKey;
 	private String strongDynamicKey;
+	private LinkedList<Double> weightingParameters;
 
-	public API2(String pathToBpmnCamundaFile, LinkedList<Double> cost) throws Exception {
-		if (cost.size() != 4) {
-			throw new Exception("Not exactly 4 cost parameters in the list!");
+	public API2(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters) throws Exception {
+		if (weightingParameters.size() != 3) {
+			throw new Exception("Not exactly 3 weighting cost parameters in the list!");
 		}
+		this.weightingParameters = weightingParameters;
 		this.processModelFile = new File(pathToBpmnCamundaFile);
 		// preprocess the model, i.e. remove parallel branches
 		BpmnModelInstance modelInst = Bpmn.readModelFromFile(this.processModelFile);
@@ -117,16 +120,26 @@ public class API2 {
 				this.startEvent.getId(), this.endEvent.getId());
 	}
 
-	public void newMeasureAlgorithm() throws InterruptedException {
+	public void newMeasureAlgorithm() throws Exception {
 		// generate all possible combinations of additional readers
 		LinkedList<PModelWithAdditionalActors> additionalActorsCombs = this
 				.generateAllPossibleCombinationsOfAdditionalActors();
 		System.out.println(additionalActorsCombs.size());
+		
+		// there are no costs for private sphere
 
 		// compute static sphere per data object without additional actors
-		HashMap<BPMNDataObject, HashSet<BPMNParticipant>> staticSpherePerDataObject = new HashMap<BPMNDataObject, HashSet<BPMNParticipant>>();
+		HashMap<BPMNDataObject, Static_SphereEntry> staticSpherePerDataObject = new HashMap<BPMNDataObject, Static_SphereEntry>();
 		for (BPMNDataObject dataO : this.dataObjects) {
-			staticSpherePerDataObject.putIfAbsent(dataO, new HashSet<BPMNParticipant>(dataO.getStaticSphere()));
+			HashSet<BPMNParticipant> staticSphereSet = new HashSet<BPMNParticipant>(dataO.getReaderParticipants());
+			HashSet<BPMNTask> readerBrts = new HashSet<BPMNTask>();
+			for (BPMNElement reader : dataO.getReaders()) {
+				if (this.businessRuleTasks.contains(reader)) {
+					readerBrts.add((BPMNTask) reader);
+				}
+			}
+			Static_SphereEntry staticEntry = new Static_SphereEntry(dataO, staticSphereSet, readerBrts);
+			staticSpherePerDataObject.putIfAbsent(dataO, staticEntry);
 		}
 
 		// compute wd sphere for origins without additional actors
@@ -155,16 +168,17 @@ public class API2 {
 						// of the origin
 						LinkedList<LinkedList<BPMNElement>> pathsBetweenOriginAndEnd;
 						try {
-							pathsBetweenOriginAndEnd = this.goDfs(origin, origin, false, this.endEvent,
+							pathsBetweenOriginAndEnd = this.goDfs(origin, origin, this.endEvent,
 									new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 									new LinkedList<LinkedList<BPMNElement>>());
 							// get wd reader tasks
-							HashSet<BPMNTask> wdTasks = this.getWdTasks(currDataObject, origin, pathsBetweenOriginAndEnd);
+							HashSet<BPMNTask> wdTasks = this.getWdTasks(currDataObject, origin,
+									pathsBetweenOriginAndEnd);
 							// get wd reader participants
 							HashSet<BPMNParticipant> wdReaderParticipants = this
 									.getParticipantSetFromElementSet(wdTasks);
 							// get wd brts that read from origin
-							// to compute wd' later on
+							// to compute wd' later on by adding the additional actors of the brts
 							HashSet<BPMNTask> readerBrts = this.filterBrts(wdTasks);
 
 							// add the entry to the hashmap
@@ -186,40 +200,185 @@ public class API2 {
 
 		for (PModelWithAdditionalActors pModelWithAdditionalActors : additionalActorsCombs) {
 			pModelWithAdditionalActors.setPrivateSphere(this.privateSphere);
-			pModelWithAdditionalActors.setStaticSphere(staticSpherePerDataObject);
-			pModelWithAdditionalActors.computeStaticSphereWithAdditionalActors();
-			pModelWithAdditionalActors.computeAlphaMeasure();
-			System.out.println(pModelWithAdditionalActors.getAlphaMeasurePenalty());
-			pModelWithAdditionalActors.printAlphaMeasure();
+			pModelWithAdditionalActors.setStaticSphereEntries(staticSpherePerDataObject);
+
+			// compute static sphere with additional actors
+			for (Entry<BPMNDataObject, Static_SphereEntry> staticEntry : pModelWithAdditionalActors
+					.getStaticSphereEntries().entrySet()) {
+				HashSet<BPMNParticipant> staticSphereWithAdditionalActors = new HashSet<BPMNParticipant>();
+				// add all actors of static sphere
+				Static_SphereEntry currStaticEntry = staticEntry.getValue();
+				staticSphereWithAdditionalActors.addAll(currStaticEntry.getStaticSphere());
+
+				for (AdditionalActors additionalActors : pModelWithAdditionalActors.getAdditionalActorsList()) {
+					BPMNBusinessRuleTask brt = additionalActors.getCurrBrt();
+					LinkedList<BPMNParticipant> addActors = additionalActors.getAdditionalActors();
+
+					// add additional actors of reading brts
+					if (currStaticEntry.getReaderBrts().contains(brt)) {
+						staticSphereWithAdditionalActors.addAll(addActors);
+					}
+
+				}
+				// set static sphere'
+				currStaticEntry.setStaticSphereWithAdditionalActors(staticSphereWithAdditionalActors);
+
+				// compute lambda and set score
+				HashSet<BPMNParticipant> differentActors = this.computeLambdaActors(
+						currStaticEntry.getStaticSphereWithAdditionalActors(), currStaticEntry.getStaticSphere());
+				currStaticEntry.setLambdaStaticSphere(differentActors);
+
+				double lambda = differentActors.size();
+				double score = lambda;
+
+				// add to sum alpha measure
+				double currAlphaScoreSum = pModelWithAdditionalActors.getAlphaMeasureSum();
+				double newAlphaScoreSum = currAlphaScoreSum += score;
+				pModelWithAdditionalActors.setAlphaMeasureSum(newAlphaScoreSum);
+			}
 
 			// compute beta measure
 			// i.e. query brts in any order and get origins for each data object
 			// weight(w) is the depth of the origin
+			pModelWithAdditionalActors.setWdSphere(wdSpherePerDataObjectAndOrigin);
 
-			// add the wd sphere without additional actors
-			// make a deep copy first
-			HashMap<BPMNDataObject, LinkedList<WD_SphereEntry>> deepCopyWdSphere = (HashMap<BPMNDataObject, LinkedList<WD_SphereEntry>>) CommonFunctionality
-					.deepCopy(wdSpherePerDataObjectAndOrigin);
-			pModelWithAdditionalActors.setWdSphere(deepCopyWdSphere);
-
-			// compute wd sphere with additional actors
+			// compute wd' sphere with additional actors
+			// add the additional actors to the brts reachable from an origin
 			LinkedList<AdditionalActors> currAddActorsList = pModelWithAdditionalActors.getAdditionalActorsList();
 
 			for (Entry<BPMNDataObject, LinkedList<WD_SphereEntry>> entry : pModelWithAdditionalActors.getWdSphere()
 					.entrySet()) {
 				for (WD_SphereEntry wdEntry : entry.getValue()) {
+					HashSet<BPMNParticipant> wdWithAddActorsParticipants = new HashSet<BPMNParticipant>();
+					BPMNTask origin = wdEntry.getOrigin();
+					// add all wd actors of that wdEntry
+					wdWithAddActorsParticipants.addAll(wdEntry.getWdSphere());
+					HashSet<BPMNTask> reachableBrts = wdEntry.getWdReaderBrts();
+
+					for (AdditionalActors addActors : currAddActorsList) {
+						// add all additional actors of brts reachable from origin
+						BPMNBusinessRuleTask currBrt = addActors.getCurrBrt();
+						if (reachableBrts.contains(currBrt)) {
+							wdWithAddActorsParticipants.addAll(addActors.getAdditionalActors());
+						}
+
+					}
+					wdEntry.setWdSphereWithAdditionalActors(wdWithAddActorsParticipants);
+
+					// compute lambda and set score
+					HashSet<BPMNParticipant> lambdaActors = this
+							.computeLambdaActors(wdEntry.getWdSphereWithAdditionalActors(), wdEntry.getWdSphere());
+					wdEntry.setLambdaWdSphere(lambdaActors);
+					
+					double lambda = lambdaActors.size();
+					
+					double score = lambda * wdEntry.getWeightingOfOrigin();
+					wdEntry.setScore(score);
+
+					// add to sum beta measure
+					double currBetaScoreSum = pModelWithAdditionalActors.getBetaMeasureSum();
+					double newBetaScoreSum = currBetaScoreSum += score;
+					pModelWithAdditionalActors.setBetaMeasureSum(newBetaScoreSum);
+
+				}
+				// compute beta measure
+			}
+
+			// compute gamma measure
+			// first: compute sd sphere with additional actors for all origins of brts
+			// second: compute sd* sphere for all origins of brts without additional actors
+			// of current brt
+
+			// compute sd sphere for each combination (DataObject,Origin,BusinessRuleTask)
+			HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>> sdSphereEntries = new HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>>();
+			for (AdditionalActors addActors : pModelWithAdditionalActors.getAdditionalActorsList()) {
+				BPMNBusinessRuleTask currBrt = addActors.getCurrBrt();
+				for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : currBrt.getLastWriterList()
+						.entrySet()) {
+					for (BPMNTask origin : lastWriterEntry.getValue()) {
+						LinkedList<LinkedList<BPMNElement>> pathsFromOriginOverCurrBrtToEnd = this.goDfs(origin,
+								currBrt, this.endEvent, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+								new LinkedList<LinkedList<BPMNElement>>());
+						BPMNDataObject dataO = lastWriterEntry.getKey();
+						
+						SD_SphereEntry sdSphereEntry = new SD_SphereEntry(dataO, origin, currBrt);
+						
+						System.out.println(dataO.getName() + " " + origin.getName() + " " + currBrt.getName());
+						HashSet<BPMNParticipant> sdSphereWithAdditionalActors = this.getSdActorsWithAdditionalActorsAndSetWeightingOfOrigin(
+								dataO, origin, currBrt, pModelWithAdditionalActors.getAdditionalActorsList(),
+								pathsFromOriginOverCurrBrtToEnd, sdSphereEntry);
+						
+						sdSphereEntry.setSdSphereWithAdditionalActors(sdSphereWithAdditionalActors);
+
+						LinkedList<AdditionalActors> addActorsWithoutCurrBrt = new LinkedList<AdditionalActors>();
+						addActorsWithoutCurrBrt.addAll(pModelWithAdditionalActors.getAdditionalActorsList());
+						Iterator<AdditionalActors> addActIter = addActorsWithoutCurrBrt.iterator();
+						boolean removed = false;
+						while (addActIter.hasNext() && !removed) {
+							AdditionalActors currAddActors = addActIter.next();
+							if (currAddActors.getCurrBrt().equals(currBrt)) {
+								addActIter.remove();
+								removed = true;
+							}
+						}
+						
+						HashSet<BPMNParticipant> sdSphereWithoutAdditionalActorsOfCurrBrt = this
+								.getSdActorsWithAdditionalActorsAndSetWeightingOfOrigin(dataO, origin, currBrt, addActorsWithoutCurrBrt,
+										pathsFromOriginOverCurrBrtToEnd, null);
+
+						// sd* does not take into account additional actors of the current brt
+						sdSphereEntry.setSdSphereWithoutAddActorOfCurrBrt(sdSphereWithoutAdditionalActorsOfCurrBrt);
+
+						sdSphereEntries.computeIfAbsent(dataO, k -> new LinkedList<SD_SphereEntry>())
+								.add(sdSphereEntry);
+
+						// compute lambda and set score
+						HashSet<BPMNParticipant> lambdaActors = this.computeLambdaActors(
+								sdSphereEntry.getSdSphereWithAdditionalActors(),
+								sdSphereEntry.getSdSphereWithoutAddActorOfCurrBrt());
+
+						double lambda = lambdaActors.size();
+
+						// weight(w) is the nesting depth
+						double depthOfOrigin = Math.pow(2, -origin.getLabels().size());
+
+						// weight(w,r,d) is the amount of instance types in which r reads d from w
+						//double secondWeight = this.secondWeightFunction(origin, currBrt, dataO, pathsFromOriginOverCurrBrtToEnd);
+						double secondWeight = this.secondWeightFunction(sdSphereEntry);
+						sdSphereEntry.setWeightingOfOriginForCurrBrt(secondWeight);
+						
+						double score = lambda * depthOfOrigin * secondWeight;
+						sdSphereEntry.setScore(score);
+
+						// add to sum gamma measure
+						double currGammaScoreSum = pModelWithAdditionalActors.getGammaMeasureSum();
+						double newGammaScoreSum = currGammaScoreSum += score;
+						pModelWithAdditionalActors.setGammaMeasureSum(newGammaScoreSum);
+						System.out.println(
+								dataO.getName() + " " + origin.getName() + " " + currBrt.getName() + ": " + lambda);
+
+					}
 
 				}
 
 			}
 
+			// compute measure for pModelWithAdditionalActors
+			// i.e. compute alpha, beta, gamma measure and weight it with given parameters
+
+			pModelWithAdditionalActors.printMeasure();
+			System.out.println("Alpha " + pModelWithAdditionalActors.getAlphaMeasureSum());
+			System.out.println("BETA " + pModelWithAdditionalActors.getBetaMeasureSum());
+			System.out.println("Gamma " + pModelWithAdditionalActors.getGammaMeasureSum());
+
+
 		}
 
-		BPMNElement currentNode = this.getBPMNNodeById("Task_0zwm6xe");
-		BPMNElement currPositionNode = this.getBPMNNodeById("Task_1ie1m5q");
+		BPMNElement currentNode = this.getBPMNNodeById("Task_1h2n3sp");
+		BPMNElement currPositionNode = this.getBPMNNodeById("EndEvent_17grdwh");
 		BPMNElement targetNode = this.getBPMNNodeById("EndEvent_17grdwh");
 		try {
-			LinkedList<LinkedList<BPMNElement>> paths = this.goDfs(currentNode, currPositionNode, false, targetNode,
+			LinkedList<LinkedList<BPMNElement>> paths = this.goDfs(currentNode, currPositionNode, targetNode,
 					new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 					new LinkedList<LinkedList<BPMNElement>>());
 			System.out.println(paths.size());
@@ -239,22 +398,17 @@ public class API2 {
 
 	}
 
-	public LinkedList<PModelWithAdditionalActors> generateAllPossibleCombinationsOfAdditionalActors()
-			throws InterruptedException {
+	public LinkedList<PModelWithAdditionalActors> generateAllPossibleCombinationsOfAdditionalActors() throws Exception {
 		LinkedList<LinkedList<Object>> combinationsPerBrt = new LinkedList<LinkedList<Object>>();
 		LinkedList<PModelWithAdditionalActors> pModelWithAddActorsList = new LinkedList<PModelWithAdditionalActors>();
 
 		for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
-			try {
-				LinkedList<AdditionalActors> addActorsCombinationsForBrt = this
-						.generateAdditionalActorsForBrtsWithConstraints(brt);
-				LinkedList<Object> addActors = new LinkedList<Object>();
-				addActors.addAll(addActorsCombinationsForBrt);
-				combinationsPerBrt.add(addActors);
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+
+			LinkedList<AdditionalActors> addActorsCombinationsForBrt = this
+					.generateAdditionalActorsForBrtsWithConstraints(brt);
+			LinkedList<Object> addActors = new LinkedList<Object>();
+			addActors.addAll(addActorsCombinationsForBrt);
+			combinationsPerBrt.add(addActors);
 
 		}
 
@@ -267,7 +421,8 @@ public class API2 {
 				throw new InterruptedException();
 			}
 			LinkedList<AdditionalActors> additionalActorsList = new LinkedList<AdditionalActors>(list);
-			PModelWithAdditionalActors newModel = new PModelWithAdditionalActors(additionalActorsList);
+			PModelWithAdditionalActors newModel = new PModelWithAdditionalActors(additionalActorsList,
+					this.weightingParameters);
 			pModelWithAddActorsList.add(newModel);
 		}
 		return pModelWithAddActorsList;
@@ -375,8 +530,7 @@ public class API2 {
 	private void mapSuccessorsAndPredecessors(FlowNode currentNode, FlowNode endNode, LinkedList<SequenceFlow> stack,
 			ArrayList<Label> currentLabels) {
 		// route depth first through the process and add the successors and predecessors
-		// to the
-		// nodes
+		// to the nodes
 
 		stack.addAll(currentNode.getOutgoing());
 
@@ -393,8 +547,17 @@ public class API2 {
 			BPMNElement currentBPMNElement = this.getBPMNNodeById(currentNode.getId());
 
 			if ((!currentLabels.isEmpty()) && currentBPMNElement.getLabelHasBeenSet() == false) {
-				currentBPMNElement.addLabels(currentLabels);
-				currentBPMNElement.setLabelHasBeenSet(true);
+				boolean setLabel = true;
+				if (currentBPMNElement instanceof BPMNExclusiveGateway) {
+					BPMNExclusiveGateway gtw = (BPMNExclusiveGateway) currentBPMNElement;
+					if (gtw.getType().contentEquals("join")) {
+						setLabel = false;
+					}
+				}
+				if (setLabel) {
+					currentBPMNElement.addLabels(currentLabels);
+					currentBPMNElement.setLabelHasBeenSet(true);
+				}
 			}
 
 			// add the targetFlowNode as a successor to the currentNode
@@ -411,7 +574,7 @@ public class API2 {
 			if (currentBPMNElement instanceof BPMNExclusiveGateway) {
 				BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currentBPMNElement;
 				if (bpmnEx.getType().equals("split")) {
-					Label label = new Label(bpmnEx.getName(), currentSeqFlow.getName());
+					Label label = new Label(bpmnEx.getName().trim(), currentSeqFlow.getName().trim());
 					// check if label exists
 					for (Label l : labelList) {
 						if (l.getLabel().equals(label.getLabel())) {
@@ -424,8 +587,11 @@ public class API2 {
 					currentLabels.add(label);
 
 				} else if (bpmnEx.getType().equals("join") && (!currentLabels.isEmpty())) {
-
 					currentLabels.remove(currentLabels.size() - 1);
+					if ((!currentLabels.isEmpty()) && currentBPMNElement.getLabelHasBeenSet() == false) {
+						currentBPMNElement.addLabels(currentLabels);
+						currentBPMNElement.setLabelHasBeenSet(true);
+					}
 				}
 
 			}
@@ -1037,7 +1203,7 @@ public class API2 {
 
 	}
 
-	public HashSet<BPMNTask> getSdTasks(BPMNDataObject dataO, BPMNTask origin, String wdKey, String sdKey,
+	public HashSet<BPMNTask> getSdTasks(BPMNDataObject dataO, BPMNTask origin,
 			LinkedList<LinkedList<BPMNElement>> paths) {
 
 		HashSet<BPMNTask> sdList = new HashSet<BPMNTask>();
@@ -1086,6 +1252,127 @@ public class API2 {
 			notFoundOnPath.addAll(readersToBeFound);
 			notFoundOnPath.removeAll(foundOnPath);
 			sdList.removeAll(notFoundOnPath);
+
+		}
+		return sdList;
+	}
+	
+	public double secondWeightFunction(BPMNTask origin, BPMNBusinessRuleTask currBrt, BPMNDataObject dataO, LinkedList<LinkedList<BPMNElement>>pathsFromOriginOverCurrBrtToEnd) {
+		double weighingOfOrigin = 1;
+		try {
+			// get all paths from origin to end
+			LinkedList<LinkedList<BPMNElement>>pathsFromOriginToEnd = this.goDfs(origin, this.endEvent, this.endEvent, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+			// get fraction of pathsFromOriginOverCurrBrtToEnd and pathsFromOriginToEnd
+			weighingOfOrigin = (double)pathsFromOriginOverCurrBrtToEnd.size() / (double)pathsFromOriginToEnd.size();
+		
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return weighingOfOrigin;
+		
+	}
+	
+	public double secondWeightFunction(SD_SphereEntry sdEntry) throws Exception {
+		double weightingOfOrigin = sdEntry.getWeightingOfOriginForCurrBrt();
+		if(weightingOfOrigin==0) {
+			throw new Exception("Amount of paths where "+sdEntry.getOrigin()+" writes to "+sdEntry.getDataObject()+" not calcualted yet!");
+		}
+		
+		
+		return weightingOfOrigin;
+		
+	}
+	
+
+	public HashSet<BPMNParticipant> getSdActorsWithAdditionalActorsAndSetWeightingOfOrigin(BPMNDataObject dataO, BPMNTask origin, BPMNBusinessRuleTask currPositionBrt,
+			LinkedList<AdditionalActors> addActors, LinkedList<LinkedList<BPMNElement>> paths, SD_SphereEntry sdEntry) {
+
+		HashSet<BPMNParticipant> sdList = new HashSet<BPMNParticipant>();
+		sdList.addAll(this.privateSphere);
+		
+		
+		/*
+		// add all readers of dataO to sd list
+		// then remove a reader, if it is not found on a specific path
+		for (BPMNParticipant readerPart : dataO.getReaderParticipants()) {
+			sdList.add(readerPart);
+		}
+		for (AdditionalActors addAct : addActors) {
+			if (dataO.getReaders().contains(addAct.getCurrBrt())) {
+				sdList.addAll(addAct.getAdditionalActors());
+			}
+		}*/
+
+		HashSet<BPMNParticipant> readersToBeFound = new HashSet<BPMNParticipant>();
+		readersToBeFound.addAll(sdList);
+		double amountPathsWhereOriginWritesForDataO = 0;
+		
+		for (LinkedList<BPMNElement> path : paths) {
+			HashSet<BPMNParticipant> foundOnPath = new HashSet<BPMNParticipant>();
+			boolean inFrontOfCurrPositionBrt = true;
+			for (int i = 0; i < path.size(); i++) {
+				BPMNElement el = path.get(i);
+				if (el instanceof BPMNTask) {
+					BPMNTask currTask = (BPMNTask) el;
+					if (dataO.getReaders().contains(currTask)) {
+						// currTask is a reader of the dataO
+						foundOnPath.add(currTask.getParticipant());
+						if (currTask instanceof BPMNBusinessRuleTask) {
+							if(currTask.equals(currPositionBrt)) {
+								inFrontOfCurrPositionBrt = false;
+							}
+							for (AdditionalActors addActor : addActors) {
+								BPMNBusinessRuleTask brt = addActor.getCurrBrt();
+								if (brt.equals(currTask) && dataO.getReaders().contains(currTask)) {
+									// currTask is a brt that reads the data object
+									// add additional readers
+									foundOnPath.addAll(addActor.getAdditionalActors());
+								}
+							}
+						}
+					}
+
+					if (dataO.getWriters().contains(currTask)) {
+						// currTask is a writer
+						// check if is the origin
+						if (currTask.equals(origin)) {
+							// origin is always in SD
+							sdList.add(currTask.getParticipant());
+							foundOnPath.add(currTask.getParticipant());
+							amountPathsWhereOriginWritesForDataO++;
+						} else {
+							// another writer found on some path
+							// stop here
+							// actors after that writer will not read dataO from origin
+							
+							// check if other writer has another actor?	
+							
+							// check if we are past the currPositionBrt
+							if(inFrontOfCurrPositionBrt) {
+								//another origin found on path to currPositionBrt
+								foundOnPath.clear();
+							}
+							i = path.size();
+						}
+
+					}
+
+				}
+
+			}
+
+			HashSet<BPMNParticipant> notFoundOnPath = new HashSet<BPMNParticipant>();
+			notFoundOnPath.addAll(readersToBeFound);
+			notFoundOnPath.removeAll(foundOnPath);
+			sdList.removeAll(notFoundOnPath);
+			
+			//set amount of paths where origin writes for dataO
+			if(sdEntry!=null && sdEntry.getAmountPathsWhereOriginWritesForCurrBrt()==0) {
+			amountPathsWhereOriginWritesForDataO = amountPathsWhereOriginWritesForDataO / paths.size();
+			sdEntry.setWeightingOfOriginForCurrBrt(amountPathsWhereOriginWritesForDataO);
+			}
 
 		}
 		return sdList;
@@ -1190,62 +1477,53 @@ public class API2 {
 		return wdList;
 	}
 
-	public LinkedList<LinkedList<BPMNElement>> goDfs(BPMNElement currentNode, BPMNElement currPositionNode,
-			boolean pathContainsCurrPositionNode, BPMNElement targetNode, LinkedList<BPMNElement> stack,
-			LinkedList<BPMNElement> path, LinkedList<LinkedList<BPMNElement>> paths) throws Exception {
+	public LinkedList<LinkedList<BPMNElement>> goDfs(BPMNElement currentNode, BPMNElement targetNode1,
+			BPMNElement targetNode2, LinkedList<BPMNElement> stack, LinkedList<BPMNElement> path,
+			LinkedList<LinkedList<BPMNElement>> paths) throws Exception {
 		// route depth first through the process
-		// with the help of labels we only get those paths that contain the targetNode
-		// and go through the currPositionNode
+		// with the help of labels we only get those paths that contain both targetNodes
+		// first go dfs till targetNode1 is found
+		// then go dfs till targetNode2 is found
+
+		if (targetNode1 == null) {
+			throw new Exception("TargetNode1 can not be null!");
+		}
+		if (targetNode2 == null) {
+			throw new Exception("TargetNode2 can not be null!");
+		}
+
 		if (path.isEmpty()) {
 			path.add(currentNode);
 		}
-		if (currentNode.equals(currPositionNode)) {
-			pathContainsCurrPositionNode = true;
-		}
 
-		if (!currentNode.getId().contentEquals(targetNode.getId())) {
+		if (!currentNode.getId().contentEquals(targetNode2.getId())) {
 			if (currentNode instanceof BPMNExclusiveGateway) {
 				BPMNExclusiveGateway gtw = (BPMNExclusiveGateway) currentNode;
 				if (gtw.getType().contentEquals("split")) {
-					// only add those successors, that lead to the targetNode
+					// only add those successors, that lead to the targetNode1
 					// and go over the currPosition
-					ArrayList<Label> targetNodeLabels = targetNode.getLabels();
-					ArrayList<Label> currPositionLabels = currPositionNode.getLabels();
+					ArrayList<Label> targetNodeLabels = targetNode1.getLabels();
+
 					for (BPMNElement successor : gtw.getSuccessors()) {
 						ArrayList<Label> successorLabels = successor.getLabels();
-						if (targetNodeLabels.isEmpty() || targetNodeLabels.containsAll(successorLabels)) {
-							if (!pathContainsCurrPositionNode) {
-								if (currPositionLabels.isEmpty() || currPositionLabels.containsAll(successorLabels)) {
-									stack.add(successor);
+						boolean allDifferent = true;
+						for (Label label : targetNodeLabels) {
+							if (label.getName().trim().contentEquals(gtw.getName())) {
+								allDifferent = false;
+								for (Label succLabel : successorLabels) {
+									if (succLabel.getLabel().contentEquals(label.getLabel())) {
+										stack.add(successor);
+									}
 								}
-							} else {
-								// path already contains currPositionNode
-								stack.add(successor);
-							}
-						} else {
-							// check if they do not contain a common label
-							boolean different = true;
-							Iterator<Label> labelIterTargetNode = targetNodeLabels.iterator();
-							while (labelIterTargetNode.hasNext() && different) {
-								Label targetNodeLabel = labelIterTargetNode.next();
-								if (successorLabels.contains(targetNodeLabel)) {
-									different = false;
-								}
-							}
 
-							Iterator<Label> labelIterCurrPosition = currPositionLabels.iterator();
-							while (labelIterCurrPosition.hasNext() && different) {
-								Label currPositionLabel = labelIterCurrPosition.next();
-								if (successorLabels.contains(currPositionLabel)) {
-									different = false;
-								}
-							}
-
-							if (different) {
-								stack.add(successor);
 							}
 
 						}
+
+						if (allDifferent) {
+							stack.add(successor);
+						}
+
 					}
 
 				} else {
@@ -1267,16 +1545,32 @@ public class API2 {
 			newPath.addAll(path);
 			BPMNElement nextNode = stack.poll();
 			newPath.add(nextNode);
-			if (nextNode.getId().contentEquals(targetNode.getId())) {
+			if (nextNode.getId().contentEquals(targetNode1.getId())
+					&& !nextNode.getId().contentEquals(targetNode2.getId())) {
+				// go dfs till endNode is found
+				// i.e. set targetNode1 to be targetNode2
+				goDfs(nextNode, targetNode2, targetNode2, new LinkedList<BPMNElement>(), newPath, paths);
+			} else if (nextNode.getId().contentEquals(targetNode2.getId())) {
 				paths.add(newPath);
 			} else {
-				goDfs(nextNode, currPositionNode, pathContainsCurrPositionNode, targetNode,
-						new LinkedList<BPMNElement>(), newPath, paths);
+				goDfs(nextNode, targetNode1, targetNode2, new LinkedList<BPMNElement>(), newPath, paths);
 			}
 		}
 
 		return paths;
 
+	}
+
+	public HashSet<BPMNParticipant> computeLambdaActors(HashSet<BPMNParticipant> set1, HashSet<BPMNParticipant> set2) {
+		HashSet<BPMNParticipant> setWithDifferentParticipants = new HashSet<BPMNParticipant>();
+		if (set1.size() >= set2.size()) {
+			setWithDifferentParticipants.addAll(set1);
+			setWithDifferentParticipants.removeAll(set2);
+		} else {
+			setWithDifferentParticipants.addAll(set2);
+			setWithDifferentParticipants.removeAll(set1);
+		}
+		return setWithDifferentParticipants;
 	}
 
 	public HashSet<BPMNParticipant> getParticipantSetFromElementSet(HashSet<BPMNTask> tasks) {

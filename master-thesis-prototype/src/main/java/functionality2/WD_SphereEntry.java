@@ -17,6 +17,8 @@ public class WD_SphereEntry {
 	private HashSet<BPMNParticipant>wdSphereWithAdditionalActors;
 	private HashSet<BPMNParticipant>lambdaWdSphere;
 	private HashSet<BPMNTask>wdReaderBrts;
+	private double weightingOfOrigin;
+	private double score;
 	
 	public WD_SphereEntry(BPMNDataObject dataObject, BPMNTask origin, HashSet<BPMNTask>wdReaderBrts, HashSet<BPMNParticipant>wdSphere) {
 		this.dataObject = dataObject;
@@ -25,7 +27,9 @@ public class WD_SphereEntry {
 		this.wdSphere = wdSphere;
 		this.wdSphereWithAdditionalActors = new HashSet<BPMNParticipant>();
 		this.lambdaWdSphere = new HashSet<BPMNParticipant>();
-		this.wdReaderBrts = wdReaderBrts;		
+		this.wdReaderBrts = wdReaderBrts;	
+		this.weightingOfOrigin = Math.pow(2, -origin.getLabels().size());
+		this.score = 0;
 	}
 
 	public BPMNDataObject getDataObject() {
@@ -74,6 +78,30 @@ public class WD_SphereEntry {
 
 	public void setLambdaWdSphere(HashSet<BPMNParticipant> lambdaWdSphere) {
 		this.lambdaWdSphere = lambdaWdSphere;
+	}
+
+	public HashSet<BPMNTask> getWdReaderBrts() {
+		return wdReaderBrts;
+	}
+
+	public void setWdReaderBrts(HashSet<BPMNTask> wdReaderBrts) {
+		this.wdReaderBrts = wdReaderBrts;
+	}
+
+	public double getScore() {
+		return score;
+	}
+
+	public void setScore(double score) {
+		this.score = score;
+	}
+
+	public double getWeightingOfOrigin() {
+		return weightingOfOrigin;
+	}
+
+	public void setWeightingOfOrigin(double weightingOfOrigin) {
+		this.weightingOfOrigin = weightingOfOrigin;
 	}
 	
 	

@@ -21,8 +21,7 @@ public class BPMNTask extends BPMNElement{
 	
 	private HashMap<BPMNDataObject, ArrayList<BPMNParticipant>> weakDynamicHashMap;
 	private HashMap<BPMNDataObject, ArrayList<BPMNParticipant>> strongDynamicHashMap;
-	
-	
+		
 	private HashMap<Boolean, LinkedList<LinkedList<BPMNElement>>> effectivePaths;
 	private LinkedList<BPMNElement> effectiveReaders; 
 	
