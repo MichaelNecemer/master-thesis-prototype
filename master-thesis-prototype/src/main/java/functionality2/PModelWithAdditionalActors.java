@@ -24,6 +24,7 @@ public class PModelWithAdditionalActors {
 	private double alphaMeasureSum;
 	private double betaMeasureSum;
 	private double gammaMeasureSum;
+	private double sumMeasure;
 
 	
 	public PModelWithAdditionalActors(LinkedList<AdditionalActors>additionalActors, LinkedList<Double>weightingParameters) {
@@ -37,6 +38,7 @@ public class PModelWithAdditionalActors {
 		this.alphaMeasureSum = 0;
 		this.betaMeasureSum = 0;
 		this.gammaMeasureSum = 0;
+		this.sumMeasure = 0;
 	}	
 	
 
@@ -226,6 +228,7 @@ public class PModelWithAdditionalActors {
 			sb.append(System.lineSeparator());
 		}
 		sb.append("Cost for alpha measure without weighting: "+this.alphaMeasureSum);
+		sb.append(System.lineSeparator());
 		System.out.println(sb.toString());
 	}
 	
@@ -278,14 +281,66 @@ public class PModelWithAdditionalActors {
 				sb.append("weighting(w): "+wdEntry.getWeightingOfOrigin()+", score: "+wdEntry.getScore());
 				sb.append(System.lineSeparator());							
 			}		
-		}
-		
+		}		
 		sb.append("Cost for beta measure without weighting: "+this.betaMeasureSum);
+		sb.append(System.lineSeparator());
 		System.out.println(sb.toString());
 	}
 	
 	public void printGammaMeasure() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("GAMMA MEASURE:");
+		sb.append(System.lineSeparator());	
+		for(Entry<BPMNDataObject, LinkedList<SD_SphereEntry>> gammaSphereEntry: this.sdSphereEntries.entrySet()) {
+			LinkedList<SD_SphereEntry> sdList = gammaSphereEntry.getValue();
+			for(SD_SphereEntry sdEntry: sdList) {
+				BPMNTask origin = sdEntry.getOrigin();
+				sb.append("SD sphere for "+gammaSphereEntry.getKey().getName() +" with origin "+origin.getName()+ "at pos. of "+sdEntry.getCurrBrt().getName()+" : {");
+				HashSet<BPMNParticipant>sdEntryParticipants = sdEntry.getSdSphereWithAdditionalActors();
+				Iterator<BPMNParticipant>partIter = sdEntryParticipants.iterator();
+				while(partIter.hasNext()) {
+					BPMNParticipant nextPart = partIter.next();
+					sb.append(nextPart.getName());
+					if(partIter.hasNext()) {
+					sb.append(", ");
+					}
+				}
+				sb.append("}");	
+				sb.append(System.lineSeparator());	
+				
+				sb.append("without additional actors of "+sdEntry.getCurrBrt().getName()+" :  {");
+				HashSet<BPMNParticipant>sdEntryParticipantsAddActors = sdEntry.getSdSphereWithoutAddActorOfCurrBrt();
+				Iterator<BPMNParticipant>partIter2 = sdEntryParticipantsAddActors.iterator();
+				while(partIter2.hasNext()) {
+					BPMNParticipant nextPart = partIter2.next();
+					sb.append(nextPart.getName());
+					if(partIter2.hasNext()) {
+					sb.append(", ");
+					}
+				}				
+				sb.append("}");	
+				sb.append(System.lineSeparator());				
+				
+				sb.append("delta : {");
+				HashSet<BPMNParticipant>deltaParticipants = sdEntry.getLambdaSdSphere();
+				Iterator<BPMNParticipant>partIter3 = deltaParticipants.iterator();
+				while(partIter3.hasNext()) {
+					BPMNParticipant nextPart = partIter3.next();
+					sb.append(nextPart.getName());
+					if(partIter3.hasNext()) {
+					sb.append(", ");
+					}
+				}				
+				sb.append("}");	
+				sb.append(System.lineSeparator());	
+				sb.append("weighting(w): "+sdEntry.getWeightingOfOrigin()+", weighting(w,r,d): "+sdEntry.getWeightingOfOriginForCurrBrt()+", score: "+sdEntry.getScore());
+				sb.append(System.lineSeparator());							
+			}		
+		}
 		
+		sb.append("Cost for gamma measure without weighting: "+this.gammaMeasureSum);
+		sb.append(System.lineSeparator());
+		System.out.println(sb.toString());
 	}
 	
 	public void printMeasure() {
@@ -293,7 +348,8 @@ public class PModelWithAdditionalActors {
 		this.printAlphaMeasure();
 		this.printBetaMeasure();
 		this.printGammaMeasure();		
-		System.out.println("Measure: "+this.getWeightedCostForMeasure());
+		System.out.println("Measure: "+this.getSumMeasure());
+		System.out.println("***************************************************");
 	}
 	
 	public double getWeightedCostAlphaMeasure() {
@@ -308,11 +364,18 @@ public class PModelWithAdditionalActors {
 		return this.gammaMeasureSum * this.gammaMeasureWeightingParameter;
 	}
 	
-	public double getWeightedCostForMeasure() {
-		double weightedAlphaMeasure = this.alphaMeasureSum * this.alphaMeasureWeightingParameter;
-		double weightedBetaMeasure = this.betaMeasureSum * this.betaMeasureWeightingParameter;
-		double weightedGammaMeasure = this.gammaMeasureSum * this.gammaMeasureWeightingParameter;
-		return weightedAlphaMeasure+weightedBetaMeasure+weightedGammaMeasure;
+
+	public double getSumMeasure() {
+		return sumMeasure;
 	}
+
+
+
+
+	public void setSumMeasure(double sumMeasure) {
+		this.sumMeasure = sumMeasure;
+	}
+	
+	
 
 }

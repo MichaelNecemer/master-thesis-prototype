@@ -3963,7 +3963,10 @@ public class CommonFunctionality {
 			Collection<SequenceFlow> outgoing = gtw.getOutgoing();
 			if (outgoing.size() >= 2 && gtw instanceof ExclusiveGateway) {
 				for (SequenceFlow out : outgoing) {
-					if (out.getName().isEmpty() || out.getName() == null) {
+					if (out.getName() == null) {
+						return false;
+					} 
+					if(out.getName().isEmpty()) {
 						return false;
 					}
 				}
@@ -4024,13 +4027,15 @@ public class CommonFunctionality {
 
 				// get nodeBeforePSplit
 				// delete incoming seq of pSplit into first branch
+				// seq may be from a xor-split -> preserve the name
 				SequenceFlow incomingToPSplit = pSplit.getIncoming().iterator().next();
+				String nameOfIncomingToPSplit = incomingToPSplit.getName();
 				FlowNode nodeBeforePSplit = incomingToPSplit.getSource();
 				incomingToPSplit.getParentElement().removeChildElement(incomingToPSplit);
 
 				// connect nodeBeforePSplit to element in first branch
 				FlowNode firstBranchFirstElement = pBranchesFirstElements.get(0);
-				convertToUseBuilderAndConnectToNode(preprocessedModel, nodeBeforePSplit, firstBranchFirstElement);
+				convertToUseBuilderAndConnectToNode(preprocessedModel, nodeBeforePSplit, nameOfIncomingToPSplit, firstBranchFirstElement);
 				// get last element of first branch before join and remove outgoing seqFlow
 				LinkedList<LinkedList<FlowNode>> pathsBetweenElements = goDfs(preprocessedModel,
 						firstBranchFirstElement, pJoin, new LinkedList<SequenceFlow>(), new LinkedList<FlowNode>(),
@@ -4054,7 +4059,7 @@ public class CommonFunctionality {
 
 				// connect to first element of second branch
 				FlowNode secondBranchFirstElement = pBranchesFirstElements.get(1);
-				convertToUseBuilderAndConnectToNode(preprocessedModel, lastElementInBranchBeforePJoin,
+				convertToUseBuilderAndConnectToNode(preprocessedModel, lastElementInBranchBeforePJoin, null,
 						secondBranchFirstElement);
 
 				// get last element of second branch before join and remove outgoing seqFlow
@@ -4080,7 +4085,7 @@ public class CommonFunctionality {
 
 				// connect last element of second branch to node after pJoin
 				FlowNode nodeAfterPJoin = pJoin.getOutgoing().iterator().next().getTarget();
-				convertToUseBuilderAndConnectToNode(preprocessedModel, lastElementInBranch2BeforePJoin, nodeAfterPJoin);
+				convertToUseBuilderAndConnectToNode(preprocessedModel, lastElementInBranch2BeforePJoin, null, nodeAfterPJoin);
 				
 			}
 
@@ -4243,7 +4248,7 @@ public class CommonFunctionality {
 	
 	
 
-	public static void convertToUseBuilderAndConnectToNode(BpmnModelInstance modelInstance, FlowNode node,
+	public static void convertToUseBuilderAndConnectToNode(BpmnModelInstance modelInstance, FlowNode node, String nameOfNode,
 			FlowNode nodeToConnectTo) throws Exception {
 		try {
 			FlowNode source = node;
@@ -4262,6 +4267,11 @@ public class CommonFunctionality {
 			}
 			
 			source.builder().connectTo(target.getId());
+			if(nameOfNode!=null && !nameOfNode.isEmpty()) {
+				SequenceFlow generatedSeqFlow = target.getIncoming().iterator().next();
+				generatedSeqFlow.setName(nameOfNode);
+			}
+			
 			if (source instanceof ManualTask) {
 				Task task = convertFromManualTaskToTaskIfNecessary(modelInstance, (ManualTask) source);
 				source.replaceWithElement(task);

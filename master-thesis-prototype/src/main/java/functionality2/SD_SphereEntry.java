@@ -19,6 +19,7 @@ public class SD_SphereEntry {
 	private HashSet<BPMNTask>sdReaderBrts;
 	private double amountPathsWhereOriginWritesForCurrBrt;
 	private double weightingOfOriginForCurrBrt;
+	private double weightingOfOrigin;
 	private double score;
 	
 	public SD_SphereEntry(BPMNDataObject dataObject, BPMNTask origin, BPMNTask currBrt, HashSet<BPMNTask>sdReaderBrts, HashSet<BPMNParticipant>sdSphereWithAdditionalActors) {
@@ -32,6 +33,7 @@ public class SD_SphereEntry {
 		this.sdReaderBrts = sdReaderBrts;
 		this.amountPathsWhereOriginWritesForCurrBrt = 0;
 		this.weightingOfOriginForCurrBrt = 0;
+		this.weightingOfOrigin = Math.pow(2, -origin.getLabels().size());
 		this.score = 0;
 	}
 	
@@ -46,6 +48,7 @@ public class SD_SphereEntry {
 		this.sdSphereWithAdditionalActors = new HashSet<BPMNParticipant>();
 		this.amountPathsWhereOriginWritesForCurrBrt = 0;
 		this.weightingOfOriginForCurrBrt = 0;
+		this.weightingOfOrigin = Math.pow(2, -origin.getLabels().size());
 		this.score = 0;
 	}
 
@@ -135,6 +138,14 @@ public class SD_SphereEntry {
 
 	public void setAmountPathsWhereOriginWritesForCurrBrt(double amountPathsWhereOriginWritesForCurrBrt) {
 		this.amountPathsWhereOriginWritesForCurrBrt = amountPathsWhereOriginWritesForCurrBrt;
+	}
+
+	public double getWeightingOfOrigin() {
+		return weightingOfOrigin;
+	}
+
+	public void setWeightingOfOrigin(double weightingOfOrigin) {
+		this.weightingOfOrigin = weightingOfOrigin;
 	}
 	
 	

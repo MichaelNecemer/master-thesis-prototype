@@ -59,7 +59,19 @@ public class BPMNParticipant {
 	    }
 	    // cast and compare state
 	    BPMNParticipant other = (BPMNParticipant) obj;
-	    return Objects.equals(name, other.name) && Objects.equals(id, other.id);
+	    return Objects.equals(this.name, other.name) && Objects.equals(this.id, other.id);
+	}
+	
+	@Override
+	public final int hashCode() {
+	    int result = 17;
+	    if (this.id != null) {
+	        result = 31 * result + this.id.hashCode();
+	    }
+	    if (this.name != null) {
+	        result = 31 * result + this.name.hashCode();
+	    }
+	    return result;
 	}
 
 }
