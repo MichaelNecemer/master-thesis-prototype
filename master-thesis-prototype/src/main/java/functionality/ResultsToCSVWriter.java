@@ -391,12 +391,12 @@ public class ResultsToCSVWriter {
 			writersPerDataObject = (writers/sumDataObjects) + "";
 
 			boolean dependentBrtsInProcess = false;
-			for (BPMNBusinessRuleTask brt : bruteForceApi.getBusinessRuleTasks()) {
-				if (!brt.getPotentiallyDependentBrts().isEmpty()) {
+			/*for (BPMNBusinessRuleTask brt : bruteForceApi.getBusinessRuleTasks()) {
+				if (!brt.getRelatedBrts().isEmpty()) {
 					dependentBrtsInProcess = true;
 					break;
 				}
-			}
+			}*/
 
 			dependentBrts.append(dependentBrtsInProcess + "");
 

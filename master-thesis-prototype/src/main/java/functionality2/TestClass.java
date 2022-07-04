@@ -16,7 +16,8 @@ public class TestClass {
 
 		try {
 			API2 api2 = new API2(pathToFile, costForUpgradingSpheres);
-			api2.newMeasureAlgorithm();
+			//api2.newMeasureBruteForce();
+			api2.newMeasureHeuristic(0, API2.ClusterCondition.allOriginsTheSame);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

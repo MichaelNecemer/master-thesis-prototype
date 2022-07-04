@@ -6,12 +6,39 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class Combination {
-	//we want to use the binomial coefficient to get the different combinations for the voters
-	//e.g. we have 4 Voters (A,B,C,D) in the global sphere and need to get 3 of them for the first brt
-	// -> get all the possible combinations/permutation without repetition (A,B,C), (A,B,D), (A,C,D), (B,C,D)
+	
 	public static<T> LinkedList<LinkedList<T>> getPermutations (LinkedList<T> elements, int k) {
 	    return getPermutations (elements,k,0);
 	}
+	
+	public static<T> LinkedList<LinkedList<T>> getPermutationsWithBound (LinkedList<T> elements, int k, int bound) {
+	    return getPermutations (elements,k,0,bound);
+	}
+	
+	public static<T> LinkedList<LinkedList<T>> getPermutations (LinkedList<T> elements, int k, int i, int bound) {
+	    LinkedList<LinkedList<T>> results = new LinkedList<>();
+	    if(k > 0 && results.size()<bound) {
+	        int n = elements.size();
+	        for(int j = i; j <= n-k; j++) {
+	            T val = elements.get(j);
+	            LinkedList<LinkedList<T>> tails = getPermutations(elements,k-1,j+1, bound);
+	            for(LinkedList<T> tail : tails) {
+	            	if(results.size()<bound) {
+	                LinkedList<T> result = new LinkedList<>();
+	                result.add(val);
+	                result.addAll(tail);
+	                results.add(result);
+	            	} else {
+	            		return results;
+	            	}
+	            }
+	        }
+	    } else {
+	        results.add(new LinkedList<T>());
+	    }
+	    return results;
+	}
+
 
 	public static<T> LinkedList<LinkedList<T>> getPermutations (LinkedList<T> elements, int k, int i) {
 	    LinkedList<LinkedList<T>> results = new LinkedList<>();
@@ -32,6 +59,8 @@ public class Combination {
 	    }
 	    return results;
 	}
+	
+		
 	
 	/**
 	 * Combines several collections of elements and create permutations of all of them, taking one element from each

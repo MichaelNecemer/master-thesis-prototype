@@ -1,6 +1,7 @@
 package Mapping;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 //All the classes in the Mapping package are simply to better interact with the API provided by camunda
 //BPMNElement is the Base Element for the mapping
@@ -152,6 +153,35 @@ public class BPMNElement {
 			sb.append(l.getLabel());
 		}
 		return sb.toString();
+	}
+	
+	
+	public boolean equals(Object obj) {
+
+	    // same instance
+	    if (obj == this) {
+	        return true;
+	    }
+	    // null
+	    if (obj == null) {
+	        return false;
+	    }
+	    // type
+	    if (!getClass().equals(obj.getClass())) {
+	        return false;
+	    }
+	    // cast and compare state
+	    BPMNElement other = (BPMNElement) obj;
+	    return Objects.equals(this.id, other.id);
+	}
+	
+	@Override
+	public final int hashCode() {
+	    int result = 17;
+	    if (this.id != null) {
+	        result = 31 * result + this.id.hashCode();
+	    }
+	    return result;
 	}
 	
 	

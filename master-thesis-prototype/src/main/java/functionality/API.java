@@ -124,7 +124,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			this.writersMap = CommonFunctionality.getWritersForDataObjects(this.modelInstance);
 
 			this.mapAndCompute();
-			this.setDependentBrts();
 			this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance,
 					modelInstance.getModelElementsByType(StartEvent.class).iterator().next().getId(),
 					modelInstance.getModelElementsByType(EndEvent.class).iterator().next().getId());
@@ -174,34 +173,6 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		}
 	}
 
-	private void setDependentBrts() {
-		for (int i = 0; i < this.businessRuleTaskList.size(); i++) {
-			int j = businessRuleTaskList.size() - 1;
-			BPMNBusinessRuleTask brt = this.businessRuleTaskList.get(i);
-			while (i < j) {
-				BPMNBusinessRuleTask brt2 = this.businessRuleTaskList.get(j);
-				for (Entry<BPMNDataObject, ArrayList<BPMNTask>> entry : brt.getLastWriterList().entrySet()) {
-					for (BPMNTask lastWriter : entry.getValue()) {
-						for (Entry<BPMNDataObject, ArrayList<BPMNTask>> entry2 : brt2.getLastWriterList().entrySet()) {
-							if (entry2.getKey().equals(entry.getKey())) {
-								// check if both brts have (partially) the same lastwriters
-								if (entry2.getValue().contains(lastWriter)) {
-									if ((!brt2.getPotentiallyDependentBrts().contains(brt))) {
-										brt2.getPotentiallyDependentBrts().add(brt);
-									}
-								}
-							}
-						}
-					}
-
-				}
-
-				j--;
-			}
-
-		}
-
-	}
 
 	public BPMNExclusiveGateway getLastXorJoinInProcess() {
 

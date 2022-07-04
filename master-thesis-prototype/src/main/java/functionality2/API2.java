@@ -82,6 +82,7 @@ public class API2 {
 	private String weakDynamicSphereKey;
 	private String strongDynamicSphereKey;
 	private LinkedList<Double> weightingParameters;
+	private HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> relatedBrts;
 
 	public API2(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters) throws Exception {
 		if (weightingParameters.size() != 3) {
@@ -118,18 +119,19 @@ public class API2 {
 		this.staticSphereKey = "Static";
 		this.weakDynamicSphereKey = "Weak-Dynamic";
 		this.strongDynamicSphereKey = "Strong-Dynamic";
+		this.relatedBrts = new HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>>();
 		// map all the elements from camunda
 		this.mapCamundaElements();
 		this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance,
 				this.startEvent.getId(), this.endEvent.getId());
 	}
 
+	enum ClusterCondition {
+		oneOriginTheSame, allOriginsTheSame, allOriginsPerDataObjectTheSame,
+	}
+
 	@SuppressWarnings("unchecked")
-	public void newMeasureAlgorithm() throws Exception {
-		// generate all possible combinations of additional readers
-		LinkedList<PModelWithAdditionalActors> additionalActorsCombs = this
-				.generateAllPossibleCombinationsOfAdditionalActors();
-		System.out.println("Possible combs: " + additionalActorsCombs.size());
+	public void newMeasureBruteForce() throws Exception {
 
 		// compute static sphere per data object without additional actors
 		HashMap<BPMNDataObject, Static_SphereEntry> staticSpherePerDataObject = new HashMap<BPMNDataObject, Static_SphereEntry>();
@@ -212,8 +214,13 @@ public class API2 {
 			}
 		}
 
+		LinkedList<PModelWithAdditionalActors> additionalActorsCombs = null;
 		// when staticSpherePerDataObject is empty -> all dataObjects are private
 		if (!staticSpherePerDataObject.isEmpty()) {
+			// generate all possible combinations of additional readers
+			additionalActorsCombs = this.generatePossibleCombinationsOfAdditionalActorsWithBound(0);
+			System.out.println("Possible combs: " + additionalActorsCombs.size());
+
 			for (PModelWithAdditionalActors pModelWithAdditionalActors : additionalActorsCombs) {
 				pModelWithAdditionalActors.setPrivateSphere(this.privateSphere);
 				pModelWithAdditionalActors.setStaticSphereEntries(
@@ -252,7 +259,6 @@ public class API2 {
 					double currAlphaScoreSum = pModelWithAdditionalActors.getAlphaMeasureSum();
 					double newAlphaScoreSum = currAlphaScoreSum += score;
 					pModelWithAdditionalActors.setAlphaMeasureSum(newAlphaScoreSum);
-
 				}
 
 				// compute beta measure
@@ -394,37 +400,62 @@ public class API2 {
 						+ pModelWithAdditionalActors.getGammaMeasureSum();
 				pModelWithAdditionalActors.setSumMeasure(sum);
 			}
+		} else {
+			// all data objects are private
+			// i.e. each combination of participants that satisfies the constraints is a
+			// cheapest one
+			// generate combinations of the size == bound that satisfy the constraints
+			additionalActorsCombs = this.generatePossibleCombinationsOfAdditionalActorsWithBound(1);
+		}
+
+		for (PModelWithAdditionalActors pModel : additionalActorsCombs) {
+			pModel.printMeasure();
 		}
 
 		/*
-		 * for(PModelWithAdditionalActors pModel: additionalActorsCombs) {
-		 * pModel.printMeasure(); }
+		 * LinkedList<PModelWithAdditionalActors> cheapest = this
+		 * .getCheapestCombinationsOfAdditionalActors(additionalActorsCombs);
+		 * System.out.println("cheapest combs: " + cheapest.size()); for
+		 * (PModelWithAdditionalActors cheapestPModel : cheapest) {
+		 * cheapestPModel.printMeasure(); }
 		 */
-		/*
-		LinkedList<PModelWithAdditionalActors> cheapest = this
-				.getCheapestCombinationsOfAdditionalActors(additionalActorsCombs);
-		System.out.println("cheapest combs: " + cheapest.size());
-		for (PModelWithAdditionalActors cheapestPModel : cheapest) {
-			cheapestPModel.printMeasure();
-		}*/
-		System.out.println("Finished");
+		System.out.println("Finished bruteForce");
 	}
 
-	public LinkedList<PModelWithAdditionalActors> generateAllPossibleCombinationsOfAdditionalActors() throws Exception {
+	public void newMeasureHeuristic(int boundForCheapestSolutions, ClusterCondition clusterCondition) throws Exception {
+
+		// build a cluster of related brts
+		this.buildCluster(clusterCondition);
+
+		//
+		LinkedList<PModelWithAdditionalActors> pModelAddActors = this
+				.generatePModelsWithAddActorsForIntersectionInCluster();
+
+	}
+
+	public LinkedList<PModelWithAdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBound(int bound)
+			throws Exception {
 		LinkedList<LinkedList<Object>> combinationsPerBrt = new LinkedList<LinkedList<Object>>();
-		LinkedList<PModelWithAdditionalActors> pModelWithAddActorsList = new LinkedList<PModelWithAdditionalActors>();
+
+		// if bound <= 0 -> unbounded
 
 		for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
-
+			LinkedList<LinkedList<BPMNParticipant>> potentialAddActors = this.getPotentialAddActorsForBrt(brt);
 			LinkedList<AdditionalActors> addActorsCombinationsForBrt = this
-					.generateAdditionalActorsForBrtsWithConstraints(brt);
+					.generateAdditionalActorsForBrtsWithConstraintsAndBound(brt, potentialAddActors.get(0),
+							potentialAddActors.get(1), null, bound);
 			LinkedList<Object> addActors = new LinkedList<Object>();
 			addActors.addAll(addActorsCombinationsForBrt);
 			combinationsPerBrt.add(addActors);
-
 		}
 
+		return this.generateAllPossiblePModelWithAdditionalActors(combinationsPerBrt);
+	}
+
+	private LinkedList<PModelWithAdditionalActors> generateAllPossiblePModelWithAdditionalActors(
+			LinkedList<LinkedList<Object>> combinationsPerBrt) throws InterruptedException {
 		// generate all possible combinations of additional actors for brts
+		LinkedList<PModelWithAdditionalActors> pModelWithAddActorsList = new LinkedList<PModelWithAdditionalActors>();
 		Collection<List<Object>> combs = Combination.permutations(combinationsPerBrt);
 		for (List list : combs) {
 			if (Thread.currentThread().isInterrupted()) {
@@ -436,51 +467,69 @@ public class API2 {
 					this.weightingParameters);
 			pModelWithAddActorsList.add(newModel);
 		}
+
 		return pModelWithAddActorsList;
 	}
 
-	private synchronized LinkedList<AdditionalActors> generateAdditionalActorsForBrtsWithConstraints(
-			BPMNBusinessRuleTask currBrt) throws Exception {
-		LinkedList<AdditionalActors> additionalActorsForBrt = new LinkedList<AdditionalActors>();
+	private synchronized LinkedList<AdditionalActors> generateAdditionalActorsForBrtsWithConstraintsAndBound(
+			BPMNBusinessRuleTask currBrt, LinkedList<BPMNParticipant> allPossibleActors,
+			LinkedList<BPMNParticipant> allMandatoryActors, LinkedList<BPMNParticipant> preferredParticipants,
+			int bound) throws Exception {
 
 		BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
-		// get all the possible combinations of participants for the brt
-		// consider the constraints e.g. participants may be excluded or mandatory
-		LinkedList<BPMNParticipant> participantsToCombineAsAdditionalActors = new LinkedList<BPMNParticipant>();
+		LinkedList<AdditionalActors> additionalActorsForBrt = new LinkedList<AdditionalActors>();
 
-		// add all participants except the actor of the brt itself
-		participantsToCombineAsAdditionalActors.addAll(this.privateSphere);
-		participantsToCombineAsAdditionalActors.remove(currBrt.getParticipant());
-
-		LinkedList<BPMNParticipant> mandatoryParticipantsAsAdditionalActors = new LinkedList<BPMNParticipant>();
-
-		for (Constraint constraint : bpmnEx.getConstraints()) {
-			if (constraint instanceof ExcludeParticipantConstraint) {
-				// exclude the participants due to constraints
-				BPMNParticipant partToRemove = ((ExcludeParticipantConstraint) constraint).getParticipantToExclude();
-				participantsToCombineAsAdditionalActors.remove(partToRemove);
-			} else if (constraint instanceof MandatoryParticipantConstraint) {
-				BPMNParticipant mandatoryPart = ((MandatoryParticipantConstraint) constraint).getMandatoryParticipant();
-				if (!mandatoryParticipantsAsAdditionalActors.contains(mandatoryPart)) {
-					mandatoryParticipantsAsAdditionalActors.add(mandatoryPart);
-				}
-			}
+		int boundCombsForNotMandatoryParticipants = bpmnEx.getAmountVoters() - allMandatoryActors.size();
+		LinkedList<BPMNParticipant> notMands = new LinkedList<BPMNParticipant>(allPossibleActors);
+		notMands.removeAll(allMandatoryActors);
+		if (preferredParticipants != null) {
+			notMands.removeAll(preferredParticipants);
+			preferredParticipants.removeAll(allMandatoryActors);
 		}
 
-		LinkedList<LinkedList<BPMNParticipant>> list = Combination
-				.getPermutations(participantsToCombineAsAdditionalActors, bpmnEx.getAmountVoters());
-		Iterator<LinkedList<BPMNParticipant>> listIter = list.iterator();
-		while (listIter.hasNext()) {
-			LinkedList<BPMNParticipant> partList = listIter.next();
-			if (!partList.containsAll(mandatoryParticipantsAsAdditionalActors)) {
-				listIter.remove();
+		int boundCombsForPreferredPartList = boundCombsForNotMandatoryParticipants - preferredParticipants.size();
+
+		LinkedList<LinkedList<BPMNParticipant>> list = new LinkedList<LinkedList<BPMNParticipant>>();
+		LinkedList<LinkedList<BPMNParticipant>> remaining = new LinkedList<LinkedList<BPMNParticipant>>();
+
+		if (boundCombsForPreferredPartList == 0) {
+			// there are exactly as many preferred participants ( + mandatory participants) as verifiers needed
+			list.add(preferredParticipants);
+		} else if (boundCombsForPreferredPartList < 0) {
+			// there are more preferred participants ( + mandatory participants) than verifiers still needed
+			list = Combination.getPermutations(preferredParticipants,
+					Math.max(boundCombsForNotMandatoryParticipants, Math.abs(boundCombsForPreferredPartList)));
+		} else {
+			// there are less preferred participants ( + mandatory participants) than verifiers still needed
+			// take all preferred participants
+			list.add(preferredParticipants);
+
+			// compute the remaining combs of participants without mandatory ones
+			remaining = Combination.getPermutations(notMands, Math.min(notMands.size(), Math.abs(boundCombsForPreferredPartList)));
+		}
+
+		
+		//bound??
+		for (int i = 0; i < list.size(); i++) {
+			LinkedList<BPMNParticipant> currList = list.get(i);
+			// add the mandatory additional actors
+			currList.addAll(0, allMandatoryActors);
+			if (remaining.size() > 0) {
+				for (int j = 0; j < remaining.size(); j++) {
+					LinkedList<BPMNParticipant> currListClone = (LinkedList<BPMNParticipant>) currList.clone();
+					currListClone.addAll(remaining.get(j));
+					AdditionalActors addActors = new AdditionalActors(currBrt, currListClone);
+					additionalActorsForBrt.add(addActors);
+				}
 			} else {
-				AdditionalActors addActors = new AdditionalActors(currBrt, partList);
+				AdditionalActors addActors = new AdditionalActors(currBrt, currList);
 				additionalActorsForBrt.add(addActors);
 			}
+
 		}
+
 		if (list.isEmpty()) {
-			throw new Exception("No possible combination of voters for " + currBrt.getId());
+			throw new Exception("No possible combination of verifiers for " + currBrt.getId());
 		}
 
 		return additionalActorsForBrt;
@@ -511,9 +560,8 @@ public class API2 {
 			} else {
 				this.addParticipantToTask();
 			}
-
-			this.mapDataObjects();
 			this.computePrivateSphere();
+			this.mapDataObjects();
 			this.mapAssociationsAndAnotations();
 			this.mapDefaultTroubleShooter();
 
@@ -997,6 +1045,12 @@ public class API2 {
 	private void mapAnnotations(BPMNExclusiveGateway gtw) throws Exception {
 		// map the annotated amount of needed voters to the BPMNExclusiveGateways
 		// map the sphere connected to the gateway
+		
+		if(gtw.getAmountVoters()>this.privateSphere.size()) {
+			throw new Exception("Amount of verifiers for "+gtw.getId()+" can not be > private sphere!");
+		}
+
+		
 		for (TextAnnotation text : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 			for (Association a : modelInstance.getModelElementsByType(Association.class)) {
 				if (a.getAttributeValue("sourceRef").equals(gtw.getId())
@@ -1035,7 +1089,7 @@ public class API2 {
 									partAlreadyMapped = true;
 									boolean constrExists = false;
 									for (ExcludeParticipantConstraint exclConst : this.excludeParticipantConstraints) {
-										// check if constraint already existst
+										// check if constraint already exists
 										if (exclConst.getParticipantToExclude().equals(participant)) {
 											// constraint already exists
 											gtw.getConstraints().add(exclConst);
@@ -1098,6 +1152,15 @@ public class API2 {
 										}
 									}
 									if (constrExists == false) {
+										BPMNElement predecessor = gtw.getPredecessors().iterator().next();
+										if (predecessor instanceof BPMNBusinessRuleTask) {
+											BPMNBusinessRuleTask brt = (BPMNBusinessRuleTask) predecessor;
+											if (brt.getParticipant().equals(participant)) {
+												throw new Exception(
+														"Mandatory participant can not be the additional actor of the brt!");
+											}
+										
+										}
 										MandatoryParticipantConstraint mpc = new MandatoryParticipantConstraint(
 												participant);
 										gtw.getConstraints().add(mpc);
@@ -1590,6 +1653,171 @@ public class API2 {
 
 		return currCheapestPModels;
 
+	}
+
+	public void buildCluster(ClusterCondition clusterCondition) {
+		// build a cluster of related brts
+		// e.g. brt1 and brt2 are related, if they (partially) have the same origins
+
+		for (int i = 0; i < this.businessRuleTasks.size(); i++) {
+			BPMNBusinessRuleTask brt = this.businessRuleTasks.get(i);
+
+			for (int j = this.businessRuleTasks.size() - 1; j >= 0; j--) {
+				BPMNBusinessRuleTask brt2 = this.businessRuleTasks.get(j);
+				if (!brt.equals(brt2)) {
+					for (Entry<BPMNDataObject, ArrayList<BPMNTask>> entry : brt.getLastWriterList().entrySet()) {
+						for (Entry<BPMNDataObject, ArrayList<BPMNTask>> entry2 : brt2.getLastWriterList().entrySet()) {
+							if (entry2.getKey().equals(entry.getKey())) {
+								if (entry.getValue().containsAll(entry2.getValue())
+										&& entry2.getValue().containsAll(entry.getValue())) {
+									// all origins for the data object are the same
+									if (clusterCondition.equals(ClusterCondition.oneOriginTheSame)) {
+										this.relatedBrts.computeIfAbsent(entry.getKey(),
+												k -> new HashSet<BPMNBusinessRuleTask>()).add(brt);
+										this.relatedBrts.get(entry.getKey()).add(brt2);
+									}
+									if (clusterCondition.equals(ClusterCondition.allOriginsTheSame)) {
+										this.relatedBrts.computeIfAbsent(entry.getKey(),
+												k -> new HashSet<BPMNBusinessRuleTask>()).add(brt);
+										this.relatedBrts.get(entry.getKey()).add(brt2);
+									}
+								} else {
+									// check if at least one origin for the data object is the same
+									ArrayList<BPMNTask> intersect = new ArrayList<BPMNTask>();
+									intersect.addAll(entry.getValue());
+									intersect.retainAll(entry2.getValue());
+									if (!intersect.isEmpty()) {
+										// at least one origin for the data object is the same
+										if (clusterCondition.equals(ClusterCondition.oneOriginTheSame)) {
+											this.relatedBrts.computeIfAbsent(entry.getKey(),
+													k -> new HashSet<BPMNBusinessRuleTask>()).add(brt);
+											this.relatedBrts.get(entry.getKey()).add(brt2);
+										}
+									}
+
+								}
+
+							}
+						}
+
+					}
+
+				}
+
+			}
+
+		}
+
+	}
+
+	public LinkedList<PModelWithAdditionalActors> generatePModelsWithAddActorsForIntersectionInCluster()
+			throws InterruptedException {
+
+		HashMap<BPMNDataObject, HashSet<BPMNParticipant>> addActorsIntersectPerDataO = new HashMap<BPMNDataObject, HashSet<BPMNParticipant>>();
+		HashSet<BPMNParticipant> intersectOverDataO = new HashSet<BPMNParticipant>();
+		HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNParticipant>>> possiblePartMap = new HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNParticipant>>>();
+
+		// get the intersection of additional actors of related brts per data object
+		boolean initializedIntersectOverDataO = false;
+		for (Entry<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> relatedBrtEntry : this.relatedBrts.entrySet()) {
+			HashSet<BPMNParticipant> additionalActorsIntersectForDataO = new HashSet<BPMNParticipant>();
+			boolean initializedParticipantMap = false;
+			for (BPMNBusinessRuleTask relatedBrt : relatedBrtEntry.getValue()) {
+				LinkedList<LinkedList<BPMNParticipant>> participantsForBrt = this
+						.getPotentialAddActorsForBrt(relatedBrt);
+				LinkedList<BPMNParticipant> participantsPossibleForBrt = participantsForBrt.get(0);
+				HashSet<BPMNParticipant> participantsPossibleForBrtSet = new HashSet<BPMNParticipant>(
+						participantsPossibleForBrt);
+
+				possiblePartMap.putIfAbsent(relatedBrt, participantsForBrt);
+
+				if (!initializedParticipantMap) {
+					additionalActorsIntersectForDataO.addAll(participantsPossibleForBrtSet);
+					initializedParticipantMap = true;
+				}
+				additionalActorsIntersectForDataO.retainAll(participantsPossibleForBrtSet);
+
+			}
+
+			// add the intersected possible additional actors to the data object
+			addActorsIntersectPerDataO.putIfAbsent(relatedBrtEntry.getKey(), additionalActorsIntersectForDataO);
+
+			if (!initializedIntersectOverDataO) {
+				intersectOverDataO.addAll(additionalActorsIntersectForDataO);
+				initializedIntersectOverDataO = true;
+			}
+			intersectOverDataO.retainAll(additionalActorsIntersectForDataO);
+		}
+
+		LinkedList<LinkedList<Object>> combinationsPerBrt = new LinkedList<LinkedList<Object>>();
+		for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
+			LinkedList<LinkedList<BPMNParticipant>> addActorsList = possiblePartMap.get(brt);
+			LinkedList<BPMNParticipant> intersected = new LinkedList<BPMNParticipant>(intersectOverDataO);
+
+			try {
+				LinkedList<AdditionalActors> addActorsForCurrBrt = this
+						.generateAdditionalActorsForBrtsWithConstraintsAndBound(brt, addActorsList.get(0),
+								addActorsList.get(1), intersected, 0);
+				LinkedList<Object> combsForCurrBrt = new LinkedList<Object>(addActorsForCurrBrt);
+				combinationsPerBrt.add(combsForCurrBrt);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
+
+		return this.generateAllPossiblePModelWithAdditionalActors(combinationsPerBrt);
+
+	}
+
+	public LinkedList<LinkedList<BPMNParticipant>> getPotentialAddActorsForBrt(BPMNBusinessRuleTask brt) {
+
+		LinkedList<LinkedList<BPMNParticipant>> setOfParticipants = new LinkedList<LinkedList<BPMNParticipant>>();
+		// on index 0 -> all participantsToCombineAsAdditionalActors
+		// on index 1 -> all mandatoryParticipants
+
+		BPMNParticipant partOfBrt = brt.getParticipant();
+		BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) brt.getSuccessors().iterator().next();
+		// get all the possible combinations of participants for the brt
+		// consider the constraints e.g. participants may be excluded or mandatory
+		LinkedList<BPMNParticipant> participantsToCombineAsAdditionalActors = new LinkedList<BPMNParticipant>();
+
+		// add all participants except the actor of the brt itself
+		participantsToCombineAsAdditionalActors.addAll(this.privateSphere);
+		participantsToCombineAsAdditionalActors.remove(partOfBrt);
+
+		LinkedList<BPMNParticipant> mandatoryParticipantsAsAdditionalActors = new LinkedList<BPMNParticipant>();
+
+		for (Constraint constraint : bpmnEx.getConstraints()) {
+			if (constraint instanceof ExcludeParticipantConstraint) {
+				// exclude the participants due to constraints
+				BPMNParticipant partToRemove = ((ExcludeParticipantConstraint) constraint).getParticipantToExclude();
+				participantsToCombineAsAdditionalActors.remove(partToRemove);
+			} else if (constraint instanceof MandatoryParticipantConstraint) {
+				BPMNParticipant mandatoryPart = ((MandatoryParticipantConstraint) constraint).getMandatoryParticipant();
+				// add the mandatory participant to the head of the list
+				participantsToCombineAsAdditionalActors.remove(mandatoryPart);
+				participantsToCombineAsAdditionalActors.addFirst(mandatoryPart);
+
+				if (!mandatoryParticipantsAsAdditionalActors.contains(mandatoryPart)) {
+					mandatoryParticipantsAsAdditionalActors.add(mandatoryPart);
+				}
+			}
+		}
+
+		setOfParticipants.add(participantsToCombineAsAdditionalActors);
+		setOfParticipants.add(mandatoryParticipantsAsAdditionalActors);
+
+		return setOfParticipants;
+	}
+
+	public HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> getRelatedBrts() {
+		return relatedBrts;
+	}
+
+	public void setRelatedBrts(HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> relatedBrts) {
+		this.relatedBrts = relatedBrts;
 	}
 
 }
