@@ -7,8 +7,10 @@ public class TestClass {
 	
 	
 	public static void main(String[]args) {
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorB.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorC.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_clustering.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWmR_Static_voters4.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\brtsIn2branches1.bpmn";
 		
@@ -16,8 +18,15 @@ public class TestClass {
 
 		try {
 			API2 api2 = new API2(pathToFile, costForUpgradingSpheres);
-			//api2.newMeasureBruteForce();
-			api2.newMeasureHeuristic(0, API2.ClusterCondition.allOriginsTheSame);
+			LinkedList<PModelWithAdditionalActors>pInst = api2.exhaustiveSearch();
+			for(PModelWithAdditionalActors pModel: pInst) {
+				pModel.printMeasure();
+			}
+			//api2.newMeasureHeuristic(5, Enums.ClusterCondition.ALLORIGINSTHESAME);
+			
+			
+			
+			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

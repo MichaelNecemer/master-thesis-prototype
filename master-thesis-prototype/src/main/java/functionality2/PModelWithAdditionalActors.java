@@ -278,7 +278,7 @@ public class PModelWithAdditionalActors {
 				}				
 				sb.append("}");	
 				sb.append(System.lineSeparator());	
-				sb.append("weighting(w): "+wdEntry.getWeightingOfOrigin()+", score: "+wdEntry.getScore());
+				sb.append("weight(w): "+wdEntry.getWeightingOfOrigin()+", score: "+wdEntry.getScore());
 				sb.append(System.lineSeparator());							
 			}		
 		}		
@@ -333,7 +333,7 @@ public class PModelWithAdditionalActors {
 				}				
 				sb.append("}");	
 				sb.append(System.lineSeparator());	
-				sb.append("weighting(w): "+sdEntry.getWeightingOfOrigin()+", weighting(w,r,d): "+sdEntry.getWeightingOfOriginForCurrBrt()+", score: "+sdEntry.getScore());
+				sb.append("weight(w): "+sdEntry.getWeightingOfOrigin()+", weight(w,r,d): "+sdEntry.getWeightingOfOriginForCurrBrt()+", score: "+sdEntry.getScore());
 				sb.append(System.lineSeparator());							
 			}		
 		}
