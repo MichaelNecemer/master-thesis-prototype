@@ -85,7 +85,8 @@ public class API2 {
 	private String weakDynamicSphereKey;
 	private String strongDynamicSphereKey;
 	private LinkedList<Double> weightingParameters;
-	private HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> relatedBrts;
+	private HashMap<String, Double> executionTimeMap;
+	private int boundForAddActorsInCluster;
 
 	public API2(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters) throws Exception {
 		if (weightingParameters.size() != 3) {
@@ -116,6 +117,8 @@ public class API2 {
 		this.setAlgorithmToPerform(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
 		// set the default cluster condition
 		this.setClusterCondition(Enums.ClusterCondition.ALLORIGINSTHESAME);
+		this.boundForAddActorsInCluster = 0;
+		this.executionTimeMap = new HashMap<String, Double>();
 		this.amountPossibleCombinationsOfParticipants = "0";
 		this.mandatoryParticipantConstraints = new LinkedList<MandatoryParticipantConstraint>();
 		this.excludeParticipantConstraints = new LinkedList<ExcludeParticipantConstraint>();
@@ -125,7 +128,6 @@ public class API2 {
 		this.staticSphereKey = "Static";
 		this.weakDynamicSphereKey = "Weak-Dynamic";
 		this.strongDynamicSphereKey = "Strong-Dynamic";
-		this.relatedBrts = new HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>>();
 		// map all the elements from camunda
 		this.mapCamundaElements();
 		this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance,
@@ -134,8 +136,7 @@ public class API2 {
 
 	@SuppressWarnings("unchecked")
 	public LinkedList<PModelWithAdditionalActors> exhaustiveSearch() throws Exception {
-		long startTime = System.currentTimeMillis();
-
+		long startTime = System.nanoTime();
 		HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
 				.computeStaticSpherePerDataObject();
 
@@ -287,7 +288,6 @@ public class API2 {
 									}
 								}
 
-								System.out.println(dataO.getName()+" "+origin.getName()+" "+currBrt.getName());
 								LinkedList<HashSet<BPMNParticipant>> sdSphereList = this
 										.getSdActorsAndSetWeightingOfOrigin(dataO, origin, currBrt,
 												pModelWithAdditionalActors.getAdditionalActorsList(),
@@ -349,31 +349,46 @@ public class API2 {
 			// generate combinations of the size == bound that satisfy the constraints
 			additionalActorsCombs = this.generatePossibleCombinationsOfAdditionalActorsWithBound(1);
 		}
-		long endTime = System.currentTimeMillis();
-		System.out.println("Run time in milsec: " + (endTime - startTime));
+		long endTime = System.nanoTime();
+		long executionTime = endTime - startTime;
+		double executionTimeInSeconds = (double) executionTime / 1000000000;
+		System.out.println("Execution time in sec: " + executionTimeInSeconds);
 		System.out.println("Combs with bruteForce: " + additionalActorsCombs.size());
+		this.executionTimeMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE.name(), executionTimeInSeconds);
 		return additionalActorsCombs;
 	}
 
 	@SuppressWarnings("unchecked")
-	public LinkedList<PModelWithAdditionalActors> newMeasureHeuristic(int boundForCheapestSolutions,
-			ClusterCondition clusterCondition) throws Exception {
+	public LinkedList<PModelWithAdditionalActors> newMeasureHeuristic(int boundForAmountPossibleCombsPerBrt, int boundForCheapestSolutions,
+			Enums.ClusterCondition clusterCondition) throws Exception {
 
-		long startTime = System.currentTimeMillis();
+		String key = "";
+		if (boundForCheapestSolutions > 0) {
+			key = Enums.AlgorithmToPerform.HEURISTICWITHBOUND.name() + boundForCheapestSolutions;
+		} else {
+			key = Enums.AlgorithmToPerform.HEURISTIC.name();
+		}
+
+		long startTime = System.nanoTime();
 
 		// build a cluster of related brts
-		this.buildCluster(clusterCondition);
+		HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> cluster = this.buildCluster(clusterCondition);
 
 		// compute static sphere per data object without add actors
 		HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
 				.computeStaticSpherePerDataObject();
+
+		// compute wd sphere for origins without additional actors
+		HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
+
 		LinkedList<PModelWithAdditionalActors> pModelAddActors = null;
 		if (!staticSpherePerDataObject.isEmpty()) {
 			// only generate those combinations of participants that are preferred (e.g. in
 			// cluster or locally cheap)
-			pModelAddActors = this.generatePModelsWithAddActorsForIntersectionInCluster();
+			pModelAddActors = this.generatePModelsWithAddActorsForIntersectionInCluster(cluster,
+					staticSpherePerDataObject, wdSpherePerDataObject, boundForAmountPossibleCombsPerBrt);
 
-			LinkedList<PModelWithAdditionalActors> cheapestPModels = new LinkedList<PModelWithAdditionalActors>();
+			LinkedList<PModelWithAdditionalActors> cheapestPModelsAlphaMeasure = new LinkedList<PModelWithAdditionalActors>();
 			// iterate over all combinations and only keep the cheapest ones
 			for (PModelWithAdditionalActors pModelWithAdditionalActors : pModelAddActors) {
 				pModelWithAdditionalActors.setPrivateSphere(this.privateSphere);
@@ -419,43 +434,45 @@ public class API2 {
 					double newAlphaScoreSum = currAlphaScoreSum += score;
 					pModelWithAdditionalActors.setAlphaMeasureSum(newAlphaScoreSum);
 					pModelWithAdditionalActors.setSumMeasure(newAlphaScoreSum);
-
-					if (cheapestPModels.isEmpty()) {
-						cheapestPModels.add(pModelWithAdditionalActors);
-					} else {
-						if (newAlphaScoreSum < cheapestPModels.get(0).getAlphaMeasureSum()) {
-							// new cheapest model found
-							cheapestPModels.clear();
-							cheapestPModels.add(pModelWithAdditionalActors);
-						} else if (newAlphaScoreSum == cheapestPModels.get(0).getAlphaMeasureSum()) {
-							// check for bound
-							// if bound <= 0 -> unbounded
-							if (boundForCheapestSolutions <= 0) {
-								cheapestPModels.add(pModelWithAdditionalActors);
-							} else {
-								if (cheapestPModels.size() < boundForCheapestSolutions) {
-									cheapestPModels.add(pModelWithAdditionalActors);
-								}
-							}
-
-						}
-					}
-
 				}
+
+				if (cheapestPModelsAlphaMeasure.isEmpty()) {
+					cheapestPModelsAlphaMeasure.add(pModelWithAdditionalActors);
+				} else {
+					if (pModelWithAdditionalActors.getAlphaMeasureSum() < cheapestPModelsAlphaMeasure.get(0)
+							.getAlphaMeasureSum()) {
+						// new cheapest model found
+						cheapestPModelsAlphaMeasure.clear();
+						cheapestPModelsAlphaMeasure.add(pModelWithAdditionalActors);
+					} else if (pModelWithAdditionalActors.getAlphaMeasureSum() == cheapestPModelsAlphaMeasure.get(0)
+							.getAlphaMeasureSum()) {
+						// check for bound
+						// if bound <= 0 -> unbounded
+						if (boundForCheapestSolutions <= 0) {
+							cheapestPModelsAlphaMeasure.add(pModelWithAdditionalActors);
+						} else {
+							if (cheapestPModelsAlphaMeasure.size() < boundForCheapestSolutions) {
+								cheapestPModelsAlphaMeasure.add(pModelWithAdditionalActors);
+							}
+						}
+
+					}
+				}
+
 			}
-			pModelAddActors = cheapestPModels;
+			pModelAddActors = cheapestPModelsAlphaMeasure;
+
 		} else {
 			pModelAddActors = this.generatePossibleCombinationsOfAdditionalActorsWithBound(1);
 		}
 
-		/*
-		 * System.out.println("Combs with heuristics: "+pModelAddActors.size()); for
-		 * (PModelWithAdditionalActors pModel : pModelAddActors) {
-		 * pModel.printMeasure(); }
-		 */
-		long endTime = System.currentTimeMillis();
+		long endTime = System.nanoTime();
+		long executionTime = endTime - startTime;
+		double executionTimeInSeconds = (double) executionTime / 1000000000;
+		this.executionTimeMap.put(key, executionTimeInSeconds);
+
 		System.out.println("Combs with heuristic: " + pModelAddActors.size());
-		System.out.println("Run time heuristic in milsec: " + (endTime - startTime));
+		System.out.println("Run time heuristic in sec: " + executionTimeInSeconds);
 
 		return pModelAddActors;
 
@@ -502,7 +519,7 @@ public class API2 {
 	private synchronized LinkedList<AdditionalActors> generateAdditionalActorsForBrtsWithConstraintsAndBound(
 			BPMNBusinessRuleTask currBrt, LinkedList<BPMNParticipant> allPossibleActors,
 			LinkedList<BPMNParticipant> allMandatoryActors, LinkedList<BPMNParticipant> preferredParticipants,
-			int bound) throws Exception {
+			int boundForAddActors) throws Exception {
 
 		BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
 		LinkedList<AdditionalActors> additionalActorsForBrt = new LinkedList<AdditionalActors>();
@@ -532,7 +549,7 @@ public class API2 {
 			if (boundCombsForNotMandatoryParticipants > 0) {
 				// compute the combinations of the verifiers still needed (= verifiers needed
 				// without the mandatory ones) from the preferred participants
-				list = Combination.getPermutations(preferredParticipants, boundCombsForNotMandatoryParticipants);
+				list = Combination.getPermutationsWithBound(preferredParticipants, boundCombsForNotMandatoryParticipants, boundForAddActors);
 			} else {
 				list.add(new LinkedList<BPMNParticipant>());
 			}
@@ -544,8 +561,8 @@ public class API2 {
 			list.add(preferredParticipants);
 
 			// compute the remaining combs of participants without mandatory ones
-			remaining = Combination.getPermutations(notMands,
-					Math.min(notMands.size(), Math.abs(boundCombsForPreferredPartList)));
+			remaining = Combination.getPermutationsWithBound(notMands,
+					Math.min(notMands.size(), Math.abs(boundCombsForPreferredPartList)), boundForAddActors);
 		}
 
 		// bound??
@@ -1453,8 +1470,8 @@ public class API2 {
 											.addAll(addActorWithoutCurrBrtAddActors.getAdditionalActors());
 								}
 							}
-							
-							if(currPositionBrt.equals(currTask)) {
+
+							if (currPositionBrt.equals(currTask)) {
 								pastCurrBrt = true;
 							}
 						}
@@ -1470,9 +1487,9 @@ public class API2 {
 							sdListWithoutCurrBrtAddActors.add(currTask.getParticipant());
 							foundOnPathWithoutCurrBrtAddActors.add(currTask.getParticipant());
 							amountPathsWhereOriginWritesForDataO++;
-							
+
 						} else {
-							if(!pastCurrBrt) {
+							if (!pastCurrBrt) {
 								amountPathsWhereOriginWritesForDataO--;
 							}
 							// another writer found on some path
@@ -1707,10 +1724,10 @@ public class API2 {
 
 	}
 
-	public void buildCluster(ClusterCondition clusterCondition) {
+	public HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> buildCluster(ClusterCondition clusterCondition) {
 		// build a cluster of related brts
 		// e.g. brt1 and brt2 are related, if they (partially) have the same origins
-
+		HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> clusteredBrts = new HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>>();
 		for (int i = 0; i < this.businessRuleTasks.size(); i++) {
 			BPMNBusinessRuleTask brt = this.businessRuleTasks.get(i);
 
@@ -1723,15 +1740,11 @@ public class API2 {
 								if (entry.getValue().containsAll(entry2.getValue())
 										&& entry2.getValue().containsAll(entry.getValue())) {
 									// all origins for the data object are the same
-									if (clusterCondition.equals(ClusterCondition.ONEORIGINTHESAME)) {
-										this.relatedBrts.computeIfAbsent(entry.getKey(),
+									if (clusterCondition.equals(ClusterCondition.ONEORIGINTHESAME)
+											|| clusterCondition.equals(ClusterCondition.ALLORIGINSTHESAME)) {
+										clusteredBrts.computeIfAbsent(entry.getKey(),
 												k -> new HashSet<BPMNBusinessRuleTask>()).add(brt);
-										this.relatedBrts.get(entry.getKey()).add(brt2);
-									}
-									if (clusterCondition.equals(ClusterCondition.ALLORIGINSTHESAME)) {
-										this.relatedBrts.computeIfAbsent(entry.getKey(),
-												k -> new HashSet<BPMNBusinessRuleTask>()).add(brt);
-										this.relatedBrts.get(entry.getKey()).add(brt2);
+										clusteredBrts.get(entry.getKey()).add(brt2);
 									}
 								} else {
 									// check if at least one origin for the data object is the same
@@ -1741,9 +1754,9 @@ public class API2 {
 									if (!intersect.isEmpty()) {
 										// at least one origin for the data object is the same
 										if (clusterCondition.equals(ClusterCondition.ONEORIGINTHESAME)) {
-											this.relatedBrts.computeIfAbsent(entry.getKey(),
+											clusteredBrts.computeIfAbsent(entry.getKey(),
 													k -> new HashSet<BPMNBusinessRuleTask>()).add(brt);
-											this.relatedBrts.get(entry.getKey()).add(brt2);
+											clusteredBrts.get(entry.getKey()).add(brt2);
 										}
 									}
 
@@ -1759,11 +1772,13 @@ public class API2 {
 			}
 
 		}
-
+		return clusteredBrts;
 	}
 
-	public LinkedList<PModelWithAdditionalActors> generatePModelsWithAddActorsForIntersectionInCluster()
-			throws Exception {
+	public LinkedList<PModelWithAdditionalActors> generatePModelsWithAddActorsForIntersectionInCluster(
+			HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> clusteredBrts,
+			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
+			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject, int boundForAmountCombsPerBrt) throws Exception {
 
 		HashMap<BPMNDataObject, HashSet<BPMNParticipant>> addActorsIntersectPerDataO = new HashMap<BPMNDataObject, HashSet<BPMNParticipant>>();
 		HashSet<BPMNParticipant> intersectionOverDataObjects = new HashSet<BPMNParticipant>();
@@ -1771,7 +1786,7 @@ public class API2 {
 
 		// get the intersection of additional actors of related brts per data object
 		boolean initializedIntersectOverDataO = false;
-		for (Entry<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> relatedBrtEntry : this.relatedBrts.entrySet()) {
+		for (Entry<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> relatedBrtEntry : clusteredBrts.entrySet()) {
 			HashSet<BPMNParticipant> additionalActorsIntersectForDataO = new HashSet<BPMNParticipant>();
 			boolean initializedParticipantMap = false;
 			for (BPMNBusinessRuleTask relatedBrt : relatedBrtEntry.getValue()) {
@@ -1818,15 +1833,45 @@ public class API2 {
 			// he can not be an additional actor too
 			intersected.remove(brt.getParticipant());
 
-			// if intersected is empty
-			// compute the local cheapest add actors
-			// else compute the cheapest within intersection
 			
-			
+			BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) brt.getSuccessors().iterator().next();
+			HashMap<Double, LinkedList<BPMNParticipant>> preferred = null;
 
+			if(bpmnEx.getAmountVoters()!=addActorsList.get(1).size()) {
+				// if there are not already exactly as many mandatory actors as needed
+				// compute the preferred
+				if (!intersected.isEmpty()) {
+					// compute the cheapest additional actors within intersection
+					preferred = this.getCheapestParticipantListStaticOrWD(brt, intersected, staticSpherePerDataObject,
+							wdSpherePerDataObject);
+				} else {
+					// compute the local cheapest additional actors
+					// from all available additional actors
+					preferred = this.getCheapestParticipantListStaticOrWD(brt, addActorsList.get(0),
+							staticSpherePerDataObject, wdSpherePerDataObject);
+				}
+			} 
+			
+			double cheapestKey = Double.MAX_VALUE;
+			for(Double cheapest : preferred.keySet()) {
+				if(cheapest<cheapestKey) {
+					cheapestKey = cheapest;
+				}				
+			}
+			
+			
+			LinkedList<BPMNParticipant>cheapestParticipants = preferred.get(cheapestKey);
+			int needed = bpmnEx.getAmountVoters()-addActorsList.get(1).size();
+			if(cheapestParticipants.size()<needed) {
+				int amountNextCheapestNeeded = cheapestParticipants.size()-needed;
+				// replace addActorsList.get(0) -> all available actors
+				// with the cheapest still needed
+				
+			}
+			
 			LinkedList<AdditionalActors> addActorsForCurrBrt = this
 					.generateAdditionalActorsForBrtsWithConstraintsAndBound(brt, addActorsList.get(0),
-							addActorsList.get(1), intersected, 0);
+							addActorsList.get(1), preferred.get(cheapestKey), boundForAmountCombsPerBrt);
 
 			LinkedList<Object> combsForCurrBrt = new LinkedList<Object>(addActorsForCurrBrt);
 			combinationsPerBrt.add(combsForCurrBrt);
@@ -1981,14 +2026,6 @@ public class API2 {
 		return mapToReturn;
 	}
 
-	public HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> getRelatedBrts() {
-		return relatedBrts;
-	}
-
-	public void setRelatedBrts(HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> relatedBrts) {
-		this.relatedBrts = relatedBrts;
-	}
-
 	public synchronized HashMap<String, LinkedList<PModelWithAdditionalActors>> call()
 			throws NullPointerException, InterruptedException, Exception {
 		// TODO Auto-generated method stub
@@ -2000,14 +2037,14 @@ public class API2 {
 			mapToReturn.putIfAbsent(this.algorithmToPerform, pInstBruteForce);
 
 		} else if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.HEURISTIC.name())) {
-			LinkedList<PModelWithAdditionalActors> pInstHeuristic = this.newMeasureHeuristic(0,
+			LinkedList<PModelWithAdditionalActors> pInstHeuristic = this.newMeasureHeuristic(this.boundForAddActorsInCluster, 0,
 					Enums.ClusterCondition.valueOf(this.clusterCondition));
 			mapToReturn.putIfAbsent(this.algorithmToPerform, pInstHeuristic);
 
 		} else if (this.algorithmToPerform.contains(Enums.AlgorithmToPerform.HEURISTICWITHBOUND.name())) {
 			String limit = Enums.AlgorithmToPerform.HEURISTICWITHBOUND.name();
 			int limitPerIteration = Integer.parseInt(limit.replaceAll("\\D+", "").trim());
-			LinkedList<PModelWithAdditionalActors> pInstHeuristicWithBound = this.newMeasureHeuristic(limitPerIteration,
+			LinkedList<PModelWithAdditionalActors> pInstHeuristicWithBound = this.newMeasureHeuristic(this.boundForAddActorsInCluster, limitPerIteration,
 					Enums.ClusterCondition.valueOf(this.clusterCondition));
 			mapToReturn.putIfAbsent(this.algorithmToPerform, pInstHeuristicWithBound);
 		}
@@ -2026,6 +2063,72 @@ public class API2 {
 
 	public void setClusterCondition(Enums.ClusterCondition clusterCond) {
 		this.clusterCondition = clusterCond.name();
+	}
+
+	public HashMap<String, Double> getExecutionTimeMap() {
+		return executionTimeMap;
+	}
+
+	public void setExecutionTimeMap(HashMap<String, Double> executionTimeMap) {
+		this.executionTimeMap = executionTimeMap;
+	}
+	
+	public int getBoundForAddActorsInCluster() {
+		return boundForAddActorsInCluster;
+	}
+
+	public void setBoundForAddActorsInCluster(int boundForAddActorsInCluster) {
+		this.boundForAddActorsInCluster = boundForAddActorsInCluster;
+	}
+
+	public HashMap<Double, LinkedList<BPMNParticipant>> getCheapestParticipantListStaticOrWD(BPMNBusinessRuleTask brt,
+			LinkedList<BPMNParticipant> potentialAddActors,
+			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
+			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject) {
+		
+		HashMap<Double, LinkedList<BPMNParticipant>>cheapestOnesWithCost = new HashMap<Double, LinkedList<BPMNParticipant>>();
+		// how to compute the cheapest ones?
+		// check if potential additional actor is in static or wd sphere (without
+		// additional readers)
+		// currently: prefer participant that is in highest sphere for all data objects
+		// in sum
+
+		// what about different parameters for alpha and beta?
+		// what about the amount of readers/writers for data object?
+
+		for (BPMNParticipant potentialAddActor : potentialAddActors) {
+			double sphereSum = 0;
+
+			for (BPMNDataObject dataO : brt.getDataObjects()) {
+				LinkedList<HashSet<?>> staticSphere = staticSpherePerDataObject.get(dataO);
+				if (staticSphere != null) {
+					// when staticSphere==null -> dataObject is private -> every participant in
+					// private sphere can be assigned without cost
+					HashSet<BPMNParticipant> staticSphereParticipants = (HashSet<BPMNParticipant>) staticSphere.get(0);
+
+					if (!staticSphereParticipants.contains(potentialAddActor)) {
+						// potential add actor is in private sphere
+						sphereSum++;
+					}
+
+					LinkedList<LinkedList<HashSet<?>>> wdSphereList = wdSpherePerDataObject.get(dataO);
+					if(wdSphereList!=null) {
+					// wd sphere: check for each origin if potential add actor is wd
+					for (int i = 0; i < wdSphereList.size(); i++) {
+						HashSet<BPMNParticipant> wdSphere = (HashSet<BPMNParticipant>) wdSphereList.get(i).get(2);
+						if (!wdSphere.contains(potentialAddActor)) {
+							sphereSum++;
+						}
+
+					}
+				}
+				}
+			}
+			
+			cheapestOnesWithCost.computeIfAbsent(sphereSum, k->new LinkedList<BPMNParticipant>()).add(potentialAddActor);
+		
+		}
+		return cheapestOnesWithCost;
 	}
 
 }

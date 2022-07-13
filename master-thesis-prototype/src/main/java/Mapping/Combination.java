@@ -12,7 +12,11 @@ public class Combination {
 	}
 	
 	public static<T> LinkedList<LinkedList<T>> getPermutationsWithBound (LinkedList<T> elements, int k, int bound) {
-	    return getPermutations (elements,k,0,bound);
+		if(bound<=0) {
+			return getPermutations(elements, k, 0);
+		} else {
+		    return getPermutations (elements,k,0,bound);
+		}
 	}
 	
 	public static<T> LinkedList<LinkedList<T>> getPermutations (LinkedList<T> elements, int k, int i, int bound) {
