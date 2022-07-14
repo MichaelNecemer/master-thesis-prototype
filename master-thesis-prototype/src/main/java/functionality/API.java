@@ -997,8 +997,8 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 
 						// there is a tuple of the form (amountvoters,votersSameChoice,amountLoops)
 						try {
-							gtw.setAmountVoters(Integer.parseInt(split[0]));
-							gtw.setVotersSameChoice(Integer.parseInt(split[1]));
+							gtw.setAmountVerifiers(Integer.parseInt(split[0]));
+							gtw.setAmountVerifiersSameChoice(Integer.parseInt(split[1]));
 							gtw.setAmountLoops(Integer.parseInt(split[2]));
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -1200,9 +1200,9 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 				this.deciderOrVerifier = "decider";
 			}
 
-			if (partsInMandatoryConstraintsForGtw.size() > xorGtw.getAmountVoters()) {
+			if (partsInMandatoryConstraintsForGtw.size() > xorGtw.getAmountVerifiers()) {
 				throw new Exception("Mandatory participants > amount voters needed at " + xorGtw.getId() + " ("
-						+ partsInMandatoryConstraintsForGtw.size() + " > " + xorGtw.getAmountVoters() + ")");
+						+ partsInMandatoryConstraintsForGtw.size() + " > " + xorGtw.getAmountVerifiers() + ")");
 			}
 
 		}
@@ -1417,7 +1417,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 			if (currBrt.getCombinations().isEmpty()) {
 
 				LinkedList<LinkedList<BPMNParticipant>> list = Combination.getPermutations(participantsToCombine,
-						bpmnEx.getAmountVoters());
+						bpmnEx.getAmountVerifiers());
 				Iterator<LinkedList<BPMNParticipant>> listIter = list.iterator();
 				while (listIter.hasNext()) {
 					LinkedList<BPMNParticipant> partList = listIter.next();
@@ -1668,7 +1668,7 @@ public class API implements Callable<HashMap<String, LinkedList<ProcessInstanceW
 		for (BPMNElement bpmnElement : this.processElements) {
 			if (bpmnElement instanceof BPMNExclusiveGateway) {
 				if (((BPMNExclusiveGateway) bpmnElement).getType().equals("split")) {
-					if (((BPMNExclusiveGateway) bpmnElement).getAmountVoters() > this.globalSphere.size()) {
+					if (((BPMNExclusiveGateway) bpmnElement).getAmountVerifiers() > this.globalSphere.size()) {
 						return false;
 					}
 				}

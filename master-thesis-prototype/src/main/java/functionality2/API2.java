@@ -150,53 +150,9 @@ public class API2 {
 			// generate all possible combinations of additional readers
 			additionalActorsCombs = this.generatePossibleCombinationsOfAdditionalActorsWithBound(0);
 
-			for (PModelWithAdditionalActors pModelWithAdditionalActors : additionalActorsCombs) {
-				pModelWithAdditionalActors.setPrivateSphere(this.privateSphere);
-
-				for (Entry<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataO : staticSpherePerDataObject
-						.entrySet()) {
-					BPMNDataObject currDataO = staticSpherePerDataO.getKey();
-					HashSet<BPMNParticipant> staticSphereParticipants = (HashSet<BPMNParticipant>) staticSpherePerDataO
-							.getValue().get(0);
-					HashSet<BPMNTask> readerBrtsOfDataO = (HashSet<BPMNTask>) staticSpherePerDataO.getValue().get(1);
-					Static_SphereEntry currStaticEntry = new Static_SphereEntry(currDataO, staticSphereParticipants,
-							readerBrtsOfDataO);
-					pModelWithAdditionalActors.getStaticSphereEntries().put(currDataO, currStaticEntry);
-
-					// compute static sphere with additional actors
-					HashSet<BPMNParticipant> staticSphereWithAdditionalActors = new HashSet<BPMNParticipant>();
-					// add all actors of static sphere
-					staticSphereWithAdditionalActors.addAll(currStaticEntry.getStaticSphere());
-
-					for (AdditionalActors additionalActors : pModelWithAdditionalActors.getAdditionalActorsList()) {
-						BPMNBusinessRuleTask brt = additionalActors.getCurrBrt();
-						LinkedList<BPMNParticipant> addActors = additionalActors.getAdditionalActors();
-
-						// add additional actors of reading brts
-						for (BPMNTask readerBrt : currStaticEntry.getReaderBrts()) {
-							if (readerBrt.getId().contentEquals(brt.getId())) {
-								staticSphereWithAdditionalActors.addAll(addActors);
-							}
-						}
-
-					}
-					// set static sphere'
-					currStaticEntry.setStaticSphereWithAdditionalActors(staticSphereWithAdditionalActors);
-
-					// compute lambda and set score
-					HashSet<BPMNParticipant> differentActors = this.computeLambdaActors(
-							currStaticEntry.getStaticSphereWithAdditionalActors(), currStaticEntry.getStaticSphere());
-					currStaticEntry.setLambdaStaticSphere(differentActors);
-
-					double lambda = differentActors.size();
-					double score = lambda;
-
-					// add to sum alpha measure
-					double currAlphaScoreSum = pModelWithAdditionalActors.getAlphaMeasureSum();
-					double newAlphaScoreSum = currAlphaScoreSum += score;
-					pModelWithAdditionalActors.setAlphaMeasureSum(newAlphaScoreSum);
-				}
-
+			for (PModelWithAdditionalActors pModelWithAdditionalActors : additionalActorsCombs) {				
+				this.computeAlphaMeasure(pModelWithAdditionalActors, staticSpherePerDataObject);				
+				
 				// compute beta measure
 				// i.e. query brts in any order and get origins for each data object
 				// weight(w) is the depth of the origin
@@ -359,8 +315,8 @@ public class API2 {
 	}
 
 	@SuppressWarnings("unchecked")
-	public LinkedList<PModelWithAdditionalActors> newMeasureHeuristic(int boundForAmountPossibleCombsPerBrt, int boundForCheapestSolutions,
-			Enums.ClusterCondition clusterCondition) throws Exception {
+	public LinkedList<PModelWithAdditionalActors> newMeasureHeuristic(int boundForAmountPossibleCombsPerBrt,
+			int boundForCheapestSolutions, Enums.ClusterCondition clusterCondition) throws Exception {
 
 		String key = "";
 		if (boundForCheapestSolutions > 0) {
@@ -391,77 +347,166 @@ public class API2 {
 			LinkedList<PModelWithAdditionalActors> cheapestPModelsAlphaMeasure = new LinkedList<PModelWithAdditionalActors>();
 			// iterate over all combinations and only keep the cheapest ones
 			for (PModelWithAdditionalActors pModelWithAdditionalActors : pModelAddActors) {
-				pModelWithAdditionalActors.setPrivateSphere(this.privateSphere);
-
-				for (Entry<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataO : staticSpherePerDataObject
+				this.computeAlphaMeasure(pModelWithAdditionalActors, staticSpherePerDataObject);
+				this.addPModelIfCheapest(boundForCheapestSolutions, cheapestPModelsAlphaMeasure, pModelWithAdditionalActors);
+			}
+			pModelAddActors = cheapestPModelsAlphaMeasure;
+		
+			// compute beta measure 
+			// iterate again over all currently cheapest models
+			LinkedList<PModelWithAdditionalActors> cheapestPModelsBetaMeasure = new LinkedList<PModelWithAdditionalActors>();
+			for(PModelWithAdditionalActors pModel: pModelAddActors) {
+				LinkedList<AdditionalActors> currAddActorsList = pModel.getAdditionalActorsList();
+			
+				for (Entry<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObjectAndOrigin : wdSpherePerDataObject
 						.entrySet()) {
-					BPMNDataObject currDataO = staticSpherePerDataO.getKey();
-					HashSet<BPMNParticipant> staticSphereParticipants = (HashSet<BPMNParticipant>) staticSpherePerDataO
-							.getValue().get(0);
-					HashSet<BPMNTask> readerBrtsOfDataO = (HashSet<BPMNTask>) staticSpherePerDataO.getValue().get(1);
-					Static_SphereEntry currStaticEntry = new Static_SphereEntry(currDataO, staticSphereParticipants,
-							readerBrtsOfDataO);
-					pModelWithAdditionalActors.getStaticSphereEntries().put(currDataO, currStaticEntry);
+					BPMNDataObject currDataO = wdSpherePerDataObjectAndOrigin.getKey();
+					LinkedList<LinkedList<HashSet<?>>> wdSphereList = wdSpherePerDataObjectAndOrigin.getValue();
+					for (int i = 0; i < wdSphereList.size(); i++) {
+						BPMNTask origin = (BPMNTask) wdSphereList.get(i).get(0).iterator().next();
+						HashSet<BPMNTask> wdReaderBrts = (HashSet<BPMNTask>) wdSphereList.get(i).get(1);
+						HashSet<BPMNParticipant> wdSphere = (HashSet<BPMNParticipant>) wdSphereList.get(i).get(2);
+						WD_SphereEntry currWDSphereEntry = new WD_SphereEntry(currDataO, origin, wdReaderBrts,
+								wdSphere);
+						pModel.getWdSphereEntries()
+								.computeIfAbsent(currDataO, k -> new LinkedList<WD_SphereEntry>())
+								.add(currWDSphereEntry);
 
-					HashSet<BPMNParticipant> staticSphereWithAdditionalActors = new HashSet<BPMNParticipant>();
-					// add all actors of static sphere
-					staticSphereWithAdditionalActors.addAll(currStaticEntry.getStaticSphere());
+						// compute wd' sphere with additional actors
+						// add the additional actors to the brts reachable from an origin
+						HashSet<BPMNParticipant> wdWithAddActorsParticipants = new HashSet<BPMNParticipant>();
+						// add all wd actors of that wdEntry
+						wdWithAddActorsParticipants.addAll(currWDSphereEntry.getWdSphere());
+						HashSet<BPMNTask> reachableBrts = currWDSphereEntry.getWdReaderBrts();
 
-					for (AdditionalActors additionalActors : pModelWithAdditionalActors.getAdditionalActorsList()) {
-						BPMNBusinessRuleTask brt = additionalActors.getCurrBrt();
-						LinkedList<BPMNParticipant> addActors = additionalActors.getAdditionalActors();
-
-						// add additional actors of reading brts
-						for (BPMNTask readerBrt : currStaticEntry.getReaderBrts()) {
-							if (readerBrt.getId().contentEquals(brt.getId())) {
-								staticSphereWithAdditionalActors.addAll(addActors);
+						for (AdditionalActors addActors : currAddActorsList) {
+							// add all additional actors of brts reachable from origin
+							BPMNBusinessRuleTask currBrt = addActors.getCurrBrt();
+							for (BPMNTask reachableBrt : reachableBrts) {
+								if (reachableBrt.getId().contentEquals(currBrt.getId())) {
+									wdWithAddActorsParticipants.addAll(addActors.getAdditionalActors());
+								}
 							}
 						}
+						currWDSphereEntry.setWdSphereWithAdditionalActors(wdWithAddActorsParticipants);
+
+						// compute lambda and set score
+						HashSet<BPMNParticipant> lambdaActors = this.computeLambdaActors(
+								currWDSphereEntry.getWdSphereWithAdditionalActors(), currWDSphereEntry.getWdSphere());
+						currWDSphereEntry.setLambdaWdSphere(lambdaActors);
+
+						double lambda = lambdaActors.size();
+
+						double score = lambda * currWDSphereEntry.getWeightingOfOrigin();
+						currWDSphereEntry.setScore(score);
+
+						// add to sum beta measure
+						double currBetaScoreSum = pModel.getBetaMeasureSum();
+						double newBetaScoreSum = currBetaScoreSum += score;
+						pModel.setBetaMeasureSum(newBetaScoreSum);						
 					}
-					// set static sphere'
-					currStaticEntry.setStaticSphereWithAdditionalActors(staticSphereWithAdditionalActors);
-
-					// compute lambda and set score
-					HashSet<BPMNParticipant> differentActors = this.computeLambdaActors(
-							currStaticEntry.getStaticSphereWithAdditionalActors(), currStaticEntry.getStaticSphere());
-					currStaticEntry.setLambdaStaticSphere(differentActors);
-
-					double lambda = differentActors.size();
-					double score = lambda;
-
-					// add to sum alpha measure
-					double currAlphaScoreSum = pModelWithAdditionalActors.getAlphaMeasureSum();
-					double newAlphaScoreSum = currAlphaScoreSum += score;
-					pModelWithAdditionalActors.setAlphaMeasureSum(newAlphaScoreSum);
-					pModelWithAdditionalActors.setSumMeasure(newAlphaScoreSum);
+					
 				}
+				// get the current sum of the measure
+				// and add the beta score
+				double currSum = pModel.getSumMeasure();
+				pModel.setSumMeasure(currSum + pModel.getBetaMeasureSum());
+				this.addPModelIfCheapest(boundForCheapestSolutions, cheapestPModelsBetaMeasure, pModel);
+			}	
+			cheapestPModelsAlphaMeasure = null;
+			pModelAddActors = cheapestPModelsBetaMeasure;
+			
+			LinkedList<PModelWithAdditionalActors>cheapestPModelsGammaMeasure = new LinkedList<PModelWithAdditionalActors>();
+			for(PModelWithAdditionalActors pModel: pModelAddActors) {
+			HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>> sdSphereEntries = new HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>>();
+			for (AdditionalActors addActors : pModel.getAdditionalActorsList()) {
+				BPMNBusinessRuleTask currBrt = addActors.getCurrBrt();
+				for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : currBrt.getLastWriterList()
+						.entrySet()) {
+					String sphereOfDataObject = lastWriterEntry.getKey().getDefaultSphere();
+					boolean computeGammaMeasure = this.computeCurrentMeasure(sphereOfDataObject,
+							this.strongDynamicSphereKey);
 
-				if (cheapestPModelsAlphaMeasure.isEmpty()) {
-					cheapestPModelsAlphaMeasure.add(pModelWithAdditionalActors);
-				} else {
-					if (pModelWithAdditionalActors.getAlphaMeasureSum() < cheapestPModelsAlphaMeasure.get(0)
-							.getAlphaMeasureSum()) {
-						// new cheapest model found
-						cheapestPModelsAlphaMeasure.clear();
-						cheapestPModelsAlphaMeasure.add(pModelWithAdditionalActors);
-					} else if (pModelWithAdditionalActors.getAlphaMeasureSum() == cheapestPModelsAlphaMeasure.get(0)
-							.getAlphaMeasureSum()) {
-						// check for bound
-						// if bound <= 0 -> unbounded
-						if (boundForCheapestSolutions <= 0) {
-							cheapestPModelsAlphaMeasure.add(pModelWithAdditionalActors);
-						} else {
-							if (cheapestPModelsAlphaMeasure.size() < boundForCheapestSolutions) {
-								cheapestPModelsAlphaMeasure.add(pModelWithAdditionalActors);
+					if (computeGammaMeasure) {
+						for (BPMNTask origin : lastWriterEntry.getValue()) {
+							LinkedList<LinkedList<BPMNElement>> pathsFromOriginOverCurrBrtToEnd = this.goDfs(origin,
+									currBrt, this.endEvent, new LinkedList<BPMNElement>(),
+									new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+							BPMNDataObject dataO = lastWriterEntry.getKey();
+
+							SD_SphereEntry sdSphereEntry = new SD_SphereEntry(dataO, origin, currBrt);
+
+							// get the additional actors of all brts except currBrt
+							LinkedList<AdditionalActors> addActorsWithoutCurrBrt = new LinkedList<AdditionalActors>();
+							addActorsWithoutCurrBrt.addAll(pModel.getAdditionalActorsList());
+							Iterator<AdditionalActors> addActIter = addActorsWithoutCurrBrt.iterator();
+							boolean removed = false;
+							while (addActIter.hasNext() && !removed) {
+								AdditionalActors currAddActors = addActIter.next();
+								if (currAddActors.getCurrBrt().equals(currBrt)) {
+									addActIter.remove();
+									removed = true;
+								}
 							}
-						}
 
+							LinkedList<HashSet<BPMNParticipant>> sdSphereList = this
+									.getSdActorsAndSetWeightingOfOrigin(dataO, origin, currBrt,
+											pModel.getAdditionalActorsList(),
+											addActorsWithoutCurrBrt, pathsFromOriginOverCurrBrtToEnd,
+											sdSphereEntry);
+
+							// get the sd sphere with additional actors for all brts
+							HashSet<BPMNParticipant> sdSphereWithAdditionalActorsForAllBrts = sdSphereList.get(0);
+							sdSphereEntry.setSdSphereWithAdditionalActors(sdSphereWithAdditionalActorsForAllBrts);
+
+							// get the sd* sphere with additional actors for all brts except currBrt
+							HashSet<BPMNParticipant> sdSphereWithAdditionalActorsExceptCurrBrt = sdSphereList
+									.get(1);
+							sdSphereEntry
+									.setSdSphereWithoutAddActorOfCurrBrt(sdSphereWithAdditionalActorsExceptCurrBrt);
+
+							sdSphereEntries.computeIfAbsent(dataO, k -> new LinkedList<SD_SphereEntry>())
+									.add(sdSphereEntry);
+
+							// compute lambda and set score
+							HashSet<BPMNParticipant> lambdaActors = this.computeLambdaActors(
+									sdSphereEntry.getSdSphereWithAdditionalActors(),
+									sdSphereEntry.getSdSphereWithoutAddActorOfCurrBrt());
+
+							sdSphereEntry.setLambdaSdSphere(lambdaActors);
+							double lambda = lambdaActors.size();
+
+							// weight(w,r,d) is the amount of instance types in which r reads d from w
+							double depthOfCurrBrt = Math.pow(2, -currBrt.getLabels().size());
+							double secondWeight = sdSphereEntry.getWeightingOfOriginForCurrBrt() * depthOfCurrBrt;
+							sdSphereEntry.setWeightingOfOriginForCurrBrt(secondWeight);
+
+							double score = lambda * sdSphereEntry.getWeightingOfOrigin() * secondWeight;
+							sdSphereEntry.setScore(score);
+
+							// add to sum gamma measure
+							double currGammaScoreSum = pModel.getGammaMeasureSum();
+							double newGammaScoreSum = currGammaScoreSum += score;
+							pModel.setGammaMeasureSum(newGammaScoreSum);
+						}
 					}
+
 				}
 
 			}
-			pModelAddActors = cheapestPModelsAlphaMeasure;
+			pModel.setSdSphereEntries(sdSphereEntries);
+			
+			pModel.setSumMeasure(pModel.getSumMeasure()+pModel.getGammaMeasureSum());
+			
+			this.addPModelIfCheapest(boundForCheapestSolutions, cheapestPModelsGammaMeasure, pModel);
+			
+			}
+			
+			cheapestPModelsBetaMeasure = null;
+			pModelAddActors = cheapestPModelsGammaMeasure;
+			
 
+				
 		} else {
 			pModelAddActors = this.generatePossibleCombinationsOfAdditionalActorsWithBound(1);
 		}
@@ -524,7 +569,7 @@ public class API2 {
 		BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
 		LinkedList<AdditionalActors> additionalActorsForBrt = new LinkedList<AdditionalActors>();
 
-		int boundCombsForNotMandatoryParticipants = bpmnEx.getAmountVoters() - allMandatoryActors.size();
+		int boundCombsForNotMandatoryParticipants = bpmnEx.getAmountVerifiers() - allMandatoryActors.size();
 		LinkedList<BPMNParticipant> notMands = new LinkedList<BPMNParticipant>(allPossibleActors);
 		notMands.removeAll(allMandatoryActors);
 		if (preferredParticipants != null) {
@@ -549,7 +594,8 @@ public class API2 {
 			if (boundCombsForNotMandatoryParticipants > 0) {
 				// compute the combinations of the verifiers still needed (= verifiers needed
 				// without the mandatory ones) from the preferred participants
-				list = Combination.getPermutationsWithBound(preferredParticipants, boundCombsForNotMandatoryParticipants, boundForAddActors);
+				list = Combination.getPermutationsWithBound(preferredParticipants,
+						boundCombsForNotMandatoryParticipants, boundForAddActors);
 			} else {
 				list.add(new LinkedList<BPMNParticipant>());
 			}
@@ -572,18 +618,25 @@ public class API2 {
 			currList.addAll(0, allMandatoryActors);
 			if (remaining.size() > 0) {
 				for (int j = 0; j < remaining.size(); j++) {
+					if(boundForAddActors>0) {
+						if(j==boundForAddActors) {
+							break;
+						}						
+					}
 					LinkedList<BPMNParticipant> currListClone = (LinkedList<BPMNParticipant>) currList.clone();
 					currListClone.addAll(remaining.get(j));
-					if (currListClone.size() != bpmnEx.getAmountVoters()) {
-						throw new Exception(bpmnEx.getAmountVoters() + " verifiers needed for " + bpmnEx.getId()
+					if (currListClone.size() != bpmnEx.getAmountVerifiers()) {
+						throw new Exception(bpmnEx.getAmountVerifiers() + " verifiers needed for " + bpmnEx.getId()
 								+ " but " + currListClone.size() + " found!");
 					}
+					
 					AdditionalActors addActors = new AdditionalActors(currBrt, currListClone);
 					additionalActorsForBrt.add(addActors);
+										
 				}
 			} else {
-				if (currList.size() != bpmnEx.getAmountVoters()) {
-					throw new Exception(bpmnEx.getAmountVoters() + " verifiers needed for " + bpmnEx.getId()
+				if (currList.size() != bpmnEx.getAmountVerifiers()) {
+					throw new Exception(bpmnEx.getAmountVerifiers() + " verifiers needed for " + bpmnEx.getId()
 							+ " but only " + currList.size() + " found!");
 				}
 				AdditionalActors addActors = new AdditionalActors(currBrt, currList);
@@ -592,9 +645,11 @@ public class API2 {
 
 		}
 
-		if (list.isEmpty()) {
+		
+		if (list.isEmpty()||list.get(0).isEmpty()) {
 			throw new Exception("No possible combination of verifiers for " + currBrt.getId());
 		}
+		
 
 		return additionalActorsForBrt;
 
@@ -1094,9 +1149,9 @@ public class API2 {
 				}
 			}
 
-			if (partsInMandatoryConstraintsForGtw.size() > xorGtw.getAmountVoters()) {
+			if (partsInMandatoryConstraintsForGtw.size() > xorGtw.getAmountVerifiers()) {
 				throw new Exception("Mandatory participants > amount voters needed at " + xorGtw.getId() + " ("
-						+ partsInMandatoryConstraintsForGtw.size() + " > " + xorGtw.getAmountVoters() + ")");
+						+ partsInMandatoryConstraintsForGtw.size() + " > " + xorGtw.getAmountVerifiers() + ")");
 			}
 
 		}
@@ -1110,7 +1165,7 @@ public class API2 {
 		// map the annotated amount of needed voters to the BPMNExclusiveGateways
 		// map the sphere connected to the gateway
 
-		if (gtw.getAmountVoters() > this.privateSphere.size()) {
+		if (gtw.getAmountVerifiers() > this.privateSphere.size()) {
 			throw new Exception("Amount of verifiers for " + gtw.getId() + " can not be > private sphere!");
 		}
 
@@ -1128,12 +1183,24 @@ public class API2 {
 
 						// there is a tuple of the form (amountvoters,votersSameChoice,amountLoops)
 						try {
-							gtw.setAmountVoters(Integer.parseInt(split[0]));
-							gtw.setVotersSameChoice(Integer.parseInt(split[1]));
+							gtw.setAmountVerifiers(Integer.parseInt(split[0]));
+							gtw.setAmountVerifiersSameChoice(Integer.parseInt(split[1]));
 							gtw.setAmountLoops(Integer.parseInt(split[2]));
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
+					} else if (CommonFunctionality.containsIgnoreCase(str, "[Verifiers]")) {
+						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
+						String[] split = subStr.split(",");
+
+						// there is a tuple of the form (amountvoters,votersSameChoice)
+						try {
+							gtw.setAmountVerifiers(Integer.parseInt(split[0]));
+							gtw.setAmountVerifiersSameChoice(Integer.parseInt(split[1]));
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+
 					} else if (CommonFunctionality.containsIgnoreCase(str, "[Sphere]")) {
 						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 						gtw.setSphere(subStr);
@@ -1778,7 +1845,8 @@ public class API2 {
 	public LinkedList<PModelWithAdditionalActors> generatePModelsWithAddActorsForIntersectionInCluster(
 			HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> clusteredBrts,
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
-			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject, int boundForAmountCombsPerBrt) throws Exception {
+			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject,
+			int boundForAmountCombsPerBrt) throws Exception {
 
 		HashMap<BPMNDataObject, HashSet<BPMNParticipant>> addActorsIntersectPerDataO = new HashMap<BPMNDataObject, HashSet<BPMNParticipant>>();
 		HashSet<BPMNParticipant> intersectionOverDataObjects = new HashSet<BPMNParticipant>();
@@ -1833,13 +1901,13 @@ public class API2 {
 			// he can not be an additional actor too
 			intersected.remove(brt.getParticipant());
 
-			
 			BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) brt.getSuccessors().iterator().next();
 			HashMap<Double, LinkedList<BPMNParticipant>> preferred = null;
+			LinkedList<AdditionalActors> addActorsForCurrBrt = null;
 
-			if(bpmnEx.getAmountVoters()!=addActorsList.get(1).size()) {
+			if (bpmnEx.getAmountVerifiers() != addActorsList.get(1).size()) {
 				// if there are not already exactly as many mandatory actors as needed
-				// compute the preferred
+				// build the preferred participants
 				if (!intersected.isEmpty()) {
 					// compute the cheapest additional actors within intersection
 					preferred = this.getCheapestParticipantListStaticOrWD(brt, intersected, staticSpherePerDataObject,
@@ -1850,28 +1918,32 @@ public class API2 {
 					preferred = this.getCheapestParticipantListStaticOrWD(brt, addActorsList.get(0),
 							staticSpherePerDataObject, wdSpherePerDataObject);
 				}
-			} 
-			
-			double cheapestKey = Double.MAX_VALUE;
-			for(Double cheapest : preferred.keySet()) {
-				if(cheapest<cheapestKey) {
-					cheapestKey = cheapest;
-				}				
+
+				double cheapestKey = Double.MAX_VALUE;
+				for (Double cheapest : preferred.keySet()) {
+					if (cheapest < cheapestKey) {
+						cheapestKey = cheapest;
+					}
+				}
+
+				LinkedList<BPMNParticipant> cheapestParticipants = preferred.get(cheapestKey);
+				int needed = bpmnEx.getAmountVerifiers() - addActorsList.get(1).size();
+				if (cheapestParticipants.size() < needed) {
+					int amountNextCheapestNeeded = cheapestParticipants.size() - needed;
+					// sort addActorsList.get(0) -> all available actors
+					// by cheapest ascending 
+					
+
+				}
+
+				addActorsForCurrBrt = this.generateAdditionalActorsForBrtsWithConstraintsAndBound(brt,
+						addActorsList.get(0), addActorsList.get(1), preferred.get(cheapestKey),
+						boundForAmountCombsPerBrt);
+
+			} else {
+				addActorsForCurrBrt = this.generateAdditionalActorsForBrtsWithConstraintsAndBound(brt,
+						addActorsList.get(0), addActorsList.get(1), null, boundForAmountCombsPerBrt);
 			}
-			
-			
-			LinkedList<BPMNParticipant>cheapestParticipants = preferred.get(cheapestKey);
-			int needed = bpmnEx.getAmountVoters()-addActorsList.get(1).size();
-			if(cheapestParticipants.size()<needed) {
-				int amountNextCheapestNeeded = cheapestParticipants.size()-needed;
-				// replace addActorsList.get(0) -> all available actors
-				// with the cheapest still needed
-				
-			}
-			
-			LinkedList<AdditionalActors> addActorsForCurrBrt = this
-					.generateAdditionalActorsForBrtsWithConstraintsAndBound(brt, addActorsList.get(0),
-							addActorsList.get(1), preferred.get(cheapestKey), boundForAmountCombsPerBrt);
 
 			LinkedList<Object> combsForCurrBrt = new LinkedList<Object>(addActorsForCurrBrt);
 			combinationsPerBrt.add(combsForCurrBrt);
@@ -1998,7 +2070,7 @@ public class API2 {
 								// to compute wd' later on by adding the additional actors of the brts
 								HashSet<BPMNTask> readerBrts = this.filterBrts(wdTasks);
 
-								// on index 0 -> HashSet only containing the origin
+								// on index 0 -> HashSet of size 1 -> only containing the origin
 								// on index 1 -> HashSet with readerBrts
 								// on index 2 -> HashSet with participants in wd sphere
 								LinkedList<HashSet<?>> listToReturn = new LinkedList<HashSet<?>>();
@@ -2037,14 +2109,15 @@ public class API2 {
 			mapToReturn.putIfAbsent(this.algorithmToPerform, pInstBruteForce);
 
 		} else if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.HEURISTIC.name())) {
-			LinkedList<PModelWithAdditionalActors> pInstHeuristic = this.newMeasureHeuristic(this.boundForAddActorsInCluster, 0,
-					Enums.ClusterCondition.valueOf(this.clusterCondition));
+			LinkedList<PModelWithAdditionalActors> pInstHeuristic = this.newMeasureHeuristic(
+					this.boundForAddActorsInCluster, 0, Enums.ClusterCondition.valueOf(this.clusterCondition));
 			mapToReturn.putIfAbsent(this.algorithmToPerform, pInstHeuristic);
 
 		} else if (this.algorithmToPerform.contains(Enums.AlgorithmToPerform.HEURISTICWITHBOUND.name())) {
 			String limit = Enums.AlgorithmToPerform.HEURISTICWITHBOUND.name();
 			int limitPerIteration = Integer.parseInt(limit.replaceAll("\\D+", "").trim());
-			LinkedList<PModelWithAdditionalActors> pInstHeuristicWithBound = this.newMeasureHeuristic(this.boundForAddActorsInCluster, limitPerIteration,
+			LinkedList<PModelWithAdditionalActors> pInstHeuristicWithBound = this.newMeasureHeuristic(
+					this.boundForAddActorsInCluster, limitPerIteration,
 					Enums.ClusterCondition.valueOf(this.clusterCondition));
 			mapToReturn.putIfAbsent(this.algorithmToPerform, pInstHeuristicWithBound);
 		}
@@ -2072,7 +2145,7 @@ public class API2 {
 	public void setExecutionTimeMap(HashMap<String, Double> executionTimeMap) {
 		this.executionTimeMap = executionTimeMap;
 	}
-	
+
 	public int getBoundForAddActorsInCluster() {
 		return boundForAddActorsInCluster;
 	}
@@ -2085,8 +2158,8 @@ public class API2 {
 			LinkedList<BPMNParticipant> potentialAddActors,
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
 			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject) {
-		
-		HashMap<Double, LinkedList<BPMNParticipant>>cheapestOnesWithCost = new HashMap<Double, LinkedList<BPMNParticipant>>();
+
+		HashMap<Double, LinkedList<BPMNParticipant>> cheapestOnesWithCost = new HashMap<Double, LinkedList<BPMNParticipant>>();
 		// how to compute the cheapest ones?
 		// check if potential additional actor is in static or wd sphere (without
 		// additional readers)
@@ -2112,23 +2185,101 @@ public class API2 {
 					}
 
 					LinkedList<LinkedList<HashSet<?>>> wdSphereList = wdSpherePerDataObject.get(dataO);
-					if(wdSphereList!=null) {
-					// wd sphere: check for each origin if potential add actor is wd
-					for (int i = 0; i < wdSphereList.size(); i++) {
-						HashSet<BPMNParticipant> wdSphere = (HashSet<BPMNParticipant>) wdSphereList.get(i).get(2);
-						if (!wdSphere.contains(potentialAddActor)) {
-							sphereSum++;
-						}
+					if (wdSphereList != null) {
+						// wd sphere: check for each origin if potential add actor is wd
+						for (int i = 0; i < wdSphereList.size(); i++) {
+							HashSet<BPMNParticipant> wdSphere = (HashSet<BPMNParticipant>) wdSphereList.get(i).get(2);
+							if (!wdSphere.contains(potentialAddActor)) {
+								sphereSum++;
+							}
 
+						}
 					}
 				}
-				}
 			}
-			
-			cheapestOnesWithCost.computeIfAbsent(sphereSum, k->new LinkedList<BPMNParticipant>()).add(potentialAddActor);
-		
+
+			cheapestOnesWithCost.computeIfAbsent(sphereSum, k -> new LinkedList<BPMNParticipant>())
+					.add(potentialAddActor);
+
 		}
 		return cheapestOnesWithCost;
 	}
+	
+	
+	public void addPModelIfCheapest(int boundForCheapestSolutions, LinkedList<PModelWithAdditionalActors> cheapestPModelsAlphaMeasure, PModelWithAdditionalActors pModelWithAdditionalActors) {
+		if (cheapestPModelsAlphaMeasure.isEmpty()) {
+			cheapestPModelsAlphaMeasure.add(pModelWithAdditionalActors);
+		} else {
+			if (pModelWithAdditionalActors.getSumMeasure() < cheapestPModelsAlphaMeasure.get(0)
+					.getSumMeasure()) {
+				// new cheapest model found
+				cheapestPModelsAlphaMeasure.clear();
+				cheapestPModelsAlphaMeasure.add(pModelWithAdditionalActors);
+			} else if (pModelWithAdditionalActors.getSumMeasure() == cheapestPModelsAlphaMeasure.get(0)
+					.getSumMeasure()) {
+				// check for bound
+				// if bound <= 0 -> unbounded
+				if (boundForCheapestSolutions <= 0) {
+					cheapestPModelsAlphaMeasure.add(pModelWithAdditionalActors);
+				} else {
+					if (cheapestPModelsAlphaMeasure.size() < boundForCheapestSolutions) {
+						cheapestPModelsAlphaMeasure.add(pModelWithAdditionalActors);
+					}
+				}
+
+			}
+		}
+
+	}
+	
+	
+	private void computeAlphaMeasure(PModelWithAdditionalActors pModelWithAdditionalActors, HashMap<BPMNDataObject, LinkedList<HashSet<?>>>staticSpherePerDataObject) {
+		pModelWithAdditionalActors.setPrivateSphere(this.privateSphere);
+
+		for (Entry<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataO : staticSpherePerDataObject
+				.entrySet()) {
+			BPMNDataObject currDataO = staticSpherePerDataO.getKey();
+			HashSet<BPMNParticipant> staticSphereParticipants = (HashSet<BPMNParticipant>) staticSpherePerDataO
+					.getValue().get(0);
+			HashSet<BPMNTask> readerBrtsOfDataO = (HashSet<BPMNTask>) staticSpherePerDataO.getValue().get(1);
+			Static_SphereEntry currStaticEntry = new Static_SphereEntry(currDataO, staticSphereParticipants,
+					readerBrtsOfDataO);
+			pModelWithAdditionalActors.getStaticSphereEntries().put(currDataO, currStaticEntry);
+
+			HashSet<BPMNParticipant> staticSphereWithAdditionalActors = new HashSet<BPMNParticipant>();
+			// add all actors of static sphere
+			staticSphereWithAdditionalActors.addAll(currStaticEntry.getStaticSphere());
+
+			for (AdditionalActors additionalActors : pModelWithAdditionalActors.getAdditionalActorsList()) {
+				BPMNBusinessRuleTask brt = additionalActors.getCurrBrt();
+				LinkedList<BPMNParticipant> addActors = additionalActors.getAdditionalActors();
+
+				// add additional actors of reading brts
+				for (BPMNTask readerBrt : currStaticEntry.getReaderBrts()) {
+					if (readerBrt.getId().contentEquals(brt.getId())) {
+						staticSphereWithAdditionalActors.addAll(addActors);
+					}
+				}
+			}
+			// set static sphere'
+			currStaticEntry.setStaticSphereWithAdditionalActors(staticSphereWithAdditionalActors);
+
+			// compute lambda and set score
+			HashSet<BPMNParticipant> differentActors = this.computeLambdaActors(
+					currStaticEntry.getStaticSphereWithAdditionalActors(), currStaticEntry.getStaticSphere());
+			currStaticEntry.setLambdaStaticSphere(differentActors);
+
+			double lambda = differentActors.size();
+			double score = lambda;
+
+			// add to sum alpha measure
+			double currAlphaScoreSum = pModelWithAdditionalActors.getAlphaMeasureSum();
+			double newAlphaScoreSum = currAlphaScoreSum += score;
+			pModelWithAdditionalActors.setAlphaMeasureSum(newAlphaScoreSum);
+			pModelWithAdditionalActors.setSumMeasure(newAlphaScoreSum);
+		}
+
+	}
+	
 
 }

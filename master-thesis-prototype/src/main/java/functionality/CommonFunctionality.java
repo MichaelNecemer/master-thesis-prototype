@@ -2364,7 +2364,7 @@ public class CommonFunctionality {
 				FlowNode gtw = CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance, xorSplit.getId());
 				TextAnnotation sphere = null;
 
-				if (xorSplit.getAmountVoters() == api.getGlobalSphereList().size()) {
+				if (xorSplit.getAmountVerifiers() == api.getGlobalSphereList().size()) {
 					// annotate "private" to the xor-split
 					sphere = modelInstance.newInstance(TextAnnotation.class);
 					String textContent = "[Voters] {Private}";
@@ -2378,7 +2378,7 @@ public class CommonFunctionality {
 					// add the shape of the text annotation to the xml file
 					CommonFunctionality.generateShapeForTextAnnotation(modelInstance, sphere, gtw);
 
-				} else if (xorSplit.getAmountVoters() > api.getGlobalSphereList().size()) {
+				} else if (xorSplit.getAmountVerifiers() > api.getGlobalSphereList().size()) {
 					// annotate "public" to the xor-split
 					sphere = modelInstance.newInstance(TextAnnotation.class);
 					String textContent = "[Voters] {Public}";
@@ -2952,7 +2952,7 @@ public class CommonFunctionality {
 		StringBuilder sb = new StringBuilder();
 		if (votingTask) {
 			sb.append("{\"gateway\":\"" + st.getOutgoing().iterator().next().getTarget().getName() + "\"");
-			sb.append(",\"sameDecision\":" + "\"" + xor.getVotersSameChoice() + "\"" + ",\"loops\":" + "\""
+			sb.append(",\"sameDecision\":" + "\"" + xor.getAmountVerifiersSameChoice() + "\"" + ",\"loops\":" + "\""
 					+ xor.getAmountLoops() + "\"");
 		} else {
 			sb.append("{\"gateway\":\"" + xor.getName() + "\"");

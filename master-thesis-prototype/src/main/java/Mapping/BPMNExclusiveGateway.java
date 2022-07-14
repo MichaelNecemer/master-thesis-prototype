@@ -8,8 +8,8 @@ import functionality.Constraint;
 public class BPMNExclusiveGateway extends BPMNGateway{
 	
 	
-	private int amountVoters;
-	private int votersSameChoice;
+	private int amountVerifiers;
+	private int amountVerifiersSameChoice;
 	private int amountLoops;
 	private String sphere;
 	private static int exclusiveGtwCount = 0;
@@ -19,12 +19,11 @@ public class BPMNExclusiveGateway extends BPMNGateway{
 		
 	public BPMNExclusiveGateway(String id, String name, String type) {
 		super(id, name, type);
-		//by default a gateway needs 2 voters and has 2 loops
-		this.amountVoters=2;	
-		this.votersSameChoice=2;
-		this.amountLoops=2;
-		//by default the sphere is global
-		this.sphere="Global";
+		this.amountVerifiers=0;	
+		this.amountVerifiersSameChoice=0;
+		this.amountLoops=0;
+		//by default the sphere is private
+		this.sphere="Private";
 		//by default there are no constraints 
 		this.constraints=new LinkedList<Constraint>();
 		this.incomingArcsWithCostAllBranches=new LinkedList<LinkedList<ArcWithCost>>();
@@ -62,23 +61,43 @@ public class BPMNExclusiveGateway extends BPMNGateway{
 
 
 	
-	public int getAmountVoters() {
-		return this.amountVoters;
-	}
+
 	
-	public void setAmountVoters(int amountVoters) {
-		this.amountVoters=amountVoters;
+
+	public int getAmountVerifiers() {
+		return amountVerifiers;
 	}
 
 
-	public int getVotersSameChoice() {
-		return votersSameChoice;
+
+
+
+
+	public void setAmountVerifiers(int amountVerifiers) {
+		this.amountVerifiers = amountVerifiers;
 	}
 
 
-	public void setVotersSameChoice(int votersSameChoice) {
-		this.votersSameChoice = votersSameChoice;
+
+
+
+
+	public int getAmountVerifiersSameChoice() {
+		return amountVerifiersSameChoice;
 	}
+
+
+
+
+
+
+	public void setAmountVerifiersSameChoice(int amountVerifiersSameChoice) {
+		this.amountVerifiersSameChoice = amountVerifiersSameChoice;
+	}
+
+
+
+
 
 
 	public int getAmountLoops() {
