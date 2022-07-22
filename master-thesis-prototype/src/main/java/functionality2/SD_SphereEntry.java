@@ -13,7 +13,7 @@ public class SD_SphereEntry {
 	private BPMNTask origin;
 	private BPMNTask currBrt;
 	private LinkedList<AdditionalActors>additionalActors;
-	private HashSet<BPMNParticipant>sdSphereWithoutAddActorOfCurrBrt;
+	private HashSet<BPMNParticipant>sdSphereWithoutAdditionalActors;
 	private HashSet<BPMNParticipant>sdSphereWithAdditionalActors;
 	private HashSet<BPMNParticipant>lambdaSdSphere;
 	private HashSet<BPMNTask>sdReaderBrts;
@@ -28,7 +28,7 @@ public class SD_SphereEntry {
 		this.currBrt = currBrt;
 		this.additionalActors = new LinkedList<AdditionalActors>();
 		this.sdSphereWithAdditionalActors = sdSphereWithAdditionalActors;
-		this.sdSphereWithoutAddActorOfCurrBrt = new HashSet<BPMNParticipant>();
+		this.sdSphereWithoutAdditionalActors = new HashSet<BPMNParticipant>();
 		this.lambdaSdSphere = new HashSet<BPMNParticipant>();
 		this.sdReaderBrts = sdReaderBrts;
 		this.amountPathsWhereOriginWritesForCurrBrt = 0;
@@ -43,7 +43,7 @@ public class SD_SphereEntry {
 		this.currBrt = currBrt;
 		this.additionalActors = new LinkedList<AdditionalActors>();
 		this.sdReaderBrts = new HashSet<BPMNTask>();
-		this.sdSphereWithoutAddActorOfCurrBrt = new HashSet<BPMNParticipant>();
+		this.sdSphereWithoutAdditionalActors = new HashSet<BPMNParticipant>();
 		this.lambdaSdSphere = new HashSet<BPMNParticipant>();
 		this.sdSphereWithAdditionalActors = new HashSet<BPMNParticipant>();
 		this.amountPathsWhereOriginWritesForCurrBrt = 0;
@@ -83,13 +83,14 @@ public class SD_SphereEntry {
 	public void setAdditionalActors(LinkedList<AdditionalActors> additionalActors) {
 		this.additionalActors = additionalActors;
 	}
+	
 
-	public HashSet<BPMNParticipant> getSdSphereWithoutAddActorOfCurrBrt() {
-		return sdSphereWithoutAddActorOfCurrBrt;
+	public HashSet<BPMNParticipant> getSdSphereWithoutAdditionalActors() {
+		return sdSphereWithoutAdditionalActors;
 	}
 
-	public void setSdSphereWithoutAddActorOfCurrBrt(HashSet<BPMNParticipant> sdSphereWithoutAddActorOfCurrBrt) {
-		this.sdSphereWithoutAddActorOfCurrBrt = sdSphereWithoutAddActorOfCurrBrt;
+	public void setSdSphereWithoutAdditionalActors(HashSet<BPMNParticipant> sdSphereWithoutAdditionalActors) {
+		this.sdSphereWithoutAdditionalActors = sdSphereWithoutAdditionalActors;
 	}
 
 	public HashSet<BPMNParticipant> getSdSphereWithAdditionalActors() {

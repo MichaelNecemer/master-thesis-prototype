@@ -309,7 +309,7 @@ public class PModelWithAdditionalActors {
 				sb.append(System.lineSeparator());	
 				
 				sb.append("without additional actors of "+sdEntry.getCurrBrt().getName()+" :  {");
-				HashSet<BPMNParticipant>sdEntryParticipantsAddActors = sdEntry.getSdSphereWithoutAddActorOfCurrBrt();
+				HashSet<BPMNParticipant>sdEntryParticipantsAddActors = sdEntry.getSdSphereWithoutAdditionalActors();
 				Iterator<BPMNParticipant>partIter2 = sdEntryParticipantsAddActors.iterator();
 				while(partIter2.hasNext()) {
 					BPMNParticipant nextPart = partIter2.next();

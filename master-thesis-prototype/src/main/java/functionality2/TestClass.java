@@ -29,7 +29,7 @@ public class TestClass {
 			// garbage collector will remove
 			//pInst = null;
 			
-			
+			/*
 			int boundForAmountPossibleCombsPerBrt = 0;
 			int bound = 0;
 			LinkedList<PModelWithAdditionalActors>pInst2 = api2.newMeasureHeuristic(boundForAmountPossibleCombsPerBrt,bound, Enums.ClusterCondition.ALLORIGINSTHESAME);
