@@ -21,6 +21,7 @@ public class SD_SphereEntry {
 	private double weightingOfOriginForCurrBrt;
 	private double weightingOfOrigin;
 	private double score;
+	private boolean contributingToGammaMin;
 	
 	public SD_SphereEntry(BPMNDataObject dataObject, BPMNTask origin, BPMNTask currBrt, HashSet<BPMNTask>sdReaderBrts, HashSet<BPMNParticipant>sdSphereWithAdditionalActors) {
 		this.dataObject = dataObject;
@@ -35,6 +36,7 @@ public class SD_SphereEntry {
 		this.weightingOfOriginForCurrBrt = 0;
 		this.weightingOfOrigin = Math.pow(2, -origin.getLabels().size());
 		this.score = 0;
+		this.contributingToGammaMin = true;
 	}
 	
 	public SD_SphereEntry(BPMNDataObject dataObject, BPMNTask origin, BPMNTask currBrt) {
@@ -50,6 +52,7 @@ public class SD_SphereEntry {
 		this.weightingOfOriginForCurrBrt = 0;
 		this.weightingOfOrigin = Math.pow(2, -origin.getLabels().size());
 		this.score = 0;
+		this.contributingToGammaMin = true;
 	}
 
 	public BPMNDataObject getDataObject() {
@@ -147,6 +150,14 @@ public class SD_SphereEntry {
 
 	public void setWeightingOfOrigin(double weightingOfOrigin) {
 		this.weightingOfOrigin = weightingOfOrigin;
+	}
+
+	public boolean isContributingToGammaMin() {
+		return contributingToGammaMin;
+	}
+
+	public void setContributingToGammaMin(boolean contributingToGammaMin) {
+		this.contributingToGammaMin = contributingToGammaMin;
 	}
 	
 	
