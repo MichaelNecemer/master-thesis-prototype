@@ -13,46 +13,30 @@ public class SD_SphereEntry {
 	private BPMNDataObject dataObject;
 	private BPMNTask origin;
 	private BPMNTask currBrt;
-	private LinkedList<AdditionalActors> additionalActors;
-	private HashSet<BPMNParticipant> sdSphereWithoutAdditionalActors;
-	private HashSet<BPMNParticipant> sdSphereWithAdditionalActors;
+	private BPMNParticipant additionalActor;
+	private HashSet<BPMNParticipant> sdSphereWithoutAdditionalActor;
+	private HashSet<BPMNParticipant> sdSphereWithAdditionalActor;
 	private HashSet<BPMNParticipant> lambdaSdSphere;
 	private HashSet<BPMNTask> sdReaderBrts;
 	private double amountPathsWhereOriginWritesForCurrBrt;
-	private double weightingOfOriginForCurrBrt;
-	private double weightingOfOrigin;
+	private double weightOfOriginForCurrBrt;
+	private double weightOfOrigin;
 	private double score;
 	private boolean contributingToGammaMin;
 
-	public SD_SphereEntry(BPMNDataObject dataObject, BPMNTask origin, BPMNTask currBrt, HashSet<BPMNTask> sdReaderBrts,
-			HashSet<BPMNParticipant> sdSphereWithAdditionalActors) {
+	public SD_SphereEntry(BPMNDataObject dataObject, BPMNTask origin, BPMNTask currBrt,
+			BPMNParticipant additionalActor) {
 		this.dataObject = dataObject;
 		this.origin = origin;
 		this.currBrt = currBrt;
-		this.additionalActors = new LinkedList<AdditionalActors>();
-		this.sdSphereWithAdditionalActors = sdSphereWithAdditionalActors;
-		this.sdSphereWithoutAdditionalActors = new HashSet<BPMNParticipant>();
-		this.lambdaSdSphere = new HashSet<BPMNParticipant>();
-		this.sdReaderBrts = sdReaderBrts;
-		this.amountPathsWhereOriginWritesForCurrBrt = 0;
-		this.weightingOfOriginForCurrBrt = 0;
-		this.weightingOfOrigin = Math.pow(2, -origin.getLabels().size());
-		this.score = 0;
-		this.contributingToGammaMin = true;
-	}
-
-	public SD_SphereEntry(BPMNDataObject dataObject, BPMNTask origin, BPMNTask currBrt) {
-		this.dataObject = dataObject;
-		this.origin = origin;
-		this.currBrt = currBrt;
-		this.additionalActors = new LinkedList<AdditionalActors>();
+		this.additionalActor = additionalActor;
 		this.sdReaderBrts = new HashSet<BPMNTask>();
-		this.sdSphereWithoutAdditionalActors = new HashSet<BPMNParticipant>();
+		this.sdSphereWithoutAdditionalActor = new HashSet<BPMNParticipant>();
 		this.lambdaSdSphere = new HashSet<BPMNParticipant>();
-		this.sdSphereWithAdditionalActors = new HashSet<BPMNParticipant>();
+		this.sdSphereWithAdditionalActor = new HashSet<BPMNParticipant>();
 		this.amountPathsWhereOriginWritesForCurrBrt = 0;
-		this.weightingOfOriginForCurrBrt = 0;
-		this.weightingOfOrigin = Math.pow(2, -origin.getLabels().size());
+		this.weightOfOriginForCurrBrt = 0;
+		this.weightOfOrigin = Math.pow(2, -origin.getLabels().size());
 		this.score = 0;
 		this.contributingToGammaMin = true;
 	}
@@ -81,28 +65,28 @@ public class SD_SphereEntry {
 		this.currBrt = currBrt;
 	}
 
-	public LinkedList<AdditionalActors> getAdditionalActors() {
-		return additionalActors;
+	public BPMNParticipant getAdditionalActor() {
+		return additionalActor;
 	}
 
-	public void setAdditionalActors(LinkedList<AdditionalActors> additionalActors) {
-		this.additionalActors = additionalActors;
+	public void setAdditionalActor(BPMNParticipant additionalActor) {
+		this.additionalActor = additionalActor;
 	}
 
-	public HashSet<BPMNParticipant> getSdSphereWithoutAdditionalActors() {
-		return sdSphereWithoutAdditionalActors;
+	public HashSet<BPMNParticipant> getSdSphereWithoutAdditionalActor() {
+		return sdSphereWithoutAdditionalActor;
 	}
 
-	public void setSdSphereWithoutAdditionalActors(HashSet<BPMNParticipant> sdSphereWithoutAdditionalActors) {
-		this.sdSphereWithoutAdditionalActors = sdSphereWithoutAdditionalActors;
+	public void setSdSphereWithoutAdditionalActor(HashSet<BPMNParticipant> sdSphereWithoutAdditionalActors) {
+		this.sdSphereWithoutAdditionalActor = sdSphereWithoutAdditionalActors;
 	}
 
-	public HashSet<BPMNParticipant> getSdSphereWithAdditionalActors() {
-		return sdSphereWithAdditionalActors;
+	public HashSet<BPMNParticipant> getSdSphereWithAdditionalActor() {
+		return sdSphereWithAdditionalActor;
 	}
 
 	public void setSdSphereWithAdditionalActors(HashSet<BPMNParticipant> sdSphereWithAdditionalActors) {
-		this.sdSphereWithAdditionalActors = sdSphereWithAdditionalActors;
+		this.sdSphereWithAdditionalActor = sdSphereWithAdditionalActors;
 	}
 
 	public HashSet<BPMNParticipant> getLambdaSdSphere() {
@@ -129,12 +113,12 @@ public class SD_SphereEntry {
 		this.score = score;
 	}
 
-	public double getWeightingOfOriginForCurrBrt() {
-		return weightingOfOriginForCurrBrt;
+	public double getWeightOfOriginForCurrBrt() {
+		return weightOfOriginForCurrBrt;
 	}
 
-	public void setWeightingOfOriginForCurrBrt(double weightingOfOriginForCurrBrt) {
-		this.weightingOfOriginForCurrBrt = weightingOfOriginForCurrBrt;
+	public void setWeightOfOriginForCurrBrt(double weightingOfOriginForCurrBrt) {
+		this.weightOfOriginForCurrBrt = weightingOfOriginForCurrBrt;
 	}
 
 	public double getAmountPathsWhereOriginWritesForCurrBrt() {
@@ -145,12 +129,12 @@ public class SD_SphereEntry {
 		this.amountPathsWhereOriginWritesForCurrBrt = amountPathsWhereOriginWritesForCurrBrt;
 	}
 
-	public double getWeightingOfOrigin() {
-		return weightingOfOrigin;
+	public double getWeightOfOrigin() {
+		return weightOfOrigin;
 	}
 
-	public void setWeightingOfOrigin(double weightingOfOrigin) {
-		this.weightingOfOrigin = weightingOfOrigin;
+	public void setWeightOfOrigin(double weightingOfOrigin) {
+		this.weightOfOrigin = weightingOfOrigin;
 	}
 
 	public boolean isContributingToGammaMin() {
@@ -178,7 +162,8 @@ public class SD_SphereEntry {
 		// cast and compare state
 		SD_SphereEntry other = (SD_SphereEntry) obj;
 		return Objects.equals(this.dataObject, other.dataObject) && Objects.equals(this.origin, other.origin)
-				&& Objects.equals(this.currBrt, other.currBrt);
+				&& Objects.equals(this.currBrt, other.currBrt)
+				&& Objects.equals(this.additionalActor, other.additionalActor);
 	}
 
 	@Override
@@ -193,6 +178,10 @@ public class SD_SphereEntry {
 		if (this.currBrt != null) {
 			result = 31 * result + this.currBrt.hashCode();
 		}
+		if (this.additionalActor != null) {
+			result = 31 * result + this.additionalActor.hashCode();
+		}
+
 		return result;
 	}
 

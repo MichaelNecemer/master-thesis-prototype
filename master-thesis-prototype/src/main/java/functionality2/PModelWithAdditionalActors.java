@@ -17,7 +17,7 @@ public class PModelWithAdditionalActors {
 	private HashSet<BPMNParticipant> privateSphere;
 	private HashMap<BPMNDataObject, Static_SphereEntry> staticSphereEntries;	
 	private HashMap<BPMNDataObject, LinkedList<WD_SphereEntry>> wdSphereEntries;
-	private HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>> sdSphereEntries;
+	private HashMap<BPMNParticipant, HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>>> sdSphereEntries;
 	private double alphaMeasureWeightingParameter;
 	private double betaMeasureWeightingParameter;
 	private double gammaMeasureWeightingParameter;
@@ -31,7 +31,7 @@ public class PModelWithAdditionalActors {
 		this.additionalActors = additionalActors;
 		this.staticSphereEntries = new HashMap<BPMNDataObject, Static_SphereEntry>();
 		this.wdSphereEntries = new HashMap<BPMNDataObject, LinkedList<WD_SphereEntry>>();
-		this.sdSphereEntries = new HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>>();
+		this.sdSphereEntries = new HashMap<BPMNParticipant, HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>>>();
 		this.alphaMeasureWeightingParameter = weightingParameters.get(0);
 		this.betaMeasureWeightingParameter = weightingParameters.get(1);
 		this.gammaMeasureWeightingParameter = weightingParameters.get(2);		
@@ -99,16 +99,19 @@ public class PModelWithAdditionalActors {
 	}
 
 
+	
 
 
-	public HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>> getSdSphereEntries() {
+
+	public HashMap<BPMNParticipant, HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>>> getSdSphereEntries() {
 		return sdSphereEntries;
 	}
 
 
 
 
-	public void setSdSphereEntries(HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>> sdSphereEntries) {
+	public void setSdSphereEntries(
+			HashMap<BPMNParticipant, HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>>> sdSphereEntries) {
 		this.sdSphereEntries = sdSphereEntries;
 	}
 
@@ -290,16 +293,31 @@ public class PModelWithAdditionalActors {
 	public void printGammaMeasure() {
 		StringBuilder sb = new StringBuilder();
 		sb.append("GAMMA MEASURE:");
-		sb.append(System.lineSeparator());	
-		for(Entry<BPMNDataObject, LinkedList<SD_SphereEntry>> gammaSphereEntry: this.sdSphereEntries.entrySet()) {
-			LinkedList<SD_SphereEntry> sdList = gammaSphereEntry.getValue();
-			for(SD_SphereEntry sdEntry: sdList) {
-				sb.append("Sphere configuration ("+sdEntry.getDataObject().getName()+","+sdEntry.getOrigin().getName()+","+sdEntry.getCurrBrt().getName()+") :");
+		sb.append(System.lineSeparator());				
+		
+		for(Entry<BPMNParticipant, HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>>> gammaSphereEntry: this.sdSphereEntries.entrySet()) {
+			StringBuilder addActorSbForParticipant = new StringBuilder();
+			LinkedList<BPMNTask>queriedBrts = new LinkedList<BPMNTask>();
+			BPMNParticipant additionalActor = gammaSphereEntry.getKey();
+			
+			addActorSbForParticipant.append("Additional actor "+additionalActor.getName() +" for ");
+			HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>> sdListPerParticipant = gammaSphereEntry.getValue();
+			
+			for(Entry<BPMNDataObject, LinkedList<SD_SphereEntry>>entryPerDataObject: sdListPerParticipant.entrySet()) {				
 				
-				if(sdEntry.isContributingToGammaMin()) {
+				for(SD_SphereEntry sdEntry: entryPerDataObject.getValue()) {
+				BPMNTask currBrt = sdEntry.getCurrBrt();
+				sb.append("Sphere configuration ("+entryPerDataObject.getKey().getName()+","+sdEntry.getOrigin().getName()+","+currBrt.getName()+") :");
+				
+				if(!queriedBrts.contains(currBrt)) {
+					addActorSbForParticipant.append(currBrt.getName()+", ");
+					queriedBrts.add(currBrt);
+				}
 				sb.append(System.lineSeparator());	
-				sb.append("with additional actors for all brts: {");
-				HashSet<BPMNParticipant>sdEntryParticipants = sdEntry.getSdSphereWithAdditionalActors();
+
+				if(sdEntry.isContributingToGammaMin()) {
+				sb.append("with additional actor "+additionalActor.getName()+" for the brts (TE = {}): {");
+				HashSet<BPMNParticipant>sdEntryParticipants = sdEntry.getSdSphereWithAdditionalActor();
 				Iterator<BPMNParticipant>partIter = sdEntryParticipants.iterator();
 				while(partIter.hasNext()) {
 					BPMNParticipant nextPart = partIter.next();
@@ -311,8 +329,8 @@ public class PModelWithAdditionalActors {
 				sb.append("}");	
 				sb.append(System.lineSeparator());	
 				
-				sb.append("without additional actors:  {");
-				HashSet<BPMNParticipant>sdEntryParticipantsAddActors = sdEntry.getSdSphereWithoutAdditionalActors();
+				sb.append("without additional actor "+additionalActor.getName()+ ":  {");
+				HashSet<BPMNParticipant>sdEntryParticipantsAddActors = sdEntry.getSdSphereWithoutAdditionalActor();
 				Iterator<BPMNParticipant>partIter2 = sdEntryParticipantsAddActors.iterator();
 				while(partIter2.hasNext()) {
 					BPMNParticipant nextPart = partIter2.next();
@@ -336,14 +354,21 @@ public class PModelWithAdditionalActors {
 				}				
 				sb.append("}");	
 				sb.append(System.lineSeparator());	
-				sb.append("weight(w): "+sdEntry.getWeightingOfOrigin()+", weight(w,r,d): "+sdEntry.getWeightingOfOriginForCurrBrt()+", score: "+sdEntry.getScore());
+				sb.append("weight(w): "+sdEntry.getWeightOfOrigin()+", weight(w,r,d): "+sdEntry.getWeightOfOriginForCurrBrt()+", score: "+sdEntry.getScore());
 				sb.append(System.lineSeparator());	
 				sb.append(System.lineSeparator());
 				} else {
-					sb.append(" Not contributing to gamma min!");
+					sb.append("Not contributing to gamma min!");
+					sb.append(System.lineSeparator());
 					sb.append(System.lineSeparator());
 				}
 			}		
+			}
+			addActorSbForParticipant.delete(addActorSbForParticipant.length()-2, addActorSbForParticipant.length());
+			sb.append(addActorSbForParticipant.toString());
+			sb.append(System.lineSeparator());
+			sb.append("------------------------------------------------------------------");
+			sb.append(System.lineSeparator());
 		}
 		
 		sb.append("Cost for gamma measure without weighting: "+this.gammaMeasureSum);
