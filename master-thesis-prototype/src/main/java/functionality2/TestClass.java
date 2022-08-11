@@ -24,13 +24,13 @@ public class TestClass {
 
 			
 			LinkedList<PModelWithAdditionalActors>pInst = api2.exhaustiveSearch();
-			for(PModelWithAdditionalActors pModel: pInst) {
+			/*for(PModelWithAdditionalActors pModel: pInst) {
 				pModel.printMeasure();
 			}
 			// garbage collector will remove
 			//pInst = null;
-			
 			/*
+			
 			int boundForAmountPossibleCombsPerBrt = 0;
 			int bound = 0;
 			LinkedList<PModelWithAdditionalActors>pInst2 = api2.newMeasureHeuristic(boundForAmountPossibleCombsPerBrt,bound, Enums.ClusterCondition.ALLORIGINSTHESAME);
