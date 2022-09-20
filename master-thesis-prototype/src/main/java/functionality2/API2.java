@@ -207,28 +207,78 @@ public class API2 {
 
 		long startTime = System.nanoTime();
 
-	
-		// build a cluster of brts that have dependencies to a specific writer and data
-		// object
-		HashMap<BPMNDataObject, LinkedList<DependentBrtOfWriter>> cluster = new HashMap<BPMNDataObject, LinkedList<DependentBrtOfWriter>>();
+		// the following maps will contain paths from origins ongoing to avoid
+		// redundant calculations
+		HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
+		HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap = new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>();
 
-		for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
-			for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : brt.getLastWriterList().entrySet()) {
-				BPMNDataObject dataO = lastWriterEntry.getKey();
-				for (BPMNTask origin : lastWriterEntry.getValue()) {
-					// add to the cluster
-					LinkedList<LinkedList<BPMNElement>> pathsFromOriginToEnd = null;
-					HashSet<BPMNBusinessRuleTask> dependentBrtsForWriter = this
-							.getDependentBrtsOfWriter(origin, dataO, pathsFromOriginToEnd);
-				}
-
+		
+		// build a cluster of dependent brts
+		// brts inside a cluster share at least 1 common origin
+		HashSet<HashSet<BPMNBusinessRuleTask>> clusterSet = this.buildCluster(this.businessRuleTasks);		
+				
+		// compute a priority list for the whole cluster
+		// compute private, static and wd sphere for origin and dataObject (without
+		// additional actors)
+		// sort wd sphere by the fraction of instance types on which the participant
+		// definitely reads the dataObject and the total amount of instance types (until
+		// next writer)
+		// therefore participants that are more likely to be in sd will be preferred
+		
+		HashMap<BPMNTask, LinkedList<PriorityListEntry>> priorityListForOrigin = new HashMap<BPMNTask, LinkedList<PriorityListEntry>>();
+		
+		for(HashSet<BPMNBusinessRuleTask>cluster: clusterSet) {
+			HashMap<BPMNParticipant, Double> costPerParticipant = new HashMap<BPMNParticipant, Double>();	
+			for(BPMNBusinessRuleTask brt: cluster) {
+				for(Entry<BPMNDataObject, ArrayList<BPMNTask>>lastWriterEntry: brt.getLastWriterList().entrySet()) {
+					BPMNDataObject dataObject = lastWriterEntry.getKey();
+					for(BPMNTask origin: lastWriterEntry.getValue()) {
+						// get or compute the paths from origin to end
+						LinkedList<LinkedList<BPMNElement>> pathsFromOriginToEnd = pathsFromOriginToEndMap.get(origin);
+						boolean computePriorityList = false;
+						if(pathsFromOriginToEnd==null || pathsFromOriginToEnd.isEmpty()) {
+							pathsFromOriginToEnd = this.goDfs(origin, this.endEvent, this.endEvent, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), new LinkedList<LinkedList<BPMNElement>>());
+							pathsFromOriginToEndMap.put(origin, pathsFromOriginToEnd);
+							computePriorityList = true;
+						}	
+						
+							// compute the priority list for the origin
+							// calculate the amount of paths where a certain reader reads the dataObject from the origin
+							LinkedList<PriorityListEntry> priorityList = this.computePriorityListForOrigin(origin, dataObject, pathsFromOriginToEnd);
+							priorityListForOrigin.putIfAbsent(origin, priorityList);	
+							
+							for(PriorityListEntry pEntry: priorityList) {
+								double costForCurrParticipant = pEntry.getAmountPathsWhereReaderReadsDataObject();
+								BPMNParticipant participant = pEntry.getReader();
+																
+								if(!costPerParticipant.containsKey(participant)) {
+									costPerParticipant.put(participant, costForCurrParticipant);
+								} else {
+									double overAllCostForParticipant = costPerParticipant.get(participant);
+									double cost = overAllCostForParticipant + costForCurrParticipant;
+									costPerParticipant.put(participant, cost);									
+								}	
+								
+							}
+							
+								
+					}					
+				}				
+			}			
+			
+			
+			// choose the cheapest combination of participants in the cluster for each brt
+			for(Entry<BPMNParticipant, Double> costPerParticipantEntry: costPerParticipant.entrySet()) {
+				System.out.println(costPerParticipantEntry.getKey().getName()+" , "+costPerParticipantEntry.getValue());
+				
+				
 			}
+			
+			
 		}
 		
-		// for each brt in a cluster compute a priority list 
-		// compute private, static and wd sphere at. pos of origin (without additional actors)
-		// sort wd sphere by the fraction of instance types on which they definately read the dataObject and the total amount of instance types (until next writer)
-		// therefore participants that are more likely in sd will be preferred
+		
+		
 		
 
 		// compute static sphere per data object without add actors
@@ -242,14 +292,10 @@ public class API2 {
 		if (!staticSpherePerDataObject.isEmpty()) {
 			// only generate those combinations of participants that are preferred (e.g. in
 			// cluster or locally cheap)
-			pModelAddActors = this.generatePModelsWithAddActorsForIntersectionInCluster(null,
-					staticSpherePerDataObject, wdSpherePerDataObject, boundForAmountPossibleCombsPerBrt);
+			pModelAddActors = this.generatePModelsWithAddActorsForIntersectionInCluster(null, staticSpherePerDataObject,
+					wdSpherePerDataObject, boundForAmountPossibleCombsPerBrt);
 
-			// the following maps will later contain paths from origins ongoing to avoid
-			// redundant calculations
-			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
-			HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap = new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>();
-
+			
 			// this map will contain the weight(w,r,d) for the gamma measure to avoid
 			// redundant calculations
 			HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>> weightMap = new HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>>();
@@ -1675,7 +1721,6 @@ public class API2 {
 
 	}
 
-
 	public LinkedList<PModelWithAdditionalActors> generatePModelsWithAddActorsForIntersectionInCluster(
 			HashMap<BPMNDataObject, HashSet<BPMNBusinessRuleTask>> clusteredBrts,
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
@@ -2126,9 +2171,9 @@ public class API2 {
 						// other writer found
 						j = path.size();
 					}
-				} 
-				
-				if (pathEl instanceof BPMNBusinessRuleTask){				
+				}
+
+				if (pathEl instanceof BPMNBusinessRuleTask) {
 					BPMNBusinessRuleTask currBrt = (BPMNBusinessRuleTask) pathEl;
 					LinkedList<AdditionalActors> addActorsList = pModel.getAdditionalActorsList();
 					for (int addActorsIndex = 0; addActorsIndex < addActorsList.size(); addActorsIndex++) {
@@ -2142,7 +2187,6 @@ public class API2 {
 						}
 					}
 
-				
 				}
 
 			}
@@ -2670,5 +2714,80 @@ public class API2 {
 	public void setPrivateSphere(HashSet<BPMNParticipant> privateSphere) {
 		this.privateSphere = privateSphere;
 	}
+	
+	
+	public HashSet<HashSet<BPMNBusinessRuleTask>> buildCluster(LinkedList<BPMNBusinessRuleTask>brtTasks) {
+		HashSet<HashSet<BPMNBusinessRuleTask>>cluster = new HashSet<HashSet<BPMNBusinessRuleTask>>();
+		for (BPMNBusinessRuleTask brt : brtTasks) {
+			HashSet<BPMNBusinessRuleTask> currCluster = new HashSet<BPMNBusinessRuleTask>();
+			for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : brt.getLastWriterList().entrySet()) {
+				for (BPMNBusinessRuleTask brt2 : brtTasks) {
+					for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry2 : brt2.getLastWriterList()
+							.entrySet()) {
+						if (!currCluster.contains(brt2)) {
+							if (lastWriterEntry2.getKey().equals(lastWriterEntry.getKey())) {
+								for (BPMNTask origin2 : lastWriterEntry2.getValue()) {
+									if (lastWriterEntry.getValue().contains(origin2)) {
+										currCluster.add(brt);
+										currCluster.add(brt2);
+									}
+								}
+							}
+
+						}
+					}
+				}
+
+			}
+			cluster.add(currCluster);
+		}
+		return cluster;
+	}
+	
+	
+	public LinkedList<PriorityListEntry> computePriorityListForOrigin (BPMNTask origin, BPMNDataObject dataObject, LinkedList<LinkedList<BPMNElement>>pathsFromOriginToEnd) {
+		LinkedList<PriorityListEntry> priorityList = new LinkedList<PriorityListEntry>();
+		HashMap<BPMNParticipant, Double> readerMap = new HashMap<BPMNParticipant, Double>();
+		
+		for(LinkedList<BPMNElement>path: pathsFromOriginToEnd) {
+			LinkedList<BPMNParticipant>readersAlreadyCountedOnPath = new LinkedList<BPMNParticipant>();
+			for(BPMNElement pathEl: path) {
+				if(pathEl instanceof BPMNTask) {
+					BPMNTask task = (BPMNTask)pathEl;
+					BPMNParticipant participant = task.getParticipant();
+					if(dataObject.getReaders().contains(task) && !task.equals(origin)) {
+						// another reader to same dataObject found
+						// get that reader and increase the amount of occurrences
+						if(!readersAlreadyCountedOnPath.contains(participant)) {
+							if(!readerMap.containsKey(participant)) {
+								readerMap.put(participant, 0.0);
+							} 
+							double occurrencesOfReader = readerMap.get(participant)+1;
+							readerMap.put(participant, occurrencesOfReader);	
+							readersAlreadyCountedOnPath.add(participant);
+						}						
+					}
+					
+					if(dataObject.getWriters().contains(task) && !task.equals(origin)) {
+						// another writer to same dataObject found
+						// do not look further on that path
+						break;
+					}
+					
+				}
+				
+			}
+			
+		}
+		
+		for(Entry<BPMNParticipant, Double> readerMapEntry: readerMap.entrySet()) {
+			PriorityListEntry entry = new PriorityListEntry(origin, dataObject, readerMapEntry.getKey(), readerMapEntry.getValue());
+			priorityList.add(entry);
+		}
+		
+		
+		return priorityList;
+	}
+	
 
 }

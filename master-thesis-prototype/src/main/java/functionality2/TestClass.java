@@ -23,7 +23,8 @@ public class TestClass {
 			API2 api2 = new API2(pathToFile, costForUpgradingSpheres);
 
 			
-			LinkedList<PModelWithAdditionalActors>pInst = api2.exhaustiveSearch();
+			//LinkedList<PModelWithAdditionalActors>pInst = api2.exhaustiveSearch();
+			LinkedList<PModelWithAdditionalActors>pInst = api2.newMeasureHeuristic(0, 0);
 			/*for(PModelWithAdditionalActors pModel: pInst) {
 				pModel.printMeasure();
 			}
