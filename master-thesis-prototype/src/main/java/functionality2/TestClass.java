@@ -25,7 +25,7 @@ public class TestClass {
 			
 			//LinkedList<PModelWithAdditionalActors>pInst = api2.exhaustiveSearch();
 			LinkedList<PModelWithAdditionalActors>pInst = api2.newMeasureHeuristic(0, 0);
-			/*for(PModelWithAdditionalActors pModel: pInst) {
+			for(PModelWithAdditionalActors pModel: pInst) {
 				pModel.printMeasure();
 			}
 			// garbage collector will remove

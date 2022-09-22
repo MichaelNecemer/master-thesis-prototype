@@ -7,7 +7,7 @@ import Mapping.BPMNTask;
 
 public class WeightWRD {
 	// this class holds information about the weight(w,r,d) i.e. the amount of instance types
-	// in which w writes d for r
+	// in which writer/origin writes data object for reader
 	
 	private BPMNTask origin;
 	private BPMNBusinessRuleTask readerBrt;

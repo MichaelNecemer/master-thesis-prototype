@@ -12,6 +12,7 @@ public class PriorityListEntry {
 	private BPMNParticipant reader;
 	private double amountPathsWhereReaderReadsDataObject;
 	
+	
 	public PriorityListEntry(BPMNTask origin, BPMNDataObject dataObject, BPMNParticipant reader, double amountPathsWhereReaderReadsDataObject) {
 		this.origin = origin;
 		this.dataObject = dataObject;
