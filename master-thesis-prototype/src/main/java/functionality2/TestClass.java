@@ -11,8 +11,8 @@ public class TestClass {
 	public static void main(String[]args) {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorB.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorC.bpmn";
-		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorC.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_clustering.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_annotated263sWmR_Static_voters4.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\brtsIn2branches1.bpmn";
@@ -24,7 +24,7 @@ public class TestClass {
 
 			
 			//LinkedList<PModelWithAdditionalActors>pInst = api2.exhaustiveSearch();
-			LinkedList<PModelWithAdditionalActors>pInst = api2.newMeasureHeuristic(0, 0);
+			LinkedList<PModelWithAdditionalActors>pInst = api2.newMeasureHeuristic(1);
 			for(PModelWithAdditionalActors pModel: pInst) {
 				pModel.printMeasure();
 			}

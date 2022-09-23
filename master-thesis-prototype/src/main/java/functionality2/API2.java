@@ -93,7 +93,7 @@ public class API2 {
 	private String strongDynamicSphereKey;
 	private LinkedList<Double> weightingParameters;
 	private HashMap<String, Double> executionTimeMap;
-	private int boundForAddActorsInCluster;
+	private int bound;
 
 	public API2(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters) throws Exception {
 		if (weightingParameters.size() != 3) {
@@ -123,7 +123,6 @@ public class API2 {
 		// set the default algorithm to perform
 		this.setAlgorithmToPerform(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
 		// set the default cluster condition
-		this.boundForAddActorsInCluster = 0;
 		this.executionTimeMap = new HashMap<String, Double>();
 		this.amountPossibleCombinationsOfParticipants = "0";
 		this.mandatoryParticipantConstraints = new LinkedList<MandatoryParticipantConstraint>();
@@ -134,6 +133,7 @@ public class API2 {
 		this.staticSphereKey = "Static";
 		this.weakDynamicSphereKey = "Weak-Dynamic";
 		this.strongDynamicSphereKey = "Strong-Dynamic";
+		this.bound = 0;
 		// map all the elements from camunda
 		this.mapCamundaElements();
 		this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance,
@@ -156,33 +156,9 @@ public class API2 {
 			// generate all possible combinations of additional readers
 			additionalActorsCombs = this.generatePossibleCombinationsOfAdditionalActorsWithBound(0);
 
-			// the following maps will later contain paths from origins ongoing to avoid
-			// redundant calculations
-			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
-			HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap = new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>();
+			// calculate the cost measure for the all additional actors combinations
+			this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject, new HashMap<BPMNTask,LinkedList<LinkedList<BPMNElement>>>(), new HashMap<BPMNTask,HashMap<BPMNBusinessRuleTask,LinkedList<LinkedList<BPMNElement>>>>());
 
-			// this map will contain the weight(w,r,d) for the gamma measure to avoid
-			// redundant calculations
-			HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>> weightMap = new HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>>();
-
-			for (PModelWithAdditionalActors pModelWithAdditionalActors : additionalActorsCombs) {
-				// compute alpha measure
-				this.computeAlphaMeasure(pModelWithAdditionalActors, staticSpherePerDataObject);
-
-				// compute beta measure
-				this.computeBetaMeasure(pModelWithAdditionalActors, wdSpherePerDataObject);
-
-				// compute gamma measure
-				this.computeGammaMeasure(pModelWithAdditionalActors, pathsFromOriginToEndMap,
-						pathFromOriginOverCurrBrtToEndMap, weightMap);
-
-				// compute sum measure for current pModelWithAdditionalActors
-				// i.e. compute alpha, beta, gamma measure and weight it with given parameters
-				double sum = pModelWithAdditionalActors.getWeightedCostAlphaMeasure()
-						+ pModelWithAdditionalActors.getWeightedCostBetaMeasure()
-						+ pModelWithAdditionalActors.getWeightedCostGammaMeasure();
-				pModelWithAdditionalActors.setSumMeasure(sum);
-			}
 		} else {
 			// all data objects are private
 			// i.e. each combination of participants that satisfies the constraints is a
@@ -200,107 +176,16 @@ public class API2 {
 	}
 
 	@SuppressWarnings("unchecked")
-	public LinkedList<PModelWithAdditionalActors> newMeasureHeuristic(int boundForAmountPossibleCombsPerBrt,
-			int boundForCheapestSolutions) throws Exception {
+	public LinkedList<PModelWithAdditionalActors> newMeasureHeuristic(int bound) throws Exception {
 
 		String key = "";
-		if (boundForCheapestSolutions > 0) {
-			key = Enums.AlgorithmToPerform.HEURISTICWITHBOUND.name() + boundForCheapestSolutions;
+		if (bound > 0) {
+			key = Enums.AlgorithmToPerform.HEURISTICWITHBOUND.name() + bound;
 		} else {
 			key = Enums.AlgorithmToPerform.HEURISTIC.name();
 		}
 
 		long startTime = System.nanoTime();
-
-		// the following maps will contain paths from origins ongoing to avoid
-		// redundant calculations
-		HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
-		HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap = new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>();
-
-		// build a cluster of dependent brts
-		// brts inside a cluster share at least 1 common origin
-		HashSet<HashSet<BPMNBusinessRuleTask>> clusterSet = this.buildCluster(this.businessRuleTasks);
-
-		// compute a priority list for the whole cluster
-		// compute private, static and wd sphere for origin and dataObject (without
-		// additional actors)
-		// sort wd sphere by the fraction of instance types on which the participant
-		// definitely reads the dataObject and the total amount of instance types (until
-		// next writer)
-		// therefore participants that are more likely to be in sd will be preferred
-
-		HashMap<BPMNTask, LinkedList<PriorityListEntry>> priorityListForOrigin = new HashMap<BPMNTask, LinkedList<PriorityListEntry>>();
-		LinkedList<LinkedList<Object>> combinationsPerBrt = new LinkedList<LinkedList<Object>>();
-
-		for (HashSet<BPMNBusinessRuleTask> cluster : clusterSet) {
-			HashMap<BPMNParticipant, Double> costPerParticipant = new HashMap<BPMNParticipant, Double>();
-			for (BPMNBusinessRuleTask brt : cluster) {
-				for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : brt.getLastWriterList().entrySet()) {
-					BPMNDataObject dataObject = lastWriterEntry.getKey();
-					for (BPMNTask origin : lastWriterEntry.getValue()) {
-						// get or compute the paths from origin to end
-						LinkedList<LinkedList<BPMNElement>> pathsFromOriginToEnd = pathsFromOriginToEndMap.get(origin);
-						if (pathsFromOriginToEnd == null || pathsFromOriginToEnd.isEmpty()) {
-							pathsFromOriginToEnd = this.goDfs(origin, this.endEvent, this.endEvent,
-									new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-									new LinkedList<LinkedList<BPMNElement>>());
-							pathsFromOriginToEndMap.put(origin, pathsFromOriginToEnd);
-						}
-
-						// compute the priority list for the origin
-						// calculate the amount of paths where a certain reader reads the dataObject
-						// from the origin
-						LinkedList<PriorityListEntry> priorityListForOriginAndDataObject = this
-								.computePriorityListForOrigin(origin, dataObject, pathsFromOriginToEnd,
-										this.privateSphere);
-						priorityListForOrigin.computeIfAbsent(origin, k -> new LinkedList<PriorityListEntry>())
-								.addAll(priorityListForOriginAndDataObject);
-
-						for (PriorityListEntry pEntry : priorityListForOriginAndDataObject) {
-							double costForCurrParticipant = pEntry.getAmountPathsWhereReaderReadsDataObject();
-							BPMNParticipant participant = pEntry.getReader();
-
-							double amountPathsWhereOriginWritesDataObjectForBrt = this
-									.getAmountPathsWhereOriginWritesDataOForReaderBrt(dataObject, origin, brt,
-											pathsFromOriginToEnd);
-							double weightOfOrigin = Math.pow(2, -origin.getLabels().size());
-
-							costForCurrParticipant = costForCurrParticipant * weightOfOrigin
-									* amountPathsWhereOriginWritesDataObjectForBrt;
-
-							if (!costPerParticipant.containsKey(participant)) {
-								costPerParticipant.put(participant, costForCurrParticipant);
-							} else {
-								double overAllCostForParticipant = costPerParticipant.get(participant);
-								double cost = overAllCostForParticipant + costForCurrParticipant;
-								costPerParticipant.put(participant, cost);
-							}
-
-						}
-
-					}
-				}
-			}
-
-			TreeMap<Double, LinkedList<BPMNParticipant>> costMapForCluster = new TreeMap<Double, LinkedList<BPMNParticipant>>(
-					(Collections.reverseOrder()));
-			for (Entry<BPMNParticipant, Double> sorted : costPerParticipant.entrySet()) {
-				costMapForCluster.computeIfAbsent(sorted.getValue(), k -> new LinkedList<BPMNParticipant>()).add(sorted.getKey());
-			}
-
-			for (BPMNBusinessRuleTask brt : cluster) {
-				LinkedList<AdditionalActors> additionalActorsForBrt = this
-						.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(brt, costMapForCluster, 0);
-				
-				LinkedList<Object> allCombsForBrt = new LinkedList<Object>();
-				allCombsForBrt.addAll(additionalActorsForBrt);
-				combinationsPerBrt.add(allCombsForBrt);				
-			}
-					
-		}
-		
-		LinkedList<PModelWithAdditionalActors> pModels = this.generateAllPossiblePModelWithAdditionalActors(combinationsPerBrt);
-
 
 		// compute static sphere per data object without add actors
 		HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
@@ -311,54 +196,102 @@ public class API2 {
 
 		LinkedList<PModelWithAdditionalActors> pModelAddActors = null;
 		if (!staticSpherePerDataObject.isEmpty()) {
-			// only generate those combinations of participants that are preferred (e.g. in
-			// cluster or locally cheap)
-			pModelAddActors = this.generatePModelsWithAddActorsForIntersectionInCluster(null, staticSpherePerDataObject,
-					wdSpherePerDataObject, boundForAmountPossibleCombsPerBrt);
-
-			// this map will contain the weight(w,r,d) for the gamma measure to avoid
+			// the following maps will contain paths from origins ongoing to avoid
 			// redundant calculations
-			HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>> weightMap = new HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>>();
+			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
+			HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap = new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>();
 
-			LinkedList<PModelWithAdditionalActors> cheapestPModelsAlphaMeasure = new LinkedList<PModelWithAdditionalActors>();
-			// iterate over all combinations and only keep the cheapest ones
-			for (PModelWithAdditionalActors pModelWithAdditionalActors : pModelAddActors) {
-				this.computeAlphaMeasure(pModelWithAdditionalActors, staticSpherePerDataObject);
-				double currSumMeasure = pModelWithAdditionalActors.getSumMeasure()
-						+ pModelWithAdditionalActors.getWeightedCostAlphaMeasure();
-				pModelWithAdditionalActors.setSumMeasure(currSumMeasure);
-				this.addPModelIfCheapest(boundForCheapestSolutions, cheapestPModelsAlphaMeasure,
-						pModelWithAdditionalActors);
+			// build a cluster of dependent brts
+			// brts inside a cluster share at least 1 common origin
+			HashSet<HashSet<BPMNBusinessRuleTask>> clusterSet = this.buildCluster(this.businessRuleTasks);
+
+			// compute a priority list for the whole cluster
+			// compute private, static and wd sphere for origin and dataObject (without
+			// additional actors)
+			// sort wd sphere by the fraction of instance types on which the participant
+			// definitely reads the dataObject and the total amount of instance types (until
+			// next writer)
+			// therefore participants that are more likely to be in sd will be preferred
+
+			HashMap<BPMNTask, LinkedList<PriorityListEntry>> priorityListForOrigin = new HashMap<BPMNTask, LinkedList<PriorityListEntry>>();
+			LinkedList<LinkedList<Object>> combinationsPerBrt = new LinkedList<LinkedList<Object>>();
+
+			for (HashSet<BPMNBusinessRuleTask> cluster : clusterSet) {
+				HashMap<BPMNParticipant, Double> costPerParticipant = new HashMap<BPMNParticipant, Double>();
+				for (BPMNBusinessRuleTask brt : cluster) {
+					for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : brt.getLastWriterList()
+							.entrySet()) {
+						BPMNDataObject dataObject = lastWriterEntry.getKey();
+						for (BPMNTask origin : lastWriterEntry.getValue()) {
+							// get or compute the paths from origin to end
+							LinkedList<LinkedList<BPMNElement>> pathsFromOriginToEnd = pathsFromOriginToEndMap
+									.get(origin);
+							if (pathsFromOriginToEnd == null || pathsFromOriginToEnd.isEmpty()) {
+								pathsFromOriginToEnd = this.goDfs(origin, this.endEvent, this.endEvent,
+										new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+										new LinkedList<LinkedList<BPMNElement>>());
+								pathsFromOriginToEndMap.put(origin, pathsFromOriginToEnd);
+							}
+
+							// compute the priority list for the origin
+							// calculate the amount of paths where a certain reader reads the dataObject
+							// from the origin
+							LinkedList<PriorityListEntry> priorityListForOriginAndDataObject = this
+									.computePriorityListForOrigin(origin, dataObject, pathsFromOriginToEnd,
+											this.privateSphere);
+							priorityListForOrigin.computeIfAbsent(origin, k -> new LinkedList<PriorityListEntry>())
+									.addAll(priorityListForOriginAndDataObject);
+
+							for (PriorityListEntry pEntry : priorityListForOriginAndDataObject) {
+								double costForCurrParticipant = pEntry.getAmountPathsWhereReaderReadsDataObject();
+								BPMNParticipant participant = pEntry.getReader();
+
+								double amountPathsWhereOriginWritesDataObjectForBrt = this
+										.getAmountPathsWhereOriginWritesDataOForReaderBrt(dataObject, origin, brt,
+												pathsFromOriginToEnd);
+								double weightOfOrigin = Math.pow(2, -origin.getLabels().size());
+
+								costForCurrParticipant = costForCurrParticipant * weightOfOrigin
+										* amountPathsWhereOriginWritesDataObjectForBrt;
+
+								if (!costPerParticipant.containsKey(participant)) {
+									costPerParticipant.put(participant, costForCurrParticipant);
+								} else {
+									double overAllCostForParticipant = costPerParticipant.get(participant);
+									double cost = overAllCostForParticipant + costForCurrParticipant;
+									costPerParticipant.put(participant, cost);
+								}
+
+							}
+
+						}
+					}
+				}
+
+				TreeMap<Double, LinkedList<BPMNParticipant>> costMapForCluster = new TreeMap<Double, LinkedList<BPMNParticipant>>(
+						(Collections.reverseOrder()));
+				for (Entry<BPMNParticipant, Double> sorted : costPerParticipant.entrySet()) {
+					costMapForCluster.computeIfAbsent(sorted.getValue(), k -> new LinkedList<BPMNParticipant>())
+							.add(sorted.getKey());
+				}
+
+				for (BPMNBusinessRuleTask brt : cluster) {
+					LinkedList<AdditionalActors> additionalActorsForBrt = this
+							.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(brt, costMapForCluster,
+									bound);
+
+					LinkedList<Object> allCombsForBrt = new LinkedList<Object>();
+					allCombsForBrt.addAll(additionalActorsForBrt);
+					combinationsPerBrt.add(allCombsForBrt);
+				}
+
 			}
-			pModelAddActors = cheapestPModelsAlphaMeasure;
 
-			// compute beta measure
-			// iterate again over all currently cheapest models
-			LinkedList<PModelWithAdditionalActors> cheapestPModelsBetaMeasure = new LinkedList<PModelWithAdditionalActors>();
-			for (PModelWithAdditionalActors pModelWithAdditionalActors : pModelAddActors) {
-				this.computeBetaMeasure(pModelWithAdditionalActors, wdSpherePerDataObject);
-				double currSumMeasure = pModelWithAdditionalActors.getSumMeasure()
-						+ pModelWithAdditionalActors.getWeightedCostBetaMeasure();
-				pModelWithAdditionalActors.setSumMeasure(currSumMeasure);
-				this.addPModelIfCheapest(boundForCheapestSolutions, cheapestPModelsBetaMeasure,
-						pModelWithAdditionalActors);
-			}
-			cheapestPModelsAlphaMeasure = null;
-			pModelAddActors = cheapestPModelsBetaMeasure;
-
-			LinkedList<PModelWithAdditionalActors> cheapestPModelsGammaMeasure = new LinkedList<PModelWithAdditionalActors>();
-			for (PModelWithAdditionalActors pModelWithAdditionalActors : pModelAddActors) {
-				this.computeGammaMeasure(pModelWithAdditionalActors, pathsFromOriginToEndMap,
-						pathFromOriginOverCurrBrtToEndMap, weightMap);
-				double currSumMeasure = pModelWithAdditionalActors.getSumMeasure()
-						+ pModelWithAdditionalActors.getWeightedCostGammaMeasure();
-				pModelWithAdditionalActors.setSumMeasure(currSumMeasure);
-				this.addPModelIfCheapest(boundForCheapestSolutions, cheapestPModelsGammaMeasure,
-						pModelWithAdditionalActors);
-			}
-			cheapestPModelsBetaMeasure = null;
-			pModelAddActors = cheapestPModelsGammaMeasure;
-
+			pModelAddActors = this.generateAllPossiblePModelWithAdditionalActors(combinationsPerBrt);
+			
+			// calculate the cost measure for the all additional actors combinations found with the heuristic
+			this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject, pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
+			
 		} else {
 			pModelAddActors = this.generatePossibleCombinationsOfAdditionalActorsWithBound(1);
 		}
@@ -450,12 +383,12 @@ public class API2 {
 		}
 
 		LinkedList<LinkedList<BPMNParticipant>> list = new LinkedList<LinkedList<BPMNParticipant>>();
-		int amountParticipantsToTakeFromRemaining = amountVerifiersToAssign
-				- mandatoryParticipants.size() - participantsWithBestCost.size();
-		
-		if(!remainingWithBestCost.isEmpty() && amountParticipantsToTakeFromRemaining > 0) {
-		list = Combination.getPermutationsWithBound(remainingWithBestCost,
-				amountParticipantsToTakeFromRemaining, bound);
+		int amountParticipantsToTakeFromRemaining = amountVerifiersToAssign - mandatoryParticipants.size()
+				- participantsWithBestCost.size();
+
+		if (!remainingWithBestCost.isEmpty() && amountParticipantsToTakeFromRemaining > 0) {
+			list = Combination.getPermutationsWithBound(remainingWithBestCost, amountParticipantsToTakeFromRemaining,
+					bound);
 		}
 
 		if (list.isEmpty()) {
@@ -465,7 +398,7 @@ public class API2 {
 			AdditionalActors addActors = new AdditionalActors(brt, listToAdd);
 			addActorsCombinationsForBrt.add(addActors);
 		} else {
-			// iterate through all combinations 
+			// iterate through all combinations
 			for (int i = 0; i < list.size(); i++) {
 				LinkedList<BPMNParticipant> currList = list.get(i);
 				currList.addAll(mandatoryParticipants);
@@ -2116,16 +2049,8 @@ public class API2 {
 			mapToReturn.putIfAbsent(this.algorithmToPerform, pInstBruteForce);
 
 		} else if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.HEURISTIC.name())) {
-			LinkedList<PModelWithAdditionalActors> pInstHeuristic = this
-					.newMeasureHeuristic(this.boundForAddActorsInCluster, 0);
+			LinkedList<PModelWithAdditionalActors> pInstHeuristic = this.newMeasureHeuristic(this.bound);
 			mapToReturn.putIfAbsent(this.algorithmToPerform, pInstHeuristic);
-
-		} else if (this.algorithmToPerform.contains(Enums.AlgorithmToPerform.HEURISTICWITHBOUND.name())) {
-			String limit = Enums.AlgorithmToPerform.HEURISTICWITHBOUND.name();
-			int limitPerIteration = Integer.parseInt(limit.replaceAll("\\D+", "").trim());
-			LinkedList<PModelWithAdditionalActors> pInstHeuristicWithBound = this
-					.newMeasureHeuristic(this.boundForAddActorsInCluster, limitPerIteration);
-			mapToReturn.putIfAbsent(this.algorithmToPerform, pInstHeuristicWithBound);
 		}
 
 		return mapToReturn;
@@ -2148,12 +2073,12 @@ public class API2 {
 		this.executionTimeMap = executionTimeMap;
 	}
 
-	public int getBoundForAddActorsInCluster() {
-		return boundForAddActorsInCluster;
+	public int getBound() {
+		return this.bound;
 	}
 
-	public void setBoundForAddActorsInCluster(int boundForAddActorsInCluster) {
-		this.boundForAddActorsInCluster = boundForAddActorsInCluster;
+	public void setBoundForAddActorsInCluster(int bound) {
+		this.bound = bound;
 	}
 
 	public HashMap<Double, LinkedList<BPMNParticipant>> getCheapestParticipantListStaticOrWD(BPMNBusinessRuleTask brt,
@@ -2921,6 +2846,34 @@ public class API2 {
 		}
 
 		return priorityList;
+	}
+
+	public void calculateMeasure(LinkedList<PModelWithAdditionalActors> additionalActorsCombs,
+			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
+			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject, HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap, HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap) throws Exception {
+		
+		// this map will contain the weight(w,r,d) for the gamma measure to avoid
+		// redundant calculations
+		HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>> weightMap = new HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>>();
+
+		for (PModelWithAdditionalActors pModelWithAdditionalActors : additionalActorsCombs) {
+			// compute alpha measure
+			this.computeAlphaMeasure(pModelWithAdditionalActors, staticSpherePerDataObject);
+
+			// compute beta measure
+			this.computeBetaMeasure(pModelWithAdditionalActors, wdSpherePerDataObject);
+
+			// compute gamma measure
+			this.computeGammaMeasure(pModelWithAdditionalActors, pathsFromOriginToEndMap,
+					pathFromOriginOverCurrBrtToEndMap, weightMap);
+
+			// compute sum measure for current pModelWithAdditionalActors
+			// i.e. compute alpha, beta, gamma measure and weight it with given parameters
+			double sum = pModelWithAdditionalActors.getWeightedCostAlphaMeasure()
+					+ pModelWithAdditionalActors.getWeightedCostBetaMeasure()
+					+ pModelWithAdditionalActors.getWeightedCostGammaMeasure();
+			pModelWithAdditionalActors.setSumMeasure(sum);
+		}
 	}
 
 }
