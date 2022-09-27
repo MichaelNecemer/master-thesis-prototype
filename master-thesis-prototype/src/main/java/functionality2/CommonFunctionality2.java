@@ -1934,7 +1934,7 @@ public class CommonFunctionality2 {
 
 	}
 
-	public static void generateNewModelsWithAnnotatedChosenParticipants(API api,
+	public static void generateNewModelsWithAnnotatedChosenParticipants(API2 api,
 			LinkedList<PModelWithAdditionalActors> pInstances, int upperBoundNewModels,
 			String directoryToStoreAnnotatedModels) {
 		// call this method after the localMinimumAlgorithm has found the best
@@ -1947,10 +1947,10 @@ public class CommonFunctionality2 {
 		// or if it is marked as public already:
 		// mark the xor-split as public
 
-		String fileName = api.getProcessFile().getName();
+		String fileName = api.getProcessModelFile().getName();
 		if (directoryToStoreAnnotatedModels == null || directoryToStoreAnnotatedModels.contentEquals("")) {
 			// directory will be the same directory as the process file from the api
-			directoryToStoreAnnotatedModels = api.getProcessFile().getParent();
+			directoryToStoreAnnotatedModels = api.getProcessModelFile().getParent();
 		}
 
 		if (upperBoundNewModels <= 0) {
@@ -1994,7 +1994,7 @@ public class CommonFunctionality2 {
 				FlowNode gtw = CommonFunctionality2.getFlowNodeByBPMNNodeId(modelInstance, xorSplit.getId());
 				TextAnnotation sphere = null;
 
-				if (xorSplit.getAmountVerifiers() == api.getGlobalSphereList().size()) {
+				if (xorSplit.getAmountVerifiers() == api.getPrivateSphere().size()) {
 					// annotate "private" to the xor-split
 					sphere = modelInstance.newInstance(TextAnnotation.class);
 					String textContent = "[Voters] {Private}";
@@ -2008,7 +2008,7 @@ public class CommonFunctionality2 {
 					// add the shape of the text annotation to the xml file
 					CommonFunctionality2.generateShapeForTextAnnotation(modelInstance, sphere, gtw);
 
-				} else if (xorSplit.getAmountVerifiers() > api.getGlobalSphereList().size()) {
+				} else if (xorSplit.getAmountVerifiers() > api.getPrivateSphere().size()) {
 					// annotate "public" to the xor-split
 					sphere = modelInstance.newInstance(TextAnnotation.class);
 					String textContent = "[Voters] {Public}";
@@ -2124,16 +2124,16 @@ public class CommonFunctionality2 {
 
 	}
 
-	public static void generateNewModelsWithVotersAsBpmnConstruct(API api,
+	public static void generateNewModelsWithVotersAsBpmnConstruct(API2 api,
 			LinkedList<PModelWithAdditionalActors> pInstances, int upperBoundNewModels, String directoryToStoreModels,
 			boolean votingAsSubProcess, boolean mapModel) throws Exception, IOException {
 
 		try {
-			String fileName = api.getProcessFile().getName();
+			String fileName = api.getProcessModelFile().getName();
 
 			if (directoryToStoreModels == null || directoryToStoreModels.contentEquals("")) {
 				// directory will be the same directory as the process file from the api
-				directoryToStoreModels = api.getProcessFile().getParent();
+				directoryToStoreModels = api.getProcessModelFile().getParent();
 			}
 
 			if (upperBoundNewModels <= 0) {
@@ -2315,7 +2315,7 @@ public class CommonFunctionality2 {
 
 	}
 
-	private static void addTasksToVotingSystem(API api, BpmnModelInstance modelInstance, int i, BusinessRuleTask brt,
+	private static void addTasksToVotingSystem(API2 api, BpmnModelInstance modelInstance, int i, BusinessRuleTask brt,
 			BPMNExclusiveGateway bpmnEx, AbstractFlowNodeBuilder builder, String parallelSplit,
 			LinkedList<BPMNParticipant> voters, BPMNParticipant troubleShooter, String parallelJoin,
 			int exclusiveGtwCount, boolean votingAsSubProcess, boolean onlyOneTask) {

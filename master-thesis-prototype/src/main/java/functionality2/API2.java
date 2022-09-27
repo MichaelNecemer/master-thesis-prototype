@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
@@ -67,7 +68,7 @@ import functionality.ExcludeParticipantConstraint;
 import functionality.MandatoryParticipantConstraint;
 import functionality2.Enums.AlgorithmToPerform;
 
-public class API2 {
+public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAdditionalActors>>> {
 
 	private BpmnModelInstance modelInstance;
 	private File processModelFile;
@@ -94,6 +95,8 @@ public class API2 {
 	private LinkedList<Double> weightingParameters;
 	private HashMap<String, Double> executionTimeMap;
 	private int bound;
+	private HashSet<HashSet<BPMNBusinessRuleTask>> clusterSet;
+
 
 	public API2(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters) throws Exception {
 		if (weightingParameters.size() != 3) {
@@ -133,6 +136,7 @@ public class API2 {
 		this.staticSphereKey = "Static";
 		this.weakDynamicSphereKey = "Weak-Dynamic";
 		this.strongDynamicSphereKey = "Strong-Dynamic";
+		this.clusterSet = new HashSet<HashSet<BPMNBusinessRuleTask>>();
 		this.bound = 0;
 		// map all the elements from camunda
 		this.mapCamundaElements();
@@ -204,6 +208,7 @@ public class API2 {
 			// build a cluster of dependent brts
 			// brts inside a cluster share at least 1 common origin
 			HashSet<HashSet<BPMNBusinessRuleTask>> clusterSet = this.buildCluster(this.businessRuleTasks);
+			this.clusterSet = clusterSet;
 
 			// compute a priority list for the whole cluster
 			// compute private, static and wd sphere for origin and dataObject (without
@@ -231,6 +236,8 @@ public class API2 {
 							// compute the priority list for the origin
 							// calculate the amount of paths where a certain reader reads the dataObject
 							// from the origin
+							
+							// add the participant of the origin????
 							LinkedList<PriorityListEntry> priorityListForOriginAndDataObject = this
 									.computePriorityListForOrigin(origin, dataObject, pathsFromOriginToEnd,
 											this.privateSphere);
@@ -238,7 +245,7 @@ public class API2 {
 									.addAll(priorityListForOriginAndDataObject);
 
 							for (PriorityListEntry pEntry : priorityListForOriginAndDataObject) {
-								double amountPathsForCurrParticipant = pEntry.getAmountPathsWhereReaderReadsDataObject();
+								double penaltyForParticipant = pEntry.getPenaltyForReading();
 								BPMNParticipant participant = pEntry.getReader();
 
 																
@@ -261,15 +268,15 @@ public class API2 {
 								
 								double weightOfOrigin = Math.pow(2, -origin.getLabels().size());
 
-								double weightedAmountPathsForCurrParticipant = amountPathsForCurrParticipant * weightOfOrigin
+								double weightedPenalty = penaltyForParticipant * weightOfOrigin
 										*currWeight.getWeightWRD();
 								
 
 								if (!amountPathsPerParticipantInCluster.containsKey(participant)) {
-									amountPathsPerParticipantInCluster.put(participant, weightedAmountPathsForCurrParticipant);
+									amountPathsPerParticipantInCluster.put(participant, weightedPenalty);
 								} else {
 									double sumWeightedPathsForParticipant = amountPathsPerParticipantInCluster.get(participant);
-									double newSumWeightedPathsForParticipant = sumWeightedPathsForParticipant + weightedAmountPathsForCurrParticipant;
+									double newSumWeightedPathsForParticipant = sumWeightedPathsForParticipant + weightedPenalty;
 									amountPathsPerParticipantInCluster.put(participant, newSumWeightedPathsForParticipant);
 								}
 
@@ -279,8 +286,7 @@ public class API2 {
 					}
 				}
 
-				TreeMap<Double, LinkedList<BPMNParticipant>> costMapForCluster = new TreeMap<Double, LinkedList<BPMNParticipant>>(
-						(Collections.reverseOrder()));
+				TreeMap<Double, LinkedList<BPMNParticipant>> costMapForCluster = new TreeMap<Double, LinkedList<BPMNParticipant>>();
 				for (Entry<BPMNParticipant, Double> sorted : amountPathsPerParticipantInCluster.entrySet()) {
 					costMapForCluster.computeIfAbsent(sorted.getValue(), k -> new LinkedList<BPMNParticipant>())
 							.add(sorted.getKey());
@@ -2709,8 +2715,66 @@ public class API2 {
 		}
 
 		for (Entry<BPMNParticipant, Double> readerMapEntry : readerMap.entrySet()) {
+			
+			// calculate the penalty for reading the data object
+			// if data object requires
+			// private : penalty = 0
+			// static : penalty needs to be assigned for a reader in global sphere
+			// weak-dynamic: check if reader has > 0 paths where he reads the data object 
+			// strong-dynamic ? 
+			BPMNParticipant reader = readerMapEntry.getKey();
+			
+			// get the percentage of paths on which a participant reads the data object
+			double amountPathsOnWhichParticipantReads = readerMapEntry.getValue();
+			double fractionOfPaths = amountPathsOnWhichParticipantReads / pathsFromOriginToEnd.size();
+			
+			// if fractionOfPaths == 1 -> reader reads data object written by origin on each outgoing path starting at origin
+			// reader is SD at position of the origin 
+			double penalty = 0;
+			
+			if(fractionOfPaths < 1 && fractionOfPaths > 0) {
+				// reader reads data object written by origin on some paths, but not all outgoing from origin
+				// check if data object requires Strong-Dynamic
+				if (dataObject.getDefaultSphere().contentEquals("Strong-Dynamic")) {
+					penalty += weightingParameters.get(0);
+				}				
+			} else if(fractionOfPaths == 0) {
+				// reader does not read data object written by origin on any outgoing path
+				
+				// if data object requires static -> reader needs to be at least static
+				if(dataObject.getDefaultSphere().contentEquals("Static")) {
+					// check if reader is in static sphere of data object
+					if(!dataObject.getStaticSphere().contains(reader)){
+						penalty += weightingParameters.get(0);
+					}					
+				} else if(dataObject.getDefaultSphere().contentEquals("Weak-Dynamic")) {
+					// check if reader is in static sphere of data object
+					if(!dataObject.getStaticSphere().contains(reader)){
+						penalty += weightingParameters.get(0);
+					}	
+					
+					// the penalty for not being wd needs to be assigned too
+					penalty += weightingParameters.get(1);
+					
+				} else if (dataObject.getDefaultSphere().contentEquals("Strong-Dynamic")) {
+					
+					if(!dataObject.getStaticSphere().contains(reader)){
+						penalty += weightingParameters.get(0);
+					}	
+					
+					// the penalty for not being wd needs to be assigned too
+					penalty += weightingParameters.get(1);
+					
+					// the penalty for not being sd needs to be assigned too
+					penalty += weightingParameters.get(2);
+				}
+				
+				
+			}
+			
+			
 			PriorityListEntry entry = new PriorityListEntry(origin, dataObject, readerMapEntry.getKey(),
-					readerMapEntry.getValue());
+					readerMapEntry.getValue(), fractionOfPaths, penalty);
 			priorityList.add(entry);
 		}
 
@@ -2785,5 +2849,29 @@ public class API2 {
 	return pathsFromOriginOverCurrBrtToEnd;
 	
 	}
+	
+	
+	public HashSet<HashSet<BPMNBusinessRuleTask>> getClusterSet(){
+		return this.clusterSet;
+	}
 
+	public BPMNParticipant getTroubleShooter() {
+		return this.troubleShooter;
+	}
+	
+	public LinkedList<LinkedList<FlowNode>> getAllPathsThroughProcess(){
+		return this.pathsThroughProcess;
+	}
+	
+	public LinkedList<BPMNElement> getProcessElements(){
+		return this.processElements;
+	}
+	
+	public File getProcessModelFile() {
+		return this.processModelFile;
+	}
+	
+	public BpmnModelInstance getModelInstance(){
+		return this.modelInstance;
+	}
 }

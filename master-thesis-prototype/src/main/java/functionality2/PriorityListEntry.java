@@ -11,13 +11,16 @@ public class PriorityListEntry {
 	private BPMNDataObject dataObject;
 	private BPMNParticipant reader;
 	private double amountPathsWhereReaderReadsDataObject;
+	private double fractionOfPaths;
+	private double penaltyForReading;
 	
-	
-	public PriorityListEntry(BPMNTask origin, BPMNDataObject dataObject, BPMNParticipant reader, double amountPathsWhereReaderReadsDataObject) {
+	public PriorityListEntry(BPMNTask origin, BPMNDataObject dataObject, BPMNParticipant reader, double amountPathsWhereReaderReadsDataObject, double fractionOfPaths, double penaltyForReading) {
 		this.origin = origin;
 		this.dataObject = dataObject;
 		this.reader = reader; 
 		this.amountPathsWhereReaderReadsDataObject = amountPathsWhereReaderReadsDataObject;
+		this.fractionOfPaths = fractionOfPaths;
+		this.penaltyForReading = penaltyForReading;
 	}
 
 	public BPMNTask getOrigin() {
@@ -51,7 +54,23 @@ public class PriorityListEntry {
 	public void setAmountPathsWhereReaderReadsDataObject(double amountPathsWhereReaderReadsDataObject) {
 		this.amountPathsWhereReaderReadsDataObject = amountPathsWhereReaderReadsDataObject;
 	}
+
+	public double getPenaltyForReading() {
+		return penaltyForReading;
+	}
+
+	public void setPenaltyForReading(double penaltyForReading) {
+		this.penaltyForReading = penaltyForReading;
+	}
+
+	public double getFractionOfPaths() {
+		return fractionOfPaths;
+	}
+
+	public void setFractionOfPaths(double fractionOfPaths) {
+		this.fractionOfPaths = fractionOfPaths;
+	}
 	
-	
+		
 
 }
