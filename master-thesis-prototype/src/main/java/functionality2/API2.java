@@ -68,15 +68,13 @@ import functionality.ExcludeParticipantConstraint;
 import functionality.MandatoryParticipantConstraint;
 import functionality2.Enums.AlgorithmToPerform;
 
-public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAdditionalActors>>> {
+public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> {
 
 	private BpmnModelInstance modelInstance;
 	private File processModelFile;
 	private HashSet<BPMNParticipant> privateSphere;
 	private HashSet<BPMNParticipant> publicSphere;
-	private String algorithmToPerform;
-	private String clusterCondition;
-	private String amountPossibleCombinationsOfParticipants;
+	private Enums.AlgorithmToPerform algorithmToPerform;
 	private LinkedList<MandatoryParticipantConstraint> mandatoryParticipantConstraints;
 	private LinkedList<ExcludeParticipantConstraint> excludeParticipantConstraints;
 	private boolean modelWithLanes;
@@ -93,7 +91,7 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 	private String weakDynamicSphereKey;
 	private String strongDynamicSphereKey;
 	private LinkedList<Double> weightingParameters;
-	private HashMap<String, Double> executionTimeMap;
+	private HashMap<Enums.AlgorithmToPerform, Double> executionTimeMap;
 	private int bound;
 	private HashSet<HashSet<BPMNBusinessRuleTask>> clusterSet;
 
@@ -126,8 +124,7 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 		// set the default algorithm to perform
 		this.setAlgorithmToPerform(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
 		// set the default cluster condition
-		this.executionTimeMap = new HashMap<String, Double>();
-		this.amountPossibleCombinationsOfParticipants = "0";
+		this.executionTimeMap = new HashMap<Enums.AlgorithmToPerform, Double>();
 		this.mandatoryParticipantConstraints = new LinkedList<MandatoryParticipantConstraint>();
 		this.excludeParticipantConstraints = new LinkedList<ExcludeParticipantConstraint>();
 		this.modelWithLanes = false;
@@ -161,7 +158,7 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 			additionalActorsCombs = this.generatePossibleCombinationsOfAdditionalActorsWithBound(0);
 
 			// calculate the cost measure for the all additional actors combinations
-			this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject, new HashMap<BPMNTask,LinkedList<LinkedList<BPMNElement>>>(), new HashMap<BPMNTask,HashMap<BPMNBusinessRuleTask,LinkedList<LinkedList<BPMNElement>>>>(), new HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>>());
+			this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject, new HashMap<BPMNTask,LinkedList<LinkedList<BPMNElement>>>(), new HashMap<BPMNTask,HashMap<BPMNBusinessRuleTask,LinkedList<LinkedList<BPMNElement>>>>());
 
 		} else {
 			// all data objects are private
@@ -175,19 +172,12 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 		double executionTimeInSeconds = (double) executionTime / 1000000000;
 		System.out.println("Execution time in sec: " + executionTimeInSeconds);
 		System.out.println("Combs with bruteForce: " + additionalActorsCombs.size());
-		this.executionTimeMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE.name(), executionTimeInSeconds);
+		this.executionTimeMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, executionTimeInSeconds);
 		return additionalActorsCombs;
 	}
 
 	@SuppressWarnings("unchecked")
 	public LinkedList<PModelWithAdditionalActors> newMeasureHeuristic(int bound) throws Exception {
-
-		String key = "";
-		if (bound > 0) {
-			key = Enums.AlgorithmToPerform.HEURISTICWITHBOUND.name() + bound;
-		} else {
-			key = Enums.AlgorithmToPerform.HEURISTIC.name();
-		}
 
 		long startTime = System.nanoTime();
 
@@ -221,7 +211,6 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 			HashMap<BPMNTask, LinkedList<PriorityListEntry>> priorityListForOrigin = new HashMap<BPMNTask, LinkedList<PriorityListEntry>>();
 			LinkedList<LinkedList<Object>> combinationsPerBrt = new LinkedList<LinkedList<Object>>();
 			
-			HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>> weightMap = new HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>>();
 
 			for (HashSet<BPMNBusinessRuleTask> cluster : clusterSet) {
 				HashMap<BPMNParticipant, Double> amountPathsPerParticipantInCluster = new HashMap<BPMNParticipant, Double>();
@@ -245,31 +234,15 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 									.addAll(priorityListForOriginAndDataObject);
 
 							for (PriorityListEntry pEntry : priorityListForOriginAndDataObject) {
-								double penaltyForParticipant = pEntry.getPenaltyForReading();
 								BPMNParticipant participant = pEntry.getReader();
+								double penaltyForParticipant = pEntry.getPenaltyForReading();
+								double fractionOfPathsWhereParticipantReads = pEntry.getFractionOfPathsWhereReaderReadsDataObject();
+								double fractionOfPathsWhereParticipantOccurs = pEntry.getFractionOfPathsWhereParticipantOccurs();
 
-																
-								LinkedList<WeightWRD>weightListForBrt = weightMap.computeIfAbsent(brt, k -> new LinkedList<WeightWRD>());
-								WeightWRD currWeight = this.getWeightWRDWithParameters(weightMap, origin, brt,
-										dataObject);
-
-								if(currWeight==null) {									
-									LinkedList<LinkedList<BPMNElement>> pathsFromOriginOverBrtToEnd = this.getOrComputePathsFromOriginOverCurrBrtToEnd(pathFromOriginOverCurrBrtToEndMap, origin, brt);
-																		
-									double amountPathsWhereOriginWritesDataObjectForBrt = this
-											.getAmountPathsWhereOriginWritesDataOForReaderBrt(dataObject, origin, brt,
-													pathsFromOriginOverBrtToEnd);										
-									
-									WeightWRD weightWrd = new WeightWRD(origin, brt, dataObject);
-									weightListForBrt.add(weightWrd);
-									weightWrd.setWeightWRD(amountPathsWhereOriginWritesDataObjectForBrt);
-									currWeight = weightWrd;
-								} 
 								
 								double weightOfOrigin = Math.pow(2, -origin.getLabels().size());
 
-								double weightedPenalty = penaltyForParticipant * weightOfOrigin
-										*currWeight.getWeightWRD();
+								double weightedPenalty = penaltyForParticipant * weightOfOrigin; 
 								
 
 								if (!amountPathsPerParticipantInCluster.containsKey(participant)) {
@@ -307,7 +280,7 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 			pModelAddActors = this.generateAllPossiblePModelWithAdditionalActors(combinationsPerBrt);
 			
 			// calculate the cost measure for the all additional actors combinations found with the heuristic
-			this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject, pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap, weightMap);
+			this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject, pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
 			
 		} else {
 			pModelAddActors = this.generatePossibleCombinationsOfAdditionalActorsWithBound(bound);
@@ -316,7 +289,7 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 		long endTime = System.nanoTime();
 		long executionTime = endTime - startTime;
 		double executionTimeInSeconds = (double) executionTime / 1000000000;
-		this.executionTimeMap.put(key, executionTimeInSeconds);
+		this.executionTimeMap.put(Enums.AlgorithmToPerform.HEURISTIC, executionTimeInSeconds);
 
 		System.out.println("Combs with heuristic: " + pModelAddActors.size());
 		System.out.println("Run time heuristic in sec: " + executionTimeInSeconds);
@@ -1950,17 +1923,17 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 		return mapToReturn;
 	}
 
-	public synchronized HashMap<String, LinkedList<PModelWithAdditionalActors>> call()
+	public synchronized HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>> call()
 			throws NullPointerException, InterruptedException, Exception {
 		// TODO Auto-generated method stub
 		System.out.println("Call algorithm for: " + this.processModelFile.getAbsolutePath());
 
-		HashMap<String, LinkedList<PModelWithAdditionalActors>> mapToReturn = new HashMap<String, LinkedList<PModelWithAdditionalActors>>();
-		if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.EXHAUSTIVE.name())) {
+		HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>> mapToReturn = new HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>();
+		if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
 			LinkedList<PModelWithAdditionalActors> pInstBruteForce = this.exhaustiveSearch();
 			mapToReturn.putIfAbsent(this.algorithmToPerform, pInstBruteForce);
 
-		} else if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.HEURISTIC.name())) {
+		} else if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.HEURISTIC)) {
 			LinkedList<PModelWithAdditionalActors> pInstHeuristic = this.newMeasureHeuristic(this.bound);
 			mapToReturn.putIfAbsent(this.algorithmToPerform, pInstHeuristic);
 		}
@@ -1970,18 +1943,15 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 	}
 
 	public void setAlgorithmToPerform(Enums.AlgorithmToPerform algToPerform, int bound) {
-		String alg = algToPerform.name();
-		if (algToPerform.equals(Enums.AlgorithmToPerform.HEURISTICWITHBOUND)) {
-			alg += bound;
-		}
-		this.algorithmToPerform = alg;
+		this.algorithmToPerform = algToPerform;
+		this.bound = bound;
 	}
 
-	public HashMap<String, Double> getExecutionTimeMap() {
+	public HashMap<Enums.AlgorithmToPerform, Double> getExecutionTimeMap() {
 		return executionTimeMap;
 	}
 
-	public void setExecutionTimeMap(HashMap<String, Double> executionTimeMap) {
+	public void setExecutionTimeMap(HashMap<Enums.AlgorithmToPerform, Double> executionTimeMap) {
 		this.executionTimeMap = executionTimeMap;
 	}
 
@@ -2323,11 +2293,11 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 
 	public void computeGammaMeasure(PModelWithAdditionalActors pModelWithAdditionalActors,
 			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap,
-			HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap,
-			HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>> weightMap) throws Exception {
+			HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap) throws Exception {
 		// compute sd sphere for each combination (DataObject,Origin,BusinessRuleTask)
 		HashMap<BPMNParticipant, HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>>> sdSphereEntries = new HashMap<BPMNParticipant, HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>>>();
-
+		HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>> weightMap = new HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>>();
+		
 		for (AdditionalActors addActors : pModelWithAdditionalActors.getAdditionalActorsList()) {
 			BPMNBusinessRuleTask currBrt = addActors.getCurrBrt();
 			for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : currBrt.getLastWriterList().entrySet()) {
@@ -2676,6 +2646,7 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 			LinkedList<LinkedList<BPMNElement>> pathsFromOriginToEnd, HashSet<BPMNParticipant> privateSphere) {
 		LinkedList<PriorityListEntry> priorityList = new LinkedList<PriorityListEntry>();
 		HashMap<BPMNParticipant, Double> readerMap = new HashMap<BPMNParticipant, Double>();
+		HashMap<BPMNParticipant, Double> occurencesOfReaderMap = new HashMap<BPMNParticipant, Double>();
 
 		for (LinkedList<BPMNElement> path : pathsFromOriginToEnd) {
 			LinkedList<BPMNParticipant> readersAlreadyCountedOnPath = new LinkedList<BPMNParticipant>();
@@ -2683,6 +2654,14 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 				if (pathEl instanceof BPMNTask) {
 					BPMNTask task = (BPMNTask) pathEl;
 					BPMNParticipant participant = task.getParticipant();
+					if (!readersAlreadyCountedOnPath.contains(participant)) {
+						if (!occurencesOfReaderMap.containsKey(participant)) {
+							occurencesOfReaderMap.put(participant, 0.0);
+						}
+						double occurrencesOfReader = occurencesOfReaderMap.get(participant) + 1;
+						occurencesOfReaderMap.put(participant, occurrencesOfReader);
+					}
+
 					if (dataObject.getReaders().contains(task) && !task.equals(origin)) {
 						// another reader to same dataObject found
 						// get that reader and increase the amount of occurrences
@@ -2695,6 +2674,8 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 							readersAlreadyCountedOnPath.add(participant);
 						}
 					}
+					
+					
 
 					if (dataObject.getWriters().contains(task) && !task.equals(origin)) {
 						// another writer to same dataObject found
@@ -2717,12 +2698,14 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 		for (Entry<BPMNParticipant, Double> readerMapEntry : readerMap.entrySet()) {
 			
 			// calculate the penalty for reading the data object
-			// if data object requires
-			// private : penalty = 0
-			// static : penalty needs to be assigned for a reader in global sphere
-			// weak-dynamic: check if reader has > 0 paths where he reads the data object 
-			// strong-dynamic ? 
-			BPMNParticipant reader = readerMapEntry.getKey();
+			
+			BPMNParticipant participant = readerMapEntry.getKey();
+			
+			// get the fraction of paths on which a participant occurs 
+			// does not need to be a reader of the data object!
+			// but there must not be another writer in between
+			double amountPathsOnWhichParticipantOccurs = occurencesOfReaderMap.get(participant);
+			double fractionOfPathsWhereParticipantOccurs = amountPathsOnWhichParticipantOccurs / pathsFromOriginToEnd.size();
 			
 			// get the percentage of paths on which a participant reads the data object
 			double amountPathsOnWhichParticipantReads = readerMapEntry.getValue();
@@ -2744,12 +2727,12 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 				// if data object requires static -> reader needs to be at least static
 				if(dataObject.getDefaultSphere().contentEquals("Static")) {
 					// check if reader is in static sphere of data object
-					if(!dataObject.getStaticSphere().contains(reader)){
+					if(!dataObject.getStaticSphere().contains(participant)){
 						penalty += weightingParameters.get(0);
 					}					
 				} else if(dataObject.getDefaultSphere().contentEquals("Weak-Dynamic")) {
 					// check if reader is in static sphere of data object
-					if(!dataObject.getStaticSphere().contains(reader)){
+					if(!dataObject.getStaticSphere().contains(participant)){
 						penalty += weightingParameters.get(0);
 					}	
 					
@@ -2758,7 +2741,7 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 					
 				} else if (dataObject.getDefaultSphere().contentEquals("Strong-Dynamic")) {
 					
-					if(!dataObject.getStaticSphere().contains(reader)){
+					if(!dataObject.getStaticSphere().contains(participant)){
 						penalty += weightingParameters.get(0);
 					}	
 					
@@ -2774,7 +2757,7 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 			
 			
 			PriorityListEntry entry = new PriorityListEntry(origin, dataObject, readerMapEntry.getKey(),
-					readerMapEntry.getValue(), fractionOfPaths, penalty);
+					readerMapEntry.getValue(), fractionOfPaths,fractionOfPathsWhereParticipantOccurs, penalty);
 			priorityList.add(entry);
 		}
 
@@ -2783,8 +2766,9 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 
 	public void calculateMeasure(LinkedList<PModelWithAdditionalActors> additionalActorsCombs,
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
-			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject, HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap, HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap, HashMap<BPMNBusinessRuleTask, LinkedList<WeightWRD>> weightMap) throws Exception {
+			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject, HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap, HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap) throws Exception {
 		
+	
 		
 		for (PModelWithAdditionalActors pModelWithAdditionalActors : additionalActorsCombs) {
 			// compute alpha measure
@@ -2795,7 +2779,7 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 
 			// compute gamma measure
 			this.computeGammaMeasure(pModelWithAdditionalActors, pathsFromOriginToEndMap,
-					pathFromOriginOverCurrBrtToEndMap, weightMap);
+					pathFromOriginOverCurrBrtToEndMap);
 
 			// compute sum measure for current pModelWithAdditionalActors
 			// i.e. compute alpha, beta, gamma measure and weight it with given parameters
@@ -2873,5 +2857,9 @@ public class API2 implements Callable<HashMap<String, LinkedList<PModelWithAddit
 	
 	public BpmnModelInstance getModelInstance(){
 		return this.modelInstance;
+	}
+	
+	public LinkedList<BPMNBusinessRuleTask> getBusinessRuleTasks(){
+		return this.businessRuleTasks;
 	}
 }

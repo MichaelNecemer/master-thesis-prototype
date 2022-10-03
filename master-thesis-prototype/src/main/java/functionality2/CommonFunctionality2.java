@@ -516,7 +516,7 @@ public class CommonFunctionality2 {
 				if (f instanceof Task) {
 					Task currTask = (Task) f;
 					if(f.getIncoming().size()>1) {
-						throw new Exception(f.getName()+" can not have >1 incoming edges!");
+						throw new Exception(f.getName()+" can not have > 1 incoming edges!");
 					}
 					if (!currTask.getDataInputAssociations().isEmpty()) {
 						// task is a reader
@@ -1013,7 +1013,6 @@ public class CommonFunctionality2 {
 	public static boolean isModelBlockStructured(BpmnModelInstance modelInstance)
 			throws NullPointerException, Exception {
 		if (modelInstance.getModelElementsByType(Gateway.class).size() % 2 != 0) {
-			System.out.println("!!!");
 			return false;
 		}
 		for (Gateway gtw : modelInstance.getModelElementsByType(Gateway.class)) {
@@ -1166,24 +1165,9 @@ public class CommonFunctionality2 {
 		return newFile;
 	}
 
-	public static String getNextStricterSphere(String sphere) {
-		sphere.trim();
-		if (sphere.contentEquals("Public")) {
-			return "Global";
-		} else if (sphere.contentEquals("Global")) {
-			return "Static";
-		} else if (sphere.contentEquals("Static")) {
-			return "Weak-Dynamic";
 
-		} else if (sphere.contentEquals("Weak-Dynamic")) {
-			return "Strong-Dynamic";
-		} else
 
-			return "";
-
-	}
-
-	public static int getGlobalSphere(BpmnModelInstance modelInstance, boolean modelWithLanes) {
+	public static int getPrivateSphere(BpmnModelInstance modelInstance, boolean modelWithLanes) {
 
 		LinkedList<String> participants = new LinkedList<String>();
 
@@ -1212,7 +1196,7 @@ public class CommonFunctionality2 {
 		return participants.size();
 	}
 
-	public static LinkedList<String> getGlobalSphereList(BpmnModelInstance modelInstance, boolean modelWithLanes) {
+	public static LinkedList<String> getPrivateSphereList(BpmnModelInstance modelInstance, boolean modelWithLanes) {
 
 		LinkedList<String> participants = new LinkedList<String>();
 
@@ -1230,7 +1214,7 @@ public class CommonFunctionality2 {
 			}
 		} else {
 			// model is with lanes
-			// only add the lane to global sphere if there is a task on it
+			// only add the lane to private sphere if there is a task on it
 			for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
 				for (FlowNode nodeOnLane : l.getFlowNodeRefs()) {
 					if (nodeOnLane instanceof Task && !participants.contains(l.getName())) {
@@ -1244,7 +1228,7 @@ public class CommonFunctionality2 {
 
 	}
 
-	public static void generateNewModelAndIncreaseVotersForEachDataObject(String pathToFile, int increaseBy) {
+	public static void generateNewModelAndIncreaseVerifiersForEachDataObject(String pathToFile, int increaseBy) {
 		File file = new File(pathToFile);
 		BpmnModelInstance modelInstance = Bpmn.readModelFromFile(file);
 
@@ -1253,20 +1237,20 @@ public class CommonFunctionality2 {
 			modelWithLanes = false;
 		}
 
-		int maxParticipants = CommonFunctionality2.getGlobalSphere(modelInstance, modelWithLanes);
+		int maxParticipants = CommonFunctionality2.getPrivateSphere(modelInstance, modelWithLanes);
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getIncoming().size() == 1 && gtw.getOutgoing().size() >= 2) {
 				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-							if (tx.getTextContent().startsWith("[Voters]")) {
+							if (tx.getTextContent().startsWith("[Verifiers]")) {
 								String string = tx.getTextContent();
 								String substr = string.substring(string.indexOf('{') + 1, string.indexOf(','));
 
-								int currAmountVoters = Integer.parseInt(substr);
-								if (currAmountVoters < maxParticipants) {
-									int amountAfterIncreasing = currAmountVoters + increaseBy;
+								int currAmountVerifiers = Integer.parseInt(substr);
+								if (currAmountVerifiers < maxParticipants) {
+									int amountAfterIncreasing = currAmountVerifiers + increaseBy;
 									string.replaceFirst(substr, amountAfterIncreasing + "");
 									tx.setTextContent(string);
 								}
@@ -1316,9 +1300,6 @@ public class CommonFunctionality2 {
 
 			if (tx.getTextContent().startsWith("Default")) {
 
-				String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{') + 1,
-						tx.getTextContent().indexOf('}'));
-
 				StringBuilder sb = new StringBuilder();
 				sb.append(tx.getTextContent().substring(0, tx.getTextContent().indexOf('{')));
 
@@ -1335,7 +1316,7 @@ public class CommonFunctionality2 {
 
 	}
 
-	public static void increaseVotersPerDataObject(BpmnModelInstance modelInstance, int currValue)
+	public static void increaseVerifiersPerDataObject(BpmnModelInstance modelInstance, int currValue)
 			throws IOException, ParserConfigurationException, SAXException {
 
 		boolean modelWithLanes = true;
@@ -1343,33 +1324,33 @@ public class CommonFunctionality2 {
 			modelWithLanes = false;
 		}
 
-		int maxParticipants = CommonFunctionality2.getGlobalSphere(modelInstance, modelWithLanes);
+		int maxParticipants = CommonFunctionality2.getPrivateSphere(modelInstance, modelWithLanes);
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getIncoming().size() == 1 && gtw.getOutgoing().size() >= 2) {
 				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-							if (tx.getTextContent().startsWith("[Voters]")) {
+							if (tx.getTextContent().startsWith("[Verifiers]")) {
 
 								String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{') + 1,
 										tx.getTextContent().indexOf('}'));
 								String[] values = subString.split(",");
 
-								int currAmountVoters = Integer.parseInt(values[0]);
-								if (currAmountVoters <= maxParticipants && currValue <= maxParticipants) {
+								int currAmountVerifiers = Integer.parseInt(values[0]);
+								if (currAmountVerifiers <= maxParticipants && currValue <= maxParticipants) {
 									int amountAfterIncreasing = currValue;
 
 									int lowerBound = (int) Math.ceil((double) amountAfterIncreasing / 2) + 1;
-									int randomCountVotersSameDecision = 0;
+									int randomCountVerifiersSameDecision = 0;
 									if (lowerBound < currValue) {
-										randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
+										randomCountVerifiersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
 												amountAfterIncreasing + 1);
 									} else {
-										randomCountVotersSameDecision = currValue;
+										randomCountVerifiersSameDecision = currValue;
 									}
 									StringBuilder sb = new StringBuilder();
-									sb.append("[Voters]{" + amountAfterIncreasing + "," + randomCountVotersSameDecision
+									sb.append("[Verifiers]{" + amountAfterIncreasing + "," + randomCountVerifiersSameDecision
 											+ "," + values[2] + "}");
 
 									Text text = modelInstance.newInstance(Text.class);
@@ -1390,44 +1371,44 @@ public class CommonFunctionality2 {
 
 	}
 
-	public static void increaseVotersPerDataObject(File file, String directoryToStore, String suffixName, int currValue)
+	public static void increaseVerifiersPerDataObject(File file, String directoryToStore, String suffixName, int currValue)
 			throws IOException, ParserConfigurationException, SAXException {
 		BpmnModelInstance modelInstance = Bpmn.readModelFromFile(file);
 		String fileName = file.getName().substring(0, file.getName().indexOf(".bpmn"));
-		String iterationName = "_amountVoters";
+		String iterationName = "_amountVerifiers";
 
 		boolean modelWithLanes = true;
 		if (modelInstance.getModelElementsByType(Lane.class).isEmpty()) {
 			modelWithLanes = false;
 		}
 
-		int maxParticipants = CommonFunctionality2.getGlobalSphere(modelInstance, modelWithLanes);
+		int maxParticipants = CommonFunctionality2.getPrivateSphere(modelInstance, modelWithLanes);
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getIncoming().size() == 1 && gtw.getOutgoing().size() >= 2) {
 				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-							if (tx.getTextContent().startsWith("[Voters]")) {
+							if (tx.getTextContent().startsWith("[Verifiers]")) {
 
 								String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{') + 1,
 										tx.getTextContent().indexOf('}'));
 								String[] values = subString.split(",");
 
-								int currAmountVoters = Integer.parseInt(values[0]);
-								if (currAmountVoters <= maxParticipants && currValue <= maxParticipants) {
+								int currAmountVerifiers = Integer.parseInt(values[0]);
+								if (currAmountVerifiers <= maxParticipants && currValue <= maxParticipants) {
 									int amountAfterIncreasing = currValue;
 
 									int lowerBound = (int) Math.ceil((double) amountAfterIncreasing / 2) + 1;
-									int randomCountVotersSameDecision = 0;
+									int randomCountVerifiersSameDecision = 0;
 									if (lowerBound < currValue) {
-										randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
+										randomCountVerifiersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
 												amountAfterIncreasing + 1);
 									} else {
-										randomCountVotersSameDecision = currValue;
+										randomCountVerifiersSameDecision = currValue;
 									}
 									StringBuilder sb = new StringBuilder();
-									sb.append("[Voters]{" + amountAfterIncreasing + "," + randomCountVotersSameDecision
+									sb.append("[Verifiers]{" + amountAfterIncreasing + "," + randomCountVerifiersSameDecision
 											+ "," + values[2] + "}");
 
 									Text text = modelInstance.newInstance(Text.class);
@@ -1446,8 +1427,8 @@ public class CommonFunctionality2 {
 
 		}
 		if (!iterationName.isEmpty()) {
-			String modelWithNewAmountVoters = fileName;
-			CommonFunctionality2.writeChangesToFile(modelInstance, modelWithNewAmountVoters, directoryToStore,
+			String modelWithNewAmountVerifiers = fileName;
+			CommonFunctionality2.writeChangesToFile(modelInstance, modelWithNewAmountVerifiers, directoryToStore,
 					suffixName);
 		}
 	}
@@ -1633,22 +1614,22 @@ public class CommonFunctionality2 {
 
 	}
 
-	public static int getSumAmountVotersOfModel(BpmnModelInstance modelInstance) {
+	public static int getSumAmountVerifiersOfModel(BpmnModelInstance modelInstance) {
 
-		int sumAmountVoters = 0;
+		int sumAmountVerifiers = 0;
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getIncoming().size() == 1 && gtw.getOutgoing().size() >= 2) {
 				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-							if (tx.getTextContent().startsWith("[Voters]")) {
+							if (tx.getTextContent().startsWith("[Verifiers]")) {
 
 								String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{') + 1,
 										tx.getTextContent().indexOf('}'));
 								String[] values = subString.split(",");
 								if (!values[0].contentEquals("Public")) {
-									int currAmountVoters = Integer.parseInt(values[0]);
-									sumAmountVoters += currAmountVoters;
+									int currAmountVerifiers = Integer.parseInt(values[0]);
+									sumAmountVerifiers += currAmountVerifiers;
 								}
 							}
 						}
@@ -1657,25 +1638,25 @@ public class CommonFunctionality2 {
 
 			}
 		}
-		return sumAmountVoters;
+		return sumAmountVerifiers;
 	}
 
-	public static double getAverageAmountVotersOfModel(BpmnModelInstance modelInstance) {
+	public static double getAverageAmountVerifiersOfModel(BpmnModelInstance modelInstance) {
 		int amountGtws = 0;
-		double sumAmountVoters = 0;
+		double sumAmountVerifiers = 0;
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getIncoming().size() == 1 && gtw.getOutgoing().size() >= 2) {
 				for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 					for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 						if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-							if (tx.getTextContent().startsWith("[Voters]")) {
+							if (tx.getTextContent().startsWith("[Verifiers]")) {
 
 								String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{') + 1,
 										tx.getTextContent().indexOf('}'));
 								String[] values = subString.split(",");
 
-								double currAmountVoters = Double.parseDouble(values[0]);
-								sumAmountVoters += currAmountVoters;
+								double currAmountVerifiers = Double.parseDouble(values[0]);
+								sumAmountVerifiers += currAmountVerifiers;
 								amountGtws++;
 							}
 						}
@@ -1687,7 +1668,7 @@ public class CommonFunctionality2 {
 		if (amountGtws == 0) {
 			return 0;
 		}
-		return ((double) sumAmountVoters / amountGtws);
+		return ((double) sumAmountVerifiers / amountGtws);
 	}
 
 	public static double getSphereSumOfModel(BpmnModelInstance modelInstance) {
@@ -1716,7 +1697,7 @@ public class CommonFunctionality2 {
 											sumSpheres += 2;
 										} else if (subString.contentEquals("Static")) {
 											sumSpheres += 1;
-										} else if (subString.contentEquals("Global")) {
+										} else if (subString.contentEquals("Private")) {
 											sumSpheres += 0;
 
 										}
@@ -1746,47 +1727,47 @@ public class CommonFunctionality2 {
 		return amountTasks;
 	}
 
-	public static List<Integer> maxVoterCombsPerGatewayFromProcessDimension(double processDimensionSize,
-			int amountDecisions, int globalSphere, int minVotersPerDecision, boolean equallyDistributed)
+	public static List<Integer> maxVerifiersCombsPerGatewayFromProcessDimension(double processDimensionSize,
+			int amountDecisions, int privateSphere, int minVerifiersPerDecision, boolean equallyDistributed)
 			throws Exception {
-		// calculate the amount of maximum voter combinations per gateway to fit the
+		// calculate the amount of maximum verifiers combinations per gateway to fit the
 		// processDimensionSize
 		// e.g. processDimensonSize 10000 with 4 gtws -> if equally distributed each
-		// decision has 10 voterCombinations which is e.g. binomial coefficient of 5
+		// decision has 10 verifiersCombinations which is e.g. binomial coefficient of 5
 		// over 3
-		// decisions should have 2 voters at least
+		// decisions should have 2 verifiers at least
 
-		if (globalSphere < 2) {
+		if (privateSphere < 2) {
 			throw new Exception("Model shoud have >= 2 participants!");
 		}
-		if (minVotersPerDecision < 2) {
-			throw new Exception("Model should have >= 2 voters per decision");
+		if (minVerifiersPerDecision < 2) {
+			throw new Exception("Model should have >= 2 verifiers per decision");
 		}
-		if (minVotersPerDecision > globalSphere) {
-			throw new Exception("Minimum voters per decision can not be > than global sphere!");
+		if (minVerifiersPerDecision > privateSphere) {
+			throw new Exception("Minimum verifiers per decision can not be > than private sphere!");
 
 		}
 
-		LinkedList<Integer> votersPerGtw = new LinkedList<Integer>();
+		LinkedList<Integer> verifiersPerGtw = new LinkedList<Integer>();
 		if (equallyDistributed) {
-			// each decision has the same size of voter combinations
-			double equallyDistributedVoterCombs = Math.floor(processDimensionSize / amountDecisions);
-			// n is the global sphere
-			// k is the amount of voters for the gtw
+			// each decision has the same size of verifiers combinations
+			double equallyDistributedVerifiersCombs = Math.floor(processDimensionSize / amountDecisions);
+			// n is the private sphere
+			// k is the amount of verifiers for the gtw
 			// find the k such that the binomial coefficient n over k is <= the
-			// equallyDistributedVoterCombs
+			// equallyDistributedVerifiersCombs
 			int prevK = 0;
-			for (int k = minVotersPerDecision; k <= globalSphere; k++) {
-				double combs = CommonFunctionality2.binom(globalSphere, k);
-				if (combs <= equallyDistributedVoterCombs) {
+			for (int k = minVerifiersPerDecision; k <= privateSphere; k++) {
+				double combs = CommonFunctionality2.binom(privateSphere, k);
+				if (combs <= equallyDistributedVerifiersCombs) {
 					prevK = k;
 				} else {
 					if (prevK == 0) {
-						throw new Exception("Voter will be 0!");
+						throw new Exception("Verifiers will be 0!");
 					}
 
-					for (int size = 0; size <= globalSphere; size++) {
-						votersPerGtw.add(prevK);
+					for (int size = 0; size <= privateSphere; size++) {
+						verifiersPerGtw.add(prevK);
 					}
 					break;
 				}
@@ -1794,25 +1775,25 @@ public class CommonFunctionality2 {
 			}
 
 		} else {
-			// each gtw can have a different size of voters for the decision
-			double minVoterCombsPerDecision = Math.floor(processDimensionSize / minVotersPerDecision);
-			List<LinkedList<Integer>> voterCombsPerGtwLists = CommonFunctionality2
+			// each gtw can have a different size of verifiers for the decision
+			double minVerifiersCombsPerDecision = Math.floor(processDimensionSize / minVerifiersPerDecision);
+			List<LinkedList<Integer>> verifiersCombsPerGtwLists = CommonFunctionality2
 					.computeRepartitionNumberWithResultBound((int) processDimensionSize, amountDecisions,
-							(int) minVoterCombsPerDecision, 5);
-			LinkedList<Integer> voterCombsPerGtwList = CommonFunctionality2.getRandomItem(voterCombsPerGtwLists);
+							(int) minVerifiersCombsPerDecision, 5);
+			LinkedList<Integer> verifiersCombsPerGtwList = CommonFunctionality2.getRandomItem(verifiersCombsPerGtwLists);
 
-			for (int i = 0; i < voterCombsPerGtwList.size(); i++) {
-				int currVotersComb = voterCombsPerGtwList.get(i);
+			for (int i = 0; i < verifiersCombsPerGtwList.size(); i++) {
+				int currVerifiersComb = verifiersCombsPerGtwList.get(i);
 				int prevK = 0;
-				for (int k = minVotersPerDecision; k <= globalSphere; k++) {
-					double combs = CommonFunctionality2.binom(globalSphere, k);
-					if (combs <= currVotersComb) {
+				for (int k = minVerifiersPerDecision; k <= privateSphere; k++) {
+					double combs = CommonFunctionality2.binom(privateSphere, k);
+					if (combs <= currVerifiersComb) {
 						prevK = k;
 					} else {
 						if (prevK == 0) {
-							throw new Exception("Voter will be 0!");
+							throw new Exception("Verifiers will be 0!");
 						}
-						votersPerGtw.add(prevK);
+						verifiersPerGtw.add(prevK);
 						break;
 					}
 
@@ -1821,11 +1802,11 @@ public class CommonFunctionality2 {
 
 		}
 
-		if (votersPerGtw.size() != amountDecisions) {
-			throw new Exception("Failed: VotersPerGtw!=amountDecisions!");
+		if (verifiersPerGtw.size() != amountDecisions) {
+			throw new Exception("Failed: VerifiersPerGtw!=amountDecisions!");
 		}
 
-		return votersPerGtw;
+		return verifiersPerGtw;
 
 	}
 
@@ -1937,13 +1918,11 @@ public class CommonFunctionality2 {
 	public static void generateNewModelsWithAnnotatedChosenParticipants(API2 api,
 			LinkedList<PModelWithAdditionalActors> pInstances, int upperBoundNewModels,
 			String directoryToStoreAnnotatedModels) {
-		// call this method after the localMinimumAlgorithm has found the best
-		// solution(s)
 		// for each solution -> generate a new bpmn file
 		// annotate the participants to the xor-splits
 		// if amount participants generated for voting equals the participants in the
-		// global sphere: mark the xor-split as private
-		// if amount participants needed for voting > participants in the global sphere
+		// private sphere: mark the xor-split as private
+		// if amount participants needed for voting > participants in the private sphere
 		// or if it is marked as public already:
 		// mark the xor-split as public
 
@@ -1997,7 +1976,7 @@ public class CommonFunctionality2 {
 				if (xorSplit.getAmountVerifiers() == api.getPrivateSphere().size()) {
 					// annotate "private" to the xor-split
 					sphere = modelInstance.newInstance(TextAnnotation.class);
-					String textContent = "[Voters] {Private}";
+					String textContent = "[Verifiers] {Private}";
 
 					sphere.setTextFormat("text/plain");
 					Text text = modelInstance.newInstance(Text.class);
@@ -2011,7 +1990,7 @@ public class CommonFunctionality2 {
 				} else if (xorSplit.getAmountVerifiers() > api.getPrivateSphere().size()) {
 					// annotate "public" to the xor-split
 					sphere = modelInstance.newInstance(TextAnnotation.class);
-					String textContent = "[Voters] {Public}";
+					String textContent = "[Verifiers] {Public}";
 
 					sphere.setTextFormat("text/plain");
 					Text text = modelInstance.newInstance(Text.class);
@@ -2023,14 +2002,14 @@ public class CommonFunctionality2 {
 					CommonFunctionality2.generateShapeForTextAnnotation(modelInstance, sphere, gtw);
 
 				} else {
-					// annotate the chosen Participants to the xor-split that will be the voters
+					// annotate the chosen Participants to the xor-split that will be the verifiers
 					sphere = modelInstance.newInstance(TextAnnotation.class);
 					sphere.setTextFormat("text/plain");
 
 					Text text = modelInstance.newInstance(Text.class);
 
 					StringBuilder sb = new StringBuilder();
-					sb.append("[Voters]{");
+					sb.append("[Verifiers]{");
 					for (BPMNParticipant participant : addActors.getAdditionalActors()) {
 						sb.append(participant.getName() + ", ");
 					}
@@ -2124,7 +2103,7 @@ public class CommonFunctionality2 {
 
 	}
 
-	public static void generateNewModelsWithVotersAsBpmnConstruct(API2 api,
+	public static void generateNewModelsWithVerifiersAsBpmnConstruct(API2 api,
 			LinkedList<PModelWithAdditionalActors> pInstances, int upperBoundNewModels, String directoryToStoreModels,
 			boolean votingAsSubProcess, boolean mapModel) throws Exception, IOException {
 
@@ -2317,10 +2296,10 @@ public class CommonFunctionality2 {
 
 	private static void addTasksToVotingSystem(API2 api, BpmnModelInstance modelInstance, int i, BusinessRuleTask brt,
 			BPMNExclusiveGateway bpmnEx, AbstractFlowNodeBuilder builder, String parallelSplit,
-			LinkedList<BPMNParticipant> voters, BPMNParticipant troubleShooter, String parallelJoin,
+			LinkedList<BPMNParticipant> verifiers, BPMNParticipant troubleShooter, String parallelJoin,
 			int exclusiveGtwCount, boolean votingAsSubProcess, boolean onlyOneTask) {
-		if (voters.isEmpty()) {
-			System.err.println("No voters selected");
+		if (verifiers.isEmpty()) {
+			System.err.println("No verifiers selected");
 
 		}
 
@@ -2332,7 +2311,7 @@ public class CommonFunctionality2 {
 		String exclusiveGatewayDeciderJoinId = "";
 		String exclusiveGatewayDeciderName = "";
 
-		Iterator<BPMNParticipant> votersIter = voters.iterator();
+		Iterator<BPMNParticipant> verifiersIter = verifiers.iterator();
 		ArrayList<Task> alreadyModelled = new ArrayList<Task>();
 		Set<BPMNDataObject> allBPMNDataObjects = new HashSet<BPMNDataObject>();
 
@@ -2348,7 +2327,7 @@ public class CommonFunctionality2 {
 		if (onlyOneTask) {
 			int votingTaskId = BPMNTask.increaseVotingTaskId();
 
-			BPMNParticipant nextParticipant = votersIter.next();
+			BPMNParticipant nextParticipant = verifiersIter.next();
 			String serviceTaskId = "serviceTask_CollectVotes" + i;
 			builder.userTask("Task_votingTask" + votingTaskId).name("VotingTask " + nextParticipant.getName())
 					.serviceTask(serviceTaskId).name("Collect Votes").connectTo(targetGtw.getId());
@@ -2372,9 +2351,9 @@ public class CommonFunctionality2 {
 			builder.exclusiveGateway(exclusiveGatewayJoinId).name(exclusiveGatewayName).parallelGateway(parallelSplitId)
 					.name(parallelSplit);
 
-			while (votersIter.hasNext()) {
+			while (verifiersIter.hasNext()) {
 
-				BPMNParticipant nextParticipant = votersIter.next();
+				BPMNParticipant nextParticipant = verifiersIter.next();
 
 				boolean skip = false;
 
@@ -2409,7 +2388,7 @@ public class CommonFunctionality2 {
 					}
 
 				}
-				if (!votersIter.hasNext()) {
+				if (!verifiersIter.hasNext()) {
 
 					String serviceTaskId = "serviceTask_CollectVotes" + i;
 					builder.moveToNode(parallelJoinId).serviceTask(serviceTaskId).name("Collect Votes")
@@ -2461,7 +2440,7 @@ public class CommonFunctionality2 {
 					}
 
 				} else {
-					if (votersIter.hasNext()) {
+					if (verifiersIter.hasNext()) {
 						builder.moveToNode(parallelSplitId);
 					}
 				}
@@ -2520,7 +2499,7 @@ public class CommonFunctionality2 {
 							// remove XOR-Annotations for the amount of participants needed
 							// remove Decision-Annotations for BusinessRuleTasks
 
-							if ((txt.getTextContent().startsWith("[Voters]")
+							if ((txt.getTextContent().startsWith("[Verifiers]")
 									|| txt.getTextContent().startsWith("[Decision]")) && a.getSource().equals(flowNode)
 									&& txt.getId().equals(a.getTarget().getId())) {
 								for (BpmnEdge edge : modelInstance.getModelElementsByType(BpmnEdge.class)) {
@@ -2797,23 +2776,23 @@ public class CommonFunctionality2 {
 
 
 	
-	public static void generateNewModelsUntilGlobalSphereReached(File model, int globalSphereLowerBound,
+	public static void generateNewModelsUntilPrivateSphereReached(File model, int privateSphereLowerBound,
 			int amountNewProcessesToCreatePerIteration, String directoryToStore) {
 
 		String fileNameWithoutExtension = model.getName().replace(".bpmn", "").trim();
 		BpmnModelInstance modelInstance = Bpmn.readModelFromFile(model);
-		int globalSphereUpperBound = modelInstance.getModelElementsByType(Task.class).size();
+		int privateSphereUpperBound = modelInstance.getModelElementsByType(Task.class).size();
 
-		while (globalSphereLowerBound <= globalSphereUpperBound) {
-			// globalSphereLowerBound = amount of different participants for this model
-			// globalSphereLowerBound e.g. 3 -> create
+		while (privateSphereLowerBound <= privateSphereUpperBound) {
+			// privateSphereLowerBound = amount of different participants for this model
+			// privateSphereLowerBound e.g. 3 -> create
 			// amountNewProcessesToCreatePerIteration new Models where all tasks of the
 			// model have one of the 3 participants connected
 
 			for (int iteration = 0; iteration < amountNewProcessesToCreatePerIteration; iteration++) {
-				String suffix = "lb" + globalSphereLowerBound + "ub" + globalSphereUpperBound + "iter" + iteration;
+				String suffix = "lb" + privateSphereLowerBound + "ub" + privateSphereUpperBound + "iter" + iteration;
 				LinkedList<String> participantNames = new LinkedList<String>();
-				for (int i = 1; i <= globalSphereLowerBound; i++) {
+				for (int i = 1; i <= privateSphereLowerBound; i++) {
 					String participantName = "Participant_" + i;
 					participantNames.add(participantName);
 				}
@@ -2834,7 +2813,7 @@ public class CommonFunctionality2 {
 					Iterator<String> participantIter = participantsNeededToBeChosen.iterator();
 					if (participantIter.hasNext()) {
 						// first assign the participant once to a task to match the
-						// globalSphereLowerBound
+						// privateSphereLowerBound
 						String newParticipant = participantIter.next();
 						String newTaskName = currTaskName.replaceAll("(?<=\\[).*?(?=\\])", newParticipant);
 						currTask.setName(newTaskName);
@@ -2867,7 +2846,7 @@ public class CommonFunctionality2 {
 
 			}
 
-			globalSphereLowerBound++;
+			privateSphereLowerBound++;
 
 		}
 
@@ -3096,8 +3075,8 @@ public class CommonFunctionality2 {
 			boolean decisionTakerExcludeable, boolean alwaysMaxConstrained, boolean modelWithLanes,
 			String directoryToStore) throws Exception {
 		// upperBoundAmountParticipantsToExclude is the difference between the amount of
-		// needed voters and the global Sphere
-		// e.g. global sphere = 5, 3 people needed -> 2 is the max amount of
+		// needed verifiers and the private Sphere
+		// e.g. private sphere = 5, 3 people needed -> 2 is the max amount of
 		// participants to exclude
 
 		if (lowerBoundAmountParticipantsToExcludePerGtw < 0) {
@@ -3114,9 +3093,9 @@ public class CommonFunctionality2 {
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
 					String decisionTakerName = brtBeforeGtw.getName();
-					LinkedList<String> participantsToChooseFrom = CommonFunctionality2.getGlobalSphereList(modelInstance,
+					LinkedList<String> participantsToChooseFrom = CommonFunctionality2.getPrivateSphereList(modelInstance,
 							modelWithLanes);
-					int globalSphereSize = participantsToChooseFrom.size();
+					int privateSphereSize = participantsToChooseFrom.size();
 
 					// remove the decision taker from the list if necessary
 					if (!decisionTakerExcludeable) {
@@ -3134,18 +3113,18 @@ public class CommonFunctionality2 {
 						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 							for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 								if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-									if (tx.getTextContent().startsWith("[Voters]")) {
+									if (tx.getTextContent().startsWith("[Verifiers]")) {
 										String subStr = tx.getTextContent().substring(
 												tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
 
 										String[] data = subStr.split(",");
-										int amountVotersNeeded = Integer.parseInt(data[0]);
+										int amountVerifiersNeeded = Integer.parseInt(data[0]);
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
-											randomAmountConstraintsForGtw = globalSphereSize - amountVotersNeeded;
+											randomAmountConstraintsForGtw = privateSphereSize - amountVerifiersNeeded;
 										} else {
-											int maxConstraint = globalSphereSize - amountVotersNeeded;
+											int maxConstraint = privateSphereSize - amountVerifiersNeeded;
 
 											if (maxConstraint <= 0) {
 												// no constraints possible -> else model will not be valid
@@ -3168,7 +3147,7 @@ public class CommonFunctionality2 {
 
 										Collections.shuffle(participantsToChooseFrom);
 										Iterator<String> partIter = participantsToChooseFrom.iterator();
-										if (randomAmountConstraintsForGtw < (globalSphereSize - amountVotersNeeded)) {
+										if (randomAmountConstraintsForGtw < (privateSphereSize - amountVerifiersNeeded)) {
 											maxConstrainedModel = false;
 										}
 
@@ -3243,13 +3222,13 @@ public class CommonFunctionality2 {
 			boolean alwaysMaxConstrained, boolean modelWithLanes, String directoryToStore) throws Exception {
 		// if upperBoundAmountParticipantsToBeMandatoryPerGtw is < 0:
 		// upperBoundAmountParticipantsToBeMandatoryPerGtw is the needed amount of
-		// voters for the gateway
+		// verifiers for the gateway
 		// e.g. 3 people needed for voting -> 3 constraints for mandatory participants
 		// for the
 		// gtw
 		// if decisionTakerMandatory = true -> the participant of the brt will be
 		// mandatory
-		// else the mandatory participants will be chosen randomly from global sphere
+		// else the mandatory participants will be chosen randomly from private sphere
 
 		boolean constraintInserted = false;
 		boolean maxMandConstrained = true;
@@ -3267,7 +3246,7 @@ public class CommonFunctionality2 {
 					String decisionTakerName = brtBeforeGtw.getName();
 					String decisionTakerParticipant = decisionTakerName.substring(decisionTakerName.indexOf('[') + 1,
 							decisionTakerName.indexOf(']'));
-					LinkedList<String> participantsToChooseFrom = CommonFunctionality2.getGlobalSphereList(modelInstance,
+					LinkedList<String> participantsToChooseFrom = CommonFunctionality2.getPrivateSphereList(modelInstance,
 							modelWithLanes);
 
 					if (!participantsToChooseFrom.isEmpty()) {
@@ -3275,19 +3254,19 @@ public class CommonFunctionality2 {
 						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 							for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 								if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-									if (tx.getTextContent().startsWith("[Voters]")) {
+									if (tx.getTextContent().startsWith("[Verifiers]")) {
 										String subStr = tx.getTextContent().substring(
 												tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
 
 										String[] data = subStr.split(",");
-										int amountVotersNeeded = Integer.parseInt(data[0]);
+										int amountVerifiersNeeded = Integer.parseInt(data[0]);
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
-											randomAmountConstraintsForGtw = amountVotersNeeded;
+											randomAmountConstraintsForGtw = amountVerifiersNeeded;
 										} else {
 											if (upperBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
-												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVotersNeeded;
+												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVerifiersNeeded;
 											}
 
 											if (lowerBoundAmountParticipantsToBeMandatoryPerGtw < upperBoundAmountParticipantsToBeMandatoryPerGtw) {
@@ -3299,7 +3278,7 @@ public class CommonFunctionality2 {
 											}
 										}
 
-										if (randomAmountConstraintsForGtw != amountVotersNeeded) {
+										if (randomAmountConstraintsForGtw != amountVerifiersNeeded) {
 											// if one decision in the model is not constrained to maximum
 											maxMandConstrained = false;
 										}
@@ -3411,80 +3390,7 @@ public class CommonFunctionality2 {
 
 	}
 
-	public static String getNecessaryUpdate(String currentSphere, String requiredSphere) {
-		String necessaryUpdate = "";
-		if (!atLeastInSphere(currentSphere, requiredSphere)) {
-			if (requiredSphere.contentEquals("Strong-Dynamic")) {
-				if (currentSphere.contentEquals("Public")) {
-					necessaryUpdate = "publicToSD";
-				} else if (currentSphere.contentEquals("Global")) {
-					necessaryUpdate = "globalToSD";
-				} else if (currentSphere.contentEquals("Static")) {
-					necessaryUpdate = "staticToSD";
-				} else if (currentSphere.contentEquals("Weak-Dynamic")) {
-					necessaryUpdate = "wdToSD";
-				}
-			}
 
-			else if (requiredSphere.contentEquals("Weak-Dynamic")) {
-				if (currentSphere.contentEquals("Public")) {
-					necessaryUpdate = "publicToWD";
-				} else if (currentSphere.contentEquals("Global")) {
-					necessaryUpdate = "globalToWD";
-				} else if (currentSphere.contentEquals("Static")) {
-					necessaryUpdate = "staticToWD";
-				}
-			} else if (requiredSphere.contentEquals("Static")) {
-				if (currentSphere.contentEquals("Public")) {
-					necessaryUpdate = "publicToStatic";
-				} else if (currentSphere.contentEquals("Global")) {
-					necessaryUpdate = "globalToStatic";
-				}
-			}
-
-			else if (requiredSphere.contentEquals("Global")) {
-				if (currentSphere.contentEquals("Public")) {
-					necessaryUpdate = "publicToGlobal";
-				}
-			}
-
-		}
-
-		return necessaryUpdate;
-	}
-
-	public static boolean atLeastInSphere(String currentSphere, String requiredSphere) {
-		// return true if requiredSphere comprises the currentSphere
-		// if currentSphere e.g. WD and requiredSphere SD return false
-
-		// basic comparison -> if the spheres are the same, return true
-		if (requiredSphere.contentEquals(currentSphere)) {
-			return true;
-		} else {
-			if (requiredSphere.contentEquals("Strong-Dynamic")) {
-				return false;
-			}
-
-			else if (requiredSphere.contentEquals("Weak-Dynamic")) {
-				if (currentSphere.contentEquals("Strong-Dynamic")) {
-					return true;
-				}
-			} else if (requiredSphere.contentEquals("Static")) {
-				if (currentSphere.contentEquals("Weak-Dynamic") || currentSphere.contentEquals("Strong-Dynamic")) {
-					return true;
-				}
-
-			} else if (requiredSphere.contentEquals("Global")) {
-				if (currentSphere.contentEquals("Static") || currentSphere.contentEquals("Weak-Dynamic")
-						|| currentSphere.contentEquals("Strong-Dynamic")) {
-					return true;
-
-				}
-			}
-		}
-		return false;
-
-	}
 
 	public static boolean isNamedBranches(BpmnModelInstance modelInstance) {
 		for (Gateway gtw : modelInstance.getModelElementsByType(Gateway.class)) {
@@ -3875,6 +3781,27 @@ public class CommonFunctionality2 {
 		}
 
 		return allCheapestModels;
+	}
+
+	
+	public static String getLoggingForModelsWithAdditionalActors(Enums.AlgorithmToPerform algorithm, LinkedList<BPMNBusinessRuleTask>brts,
+			LinkedList<PModelWithAdditionalActors> pModels) {
+		if (pModels == null) {
+			return "";
+		}		
+		
+		for (int i = 1; i < pModels.size(); i++) {
+			PModelWithAdditionalActors currInst = pModels.get(i);
+			// check if each brt with xor split has additional actors
+			for(AdditionalActors addActors: currInst.getAdditionalActorsList()) {
+				if(!brts.contains(addActors.getCurrBrt())){
+					return "Not every decision has been calculated with "+algorithm.name();
+				}
+			}
+			
+		}
+
+		return "";
 	}
 
 
