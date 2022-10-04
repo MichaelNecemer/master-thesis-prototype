@@ -62,6 +62,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import functionality.CommonFunctionality;
+import functionality2.CommonFunctionality2;
 
 public class ProcessModelAnnotater implements Callable<File> {
 	// class takes a process model and annotates it with dataObjects, readers,
@@ -733,7 +734,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 			ExclusiveGateway gtw = (ExclusiveGateway) brt.getOutgoing().iterator().next().getTarget();
 
 			// insert tuples for xor-gateways
-			// tuples are e.g. (3,2,5) -> 3 Voters needed, 2 have to decide the same, loop
+			// tuples are e.g. (3,2,5) -> 3 verifiers needed, 2 have to decide the same, loop
 			// goes 5 times until the troubleshooter will take decision
 			// tuple can also be only: {Public}
 			boolean insert = true;
@@ -752,9 +753,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 				// check if decision will be public
 				int decideIfPublic = ThreadLocalRandom.current().nextInt(1, 101);
 
-				TextAnnotation votersAnnotation = modelInstance.newInstance(TextAnnotation.class);
+				TextAnnotation verifiersAnnotation = modelInstance.newInstance(TextAnnotation.class);
 				StringBuilder textContentBuilder = new StringBuilder();
-				textContentBuilder.append("[Voters]{");
+				textContentBuilder.append("[Verifiers]{");
 
 				if (probPublicDecision >= decideIfPublic) {
 					// xor will be annotated with {Public}
@@ -762,37 +763,37 @@ public class ProcessModelAnnotater implements Callable<File> {
 					textContentBuilder.append("Public");
 
 				} else {
-					int randomCountVotersNeeded = ThreadLocalRandom.current().nextInt(
+					int randomCountVerifiersNeeded = ThreadLocalRandom.current().nextInt(
 							lowerBoundAmountParticipantsPerDecision, upperBoundAmountParticipantsPerDecision + 1);
 
-					// second argument -> voters that need to decide the same
-					// must be bigger than the voters needed divided by 2 and rounded up to next int
-					// e.g. if 3 voters are needed -> 2 or 3 must decide the same
-					// e.g. if 5 voters are needed -> 3,4 or 5 must decide the same
-					int lowerBound = (int) Math.ceil((double) randomCountVotersNeeded / 2);
+					// second argument -> verifiers that need to decide the same
+					// must be bigger than the verifiers needed divided by 2 and rounded up to next int
+					// e.g. if 3 verifiers are needed -> 2 or 3 must decide the same
+					// e.g. if 5 verifiers are needed -> 3,4 or 5 must decide the same
+					int lowerBound = (int) Math.ceil((double) randomCountVerifiersNeeded / 2);
 
-					int randomCountVotersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
-							randomCountVotersNeeded + 1);
+					int randomCountVerifiersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
+							randomCountVerifiersNeeded + 1);
 					int randomCountIterations = ThreadLocalRandom.current().nextInt(1, 10 + 1);
 
 					// generate TextAnnotations for xor-splits
-					textContentBuilder.append(randomCountVotersNeeded + "," + randomCountVotersSameDecision + ","
+					textContentBuilder.append(randomCountVerifiersNeeded + "," + randomCountVerifiersSameDecision + ","
 							+ randomCountIterations);
 
 				}
 				textContentBuilder.append("}");
 
-				votersAnnotation.setTextFormat("text/plain");
+				verifiersAnnotation.setTextFormat("text/plain");
 				Text text = modelInstance.newInstance(Text.class);
 				text.setTextContent(textContentBuilder.toString());
-				votersAnnotation.setText(text);
-				gtw.getParentElement().addChildElement(votersAnnotation);
+				verifiersAnnotation.setText(text);
+				gtw.getParentElement().addChildElement(verifiersAnnotation);
 
-				generateShapeForTextAnnotation(votersAnnotation, gtw);
+				generateShapeForTextAnnotation(verifiersAnnotation, gtw);
 
 				Association assoc = modelInstance.newInstance(Association.class);
 				assoc.setSource(gtw);
-				assoc.setTarget(votersAnnotation);
+				assoc.setTarget(verifiersAnnotation);
 				gtw.getParentElement().addChildElement(assoc);
 				// DI element for the edge
 				BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
@@ -1230,11 +1231,10 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	public void addExcludeParticipantConstraintsOnModel(int probabilityForGatewayToHaveConstraint,
 			int lowerBoundAmountParticipantsToExcludePerGtw, int upperBoundAmountParticipantsToExcludePerGtw,
-			boolean decisionTakerExcludeable, boolean alwaysMaxConstrained) throws Exception {
+			boolean alwaysMaxConstrained) throws Exception {
 		// upperBoundAmountParticipantsToExclude is the difference between the amount of
-		// needed voters and the global Sphere
-		// e.g. global sphere = 5, 3 people needed -> 2 is the max amount of
-		// participants to exclude
+		// needed verifiers and the private Sphere minus the actor of the brt
+		
 		if (probabilityForGatewayToHaveConstraint <= 0) {
 			return;
 		}
@@ -1250,38 +1250,31 @@ public class ProcessModelAnnotater implements Callable<File> {
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
 					String decisionTakerName = brtBeforeGtw.getName();
-					LinkedList<String> participantsToChooseFrom = CommonFunctionality.getGlobalSphereList(modelInstance,
+					LinkedList<String> participantsToChooseFrom = CommonFunctionality2.getPrivateSphereList(modelInstance,
 							modelWithLanes);
-					int globalSphereSize = participantsToChooseFrom.size();
+					int privateSphereSize = participantsToChooseFrom.size();
+					
+					String participantName = CommonFunctionality2.getParticipantOfTask(modelInstance, brtBeforeGtw, modelWithLanes);
 
-					// remove the decision taker from the list if necessary
-					if (!decisionTakerExcludeable) {
-						for (String part : participantsToChooseFrom) {
-							if (decisionTakerName.contains(part)) {
-								participantsToChooseFrom.remove(part);
-								break;
-							}
-
-						}
-					}
-
+					participantsToChooseFrom.remove(participantName);
+					
 					if (!participantsToChooseFrom.isEmpty()) {
 
 						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 							for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 								if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-									if (tx.getTextContent().startsWith("[Voters]")) {
+									if (tx.getTextContent().startsWith("[Verifiers]")) {
 										String subStr = tx.getTextContent().substring(
 												tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
 
 										String[] data = subStr.split(",");
-										int amountVotersNeeded = Integer.parseInt(data[0]);
+										int amountVerifiersNeeded = Integer.parseInt(data[0]);
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
-											randomAmountConstraintsForGtw = globalSphereSize - amountVotersNeeded;
+											randomAmountConstraintsForGtw = privateSphereSize - amountVerifiersNeeded - 1;
 										} else {
-											int maxConstraint = globalSphereSize - amountVotersNeeded;
+											int maxConstraint = privateSphereSize - amountVerifiersNeeded - 1;
 
 											if (maxConstraint <= 0) {
 												// no constraints possible -> else model will not be valid
@@ -1320,7 +1313,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 												constraintAnnotation.setText(text);
 												gtw.getParentElement().addChildElement(constraintAnnotation);
 
-												CommonFunctionality.generateShapeForTextAnnotation(modelInstance,
+												CommonFunctionality2.generateShapeForTextAnnotation(modelInstance,
 														constraintAnnotation, brtBeforeGtw);
 
 												Association association = modelInstance.newInstance(Association.class);
@@ -1359,14 +1352,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	public void addMandatoryParticipantConstraintsOnModel(int probabilityForGatewayToHaveConstraint,
 			int lowerBoundAmountParticipantsToBeMandatoryPerGtw, int upperBoundAmountParticipantsToBeMandatoryPerGtw,
-			boolean decisionTakerMandatory, boolean alwaysMaxConstrained) throws Exception {
-		// upperBoundAmountParticipantsToBeMandatory is the amount of
-		// needed voters 
-		// e.g. 3 people needed -> max 3 constraints for mandatory participants for the
-		// gtw
-		// if decisionTakerMandatory = true -> the participant of the brt will be
-		// mandatory
-		// else the mandatory participants will be chosen randomly from global sphere
+			boolean alwaysMaxConstrained) throws Exception {
+		
 		if (probabilityForGatewayToHaveConstraint <= 0) {
 			return;
 		}
@@ -1381,32 +1368,36 @@ public class ProcessModelAnnotater implements Callable<File> {
 				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
-					String decisionTakerName = brtBeforeGtw.getName();
-					LinkedList<String> participantsToChooseFrom = CommonFunctionality.getGlobalSphereList(modelInstance,
+					LinkedList<String> participantsToChooseFrom = CommonFunctionality2.getPrivateSphereList(modelInstance,
 							modelWithLanes);
-
+					String brtBeforeGtwParticipant = CommonFunctionality2.getParticipantOfTask(modelInstance, brtBeforeGtw, modelWithLanes);
+					participantsToChooseFrom.remove(brtBeforeGtwParticipant);
+					
 					if (!participantsToChooseFrom.isEmpty()) {
 
 						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 							for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 								if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-									if (tx.getTextContent().startsWith("[Voters]")) {
+									if (tx.getTextContent().startsWith("[Verifiers]")) {
 										String subStr = tx.getTextContent().substring(
 												tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
 
 										String[] data = subStr.split(",");
-										int amountVotersNeeded = Integer.parseInt(data[0]);
+										int amountVerifiersNeeded = Integer.parseInt(data[0]);
+										if(amountVerifiersNeeded > participantsToChooseFrom.size()) {
+											amountVerifiersNeeded = participantsToChooseFrom.size();
+										}
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
-											randomAmountConstraintsForGtw = amountVotersNeeded;
+											randomAmountConstraintsForGtw = amountVerifiersNeeded;
 										} else {
 											if (upperBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
-												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVotersNeeded;
+												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVerifiersNeeded;
 											}
 											
-											if (upperBoundAmountParticipantsToBeMandatoryPerGtw > amountVotersNeeded) {
-												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVotersNeeded;
+											if (upperBoundAmountParticipantsToBeMandatoryPerGtw > amountVerifiersNeeded) {
+												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVerifiersNeeded;
 											}
 
 											if (lowerBoundAmountParticipantsToBeMandatoryPerGtw < upperBoundAmountParticipantsToBeMandatoryPerGtw) {
@@ -1418,44 +1409,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 											} 
 										}
 
-										if (decisionTakerMandatory && randomAmountConstraintsForGtw > 0) {
-											// first mandatory participant will be the decision taker
-											String mandatoryParticipantConstraint = "[MandatoryParticipantConstraint] {"
-													+ decisionTakerName + "}";
-											TextAnnotation constraintAnnotation = modelInstance
-													.newInstance(TextAnnotation.class);
-
-											constraintAnnotation.setTextFormat("text/plain");
-											Text text = modelInstance.newInstance(Text.class);
-											text.setTextContent(mandatoryParticipantConstraint);
-											constraintAnnotation.setText(text);
-											gtw.getParentElement().addChildElement(constraintAnnotation);
-
-											CommonFunctionality.generateShapeForTextAnnotation(modelInstance,
-													constraintAnnotation, brtBeforeGtw);
-
-											Association association = modelInstance.newInstance(Association.class);
-											association.setSource(gtw);
-											association.setTarget(constraintAnnotation);
-											gtw.getParentElement().addChildElement(association);
-
-											BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
-											edge.setBpmnElement(association);
-											Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
-											wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
-											wp1.setY(gtw.getDiagramElement().getBounds().getY());
-											Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
-											wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
-											wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
-
-											edge.getWaypoints().add(wp1);
-											edge.getWaypoints().add(wp2);
-											modelInstance.getModelElementsByType(Plane.class).iterator().next()
-													.addChildElement(edge);
-											participantsToChooseFrom.remove(decisionTakerName);
-											randomAmountConstraintsForGtw--;
-										}
-
+										
 										Collections.shuffle(participantsToChooseFrom);
 										Iterator<String> partIter = participantsToChooseFrom.iterator();
 
@@ -1474,7 +1428,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 												constraintAnnotation.setText(text);
 												gtw.getParentElement().addChildElement(constraintAnnotation);
 
-												CommonFunctionality.generateShapeForTextAnnotation(modelInstance,
+												CommonFunctionality2.generateShapeForTextAnnotation(modelInstance,
 														constraintAnnotation, brtBeforeGtw);
 
 												Association association = modelInstance.newInstance(Association.class);
@@ -1518,7 +1472,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 					LinkedList<String> names = new LinkedList<String>();
 					names.addAll(namesForOutgoingSeqFlowsOfXorSplits);
 					for (SequenceFlow seq : gtw.getOutgoing()) {
-						String randomName = CommonFunctionality.getRandomItem(names);
+						String randomName = CommonFunctionality2.getRandomItem(names);
 						seq.setName(randomName);
 						names.remove(randomName);
 					}

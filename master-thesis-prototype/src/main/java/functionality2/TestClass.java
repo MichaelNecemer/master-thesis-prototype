@@ -3,8 +3,6 @@ package functionality2;
 import java.util.Arrays;
 import java.util.LinkedList;
 
-import functionality.CommonFunctionality;
-
 public class TestClass {
 	
 	
@@ -22,7 +20,6 @@ public class TestClass {
 
 		try {
 			API2 api2 = new API2(pathToFile, costForUpgradingSpheres);
-
 			
 			LinkedList<PModelWithAdditionalActors>pInstExhaustive = api2.exhaustiveSearch();
 			LinkedList<PModelWithAdditionalActors> cheapestExhaustive = CommonFunctionality2.getCheapestPModelsWithAdditionalActors(pInstExhaustive);

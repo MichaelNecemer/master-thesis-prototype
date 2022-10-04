@@ -1,4 +1,5 @@
 package functionality2;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -86,10 +87,7 @@ import Mapping.BPMNTask;
 import Mapping.Combination;
 import functionality.API;
 
-
-
-public class CommonFunctionality2 {	
-
+public class CommonFunctionality2 {
 
 	public static synchronized void isCorrectModel(BpmnModelInstance modelInstance) throws Exception {
 		// does correctness checking of the process model
@@ -372,12 +370,12 @@ public class CommonFunctionality2 {
 		int randomIndex = random.nextInt(listSize);
 		return list.get(randomIndex);
 	}
-	
+
 	public static <T> T getRandomItem(Set<T> set) {
 		// convert set to list
 		List<T> list = new LinkedList<T>();
 		list.addAll(set);
-		return getRandomItem(list);		
+		return getRandomItem(list);
 	}
 
 	private static LinkedList<LinkedList<FlowNode>> combineParallelBranches(BpmnModelInstance modelInstance,
@@ -515,8 +513,8 @@ public class CommonFunctionality2 {
 
 				if (f instanceof Task) {
 					Task currTask = (Task) f;
-					if(f.getIncoming().size()>1) {
-						throw new Exception(f.getName()+" can not have > 1 incoming edges!");
+					if (f.getIncoming().size() > 1) {
+						throw new Exception(f.getName() + " can not have > 1 incoming edges!");
 					}
 					if (!currTask.getDataInputAssociations().isEmpty()) {
 						// task is a reader
@@ -911,8 +909,6 @@ public class CommonFunctionality2 {
 		return paths;
 
 	}
-	
-
 
 	public static <T> boolean isSubListOfEachList(LinkedList<T> list1, LinkedList<LinkedList<FlowNode>> listOfLists) {
 		boolean isSubListOfEachList = true;
@@ -1001,7 +997,7 @@ public class CommonFunctionality2 {
 			if (joinGtw == null) {
 				throw new Exception("Names of corresponding split and join gtws have to be equal!");
 			}
-			
+
 			if (joinGtw.getIncoming().size() == 2 && joinGtw.getOutgoing().size() == 1) {
 				correspondingGtw = joinGtw;
 			}
@@ -1165,8 +1161,6 @@ public class CommonFunctionality2 {
 		return newFile;
 	}
 
-
-
 	public static int getPrivateSphere(BpmnModelInstance modelInstance, boolean modelWithLanes) {
 
 		LinkedList<String> participants = new LinkedList<String>();
@@ -1194,6 +1188,29 @@ public class CommonFunctionality2 {
 			}
 		}
 		return participants.size();
+	}
+
+	public static String getParticipantOfTask(BpmnModelInstance modelInstance, Task task, boolean modelWithLanes) {
+		String participantName = "";
+		if (!modelWithLanes) {
+			// if the model is without lanes -> the participants must be extracted from the
+			// task name
+			participantName = task.getName().substring(task.getName().indexOf("[") + 1,
+					task.getName().indexOf("]"));
+			return participantName;
+
+		} else {
+			// model is with lanes
+			// return the name of the lane with the task on it
+			for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
+				for (FlowNode nodeOnLane : l.getFlowNodeRefs()) {
+					if (nodeOnLane.equals(task)) {
+						participantName =  l.getName().trim();
+					}
+				}
+			}
+		}
+		return participantName;
 	}
 
 	public static LinkedList<String> getPrivateSphereList(BpmnModelInstance modelInstance, boolean modelWithLanes) {
@@ -1344,14 +1361,14 @@ public class CommonFunctionality2 {
 									int lowerBound = (int) Math.ceil((double) amountAfterIncreasing / 2) + 1;
 									int randomCountVerifiersSameDecision = 0;
 									if (lowerBound < currValue) {
-										randomCountVerifiersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
-												amountAfterIncreasing + 1);
+										randomCountVerifiersSameDecision = ThreadLocalRandom.current()
+												.nextInt(lowerBound, amountAfterIncreasing + 1);
 									} else {
 										randomCountVerifiersSameDecision = currValue;
 									}
 									StringBuilder sb = new StringBuilder();
-									sb.append("[Verifiers]{" + amountAfterIncreasing + "," + randomCountVerifiersSameDecision
-											+ "," + values[2] + "}");
+									sb.append("[Verifiers]{" + amountAfterIncreasing + ","
+											+ randomCountVerifiersSameDecision + "," + values[2] + "}");
 
 									Text text = modelInstance.newInstance(Text.class);
 									text.setTextContent(sb.toString());
@@ -1371,8 +1388,8 @@ public class CommonFunctionality2 {
 
 	}
 
-	public static void increaseVerifiersPerDataObject(File file, String directoryToStore, String suffixName, int currValue)
-			throws IOException, ParserConfigurationException, SAXException {
+	public static void increaseVerifiersPerDataObject(File file, String directoryToStore, String suffixName,
+			int currValue) throws IOException, ParserConfigurationException, SAXException {
 		BpmnModelInstance modelInstance = Bpmn.readModelFromFile(file);
 		String fileName = file.getName().substring(0, file.getName().indexOf(".bpmn"));
 		String iterationName = "_amountVerifiers";
@@ -1402,14 +1419,14 @@ public class CommonFunctionality2 {
 									int lowerBound = (int) Math.ceil((double) amountAfterIncreasing / 2) + 1;
 									int randomCountVerifiersSameDecision = 0;
 									if (lowerBound < currValue) {
-										randomCountVerifiersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
-												amountAfterIncreasing + 1);
+										randomCountVerifiersSameDecision = ThreadLocalRandom.current()
+												.nextInt(lowerBound, amountAfterIncreasing + 1);
 									} else {
 										randomCountVerifiersSameDecision = currValue;
 									}
 									StringBuilder sb = new StringBuilder();
-									sb.append("[Verifiers]{" + amountAfterIncreasing + "," + randomCountVerifiersSameDecision
-											+ "," + values[2] + "}");
+									sb.append("[Verifiers]{" + amountAfterIncreasing + ","
+											+ randomCountVerifiersSameDecision + "," + values[2] + "}");
 
 									Text text = modelInstance.newInstance(Text.class);
 									text.setTextContent(sb.toString());
@@ -1717,8 +1734,6 @@ public class CommonFunctionality2 {
 		return sumSpheres / amountBrts;
 	}
 
-	
-
 	public static int getAmountTasks(BpmnModelInstance modelInstance) {
 		int amountTasks = 0;
 		for (Task t : modelInstance.getModelElementsByType(Task.class)) {
@@ -1780,7 +1795,8 @@ public class CommonFunctionality2 {
 			List<LinkedList<Integer>> verifiersCombsPerGtwLists = CommonFunctionality2
 					.computeRepartitionNumberWithResultBound((int) processDimensionSize, amountDecisions,
 							(int) minVerifiersCombsPerDecision, 5);
-			LinkedList<Integer> verifiersCombsPerGtwList = CommonFunctionality2.getRandomItem(verifiersCombsPerGtwLists);
+			LinkedList<Integer> verifiersCombsPerGtwList = CommonFunctionality2
+					.getRandomItem(verifiersCombsPerGtwLists);
 
 			for (int i = 0; i < verifiersCombsPerGtwList.size(); i++) {
 				int currVerifiersComb = verifiersCombsPerGtwList.get(i);
@@ -1946,7 +1962,6 @@ public class CommonFunctionality2 {
 			PModelWithAdditionalActors pInst = pInstances.get(bound);
 			// make a deep copy of the modelInstance to prevent changing the model itself
 			BpmnModelInstance modelInstance = (BpmnModelInstance) CommonFunctionality2.deepCopy(api.getModelInstance());
-			
 
 			for (AdditionalActors addActors : pInst.getAdditionalActorsList()) {
 				BPMNBusinessRuleTask bpmnBrt = addActors.getCurrBrt();
@@ -2179,18 +2194,16 @@ public class CommonFunctionality2 {
 											.getFlowNodeByBPMNNodeId(modelInstance,
 													bpmnBusinessRt.getPredecessors().iterator().next().getId())
 											.builder().subProcess().embeddedSubProcess().startEvent(),
-									"PV" + BPMNParallelGateway.getVotingTaskCount(),
-									addActors.getAdditionalActors(), troubleShooter,
-									"PV" + BPMNParallelGateway.getVotingTaskCount(),
+									"PV" + BPMNParallelGateway.getVotingTaskCount(), addActors.getAdditionalActors(),
+									troubleShooter, "PV" + BPMNParallelGateway.getVotingTaskCount(),
 									BPMNExclusiveGateway.increaseExclusiveGtwCount(), votingAsSubProcess, onlyOneTask);
 						} else {
 							CommonFunctionality2.addTasksToVotingSystem(api, modelInstance, i, businessRt, bpmnEx,
 									businessRt.builder()
 											.moveToNode(bpmnBusinessRt.getPredecessors().iterator().next().getId()),
-									"PV" + BPMNParallelGateway.getVotingTaskCount(),
-									addActors.getAdditionalActors(), troubleShooter,
-									"PV" + BPMNParallelGateway.getVotingTaskCount(), 0, votingAsSubProcess,
-									onlyOneTask);
+									"PV" + BPMNParallelGateway.getVotingTaskCount(), addActors.getAdditionalActors(),
+									troubleShooter, "PV" + BPMNParallelGateway.getVotingTaskCount(), 0,
+									votingAsSubProcess, onlyOneTask);
 						}
 					}
 
@@ -2203,9 +2216,8 @@ public class CommonFunctionality2 {
 						CommonFunctionality2.addTasksToVotingSystem(api, modelInstance, i, businessRt, bpmnEx,
 								businessRt.builder()
 										.moveToNode(bpmnBusinessRt.getPredecessors().iterator().next().getId()),
-								"PV" + BPMNParallelGateway.getVotingTaskCount(),
-								addActors.getAdditionalActors(), troubleShooter,
-								"PV" + BPMNParallelGateway.getVotingTaskCount(),
+								"PV" + BPMNParallelGateway.getVotingTaskCount(), addActors.getAdditionalActors(),
+								troubleShooter, "PV" + BPMNParallelGateway.getVotingTaskCount(),
 								BPMNExclusiveGateway.getExclusiveGtwCount(), votingAsSubProcess, onlyOneTask);
 
 					}
@@ -2335,7 +2347,8 @@ public class CommonFunctionality2 {
 			ServiceTask st = (ServiceTask) CommonFunctionality2.getFlowNodeByBPMNNodeId(modelInstance, serviceTaskId);
 			st.getOutgoing().iterator().next().getId();
 			CommonFunctionality2.addInformationToServiceTasks(modelInstance, st,
-					(BPMNExclusiveGateway) CommonFunctionality2.getNodeById(api.getProcessElements(), targetGtw.getId()),
+					(BPMNExclusiveGateway) CommonFunctionality2.getNodeById(api.getProcessElements(),
+							targetGtw.getId()),
 					false);
 
 			for (BPMNDataObject dao : allBPMNDataObjects) {
@@ -2701,7 +2714,7 @@ public class CommonFunctionality2 {
 					.getCheapestPModelsWithAdditionalActors(modelsFoundWithExhaustiveSearch);
 			boolean compareAll = false;
 			if (boundForComparisons <= 0) {
-				// compare models one by one 
+				// compare models one by one
 				compareAll = true;
 			}
 
@@ -2716,21 +2729,20 @@ public class CommonFunctionality2 {
 				}
 
 			} else {
-				// check if the solutions found with exhaustive search contain all solutions found with heuristic approach
+				// check if the solutions found with exhaustive search contain all solutions
+				// found with heuristic approach
 				for (PModelWithAdditionalActors cheapestModelExhaustive : cheapestExhaustiveSolutions) {
 					for (PModelWithAdditionalActors cheapestModelHeuristic : modelsFoundWithHeuristicSearch) {
-						if (cheapestModelExhaustive
-								.getSumMeasure() == (cheapestModelHeuristic.getSumMeasure())) {
+						if (cheapestModelExhaustive.getSumMeasure() == (cheapestModelHeuristic.getSumMeasure())) {
 							boolean count = true;
-							for (AdditionalActors addActors : cheapestModelExhaustive
-									.getAdditionalActorsList()) {
-							
+							for (AdditionalActors addActors : cheapestModelExhaustive.getAdditionalActorsList()) {
+
 								for (AdditionalActors addActors2 : cheapestModelHeuristic.getAdditionalActorsList()) {
 									if (addActors.getCurrBrt().getId().equals(addActors2.getCurrBrt().getId())) {
-										
+
 										int size = addActors.getAdditionalActors().size();
 										int entryEqual = 0;
-										
+
 										for (BPMNParticipant participant1 : addActors.getAdditionalActors()) {
 											for (BPMNParticipant participant2 : addActors2.getAdditionalActors()) {
 												if (participant1.getId().contentEquals(participant2.getId())) {
@@ -2738,16 +2750,14 @@ public class CommonFunctionality2 {
 												}
 
 											}
-										}			
-										if(entryEqual != size) {
-											System.out.println(entryEqual + " , "+size);
+										}
+										if (entryEqual != size) {
+											System.out.println(entryEqual + " , " + size);
 											return "false";
 										}
 									}
 
 								}
-								
-								
 
 							}
 							if (count) {
@@ -2774,8 +2784,6 @@ public class CommonFunctionality2 {
 
 	}
 
-
-	
 	public static void generateNewModelsUntilPrivateSphereReached(File model, int privateSphereLowerBound,
 			int amountNewProcessesToCreatePerIteration, String directoryToStore) {
 
@@ -3072,13 +3080,9 @@ public class CommonFunctionality2 {
 
 	public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName,
 			int probabilityForGatewayToHaveConstraint, int lowerBoundAmountParticipantsToExcludePerGtw,
-			boolean decisionTakerExcludeable, boolean alwaysMaxConstrained, boolean modelWithLanes,
+			boolean alwaysMaxConstrained, boolean modelWithLanes,
 			String directoryToStore) throws Exception {
-		// upperBoundAmountParticipantsToExclude is the difference between the amount of
-		// needed verifiers and the private Sphere
-		// e.g. private sphere = 5, 3 people needed -> 2 is the max amount of
-		// participants to exclude
-
+		
 		if (lowerBoundAmountParticipantsToExcludePerGtw < 0) {
 			throw new Exception("LowerBoundAmountParticipantsToExclude must be >= 0!");
 		}
@@ -3092,22 +3096,13 @@ public class CommonFunctionality2 {
 				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
-					String decisionTakerName = brtBeforeGtw.getName();
-					LinkedList<String> participantsToChooseFrom = CommonFunctionality2.getPrivateSphereList(modelInstance,
-							modelWithLanes);
+					LinkedList<String> participantsToChooseFrom = CommonFunctionality2
+							.getPrivateSphereList(modelInstance, modelWithLanes);
 					int privateSphereSize = participantsToChooseFrom.size();
-
-					// remove the decision taker from the list if necessary
-					if (!decisionTakerExcludeable) {
-						for (String part : participantsToChooseFrom) {
-							if (decisionTakerName.contains(part)) {
-								participantsToChooseFrom.remove(part);
-								break;
-							}
-
-						}
-					}
-
+					String brtBeforeGtwParticipant = CommonFunctionality2.getParticipantOfTask(modelInstance, brtBeforeGtw, modelWithLanes);
+					participantsToChooseFrom.remove(brtBeforeGtwParticipant);
+					
+					
 					if (!participantsToChooseFrom.isEmpty()) {
 
 						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
@@ -3122,9 +3117,9 @@ public class CommonFunctionality2 {
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
-											randomAmountConstraintsForGtw = privateSphereSize - amountVerifiersNeeded;
+											randomAmountConstraintsForGtw = privateSphereSize - amountVerifiersNeeded - 1;
 										} else {
-											int maxConstraint = privateSphereSize - amountVerifiersNeeded;
+											int maxConstraint = privateSphereSize - amountVerifiersNeeded - 1;
 
 											if (maxConstraint <= 0) {
 												// no constraints possible -> else model will not be valid
@@ -3147,7 +3142,8 @@ public class CommonFunctionality2 {
 
 										Collections.shuffle(participantsToChooseFrom);
 										Iterator<String> partIter = participantsToChooseFrom.iterator();
-										if (randomAmountConstraintsForGtw < (privateSphereSize - amountVerifiersNeeded)) {
+										if (randomAmountConstraintsForGtw < (privateSphereSize
+												- amountVerifiersNeeded)) {
 											maxConstrainedModel = false;
 										}
 
@@ -3218,18 +3214,9 @@ public class CommonFunctionality2 {
 
 	public static void addMandatoryParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName,
 			int probabilityForGatewayToHaveConstraint, int lowerBoundAmountParticipantsToBeMandatoryPerGtw,
-			int upperBoundAmountParticipantsToBeMandatoryPerGtw, boolean decisionTakerMandatory,
+			int upperBoundAmountParticipantsToBeMandatoryPerGtw, 
 			boolean alwaysMaxConstrained, boolean modelWithLanes, String directoryToStore) throws Exception {
-		// if upperBoundAmountParticipantsToBeMandatoryPerGtw is < 0:
-		// upperBoundAmountParticipantsToBeMandatoryPerGtw is the needed amount of
-		// verifiers for the gateway
-		// e.g. 3 people needed for voting -> 3 constraints for mandatory participants
-		// for the
-		// gtw
-		// if decisionTakerMandatory = true -> the participant of the brt will be
-		// mandatory
-		// else the mandatory participants will be chosen randomly from private sphere
-
+	
 		boolean constraintInserted = false;
 		boolean maxMandConstrained = true;
 
@@ -3243,11 +3230,12 @@ public class CommonFunctionality2 {
 				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
-					String decisionTakerName = brtBeforeGtw.getName();
-					String decisionTakerParticipant = decisionTakerName.substring(decisionTakerName.indexOf('[') + 1,
-							decisionTakerName.indexOf(']'));
-					LinkedList<String> participantsToChooseFrom = CommonFunctionality2.getPrivateSphereList(modelInstance,
-							modelWithLanes);
+					
+					LinkedList<String> participantsToChooseFrom = CommonFunctionality2
+							.getPrivateSphereList(modelInstance, modelWithLanes);
+					
+					String brtBeforeGtwParticipant = CommonFunctionality2.getParticipantOfTask(modelInstance, brtBeforeGtw, modelWithLanes);
+					participantsToChooseFrom.remove(brtBeforeGtwParticipant);					
 
 					if (!participantsToChooseFrom.isEmpty()) {
 
@@ -3260,12 +3248,19 @@ public class CommonFunctionality2 {
 
 										String[] data = subStr.split(",");
 										int amountVerifiersNeeded = Integer.parseInt(data[0]);
+										if(amountVerifiersNeeded > participantsToChooseFrom.size()) {
+											amountVerifiersNeeded = participantsToChooseFrom.size();
+										}
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
 											randomAmountConstraintsForGtw = amountVerifiersNeeded;
 										} else {
 											if (upperBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
+												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVerifiersNeeded;
+											}
+											
+											if (upperBoundAmountParticipantsToBeMandatoryPerGtw > amountVerifiersNeeded) {
 												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVerifiersNeeded;
 											}
 
@@ -3275,51 +3270,12 @@ public class CommonFunctionality2 {
 														upperBoundAmountParticipantsToBeMandatoryPerGtw + 1);
 											} else if (lowerBoundAmountParticipantsToBeMandatoryPerGtw == upperBoundAmountParticipantsToBeMandatoryPerGtw) {
 												randomAmountConstraintsForGtw = upperBoundAmountParticipantsToBeMandatoryPerGtw;
-											}
+											} 
 										}
 
 										if (randomAmountConstraintsForGtw != amountVerifiersNeeded) {
 											// if one decision in the model is not constrained to maximum
 											maxMandConstrained = false;
-										}
-
-										if (decisionTakerMandatory && randomAmountConstraintsForGtw > 0) {
-											// first mandatory participant will be the decision taker
-											String mandatoryParticipantConstraint = "[MandatoryParticipantConstraint] {"
-													+ decisionTakerParticipant + "}";
-											TextAnnotation constraintAnnotation = modelInstance
-													.newInstance(TextAnnotation.class);
-
-											constraintAnnotation.setTextFormat("text/plain");
-											Text text = modelInstance.newInstance(Text.class);
-											text.setTextContent(mandatoryParticipantConstraint);
-											constraintAnnotation.setText(text);
-											gtw.getParentElement().addChildElement(constraintAnnotation);
-
-											CommonFunctionality2.generateShapeForTextAnnotation(modelInstance,
-													constraintAnnotation, brtBeforeGtw);
-
-											Association association = modelInstance.newInstance(Association.class);
-											association.setSource(gtw);
-											association.setTarget(constraintAnnotation);
-											gtw.getParentElement().addChildElement(association);
-
-											BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
-											edge.setBpmnElement(association);
-											Waypoint wp1 = modelInstance.newInstance(Waypoint.class);
-											wp1.setX(gtw.getDiagramElement().getBounds().getX() + 50);
-											wp1.setY(gtw.getDiagramElement().getBounds().getY());
-											Waypoint wp2 = modelInstance.newInstance(Waypoint.class);
-											wp2.setX(gtw.getDiagramElement().getBounds().getX() + 50);
-											wp2.setY(gtw.getDiagramElement().getBounds().getY() - 50);
-
-											edge.getWaypoints().add(wp1);
-											edge.getWaypoints().add(wp2);
-											modelInstance.getModelElementsByType(Plane.class).iterator().next()
-													.addChildElement(edge);
-											constraintInserted = true;
-											participantsToChooseFrom.remove(decisionTakerParticipant);
-											randomAmountConstraintsForGtw--;
 										}
 
 										Collections.shuffle(participantsToChooseFrom);
@@ -3390,8 +3346,6 @@ public class CommonFunctionality2 {
 
 	}
 
-
-
 	public static boolean isNamedBranches(BpmnModelInstance modelInstance) {
 		for (Gateway gtw : modelInstance.getModelElementsByType(Gateway.class)) {
 			Collection<SequenceFlow> outgoing = gtw.getOutgoing();
@@ -3399,8 +3353,8 @@ public class CommonFunctionality2 {
 				for (SequenceFlow out : outgoing) {
 					if (out.getName() == null) {
 						return false;
-					} 
-					if(out.getName().isEmpty()) {
+					}
+					if (out.getName().isEmpty()) {
 						return false;
 					}
 				}
@@ -3469,24 +3423,25 @@ public class CommonFunctionality2 {
 
 				// connect nodeBeforePSplit to element in first branch
 				FlowNode firstBranchFirstElement = pBranchesFirstElements.get(0);
-				convertToUseBuilderAndConnectToNode(preprocessedModel, nodeBeforePSplit, nameOfIncomingToPSplit, firstBranchFirstElement);
+				convertToUseBuilderAndConnectToNode(preprocessedModel, nodeBeforePSplit, nameOfIncomingToPSplit,
+						firstBranchFirstElement);
 				// get last element of first branch before join and remove outgoing seqFlow
 				LinkedList<LinkedList<FlowNode>> pathsBetweenElements = goDfs(preprocessedModel,
 						firstBranchFirstElement, pJoin, new LinkedList<SequenceFlow>(), new LinkedList<FlowNode>(),
 						new LinkedList<LinkedList<FlowNode>>());
 				LinkedList<FlowNode> pathBetweenElements = pathsBetweenElements.get(0);
-				
+
 				SequenceFlow seqFlowOfLastElementInBranchToPJoin = null;
-				if(pathBetweenElements.size()==1) {
-					//only join is after firstBranchFirstElement
-					//get outgoing sequenceFlow of firstBranchFirstElement
-					seqFlowOfLastElementInBranchToPJoin = firstBranchFirstElement.getOutgoing().iterator().next();					
+				if (pathBetweenElements.size() == 1) {
+					// only join is after firstBranchFirstElement
+					// get outgoing sequenceFlow of firstBranchFirstElement
+					seqFlowOfLastElementInBranchToPJoin = firstBranchFirstElement.getOutgoing().iterator().next();
 				} else {
 					int index = pathBetweenElements.size() - 2;
-					seqFlowOfLastElementInBranchToPJoin = pathBetweenElements.get(index).getOutgoing()
-					.iterator().next();
+					seqFlowOfLastElementInBranchToPJoin = pathBetweenElements.get(index).getOutgoing().iterator()
+							.next();
 				}
-								
+
 				FlowNode lastElementInBranchBeforePJoin = seqFlowOfLastElementInBranchToPJoin.getSource();
 				seqFlowOfLastElementInBranchToPJoin.getParentElement()
 						.removeChildElement(seqFlowOfLastElementInBranchToPJoin);
@@ -3501,37 +3456,38 @@ public class CommonFunctionality2 {
 						secondBranchFirstElement, pJoin, new LinkedList<SequenceFlow>(), new LinkedList<FlowNode>(),
 						new LinkedList<LinkedList<FlowNode>>());
 				LinkedList<FlowNode> pathBetweenElements2 = pathsBetweenElements2.get(0);
-				
+
 				SequenceFlow seqFlowOfLastElementInBranch2ToPJoin = null;
-				if(pathBetweenElements2.size()==1) {
-					//only join is after secondBranchFirstElement
-					//get outgoing sequenceFlow of firstBranchFirstElement
-					seqFlowOfLastElementInBranch2ToPJoin = secondBranchFirstElement.getOutgoing().iterator().next();					
+				if (pathBetweenElements2.size() == 1) {
+					// only join is after secondBranchFirstElement
+					// get outgoing sequenceFlow of firstBranchFirstElement
+					seqFlowOfLastElementInBranch2ToPJoin = secondBranchFirstElement.getOutgoing().iterator().next();
 				} else {
 					int index2 = pathBetweenElements2.size() - 2;
-					seqFlowOfLastElementInBranch2ToPJoin = pathBetweenElements2.get(index2).getOutgoing()
-					.iterator().next();
+					seqFlowOfLastElementInBranch2ToPJoin = pathBetweenElements2.get(index2).getOutgoing().iterator()
+							.next();
 				}
-				
+
 				FlowNode lastElementInBranch2BeforePJoin = seqFlowOfLastElementInBranch2ToPJoin.getSource();
 				seqFlowOfLastElementInBranch2ToPJoin.getParentElement()
 						.removeChildElement(seqFlowOfLastElementInBranch2ToPJoin);
 
 				// connect last element of second branch to node after pJoin
 				FlowNode nodeAfterPJoin = pJoin.getOutgoing().iterator().next().getTarget();
-				convertToUseBuilderAndConnectToNode(preprocessedModel, lastElementInBranch2BeforePJoin, null, nodeAfterPJoin);
-				
+				convertToUseBuilderAndConnectToNode(preprocessedModel, lastElementInBranch2BeforePJoin, null,
+						nodeAfterPJoin);
+
 			}
 
 		}
 
-		for(ParallelGateway gtw: preprocessedModel.getModelElementsByType(ParallelGateway.class)) {
+		for (ParallelGateway gtw : preprocessedModel.getModelElementsByType(ParallelGateway.class)) {
 
 			// remove pSplit and pJoin
 			gtw.getParentElement().removeChildElement(gtw);
 
 		}
-		
+
 		for (SequenceFlow f : preprocessedModel.getModelElementsByType(SequenceFlow.class)) {
 			if (f.getTarget() == null) {
 				f.getParentElement().removeChildElement(f);
@@ -3541,16 +3497,16 @@ public class CommonFunctionality2 {
 			}
 		}
 
-		for (Association assoc: preprocessedModel.getModelElementsByType(Association.class)) {
-			if(assoc.getTarget() == null) {
+		for (Association assoc : preprocessedModel.getModelElementsByType(Association.class)) {
+			if (assoc.getTarget() == null) {
 				assoc.getParentElement().removeChildElement(assoc);
 			}
-			if(assoc.getSource() == null) {
+			if (assoc.getSource() == null) {
 				assoc.getParentElement().removeChildElement(assoc);
 			}
-			
+
 		}
-		
+
 		for (BpmnEdge edge : preprocessedModel.getModelElementsByType(BpmnEdge.class)) {
 			if (edge.getBpmnElement() == null) {
 				edge.getParentElement().removeChildElement(edge);
@@ -3562,7 +3518,7 @@ public class CommonFunctionality2 {
 				shape.getParentElement().removeChildElement(shape);
 			}
 		}
-		
+
 		return preprocessedModel;
 
 	}
@@ -3679,11 +3635,9 @@ public class CommonFunctionality2 {
 		return paths;
 
 	}
-	
-	
 
-	public static void convertToUseBuilderAndConnectToNode(BpmnModelInstance modelInstance, FlowNode node, String nameOfNode,
-			FlowNode nodeToConnectTo) throws Exception {
+	public static void convertToUseBuilderAndConnectToNode(BpmnModelInstance modelInstance, FlowNode node,
+			String nameOfNode, FlowNode nodeToConnectTo) throws Exception {
 		try {
 			FlowNode source = node;
 			FlowNode target = nodeToConnectTo;
@@ -3699,13 +3653,13 @@ public class CommonFunctionality2 {
 				target.replaceWithElement(manualTask);
 				target = manualTask;
 			}
-			
+
 			source.builder().connectTo(target.getId());
-			if(nameOfNode!=null && !nameOfNode.isEmpty()) {
+			if (nameOfNode != null && !nameOfNode.isEmpty()) {
 				SequenceFlow generatedSeqFlow = target.getIncoming().iterator().next();
 				generatedSeqFlow.setName(nameOfNode);
 			}
-			
+
 			if (source instanceof ManualTask) {
 				Task task = convertFromManualTaskToTaskIfNecessary(modelInstance, (ManualTask) source);
 				source.replaceWithElement(task);
@@ -3751,17 +3705,11 @@ public class CommonFunctionality2 {
 		}
 		return null;
 	}
-	
-	
-	
 
-
-	
-	
 	public static LinkedList<PModelWithAdditionalActors> getCheapestPModelsWithAdditionalActors(
 			LinkedList<PModelWithAdditionalActors> pModels) {
-		if (pModels == null) {
-			return null;
+		if (pModels == null || pModels.isEmpty()) {
+			return new LinkedList<PModelWithAdditionalActors>();
 		}
 		List<PModelWithAdditionalActors> allModelsSortedByCheapest = pModels.parallelStream()
 				.sorted((Comparator.comparingDouble(PModelWithAdditionalActors::getSumMeasure)))
@@ -3783,28 +3731,24 @@ public class CommonFunctionality2 {
 		return allCheapestModels;
 	}
 
-	
-	public static String getLoggingForModelsWithAdditionalActors(Enums.AlgorithmToPerform algorithm, LinkedList<BPMNBusinessRuleTask>brts,
-			LinkedList<PModelWithAdditionalActors> pModels) {
+	public static String getLoggingForModelsWithAdditionalActors(Enums.AlgorithmToPerform algorithm,
+			LinkedList<BPMNBusinessRuleTask> brts, LinkedList<PModelWithAdditionalActors> pModels) {
 		if (pModels == null) {
 			return "";
-		}		
-		
+		}
+
 		for (int i = 1; i < pModels.size(); i++) {
 			PModelWithAdditionalActors currInst = pModels.get(i);
 			// check if each brt with xor split has additional actors
-			for(AdditionalActors addActors: currInst.getAdditionalActorsList()) {
-				if(!brts.contains(addActors.getCurrBrt())){
-					return "Not every decision has been calculated with "+algorithm.name();
+			for (AdditionalActors addActors : currInst.getAdditionalActorsList()) {
+				if (!brts.contains(addActors.getCurrBrt())) {
+					return "Not every decision has been calculated with " + algorithm.name();
 				}
 			}
-			
+
 		}
 
 		return "";
 	}
 
-
-	
-	
 }
