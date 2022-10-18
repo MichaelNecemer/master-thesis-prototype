@@ -85,6 +85,7 @@ import Mapping.BPMNParallelGateway;
 import Mapping.BPMNParticipant;
 import Mapping.BPMNTask;
 import Mapping.Combination;
+import Mapping.ProcessInstanceWithVoters;
 import functionality.API;
 
 public class CommonFunctionality2 {
@@ -2729,32 +2730,31 @@ public class CommonFunctionality2 {
 				}
 
 			} else {
-				// check if the solutions found with exhaustive search contain all solutions
-				// found with heuristic approach
-				for (PModelWithAdditionalActors cheapestModelExhaustive : cheapestExhaustiveSolutions) {
-					for (PModelWithAdditionalActors cheapestModelHeuristic : modelsFoundWithHeuristicSearch) {
-						if (cheapestModelExhaustive.getSumMeasure() == (cheapestModelHeuristic.getSumMeasure())) {
+
+				// check if the cheapest bruteForce solutions contain all localMin solutions
+				for (PModelWithAdditionalActors cheapestExhaustiveSolution : cheapestExhaustiveSolutions) {
+					for (PModelWithAdditionalActors cheapestHeuristicSolution : modelsFoundWithHeuristicSearch) {
+						if (cheapestExhaustiveSolution
+								.getSumMeasure() == (cheapestHeuristicSolution.getSumMeasure())) {
 							boolean count = true;
-							for (AdditionalActors addActors : cheapestModelExhaustive.getAdditionalActorsList()) {
-
-								for (AdditionalActors addActors2 : cheapestModelHeuristic.getAdditionalActorsList()) {
-									if (addActors.getCurrBrt().getId().equals(addActors2.getCurrBrt().getId())) {
-
-										int size = addActors.getAdditionalActors().size();
+							for (AdditionalActors exhaustiveAddActors : cheapestExhaustiveSolution
+									.getAdditionalActorsList()) {
+								for (AdditionalActors heuristicAddActors: cheapestHeuristicSolution.getAdditionalActorsList()) {
+									if (exhaustiveAddActors.getCurrBrt().equals(heuristicAddActors.getCurrBrt())) {
+										int size = exhaustiveAddActors.getAdditionalActors().size();
 										int entryEqual = 0;
-
-										for (BPMNParticipant participant1 : addActors.getAdditionalActors()) {
-											for (BPMNParticipant participant2 : addActors2.getAdditionalActors()) {
-												if (participant1.getId().contentEquals(participant2.getId())) {
+										for (BPMNParticipant bruteForcePart : exhaustiveAddActors.getAdditionalActors()) {
+											for (BPMNParticipant localMinPart : heuristicAddActors.getAdditionalActors()) {
+												if (bruteForcePart.getId().contentEquals(localMinPart.getId())) {
 													entryEqual++;
 												}
 
 											}
 										}
 										if (entryEqual != size) {
-											System.out.println(entryEqual + " , " + size);
-											return "false";
+											count = false;
 										}
+
 									}
 
 								}
@@ -2762,7 +2762,7 @@ public class CommonFunctionality2 {
 							}
 							if (count) {
 								countCheapestSolutionFoundWithExhaustive++;
-								if (countCheapestSolutionFoundWithExhaustive == modelsFoundWithHeuristicSearch.size()) {
+								if (countCheapestSolutionFoundWithExhaustive == cheapestHeuristicSolution.getAdditionalActorsList().size()) {
 									return "true";
 								}
 							}
@@ -2772,6 +2772,7 @@ public class CommonFunctionality2 {
 					}
 
 				}
+			
 			}
 			if (countCheapestSolutionFoundWithExhaustive == modelsFoundWithHeuristicSearch.size()) {
 				return "true";
@@ -3737,6 +3738,7 @@ public class CommonFunctionality2 {
 			return "";
 		}
 
+		/*
 		for (int i = 1; i < pModels.size(); i++) {
 			PModelWithAdditionalActors currInst = pModels.get(i);
 			// check if each brt with xor split has additional actors
@@ -3746,7 +3748,7 @@ public class CommonFunctionality2 {
 				}
 			}
 
-		}
+		}*/
 
 		return "";
 	}

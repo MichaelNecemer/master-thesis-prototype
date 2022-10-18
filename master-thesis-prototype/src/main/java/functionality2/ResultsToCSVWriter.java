@@ -39,8 +39,8 @@ public class ResultsToCSVWriter {
 					"isCheapestSolutionOfHeuristicWithBoundEqualToExhaustive", "amountReaders", "amountWriters",
 					"amountDataObjects", "averageAmountDataObjectsPerDecision", "amountReadersPerDataObject",
 					"amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks",
-					"amountElements", "amountSumVoters", "averageAmountVoters", "privateSphereSize", "averageSphereSum",
-					"clusterSize", "pathsThroughProcess", "deciderOrVerifier" };
+					"amountElements", "amountSumVerifiers", "averageAmountVerifiers", "privateSphereSize", "averageSphereSum",
+					"clusterSize", "pathsThroughProcess"};
 			this.rows.add(header);
 
 		} catch (IOException e) {
@@ -92,7 +92,7 @@ public class ResultsToCSVWriter {
 				costCheapestSolutionHeuristic = cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.HEURISTIC) + "";
 			}
 			if (cheapestSolutionCostMap.containsKey(Enums.AlgorithmToPerform.HEURISTICWITHBOUND)) {
-				costCheapestSolutionHeuristic = cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND)
+				costCheapestSolutionHeuristicSearchWithBound = cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND)
 						+ "";
 			}
 		}

@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 
 import Mapping.BPMNBusinessRuleTask;
 import Mapping.BPMNDataObject;
@@ -14,7 +15,7 @@ import Mapping.BPMNTask;
 public class PModelWithAdditionalActors {
 	//contains the current allocation of additional actors for business rule tasks
 	private LinkedList<AdditionalActors> additionalActors;
-	private HashSet<BPMNParticipant> privateSphere;
+	private LinkedList<BPMNParticipant> privateSphere;
 	private HashMap<BPMNDataObject, Static_SphereEntry> staticSphereEntries;	
 	private HashMap<BPMNDataObject, LinkedList<WD_SphereEntry>> wdSphereEntries;
 	private HashMap<BPMNParticipant, HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>>> sdSphereEntries;
@@ -44,11 +45,11 @@ public class PModelWithAdditionalActors {
 
 	
 	
-	public HashSet<BPMNParticipant> getPrivateSphere() {
+	public LinkedList<BPMNParticipant> getPrivateSphere() {
 		return privateSphere;
 	}
 
-	public void setPrivateSphere(HashSet<BPMNParticipant> privateSphere) {
+	public void setPrivateSphere(LinkedList<BPMNParticipant> privateSphere) {
 		this.privateSphere = privateSphere;
 	}
 

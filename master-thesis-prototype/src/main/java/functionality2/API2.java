@@ -9,7 +9,9 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
@@ -49,7 +51,6 @@ import Mapping.Combination;
 import Mapping.DecisionEvaluation;
 import Mapping.InfixToPostfix;
 import Mapping.Label;
-import functionality.CommonFunctionality;
 import functionality.Constraint;
 import functionality.ExcludeParticipantConstraint;
 import functionality.MandatoryParticipantConstraint;
@@ -58,8 +59,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 
 	private BpmnModelInstance modelInstance;
 	private File processModelFile;
-	private HashSet<BPMNParticipant> privateSphere;
-	private HashSet<BPMNParticipant> publicSphere;
+	private LinkedList<BPMNParticipant> privateSphere;
 	private Enums.AlgorithmToPerform algorithmToPerform;
 	private LinkedList<MandatoryParticipantConstraint> mandatoryParticipantConstraints;
 	private LinkedList<ExcludeParticipantConstraint> excludeParticipantConstraints;
@@ -98,7 +98,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		System.out.println("API for: " + this.processModelFile.getName());
 		boolean correctModel = true;
 		try {
-			CommonFunctionality.isCorrectModel(this.modelInstance);
+			CommonFunctionality2.isCorrectModel(this.modelInstance);
 		} catch (Exception e) {
 			correctModel = false;
 			System.out.println("Model correct: " + correctModel);
@@ -109,8 +109,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		this.businessRuleTasks = new LinkedList<BPMNBusinessRuleTask>();
 		this.dataObjects = new LinkedList<BPMNDataObject>();
 		this.labelList = new ArrayList<Label>();
-		this.privateSphere = new HashSet<BPMNParticipant>();
-		this.publicSphere = new HashSet<BPMNParticipant>();
+		this.privateSphere = new LinkedList<BPMNParticipant>();
 		// set the default algorithm to perform
 		this.setAlgorithmToPerform(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
 		// set the default cluster condition
@@ -127,12 +126,13 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		this.bound = 0;
 		// map all the elements from camunda
 		this.mapCamundaElements();
-		this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance,
+		this.pathsThroughProcess = CommonFunctionality2.getAllPathsBetweenNodes(this.modelInstance,
 				this.startEvent.getId(), this.endEvent.getId());
 	}
 
 	@SuppressWarnings("unchecked")
-	public LinkedList<PModelWithAdditionalActors> exhaustiveSearch() throws Exception {
+	public LinkedList<PModelWithAdditionalActors> exhaustiveSearch()
+			throws NullPointerException, InterruptedException, Exception {
 		long startTime = System.nanoTime();
 		HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
 				.computeStaticSpherePerDataObject();
@@ -154,14 +154,15 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		long endTime = System.nanoTime();
 		long executionTime = endTime - startTime;
 		double executionTimeInSeconds = (double) executionTime / 1000000000;
-		System.out.println("Execution time in sec: " + executionTimeInSeconds);
+		System.out.println("Execution time exhaustive search in sec: " + executionTimeInSeconds);
 		System.out.println("Combs with exhaustive search: " + additionalActorsCombs.size());
 		this.executionTimeMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, executionTimeInSeconds);
 		return additionalActorsCombs;
 	}
 
 	@SuppressWarnings("unchecked")
-	public LinkedList<PModelWithAdditionalActors> newMeasureHeuristic(int bound) throws Exception {
+	public LinkedList<PModelWithAdditionalActors> newMeasureHeuristic(int bound)
+			throws NullPointerException, InterruptedException, Exception {
 
 		long startTime = System.nanoTime();
 
@@ -185,7 +186,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 			this.clusterSet = clusterSet;
 
 			// compute a priority list for the whole cluster
-			// compute private, static and wd sphere for origin and dataObject (without
+			// compute private, static and wd sphere for each origin and dataObject (without
 			// additional actors)
 			// sort wd sphere by the fraction of instance types on which the participant
 			// definitely reads the dataObject and the total amount of instance types (until
@@ -193,9 +194,9 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 			// therefore participants that are more likely to be in sd will be preferred
 
 			HashMap<BPMNTask, LinkedList<PriorityListEntry>> priorityListForOrigin = new HashMap<BPMNTask, LinkedList<PriorityListEntry>>();
-			LinkedList<LinkedList<Object>> combinationsPerBrt = new LinkedList<LinkedList<Object>>();
 
 			for (HashSet<BPMNBusinessRuleTask> cluster : clusterSet) {
+				LinkedList<LinkedList<AdditionalActors>> currentCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
 				HashMap<BPMNParticipant, Double> amountPathsPerParticipantInCluster = new HashMap<BPMNParticipant, Double>();
 				for (BPMNBusinessRuleTask brt : cluster) {
 					for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : brt.getLastWriterList()
@@ -209,11 +210,8 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 							// compute the priority list for the origin
 							// calculate the amount of paths where a certain reader reads the dataObject
 							// from the origin
-
-							// add the participant of the origin????
 							LinkedList<PriorityListEntry> priorityListForOriginAndDataObject = this
-									.computePriorityListForOrigin(origin, dataObject, pathsFromOriginToEnd,
-											this.privateSphere);
+									.computePriorityListForOrigin(origin, dataObject, pathsFromOriginToEnd);
 							priorityListForOrigin.computeIfAbsent(origin, k -> new LinkedList<PriorityListEntry>())
 									.addAll(priorityListForOriginAndDataObject);
 
@@ -257,14 +255,42 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 							.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(brt, costMapForCluster,
 									bound);
 
-					LinkedList<Object> allCombsForBrt = new LinkedList<Object>();
-					allCombsForBrt.addAll(additionalActorsForBrt);
-					combinationsPerBrt.add(allCombsForBrt);
+					if (currentCheapestAddActorsLists.isEmpty()) {
+						for (AdditionalActors addActors : additionalActorsForBrt) {
+							LinkedList<AdditionalActors> currAddActors = new LinkedList<AdditionalActors>();
+							currAddActors.add(addActors);
+							currentCheapestAddActorsLists.add(currAddActors);
+						}
+					} else {
+						// go through the current cheapest additionalActors of the cluster
+						// add those additional actors, that lead to a minimal increase of distinct
+						// additional actors in the current list
+
+						HashMap<Integer, Double> listIndexAndCostMap = new HashMap<Integer, Double>();
+
+						for (LinkedList<AdditionalActors> currCheapestAddActorsList : currentCheapestAddActorsLists) {
+
+							HashSet<BPMNParticipant> currAddActorsOfList = new HashSet<BPMNParticipant>();
+							for (AdditionalActors addActors : currCheapestAddActorsList) {
+								currAddActorsOfList.addAll(addActors.getAdditionalActors());
+							}
+
+							for (AdditionalActors addActorsCurrBrt : additionalActorsForBrt) {
+								int size = currAddActorsOfList.size();
+								currAddActorsOfList.addAll(addActorsCurrBrt.getAdditionalActors());
+								int sizeAfterAdding = currAddActorsOfList.size();
+								System.out.println(size + " " + sizeAfterAdding);
+							}
+
+						}
+					}
+
 				}
 
 			}
 
-			pModelAddActors = this.generateAllPossiblePModelWithAdditionalActors(combinationsPerBrt);
+			// pModelAddActors =
+			// this.generateAllPossiblePModelWithAdditionalActors(combinationsPerBrt);
 
 			// calculate the cost measure for the all additional actors combinations found
 			// with the heuristic
@@ -278,10 +304,16 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		long endTime = System.nanoTime();
 		long executionTime = endTime - startTime;
 		double executionTimeInSeconds = (double) executionTime / 1000000000;
-		this.executionTimeMap.put(Enums.AlgorithmToPerform.HEURISTIC, executionTimeInSeconds);
+
+		if (bound > 0) {
+			this.executionTimeMap.put(Enums.AlgorithmToPerform.HEURISTICWITHBOUND, executionTimeInSeconds);
+		} else {
+			this.executionTimeMap.put(Enums.AlgorithmToPerform.HEURISTIC, executionTimeInSeconds);
+		}
 
 		System.out.println("Combs with heuristic: " + pModelAddActors.size());
-		System.out.println("Run time heuristic in sec: " + executionTimeInSeconds);
+		System.out.println(
+				"Execution time heuristic search with bound = " + bound + " in sec: " + executionTimeInSeconds);
 
 		return pModelAddActors;
 
@@ -316,7 +348,10 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		}
 
 		LinkedList<BPMNParticipant> possibleParticipantsLeft = new LinkedList<BPMNParticipant>();
-		possibleParticipantsLeft.addAll(this.privateSphere);
+		// to remain the order of cost, iterate through the costMap and add the participants
+		for(LinkedList<BPMNParticipant>part: costMap.values()) {
+			possibleParticipantsLeft.addAll(part);
+		}		
 		possibleParticipantsLeft.removeAll(excludedParticipants);
 		possibleParticipantsLeft.removeAll(mandatoryParticipants);
 		possibleParticipantsLeft.remove(brt.getParticipant());
@@ -380,8 +415,8 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 			// iterate through all combinations
 			for (int i = 0; i < list.size(); i++) {
 				LinkedList<BPMNParticipant> currList = list.get(i);
-				currList.addAll(mandatoryParticipants);
-				currList.addAll(participantsWithBestCost);
+				currList.addAll(0, participantsWithBestCost);
+				currList.addAll(0, mandatoryParticipants);
 
 				AdditionalActors addActors = new AdditionalActors(brt, currList);
 				addActorsCombinationsForBrt.add(addActors);
@@ -403,6 +438,10 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		// if bound <= 0 -> unbounded
 
 		for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
+			if (Thread.currentThread().isInterrupted()) {
+				System.err.println("Interrupted! " + Thread.currentThread().getName());
+				throw new InterruptedException();
+			}
 			LinkedList<LinkedList<BPMNParticipant>> potentialAddActors = this.getPotentialAddActorsForBrt(brt);
 			LinkedList<AdditionalActors> addActorsCombinationsForBrt = this
 					.generateAdditionalActorsForBrtsWithConstraintsAndBound(brt, potentialAddActors.get(0),
@@ -435,7 +474,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		return pModelWithAddActorsList;
 	}
 
-	private synchronized LinkedList<AdditionalActors> generateAdditionalActorsForBrtsWithConstraintsAndBound(
+	private LinkedList<AdditionalActors> generateAdditionalActorsForBrtsWithConstraintsAndBound(
 			BPMNBusinessRuleTask currBrt, LinkedList<BPMNParticipant> allPossibleActors,
 			LinkedList<BPMNParticipant> allMandatoryActors, LinkedList<BPMNParticipant> preferredParticipants,
 			int boundForAddActors) throws Exception {
@@ -565,7 +604,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 				}
 			}
 		} catch (Exception e) {
-			throw new Exception("Error in mapAndCompute() method!" + e.getStackTrace() + e.getMessage());
+			throw new Exception("Error in mapAndCompute() method!" + e.getMessage());
 		}
 
 	}
@@ -740,7 +779,9 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		if (this.modelWithLanes) {
 			for (Lane l : this.modelInstance.getModelElementsByType(Lane.class)) {
 				BPMNParticipant lanePart = new BPMNParticipant(l.getId().trim(), l.getName().trim());
-				this.publicSphere.add(lanePart);
+				if (!privateSphere.contains(lanePart)) {
+					this.privateSphere.add(lanePart);
+				}
 				for (FlowNode flowNode : l.getFlowNodeRefs()) {
 					for (BPMNElement t : this.processElements) {
 						if (t instanceof BPMNTask && flowNode.getId().trim().equals(t.getId().trim())) {
@@ -760,7 +801,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 						String taskName = task.getName().trim();
 						String participantName = taskName.substring(taskName.indexOf("["), taskName.indexOf("]") + 1);
 						boolean partAlreadyMapped = false;
-						for (BPMNParticipant part : this.publicSphere) {
+						for (BPMNParticipant part : this.privateSphere) {
 							if (part.getName().contentEquals(participantName)) {
 								((BPMNTask) t).setParticipant(part);
 								partAlreadyMapped = true;
@@ -768,9 +809,9 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 							}
 						}
 						if (!partAlreadyMapped) {
-							BPMNParticipant participant = new BPMNParticipant(participantName, participantName);
+							BPMNParticipant participant = new BPMNParticipant(participantName);
 							((BPMNTask) t).setParticipant(participant);
-							this.publicSphere.add(participant);
+							this.privateSphere.add(participant);
 						}
 
 					}
@@ -919,7 +960,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 					&& str.toLowerCase().contains(("[Troubleshooter]").toLowerCase())) {
 				troubleshooter = str.substring(str.indexOf('{') + 1, str.indexOf('}')).trim();
 				boolean troubleshooterExists = false;
-				for (BPMNParticipant part : this.publicSphere) {
+				for (BPMNParticipant part : this.privateSphere) {
 					if (part.getName().contentEquals(troubleshooter)) {
 						this.troubleShooter = part;
 						troubleshooterExists = true;
@@ -927,8 +968,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 					}
 				}
 				if (!troubleshooterExists) {
-					BPMNParticipant troubleShooter = new BPMNParticipant(troubleshooter, troubleshooter);
-					this.publicSphere.add(troubleShooter);
+					BPMNParticipant troubleShooter = new BPMNParticipant(troubleshooter);
 					this.troubleShooter = troubleShooter;
 				}
 			}
@@ -936,16 +976,13 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		}
 
 		// when there is no default troubleShooter -> randomly choose one from the
-		// public sphere
+		// private sphere
 		if (this.troubleShooter == null) {
-			if (!publicSphere.isEmpty()) {
-				// each participant has been excluded for some decision
-				// no optimal default troubleshooter for all decisions
-				this.troubleShooter = CommonFunctionality.getRandomItem(publicSphere);
+			if (!this.privateSphere.isEmpty()) {
+				this.troubleShooter = CommonFunctionality2.getRandomItem(this.privateSphere);
 			} else {
 				// create a new troubleshooter
-				BPMNParticipant defaultTroubleShooter = new BPMNParticipant("defaultTroubleShooterId_1",
-						"someTrustedThirdParty");
+				BPMNParticipant defaultTroubleShooter = new BPMNParticipant("someTrustedThirdParty");
 				this.troubleShooter = defaultTroubleShooter;
 			}
 		}
@@ -955,8 +992,9 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 	public void computePrivateSphere() {
 		for (BPMNElement e : this.processElements) {
 			if (e instanceof BPMNTask) {
-				if (!(this.privateSphere.contains(((BPMNTask) e).getParticipant()))) {
-					this.privateSphere.add(((BPMNTask) e).getParticipant());
+				BPMNParticipant currParticipant = ((BPMNTask) e).getParticipant();
+				if (!privateSphere.contains(currParticipant)) {
+					this.privateSphere.add(currParticipant);
 				}
 			}
 		}
@@ -1000,7 +1038,6 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 			}
 		}
 
-		boolean decisionTakerPartOfVerifier = true;
 		for (ExclusiveGateway xor : this.modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			BPMNExclusiveGateway xorGtw = (BPMNExclusiveGateway) this.getBPMNNodeById(xor.getId());
 			LinkedList<BPMNParticipant> partsInExcludeConstraintsForGtw = new LinkedList<BPMNParticipant>();
@@ -1022,7 +1059,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 			}
 
 			if (partsInMandatoryConstraintsForGtw.size() > xorGtw.getAmountVerifiers()) {
-				throw new Exception("Mandatory participants > amount voters needed at " + xorGtw.getId() + " ("
+				throw new Exception("Mandatory participants > amount verifiers needed at " + xorGtw.getId() + " ("
 						+ partsInMandatoryConstraintsForGtw.size() + " > " + xorGtw.getAmountVerifiers() + ")");
 			}
 
@@ -1049,11 +1086,13 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 					if (!(str.contains("[") && str.contains("]") && str.contains("{") && str.contains("}"))) {
 						throw new Exception("Annotation: " + a.getId() + " not modeled in correct form [...]{...}");
 					}
-					if (CommonFunctionality.containsIgnoreCase(str, "[Voters]")) {
+					if (CommonFunctionality2.containsIgnoreCase(str, "[Verifiers]")
+							|| CommonFunctionality2.containsIgnoreCase(str, "[Voters]")) {
 						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 						String[] split = subStr.split(",");
 
-						// there is a tuple of the form (amountvoters,votersSameChoice,amountLoops)
+						// there is a tuple of the form
+						// (amountVerifiers,verifiersSameChoice,amountLoops)
 						try {
 							gtw.setAmountVerifiers(Integer.parseInt(split[0]));
 							gtw.setAmountVerifiersSameChoice(Integer.parseInt(split[1]));
@@ -1061,11 +1100,12 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
-					} else if (CommonFunctionality.containsIgnoreCase(str, "[Verifiers]")) {
+					} else if (CommonFunctionality2.containsIgnoreCase(str, "[Verifiers]")
+							|| CommonFunctionality2.containsIgnoreCase(str, "[Voters]")) {
 						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 						String[] split = subStr.split(",");
 
-						// there is a tuple of the form (amountvoters,votersSameChoice)
+						// there is a tuple of the form (amountVerifiers,verifiersSameChoice)
 						try {
 							gtw.setAmountVerifiers(Integer.parseInt(split[0]));
 							gtw.setAmountVerifiersSameChoice(Integer.parseInt(split[1]));
@@ -1073,116 +1113,108 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 							e.printStackTrace();
 						}
 
-					} else if (CommonFunctionality.containsIgnoreCase(str, "[Sphere]")) {
+					} else if (CommonFunctionality2.containsIgnoreCase(str, "[Sphere]")) {
 						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 						gtw.setSphere(subStr);
-					} else if (CommonFunctionality.containsIgnoreCase(str, "[ExcludeParticipantConstraint]")) {
-						String partName = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
-						boolean partAlreadyMapped = false;
-						boolean exit = false;
-						Iterator<BPMNParticipant> partIter = this.publicSphere.iterator();
-						while (partIter.hasNext() && exit == false) {
-							BPMNParticipant p = partIter.next();
-							String participantName = p.getNameWithoutBrackets();
-							if (participantName.contentEquals(partName)) {
-								BPMNParticipant participant = this.getBPMNParticipantFromSet(this.publicSphere,
-										participantName);
-								if (participant != null) {
-									partAlreadyMapped = true;
-									boolean constrExists = false;
-									for (ExcludeParticipantConstraint exclConst : this.excludeParticipantConstraints) {
-										// check if constraint already exists
-										if (exclConst.getParticipantToExclude().equals(participant)) {
-											// constraint already exists
-											gtw.getConstraints().add(exclConst);
-											if (!this.excludeParticipantConstraints.contains(exclConst)) {
-												this.excludeParticipantConstraints.add(exclConst);
-											}
-											constrExists = true;
-											exit = true;
-											break;
-										}
+					} else if (CommonFunctionality2.containsIgnoreCase(str, "[ExcludeParticipantConstraint]")) {
+						String partName = str.substring(str.indexOf('{') + 1, str.indexOf('}')).trim();
+
+						BPMNParticipant participant = this.getBPMNParticipantFromList(this.privateSphere, partName);
+
+						if (participant != null) {
+							boolean constrExists = false;
+							for (ExcludeParticipantConstraint exclConst : this.excludeParticipantConstraints) {
+								// check if constraint already exists
+								if (exclConst.getParticipantToExclude().equals(participant)) {
+									// constraint already exists
+									gtw.getConstraints().add(exclConst);
+									if (!this.excludeParticipantConstraints.contains(exclConst)) {
+										this.excludeParticipantConstraints.add(exclConst);
 									}
-									if (constrExists == false) {
-										ExcludeParticipantConstraint epc = new ExcludeParticipantConstraint(
-												participant);
-										gtw.getConstraints().add(epc);
-										if (!this.excludeParticipantConstraints.contains(epc)) {
-											this.excludeParticipantConstraints.add(epc);
-										}
-										exit = true;
-									}
+									constrExists = true;
 								}
 							}
-						}
+							if (constrExists == false) {
 
-						if (!partAlreadyMapped) {
-							BPMNParticipant partToBeMapped = new BPMNParticipant(partName, partName);
-							this.publicSphere.add(partToBeMapped);
-							ExcludeParticipantConstraint epc = new ExcludeParticipantConstraint(partToBeMapped);
-							gtw.getConstraints().add(epc);
-							if (!this.excludeParticipantConstraints.contains(epc)) {
-								this.excludeParticipantConstraints.add(epc);
-							}
-						}
-
-					} else if (CommonFunctionality.containsIgnoreCase(str, "[MandatoryParticipantConstraint]")) {
-						String partName = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
-						boolean partAlreadyMapped = false;
-						boolean exit = false;
-						Iterator<BPMNParticipant> partIter = this.publicSphere.iterator();
-						while (partIter.hasNext() && exit == false) {
-							BPMNParticipant p = partIter.next();
-							String participantName = p.getNameWithoutBrackets();
-							if (participantName.contentEquals(partName)) {
-								BPMNParticipant participant = this.getBPMNParticipantFromSet(this.publicSphere,
-										participantName);
-								if (participant != null) {
-									partAlreadyMapped = true;
-									boolean constrExists = false;
-									for (MandatoryParticipantConstraint mandConst : this.mandatoryParticipantConstraints) {
-										// check if constraint already existst
-										if (mandConst.getMandatoryParticipant().equals(participant)) {
-											// constraint already exists
-											gtw.getConstraints().add(mandConst);
-											if (!this.mandatoryParticipantConstraints.contains(mandConst)) {
-												this.mandatoryParticipantConstraints.add(mandConst);
-											}
-											constrExists = true;
-											exit = true;
-											break;
+								for (Constraint constr : gtw.getConstraints()) {
+									if (constr instanceof MandatoryParticipantConstraint) {
+										if (((MandatoryParticipantConstraint) constr).getMandatoryParticipant()
+												.equals(participant)) {
+											throw new Exception("Participant: " + partName
+													+ " can not be excluded and mandatory at the same time!");
 										}
-									}
-									if (constrExists == false) {
-										BPMNElement predecessor = gtw.getPredecessors().iterator().next();
-										if (predecessor instanceof BPMNBusinessRuleTask) {
-											BPMNBusinessRuleTask brt = (BPMNBusinessRuleTask) predecessor;
-											if (brt.getParticipant().equals(participant)) {
-												throw new Exception(
-														"Mandatory participant can not be the additional actor of the brt!");
-											}
-
-										}
-										MandatoryParticipantConstraint mpc = new MandatoryParticipantConstraint(
-												participant);
-										gtw.getConstraints().add(mpc);
-										if (!this.mandatoryParticipantConstraints.contains(mpc)) {
-											this.mandatoryParticipantConstraints.add(mpc);
-										}
-										exit = true;
 									}
 								}
+
+								if (!this.privateSphere.contains(participant)) {
+									throw new Exception(
+											"Constraints to exclude participants must be on participants from the private sphere! ");
+								}
+								ExcludeParticipantConstraint epc = new ExcludeParticipantConstraint(participant);
+								gtw.getConstraints().add(epc);
+								if (!this.excludeParticipantConstraints.contains(epc)) {
+									this.excludeParticipantConstraints.add(epc);
+								}
 							}
+
+						} else {
+							throw new Exception(partName
+									+ " is not part of the private sphere! Constraints to exclude participants must be on participants from the private sphere!");
 						}
 
-						if (!partAlreadyMapped) {
-							BPMNParticipant partToBeMapped = new BPMNParticipant(partName, partName);
-							this.publicSphere.add(partToBeMapped);
-							MandatoryParticipantConstraint mpc = new MandatoryParticipantConstraint(partToBeMapped);
-							gtw.getConstraints().add(mpc);
-							if (!this.mandatoryParticipantConstraints.contains(mpc)) {
-								this.mandatoryParticipantConstraints.add(mpc);
+					} else if (CommonFunctionality2.containsIgnoreCase(str, "[MandatoryParticipantConstraint]")) {
+						String partName = str.substring(str.indexOf('{') + 1, str.indexOf('}')).trim();
+
+						BPMNParticipant participant = this.getBPMNParticipantFromList(this.privateSphere, partName);
+
+						if (participant != null) {
+							boolean constrExists = false;
+							for (MandatoryParticipantConstraint mandConst : this.mandatoryParticipantConstraints) {
+								// check if constraint already exists
+								if (mandConst.getMandatoryParticipant().equals(participant)) {
+									// constraint already exists
+									gtw.getConstraints().add(mandConst);
+									if (!this.mandatoryParticipantConstraints.contains(mandConst)) {
+										this.mandatoryParticipantConstraints.add(mandConst);
+									}
+									constrExists = true;
+								}
 							}
+							if (constrExists == false) {
+								BPMNElement predecessor = gtw.getPredecessors().iterator().next();
+								if (predecessor instanceof BPMNBusinessRuleTask) {
+									BPMNBusinessRuleTask brt = (BPMNBusinessRuleTask) predecessor;
+									if (brt.getParticipant().equals(participant)) {
+										throw new Exception(
+												"Mandatory participant can not be the additional actor of the brt!");
+									}
+
+								}
+
+								for (Constraint constr : gtw.getConstraints()) {
+									if (constr instanceof ExcludeParticipantConstraint) {
+										if (((ExcludeParticipantConstraint) constr).getParticipantToExclude()
+												.equals(participant)) {
+											throw new Exception("Participant: " + partName
+													+ " can not be mandatory and excluded at the same time!");
+										}
+									}
+								}
+
+								if (!this.privateSphere.contains(participant)) {
+									throw new Exception(
+											"Constraints to make participants mandatory must be on participants from the private sphere! ");
+								}
+								MandatoryParticipantConstraint mpc = new MandatoryParticipantConstraint(participant);
+								gtw.getConstraints().add(mpc);
+								if (!this.mandatoryParticipantConstraints.contains(mpc)) {
+									this.mandatoryParticipantConstraints.add(mpc);
+								}
+							}
+
+						} else {
+							throw new Exception(partName
+									+ " is not part of the private sphere! Constraints to make participants mandatory must be on participants from the private sphere!");
 						}
 					}
 
@@ -1192,16 +1224,16 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 
 	}
 
-	public BPMNParticipant getBPMNParticipantFromList(LinkedList<BPMNParticipant> list, String name) {
+	public BPMNParticipant getBPMNParticipantFromList(List<BPMNParticipant> list, String nameWithoutBrackets) {
 		for (BPMNParticipant p : list) {
-			if (p.getNameWithoutBrackets().contentEquals(name)) {
+			if (p.getNameWithoutBrackets().contentEquals(nameWithoutBrackets)) {
 				return p;
 			}
 		}
 		return null;
 	}
 
-	public BPMNParticipant getBPMNParticipantFromSet(HashSet<BPMNParticipant> set, String name) {
+	public BPMNParticipant getBPMNParticipantFromSet(Set<BPMNParticipant> set, String name) {
 		for (BPMNParticipant p : set) {
 			if (p.getNameWithoutBrackets().contentEquals(name)) {
 				return p;
@@ -1265,7 +1297,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 
 	public ArrayList<BPMNTask> getLastWriterListForDataObject(BPMNBusinessRuleTask brt, BPMNDataObject data)
 			throws NullPointerException, InterruptedException, Exception {
-		LinkedList<LinkedList<FlowNode>> list = CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance,
+		LinkedList<LinkedList<FlowNode>> list = CommonFunctionality2.getAllPathsBetweenNodes(this.modelInstance,
 				this.startEvent.getId(), brt.getId());
 		ArrayList<BPMNTask> lastWriterList = new ArrayList<BPMNTask>();
 		for (LinkedList<FlowNode> path : list) {
@@ -1775,7 +1807,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		// consider the constraints e.g. participants may be excluded or mandatory
 		LinkedList<BPMNParticipant> participantsToCombineAsAdditionalActors = new LinkedList<BPMNParticipant>();
 
-		// add all participants except the actor of the brt itself
+		// add all participants of the private sphere except the actor of the brt itself
 		participantsToCombineAsAdditionalActors.addAll(this.privateSphere);
 		participantsToCombineAsAdditionalActors.remove(partOfBrt);
 
@@ -1910,22 +1942,29 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 	public synchronized HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>> call()
 			throws NullPointerException, InterruptedException, Exception {
 		// TODO Auto-generated method stub
-		System.out.println("Start algorithm " + this.algorithmToPerform.name() +" for: " + this.processModelFile.getAbsolutePath());
-		if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.HEURISTICWITHBOUND)) {
-			System.out.println("Bound == " + this.bound);
-		}
 
 		HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>> mapToReturn = new HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>();
-		if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
-			LinkedList<PModelWithAdditionalActors> solutionsExhaustiveSearch = this.exhaustiveSearch();
-			mapToReturn.putIfAbsent(this.algorithmToPerform, solutionsExhaustiveSearch);
-		} else if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.HEURISTIC)) {
-			LinkedList<PModelWithAdditionalActors> solutionsHeuristicSearch = this.newMeasureHeuristic(0);
-			mapToReturn.putIfAbsent(this.algorithmToPerform, solutionsHeuristicSearch);
-		} else if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.HEURISTICWITHBOUND)) {
-			LinkedList<PModelWithAdditionalActors> solutionsExhaustiveSearchWithBound = this
-					.newMeasureHeuristic(this.bound);
-			mapToReturn.putIfAbsent(this.algorithmToPerform, solutionsExhaustiveSearchWithBound);
+
+		try {
+			System.out.println("Start algorithm " + this.algorithmToPerform.name() + " for: "
+					+ this.processModelFile.getAbsolutePath());
+			if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.HEURISTICWITHBOUND)) {
+				System.out.println("Bound == " + this.bound);
+			}
+			if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
+				LinkedList<PModelWithAdditionalActors> solutionsExhaustiveSearch = this.exhaustiveSearch();
+				mapToReturn.putIfAbsent(this.algorithmToPerform, solutionsExhaustiveSearch);
+			} else if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.HEURISTIC)) {
+				LinkedList<PModelWithAdditionalActors> solutionsHeuristicSearch = this.newMeasureHeuristic(0);
+				mapToReturn.putIfAbsent(this.algorithmToPerform, solutionsHeuristicSearch);
+			} else if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.HEURISTICWITHBOUND)) {
+				LinkedList<PModelWithAdditionalActors> solutionsExhaustiveSearchWithBound = this
+						.newMeasureHeuristic(this.bound);
+				mapToReturn.putIfAbsent(this.algorithmToPerform, solutionsExhaustiveSearchWithBound);
+			}
+		} catch (Throwable t) {
+			System.err.println("Uncaught exception is detected! " + t.getStackTrace());
+			throw t;
 		}
 
 		return mapToReturn;
@@ -2032,7 +2071,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 	}
 
 	private void computeAlphaMeasure(PModelWithAdditionalActors pModelWithAdditionalActors,
-			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject) {
+			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject) throws InterruptedException {
 		pModelWithAdditionalActors.setPrivateSphere(this.privateSphere);
 
 		for (Entry<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataO : staticSpherePerDataObject
@@ -2050,6 +2089,10 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 			staticSphereWithAdditionalActors.addAll(currStaticEntry.getStaticSphere());
 
 			for (AdditionalActors additionalActors : pModelWithAdditionalActors.getAdditionalActorsList()) {
+				if (Thread.currentThread().isInterrupted()) {
+					System.err.println("Interrupted! " + Thread.currentThread().getName());
+					throw new InterruptedException();
+				}
 				BPMNBusinessRuleTask brt = additionalActors.getCurrBrt();
 				LinkedList<BPMNParticipant> addActors = additionalActors.getAdditionalActors();
 
@@ -2158,7 +2201,8 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 			HashSet<BPMNBusinessRuleTask> depT, HashMap<BPMNBusinessRuleTask, HashSet<BPMNParticipant>> spheres1,
 			BPMNDataObject dataO, BPMNTask origin, BPMNBusinessRuleTask currPositionBrt,
 			LinkedList<AdditionalActors> addActors,
-			HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathsFromOriginOverCurrBrtToEndMap) {
+			HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathsFromOriginOverCurrBrtToEndMap)
+			throws InterruptedException {
 		// create minimal subsets
 		// start with sets of brts of size 1
 		LinkedList<LinkedList<BPMNBusinessRuleTask>> cheapestSubSets = new LinkedList<LinkedList<BPMNBusinessRuleTask>>();
@@ -2171,6 +2215,10 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		}
 
 		for (int i = 1; i <= depT.size(); i++) {
+			if (Thread.currentThread().isInterrupted()) {
+				System.err.println("Interrupted! " + Thread.currentThread().getName());
+				throw new InterruptedException();
+			}
 			LinkedList<BPMNBusinessRuleTask> currAvailable = new LinkedList<BPMNBusinessRuleTask>(depT);
 			currAvailable.removeAll(toRemove);
 
@@ -2227,7 +2275,8 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 	}
 
 	public void computeBetaMeasure(PModelWithAdditionalActors pModelWithAdditionalActors,
-			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject) {
+			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject)
+			throws InterruptedException {
 		// compute beta measure
 		// i.e. query brts in any order and get origins for each data object
 		// weight(w) is the depth of the origin
@@ -2237,6 +2286,10 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 			BPMNDataObject currDataO = wdSpherePerDataObjectAndOrigin.getKey();
 			LinkedList<LinkedList<HashSet<?>>> wdSphereList = wdSpherePerDataObjectAndOrigin.getValue();
 			for (int i = 0; i < wdSphereList.size(); i++) {
+				if (Thread.currentThread().isInterrupted()) {
+					System.err.println("Interrupted! " + Thread.currentThread().getName());
+					throw new InterruptedException();
+				}
 				BPMNTask origin = (BPMNTask) wdSphereList.get(i).get(0).iterator().next();
 				HashSet<BPMNTask> wdReaderBrts = (HashSet<BPMNTask>) wdSphereList.get(i).get(1);
 				HashSet<BPMNParticipant> wdSphere = (HashSet<BPMNParticipant>) wdSphereList.get(i).get(2);
@@ -2252,6 +2305,10 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 				HashSet<BPMNTask> reachableBrts = currWDSphereEntry.getWdReaderBrts();
 
 				for (AdditionalActors addActors : currAddActorsList) {
+					if (Thread.currentThread().isInterrupted()) {
+						System.err.println("Interrupted! " + Thread.currentThread().getName());
+						throw new InterruptedException();
+					}
 					// add all additional actors of brts reachable from origin
 					BPMNBusinessRuleTask currBrt = addActors.getCurrBrt();
 					for (BPMNTask reachableBrt : reachableBrts) {
@@ -2292,6 +2349,10 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		for (AdditionalActors addActors : pModelWithAdditionalActors.getAdditionalActorsList()) {
 			BPMNBusinessRuleTask currBrt = addActors.getCurrBrt();
 			for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : currBrt.getLastWriterList().entrySet()) {
+				if (Thread.currentThread().isInterrupted()) {
+					System.err.println("Interrupted! " + Thread.currentThread().getName());
+					throw new InterruptedException();
+				}
 				String sphereOfDataObject = lastWriterEntry.getKey().getDefaultSphere();
 				boolean computeGammaMeasure = this.computeCurrentMeasure(sphereOfDataObject,
 						this.strongDynamicSphereKey);
@@ -2304,6 +2365,10 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 								.getOrComputePathsFromOriginToEnd(pathsFromOriginToEndMap, origin);
 
 						for (BPMNParticipant participant : addActors.getAdditionalActors()) {
+							if (Thread.currentThread().isInterrupted()) {
+								System.err.println("Interrupted! " + Thread.currentThread().getName());
+								throw new InterruptedException();
+							}
 							sdSphereEntries.computeIfAbsent(participant,
 									k -> new HashMap<BPMNDataObject, LinkedList<SD_SphereEntry>>());
 							sdSphereEntries.get(participant).computeIfAbsent(dataO,
@@ -2324,6 +2389,10 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 								HashMap<BPMNBusinessRuleTask, HashSet<BPMNParticipant>> spheres1 = new HashMap<BPMNBusinessRuleTask, HashSet<BPMNParticipant>>();
 
 								for (BPMNBusinessRuleTask dependentBrt : depT) {
+									if (Thread.currentThread().isInterrupted()) {
+										System.err.println("Interrupted! " + Thread.currentThread().getName());
+										throw new InterruptedException();
+									}
 									SD_SphereEntry sdSphereEntryForDependentBrt = new SD_SphereEntry(dataO, origin,
 											dependentBrt, participant);
 
@@ -2369,6 +2438,10 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 								for (LinkedList<BPMNBusinessRuleTask> cheapestSubList : cheapestSubLists) {
 									double scorePerBrtList = 0;
 									for (BPMNBusinessRuleTask brt : cheapestSubList) {
+										if (Thread.currentThread().isInterrupted()) {
+											System.err.println("Interrupted! " + Thread.currentThread().getName());
+											throw new InterruptedException();
+										}
 										double currScore = 0;
 										SD_SphereEntry sdSphereEntryForDependentBrt = this
 												.getSD_SphereEntryWithParameters(sdSphereEntries, participant, dataO,
@@ -2432,6 +2505,10 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 
 								// go through each brt in depT and check if it is contributing to gamma min
 								for (BPMNBusinessRuleTask dependentBrt : depT) {
+									if (Thread.currentThread().isInterrupted()) {
+										System.err.println("Interrupted! " + Thread.currentThread().getName());
+										throw new InterruptedException();
+									}
 									boolean isInCheapest = false;
 									if (gammaMinList.contains(dependentBrt)) {
 										isInCheapest = true;
@@ -2601,11 +2678,11 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 
 	}
 
-	public HashSet<BPMNParticipant> getPrivateSphere() {
+	public LinkedList<BPMNParticipant> getPrivateSphere() {
 		return privateSphere;
 	}
 
-	public void setPrivateSphere(HashSet<BPMNParticipant> privateSphere) {
+	public void setPrivateSphere(LinkedList<BPMNParticipant> privateSphere) {
 		this.privateSphere = privateSphere;
 	}
 
@@ -2638,10 +2715,15 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 	}
 
 	public LinkedList<PriorityListEntry> computePriorityListForOrigin(BPMNTask origin, BPMNDataObject dataObject,
-			LinkedList<LinkedList<BPMNElement>> pathsFromOriginToEnd, HashSet<BPMNParticipant> privateSphere) {
+			LinkedList<LinkedList<BPMNElement>> pathsFromOriginToEnd) {
 		LinkedList<PriorityListEntry> priorityList = new LinkedList<PriorityListEntry>();
 		HashMap<BPMNParticipant, Double> readerMap = new HashMap<BPMNParticipant, Double>();
-		HashMap<BPMNParticipant, Double> occurencesOfReaderMap = new HashMap<BPMNParticipant, Double>();
+		HashMap<BPMNParticipant, Double> occurencesOfParticipantMap = new HashMap<BPMNParticipant, Double>();
+
+		// the origin has the data it writes on any outgoing path
+		double paths = pathsFromOriginToEnd.size();
+		occurencesOfParticipantMap.putIfAbsent(origin.getParticipant(), paths);
+		readerMap.putIfAbsent(origin.getParticipant(), paths);
 
 		for (LinkedList<BPMNElement> path : pathsFromOriginToEnd) {
 			LinkedList<BPMNParticipant> readersAlreadyCountedOnPath = new LinkedList<BPMNParticipant>();
@@ -2650,11 +2732,11 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 					BPMNTask task = (BPMNTask) pathEl;
 					BPMNParticipant participant = task.getParticipant();
 					if (!readersAlreadyCountedOnPath.contains(participant)) {
-						if (!occurencesOfReaderMap.containsKey(participant)) {
-							occurencesOfReaderMap.put(participant, 0.0);
+						if (!occurencesOfParticipantMap.containsKey(participant)) {
+							occurencesOfParticipantMap.put(participant, 0.0);
 						}
-						double occurrencesOfReader = occurencesOfReaderMap.get(participant) + 1;
-						occurencesOfReaderMap.put(participant, occurrencesOfReader);
+						double occurrencesOfParticipant = occurencesOfParticipantMap.get(participant) + 1;
+						occurencesOfParticipantMap.put(participant, occurrencesOfParticipant);
 					}
 
 					if (dataObject.getReaders().contains(task) && !task.equals(origin)) {
@@ -2682,9 +2764,12 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 
 		}
 
-		for (BPMNParticipant participant : privateSphere) {
+		for (BPMNParticipant participant : this.privateSphere) {
 			if (!readerMap.containsKey(participant)) {
 				readerMap.put(participant, 0.0);
+			}
+			if (!occurencesOfParticipantMap.containsKey(participant)) {
+				occurencesOfParticipantMap.put(participant, 0.0);
 			}
 		}
 
@@ -2697,7 +2782,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 			// get the fraction of paths on which a participant occurs
 			// does not need to be a reader of the data object!
 			// but there must not be another writer in between
-			double amountPathsOnWhichParticipantOccurs = occurencesOfReaderMap.get(participant);
+			double amountPathsOnWhichParticipantOccurs = occurencesOfParticipantMap.get(participant);
 			double fractionOfPathsWhereParticipantOccurs = amountPathsOnWhichParticipantOccurs
 					/ pathsFromOriginToEnd.size();
 
@@ -2722,11 +2807,17 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 
 				// if data object requires static -> reader needs to be at least static
 				if (dataObject.getDefaultSphere().contentEquals("Static")) {
+					// check if reader is in private sphere
+					if (!privateSphere.contains(participant)) {
+						penalty += 1;
+					}
+
 					// check if reader is in static sphere of data object
 					if (!dataObject.getStaticSphere().contains(participant)) {
 						penalty += weightingParameters.get(0);
 					}
 				} else if (dataObject.getDefaultSphere().contentEquals("Weak-Dynamic")) {
+
 					// check if reader is in static sphere of data object
 					if (!dataObject.getStaticSphere().contains(participant)) {
 						penalty += weightingParameters.get(0);

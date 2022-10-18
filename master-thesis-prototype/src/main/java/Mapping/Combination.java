@@ -7,11 +7,11 @@ import java.util.List;
 
 public class Combination {
 	
-	public static<T> LinkedList<LinkedList<T>> getPermutations (LinkedList<T> elements, int k) {
+	public static<T> LinkedList<LinkedList<T>> getPermutations (LinkedList<T> elements, int k) throws InterruptedException {
 	    return getPermutations (elements,k,0);
 	}
 	
-	public static<T> LinkedList<LinkedList<T>> getPermutationsWithBound (LinkedList<T> elements, int k, int bound) {
+	public static<T> LinkedList<LinkedList<T>> getPermutationsWithBound (LinkedList<T> elements, int k, int bound) throws InterruptedException {
 		if(bound<=0) {
 			return getPermutations(elements, k, 0);
 		} else {
@@ -44,7 +44,7 @@ public class Combination {
 	}
 
 
-	public static<T> LinkedList<LinkedList<T>> getPermutations (LinkedList<T> elements, int k, int i) {
+	public static<T> LinkedList<LinkedList<T>> getPermutations (LinkedList<T> elements, int k, int i) throws InterruptedException {
 	    LinkedList<LinkedList<T>> results = new LinkedList<>();
 	    if(k > 0) {
 	        int n = elements.size();
@@ -52,6 +52,10 @@ public class Combination {
 	            T val = elements.get(j);
 	            LinkedList<LinkedList<T>> tails = getPermutations(elements,k-1,j+1);
 	            for(LinkedList<T> tail : tails) {
+	            	if (Thread.currentThread().isInterrupted()) {
+	    				System.err.println("Interrupted! " + Thread.currentThread().getName());
+	    				throw new InterruptedException();
+	    			}
 	                LinkedList<T> result = new LinkedList<>();
 	                result.add(val);
 	                result.addAll(tail);
@@ -77,8 +81,9 @@ public class Combination {
 	 * 
 	 * @param toCombine Original list of collections which elements have to be combined.
 	 * @return Resultant collection of lists with all permutations of original list.
+	 * @throws InterruptedException 
 	 */
-	public static <T> Collection<List<T>> permutations(LinkedList<LinkedList<Object>> toCombine) {
+	public static <T> Collection<List<T>> permutations(LinkedList<LinkedList<Object>> toCombine) throws InterruptedException {
 	  if (toCombine == null || toCombine.isEmpty()) {
 	    return Collections.emptyList();
 	  } else {
@@ -89,12 +94,16 @@ public class Combination {
 	}
 
 	
-	private static <T> void permutationsImpl(LinkedList<LinkedList<Object>> toCombine, Collection<List<T>> res, int d, LinkedList<T> linkedList) {
+	private static <T> void permutationsImpl(LinkedList<LinkedList<Object>> toCombine, Collection<List<T>> res, int d, LinkedList<T> linkedList) throws InterruptedException {
 	  // if depth equals number of original collections, final reached, add and return
 	  if (d == toCombine.size()) {
 	    res.add(linkedList);
 	    return;
 	  }
+	  if (Thread.currentThread().isInterrupted()) {
+			System.err.println("Interrupted! " + Thread.currentThread().getName());
+			throw new InterruptedException();
+		}
 
 	  // iterate from current collection and copy 'current' element N times, one for each element
 	  Collection<T> currentCollection = (Collection<T>) toCombine.get(d);

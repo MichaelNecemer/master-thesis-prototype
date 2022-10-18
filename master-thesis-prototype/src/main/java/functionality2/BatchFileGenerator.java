@@ -63,8 +63,7 @@ public class BatchFileGenerator {
 	static LinkedList<Integer> dataObjectBoundsMediumProcesses = new LinkedList<Integer>(Arrays.asList(1, 4));
 	static LinkedList<Integer> dataObjectBoundsLargeProcesses = new LinkedList<Integer>(Arrays.asList(1, 6));
 
-	static LinkedList<String> defaultSpheres = new LinkedList<String>(
-			Arrays.asList("Private", "Static", "Weak-Dynamic", "Strong-Dynamic"));
+	static LinkedList<String> defaultSpheres = new LinkedList<String>(Arrays.asList("Private"));
 	static LinkedList<String> defaultNamesSeqFlowsXorSplits = new LinkedList<String>(Arrays.asList("true", "false"));
 	static int dynamicWriterProb = 0;
 	static int probPublicSphere = 0;
@@ -105,13 +104,12 @@ public class BatchFileGenerator {
 		String test6ToRun = "Test6ToRun";
 
 		methodsToRun.add(test1_1ToRun);
-		/*methodsToRun.add(test1_2ToRun);
-		methodsToRun.add(createRandomProcesses);
-		methodsToRun.add(test2ToRun);
-		methodsToRun.add(test3ToRun);
-		methodsToRun.add(test4_1ToRun);
-		methodsToRun.add(test4_2ToRun);
-		methodsToRun.add(test5ToRun);*/
+		/*
+		 * methodsToRun.add(test1_2ToRun); methodsToRun.add(createRandomProcesses);
+		 * methodsToRun.add(test2ToRun); methodsToRun.add(test3ToRun);
+		 * methodsToRun.add(test4_1ToRun); methodsToRun.add(test4_2ToRun);
+		 * methodsToRun.add(test5ToRun);
+		 */
 		// methodsToRun.add(test6ToRun);
 
 		String pathToFolderForModelsForTest1_1 = "";
@@ -158,12 +156,14 @@ public class BatchFileGenerator {
 			// Test with 1.1 - 1 unique dataObject per decision
 			// The amount solutions generated will be the binomial coefficient for each
 			// decision multiplied
-			// e.g. 2 decisions - 1. needs 2 out of 4 verifiers = 6 possible combinations, 2.
+			// e.g. 2 decisions - 1. needs 2 out of 4 verifiers = 6 possible combinations,
+			// 2.
 			// needs 3 out of 5 = 10 possible combinations -> 6*10 = 60 possible
 			// combinations of participants
-			// so the boundary will be heavily influenced by the combination of verifiers per
+			// so the boundary will be heavily influenced by the combination of verifiers
+			// per
 			// decision as well as the amount of decisions in the process
-			
+
 			// the boundary test will set the max process size which will be taken for
 			// further tests
 
@@ -181,7 +181,8 @@ public class BatchFileGenerator {
 			// the amount of possible combinations of verifiers for the process will be
 			// increased by
 			// binom(5,3) -> 10 per decision
-			// the actor of the brt itself can not be an additional actor to the brt and is therefore excluded
+			// the actor of the brt itself can not be an additional actor to the brt and is
+			// therefore excluded
 			// e.g. with 0 decisions = 0, 1 decision = 10, 2 decisions = 100, ...
 			// since the cost of the models will have to be calculated for all the possible
 			// combinations
@@ -215,10 +216,9 @@ public class BatchFileGenerator {
 				List<File> listOfFiles = Arrays.asList(directoryOfFiles.listFiles());
 				File model = CommonFunctionality2.getRandomItem(listOfFiles);
 				int newModelsPerIteration = 10;
-				int verifiersPerDecision = 3;
-				BatchFileGenerator.performBoundaryTest1_2(model, verifiersPerDecision, newModelsPerIteration,
-						boundForHeuristicSearch, amountThreads,
-						pathToFolderForModelsForTest1_2);
+				int privateSphereLowerBound = 3;
+				BatchFileGenerator.performBoundaryTest1_2(model, privateSphereLowerBound, newModelsPerIteration,
+						boundForHeuristicSearch, amountThreads, pathToFolderForModelsForTest1_2);
 				System.out.println("BoundartyTest1_2 finished!");
 			} else {
 				System.out.println(test1_2ToRun + " not performed! Run Test1_1 first!");
@@ -277,7 +277,7 @@ public class BatchFileGenerator {
 			// add dataObjects with private sphere and 1 voter per decision
 			// add readers/writers combinations - generate new models (9 new models for //
 			// each)
-			// increase the amount of verifiers needed for decisions till the private sphere
+			// increase the amount of verifiers needed for decisions till the private sphere-1 (because the actor of the brt itself is excluded)
 			// of that process is reached on all xors
 			// increase privity requirements to next stricter sphere for all dataObjects
 
@@ -331,13 +331,13 @@ public class BatchFileGenerator {
 
 				BatchFileGenerator.performTradeOffTest("small", smallProcessesWithoutAnnotation,
 						pathToSmallProcessesForTest2WithAnnotation, dataObjectBoundsSmallProcesses,
-						boundForHeuristicSearch,  amountThreads);
+						boundForHeuristicSearch, amountThreads);
 				BatchFileGenerator.performTradeOffTest("medium", mediumProcessesWithoutAnnotation,
 						pathToMediumProcessesForTest2WithAnnotation, dataObjectBoundsMediumProcesses,
-						boundForHeuristicSearch,  amountThreads);
+						boundForHeuristicSearch, amountThreads);
 				BatchFileGenerator.performTradeOffTest("large", largeProcessesWithoutAnnotation,
 						pathToLargeProcessesForTest2WithAnnotation, dataObjectBoundsLargeProcesses,
-						boundForHeuristicSearch,  amountThreads);
+						boundForHeuristicSearch, amountThreads);
 
 				System.out.println("Test 2 finished!");
 			}
@@ -461,20 +461,20 @@ public class BatchFileGenerator {
 				String pathToFolderForSmallModelsForTest4_1 = CommonFunctionality2
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "SmallModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(smallProcessesFromTradeOffTest,
-						decisionTakerExcludeable, pathToFolderForSmallModelsForTest4_1,
-						boundForHeuristicSearch, "small", amountThreads);
+						decisionTakerExcludeable, pathToFolderForSmallModelsForTest4_1, boundForHeuristicSearch,
+						"small", amountThreads);
 
 				String pathToFolderForMediumModelsForTest4_1 = CommonFunctionality2
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "MediumModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(mediumProcessesFromTradeOffTest,
-						decisionTakerExcludeable, pathToFolderForMediumModelsForTest4_1,
-						boundForHeuristicSearch, "medium", amountThreads);
+						decisionTakerExcludeable, pathToFolderForMediumModelsForTest4_1, boundForHeuristicSearch,
+						"medium", amountThreads);
 
 				String pathToFolderForLargeModelsForTest4_1 = CommonFunctionality2
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "LargeModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(largeProcessesFromTradeOffTest,
-						decisionTakerExcludeable, pathToFolderForLargeModelsForTest4_1,
-						boundForHeuristicSearch, "large", amountThreads);
+						decisionTakerExcludeable, pathToFolderForLargeModelsForTest4_1, boundForHeuristicSearch,
+						"large", amountThreads);
 
 				System.out.println("Test 4_1 finished!");
 			}
@@ -876,10 +876,10 @@ public class BatchFileGenerator {
 			// substract the amount of max xors that will be inserted
 			// since brts will have to be inserted afterwards
 			// also substract 1, if a tasks needs to be inserted after start node
-			if(randomAmountXorSplitsWithinBounds > 0) {
+			if (randomAmountXorSplitsWithinBounds > 0) {
 				randomAmountTasksWithinBounds = randomAmountTasksWithinBounds - randomAmountXorSplitsWithinBounds - 1;
 			}
-						
+
 			int processId = 0;
 			try {
 				int nestingDepthFactor = ThreadLocalRandom.current().nextInt(nestingDepthFactorBounds.get(0),
@@ -1059,9 +1059,10 @@ public class BatchFileGenerator {
 		return csvFile;
 	}
 
-	public static synchronized HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> runAlgorithmsAndWriteResultsToCSV(API2 api,
-			boolean runExhaustiveSearch, boolean runHeuristicSearch, boolean runHeuristicSearchWithBound,
-			int boundForHeuristicSearchWithBound, HashMap<Enums.AlgorithmToPerform, Integer> timeOutOrHeapSpaceExceptionMap, ResultsToCSVWriter writer,
+	public static HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> runAlgorithmsAndWriteResultsToCSV(
+			API2 api, boolean runExhaustiveSearch, boolean runHeuristicSearch, boolean runHeuristicSearchWithBound,
+			int boundForHeuristicSearchWithBound,
+			HashMap<Enums.AlgorithmToPerform, Integer> timeOutOrHeapSpaceExceptionMap, ResultsToCSVWriter writer,
 			ExecutorService service) {
 
 		HashMap<Enums.AlgorithmToPerform, Exception> exceptionPerAlgorithm = new HashMap<Enums.AlgorithmToPerform, Exception>();
@@ -1073,12 +1074,13 @@ public class BatchFileGenerator {
 		boolean exhaustiveRunSuccessfully = false;
 		boolean heuristicRunSuccessfully = false;
 		boolean heuristicWithBoundRunSuccessfully = false;
-		
+
 		boolean heapSpaceError = false;
 
 		// only hold the cost of the cheapest solutions found with the algorithms in
 		// memory
-		// storing all possible solutions in memory will influence execution time of other algorithms drastically with increasing amount of combinations!!!
+		// storing all possible solutions in memory will influence execution time of
+		// other algorithms drastically with increasing amount of combinations!!!
 
 		try {
 			if (runExhaustiveSearch) {
@@ -1097,17 +1099,18 @@ public class BatchFileGenerator {
 					LinkedList<PModelWithAdditionalActors> cheapestModels = CommonFunctionality2
 							.getCheapestPModelsWithAdditionalActors(solutionsExhaustive);
 					cheapestSolutionsMap.putIfAbsent(Enums.AlgorithmToPerform.EXHAUSTIVE, cheapestModels.size());
-					
-					if(!cheapestModels.isEmpty()) {
+					System.out.println("ChepeastSolutions: " + cheapestModels.size());
+
+					if (!cheapestModels.isEmpty()) {
 						// get the cost of the cheapest solutions
-						cheapestSolutionCostMap.putIfAbsent(Enums.AlgorithmToPerform.EXHAUSTIVE, cheapestModels.get(0).getSumMeasure());
+						cheapestSolutionCostMap.putIfAbsent(Enums.AlgorithmToPerform.EXHAUSTIVE,
+								cheapestModels.get(0).getSumMeasure());
 					}
-										
+
 					// get the logging
-					String logging = CommonFunctionality2.getLoggingForModelsWithAdditionalActors(Enums.AlgorithmToPerform.EXHAUSTIVE, api.getBusinessRuleTasks(), solutionsExhaustive);
+					String logging = CommonFunctionality2.getLoggingForModelsWithAdditionalActors(
+							Enums.AlgorithmToPerform.EXHAUSTIVE, api.getBusinessRuleTasks(), solutionsExhaustive);
 					loggingMap.putIfAbsent(Enums.AlgorithmToPerform.EXHAUSTIVE, logging);
-					
-					System.out.println("Exhaustive search solutions: " + solutionsExhaustive.size());
 					exhaustiveRunSuccessfully = true;
 					futureExhaustiveSearch.cancel(true);
 				} catch (InterruptedException e) {
@@ -1153,7 +1156,7 @@ public class BatchFileGenerator {
 				finally {
 					exceptionPerAlgorithm.putIfAbsent(Enums.AlgorithmToPerform.EXHAUSTIVE, exceptionExhaustiveSearch);
 					futureExhaustiveSearch.cancel(true);
-					
+
 					// set the current solutions to null to garbage collect
 					currentSolutionsMap = null;
 				}
@@ -1174,17 +1177,17 @@ public class BatchFileGenerator {
 					LinkedList<PModelWithAdditionalActors> cheapestModels = CommonFunctionality2
 							.getCheapestPModelsWithAdditionalActors(solutionsHeuristic);
 					cheapestSolutionsMap.putIfAbsent(Enums.AlgorithmToPerform.HEURISTIC, cheapestModels.size());
-					
-					if(!cheapestModels.isEmpty()) {
-					// get the cost of the cheapest solutions
-					cheapestSolutionCostMap.putIfAbsent(Enums.AlgorithmToPerform.HEURISTIC, cheapestModels.get(0).getSumMeasure());
+
+					if (!cheapestModels.isEmpty()) {
+						// get the cost of the cheapest solutions
+						cheapestSolutionCostMap.putIfAbsent(Enums.AlgorithmToPerform.HEURISTIC,
+								cheapestModels.get(0).getSumMeasure());
 					}
-					
+
 					// get the logging
-					String logging = CommonFunctionality2.getLoggingForModelsWithAdditionalActors(Enums.AlgorithmToPerform.HEURISTIC, api.getBusinessRuleTasks(), solutionsHeuristic);
+					String logging = CommonFunctionality2.getLoggingForModelsWithAdditionalActors(
+							Enums.AlgorithmToPerform.HEURISTIC, api.getBusinessRuleTasks(), solutionsHeuristic);
 					loggingMap.putIfAbsent(Enums.AlgorithmToPerform.HEURISTIC, logging);
-					
-					System.out.println("Heuristic search solutions: " + solutionsHeuristic.size());
 					heuristicRunSuccessfully = true;
 					futureHeuristicSearch.cancel(true);
 				} catch (InterruptedException e) {
@@ -1202,6 +1205,7 @@ public class BatchFileGenerator {
 						heapSpaceError = true;
 					} else {
 						exceptionHeuristicSearch = (ExecutionException) e;
+						System.err.println("cause: " + e.getCause());
 						e.printStackTrace();
 					}
 					futureHeuristicSearch.cancel(true);
@@ -1235,7 +1239,8 @@ public class BatchFileGenerator {
 			}
 
 			if (runHeuristicSearchWithBound) {
-				api.setAlgorithmToPerform(Enums.AlgorithmToPerform.HEURISTICWITHBOUND, boundForHeuristicSearchWithBound);
+				api.setAlgorithmToPerform(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
+						boundForHeuristicSearchWithBound);
 				Future<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> futureHeuristicSearchWithBound = service
 						.submit(api);
 				Exception exceptionHeuristicSearch = null;
@@ -1251,16 +1256,16 @@ public class BatchFileGenerator {
 							.getCheapestPModelsWithAdditionalActors(solutionsHeuristicWithBound);
 					cheapestSolutionsMap.putIfAbsent(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
 							cheapestModels.size());
-					if(!cheapestModels.isEmpty()) {
-					// get the cost of the cheapest solutions
-					cheapestSolutionCostMap.putIfAbsent(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
-							cheapestModels.get(0).getSumMeasure());
+					if (!cheapestModels.isEmpty()) {
+						// get the cost of the cheapest solutions
+						cheapestSolutionCostMap.putIfAbsent(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
+								cheapestModels.get(0).getSumMeasure());
 					}
 					// get the logging
-					String logging = CommonFunctionality2.getLoggingForModelsWithAdditionalActors(Enums.AlgorithmToPerform.HEURISTICWITHBOUND, api.getBusinessRuleTasks(), solutionsHeuristicWithBound);
+					String logging = CommonFunctionality2.getLoggingForModelsWithAdditionalActors(
+							Enums.AlgorithmToPerform.HEURISTICWITHBOUND, api.getBusinessRuleTasks(),
+							solutionsHeuristicWithBound);
 					loggingMap.putIfAbsent(Enums.AlgorithmToPerform.HEURISTICWITHBOUND, logging);
-
-					System.out.println("Heuristic search with bound solutions: " + solutionsHeuristicWithBound.size());
 					heuristicWithBoundRunSuccessfully = true;
 					futureHeuristicSearchWithBound.cancel(true);
 				} catch (InterruptedException e) {
@@ -1320,28 +1325,45 @@ public class BatchFileGenerator {
 		} finally {
 			String isCheapestSolutionOfHeuristicInExhaustiveSearch = "null";
 			if (exhaustiveRunSuccessfully && heuristicRunSuccessfully) {
-				if (cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.HEURISTIC) == cheapestSolutionCostMap
-						.get(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
-					isCheapestSolutionOfHeuristicInExhaustiveSearch = "true";
-				} else {
+				if (cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == null
+						|| cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.HEURISTIC) == null) {
 					isCheapestSolutionOfHeuristicInExhaustiveSearch = "false";
+				} else {
+					double costCheapestSolutionExhaustive = cheapestSolutionCostMap
+							.get(Enums.AlgorithmToPerform.EXHAUSTIVE);
+					double costCheapestSolutionHeuristic = cheapestSolutionCostMap
+							.get(Enums.AlgorithmToPerform.HEURISTIC);
+					if (costCheapestSolutionExhaustive == costCheapestSolutionHeuristic) {
+						isCheapestSolutionOfHeuristicInExhaustiveSearch = "true";
+					} else {
+						isCheapestSolutionOfHeuristicInExhaustiveSearch = "false";
+					}
 				}
-
 			}
 
 			String isCheapestSolutionOflocalMinWithBoundInExhaustiveSearch = "null";
 			if (exhaustiveRunSuccessfully && heuristicWithBoundRunSuccessfully) {
-				if (cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND) == cheapestSolutionCostMap
-						.get(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
-					isCheapestSolutionOflocalMinWithBoundInExhaustiveSearch = "true";
-				} else {
+				if (cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == null
+						|| cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND) == null) {
 					isCheapestSolutionOflocalMinWithBoundInExhaustiveSearch = "false";
+				} else {
+					double costCheapestSolutionExhaustive = cheapestSolutionCostMap
+							.get(Enums.AlgorithmToPerform.EXHAUSTIVE);
+					double costCheapestSolutionHeuristicWithBound = cheapestSolutionCostMap
+							.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND);
+					if (costCheapestSolutionExhaustive == costCheapestSolutionHeuristicWithBound) {
+						isCheapestSolutionOflocalMinWithBoundInExhaustiveSearch = "true";
+					} else {
+						isCheapestSolutionOflocalMinWithBoundInExhaustiveSearch = "false";
+					}
 				}
 
 			}
 
-			writer.writeResultsOfAlgorithmsToCSVFile(api, cheapestSolutionCostMap, totalAmountSolutionsMap, cheapestSolutionsMap, loggingMap, exceptionPerAlgorithm,
-					isCheapestSolutionOfHeuristicInExhaustiveSearch, isCheapestSolutionOflocalMinWithBoundInExhaustiveSearch);
+			writer.writeResultsOfAlgorithmsToCSVFile(api, cheapestSolutionCostMap, totalAmountSolutionsMap,
+					cheapestSolutionsMap, loggingMap, exceptionPerAlgorithm,
+					isCheapestSolutionOfHeuristicInExhaustiveSearch,
+					isCheapestSolutionOflocalMinWithBoundInExhaustiveSearch);
 
 		}
 
@@ -1358,7 +1380,7 @@ public class BatchFileGenerator {
 		if (!apiList.isEmpty()) {
 			for (API2 api : apiList) {
 				BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, runExhaustiveSearch, runHeuristicSearch,
-						runHeuristicSearchWithBound, boundForHeuristicSearchWithBound, 
+						runHeuristicSearchWithBound, boundForHeuristicSearchWithBound,
 						new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, service);
 			}
 		} else {
@@ -1367,14 +1389,14 @@ public class BatchFileGenerator {
 
 	}
 
-	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels, boolean runExhaustiveSearch,
-			boolean runHeuristicSearch, boolean runHeuristicSearchWithBound, int boundForHeuristicSearchWithBound,
-			ResultsToCSVWriter writer, ExecutorService service) {
+	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels,
+			boolean runExhaustiveSearch, boolean runHeuristicSearch, boolean runHeuristicSearchWithBound,
+			int boundForHeuristicSearchWithBound, ResultsToCSVWriter writer, ExecutorService service) {
 		LinkedList<API2> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithAnnotatedModels, writer);
 		if (!apiList.isEmpty()) {
 			for (API2 api : apiList) {
 				BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, runExhaustiveSearch, runHeuristicSearch,
-						runHeuristicSearchWithBound, boundForHeuristicSearchWithBound, 
+						runHeuristicSearchWithBound, boundForHeuristicSearchWithBound,
 						new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, service);
 			}
 		} else {
@@ -1635,8 +1657,7 @@ public class BatchFileGenerator {
 					amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(dataObjectBounds.get(0),
 							dataObjectBounds.get(1) + 1);
 
-					// create model with amountRandomCountDataObjects dataObjects, 0 participant
-					// needed for voting and empty string as starting sphere
+					// create model with amountRandomCountDataObjects dataObjects, 0 verifiers and empty string as starting sphere
 					pModel.generateDataObjects(amountRandomCountDataObjectsToCreate, emptySphere);
 					// connect between 1 and amountRandomCountDataObjectsToCreate per decision
 					pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(1, amountRandomCountDataObjectsToCreate, 0, 0,
@@ -1777,10 +1798,10 @@ public class BatchFileGenerator {
 			}
 		}
 		executor.shutdownNow();
-		// for each model that has been generated with 0 participants per decision and
+		// for each model that has been generated with 0 verifiers per decision and
 		// empty sphere annotated for each dataObject
-		// -> generate new ones where verifiers is increased by 1 on each model till
-		// privateSphereSize is reached
+		// -> generate new ones where the amount of verifiers is increased by 1 on each step till the models
+		// privateSphereSize-1 is reached
 		// -> generate new ones where privity requirement is increased to next stricter
 		// sphere till Strong-Dynamic is reached on all dataObjects
 
@@ -1808,7 +1829,7 @@ public class BatchFileGenerator {
 							String currentSphere = defaultSpheres.get(spheresIndex);
 							CommonFunctionality2.increaseSpherePerDataObject(currModel, currentSphere);
 
-							for (int verifiersAmountIndex = 1; verifiersAmountIndex <= privateSphereSize; verifiersAmountIndex++) {
+							for (int verifiersAmountIndex = 1; verifiersAmountIndex <= privateSphereSize-1; verifiersAmountIndex++) {
 								String suffix = "_" + currentSphere + "_verifiers" + verifiersAmountIndex;
 								CommonFunctionality2.increaseVerifiersPerDataObject(currModel, verifiersAmountIndex);
 								String modelName = annotatedModel.getName().substring(0,
@@ -1834,14 +1855,11 @@ public class BatchFileGenerator {
 
 		}
 
-		
-		
-		
 		// perform the algorithms and generate csv file
 		ExecutorService service = Executors.newFixedThreadPool(amountThreadPools);
 		File file = BatchFileGenerator.createNewCSVFile(pathToFolderWithModelsForEvaluation,
 				"test2_processType" + processType + "_results");
-				
+
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(file);
 		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, true, true, true,
 				upperBoundSolutionsForLocalMinWithBound, writer, service);
@@ -1872,6 +1890,7 @@ public class BatchFileGenerator {
 		boolean runHeuristicSearchWithBound = true;
 		boolean finishTest = false;
 
+		int i = 0;
 		do {
 			timeOutOrHeapSpaceExceptionMap.clear();
 			timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
@@ -1989,8 +2008,9 @@ public class BatchFileGenerator {
 			// perform all algorithms and count the timeouts
 			for (API2 api : apiList) {
 				HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
-						.runAlgorithmsAndWriteResultsToCSV(api, runExhaustiveSearch, runHeuristicSearch, runHeuristicSearchWithBound,
-								upperBoundSolutionsForLocalMinWithBound, timeOutOrHeapSpaceExceptionMap, writer, executor);
+						.runAlgorithmsAndWriteResultsToCSV(api, runExhaustiveSearch, runHeuristicSearch,
+								runHeuristicSearchWithBound, upperBoundSolutionsForLocalMinWithBound,
+								timeOutOrHeapSpaceExceptionMap, writer, executor);
 				if (returnMap.get(true) != null) {
 					outOfMemoryError = true;
 					timeOutOrHeapSpaceExceptionMap = returnMap.get(true);
@@ -2013,9 +2033,10 @@ public class BatchFileGenerator {
 			}
 
 			System.out.println("Iteration" + amountDecisionsToStart + " end - timeOutsExhaustiveSearch: "
-					+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) + ", timeOutsHeuristicSearch: "
-					+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.HEURISTIC) + ", timeOutsHeuristicSearchWithBound"
-					+ upperBoundSolutionsForLocalMinWithBound + ": "
+					+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE)
+					+ ", timeOutsHeuristicSearch: "
+					+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.HEURISTIC)
+					+ ", timeOutsHeuristicSearchWithBound" + upperBoundSolutionsForLocalMinWithBound + ": "
 					+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND));
 
 			amountDecisionsToStart++;
@@ -2024,6 +2045,10 @@ public class BatchFileGenerator {
 				finishTest = true;
 			}
 
+			i++;
+			if (i == 7) {
+				finishTest = true;
+			}
 		} while ((!finishTest) && (!outOfMemoryError));
 
 		executor.shutdownNow();
@@ -2033,7 +2058,7 @@ public class BatchFileGenerator {
 	}
 
 	public static void performBoundaryTest1_2(File file, int privateSphereLowerBound,
-			int amountNewProcessesToCreatePerIteration, int upperBoundSolutionsForHeuristicSearch, 
+			int amountNewProcessesToCreatePerIteration, int upperBoundSolutionsForHeuristicSearch,
 			int amountThreadPools, String directoryToStore) {
 
 		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStore, "test1_2-results");
@@ -2056,9 +2081,9 @@ public class BatchFileGenerator {
 			timeOutMap.put(Enums.AlgorithmToPerform.HEURISTIC, 0);
 			timeOutMap.put(Enums.AlgorithmToPerform.HEURISTICWITHBOUND, 0);
 
-			HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(
-					api, true, true, true, upperBoundSolutionsForHeuristicSearch, timeOutMap, writer,
-					executor);
+			HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
+					.runAlgorithmsAndWriteResultsToCSV(api, true, true, true, upperBoundSolutionsForHeuristicSearch,
+							timeOutMap, writer, executor);
 			if (returnMap.get(true) != null) {
 				outOfMemoryException = true;
 				timeOutMap = returnMap.get(true);
@@ -2066,11 +2091,15 @@ public class BatchFileGenerator {
 				timeOutMap = returnMap.get(false);
 			}
 
-			System.out.println("timeOutsExhaustiveSearch: " + timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) + ", timeOutsHeuristicSearch: "
-					+ timeOutMap.get(Enums.AlgorithmToPerform.HEURISTIC) + ", timeOutsHeuristicSearchWithBound: " + timeOutMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND));
+			System.out.println("timeOutsExhaustiveSearch: " + timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE)
+					+ ", timeOutsHeuristicSearch: " + timeOutMap.get(Enums.AlgorithmToPerform.HEURISTIC)
+					+ ", timeOutsHeuristicSearchWithBound: "
+					+ timeOutMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND));
 
-			if ((timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == 1 && timeOutMap.get(Enums.AlgorithmToPerform.HEURISTIC) == 1
-					&& timeOutMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND) == 1) || outOfMemoryException == true) {
+			if ((timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == 1
+					&& timeOutMap.get(Enums.AlgorithmToPerform.HEURISTIC) == 1
+					&& timeOutMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND) == 1)
+					|| outOfMemoryException == true) {
 				break;
 			}
 		}
@@ -2093,7 +2122,8 @@ public class BatchFileGenerator {
 	}
 
 	public static void performTestWithSearchForSetOfBestVerifiers(LinkedList<File> models, boolean modelWithLanes,
-			String directoryToStoreNewModels, int upperBoundHeuristicSearchWithBound, String suffixCSV, int amountThreads) {
+			String directoryToStoreNewModels, int upperBoundHeuristicSearchWithBound, String suffixCSV,
+			int amountThreads) {
 		// the decision taker must always be part of the verifiers
 		int probabilityForGatwayToHaveMandPartConst = 100;
 
@@ -2125,9 +2155,9 @@ public class BatchFileGenerator {
 
 	}
 
-	public static void performTestWithMaxPossibleExcludeConstraints(LinkedList<File> models,
-			boolean modelWithLanes, String directoryToStoreNewModels,
-			int upperBoundHeuristicSearchWithBound, String suffixCSV, int amountThreads) {
+	public static void performTestWithMaxPossibleExcludeConstraints(LinkedList<File> models, boolean modelWithLanes,
+			String directoryToStoreNewModels, int upperBoundHeuristicSearchWithBound, String suffixCSV,
+			int amountThreads) {
 		int probabilityForGatewayToHaveConstraint = 100;
 		int lowerBoundAmountParticipantsToExcludePerGtw = 1;
 
@@ -2139,8 +2169,8 @@ public class BatchFileGenerator {
 			try {
 				// will always be max. constrained
 				CommonFunctionality2.addExcludeParticipantConstraintsOnModel(clone, fileName,
-						probabilityForGatewayToHaveConstraint, lowerBoundAmountParticipantsToExcludePerGtw,
-						true, modelWithLanes, directoryToStoreNewModels);
+						probabilityForGatewayToHaveConstraint, lowerBoundAmountParticipantsToExcludePerGtw, true,
+						modelWithLanes, directoryToStoreNewModels);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -2162,7 +2192,8 @@ public class BatchFileGenerator {
 
 	public static void performTestWithExcludeConstraintsProbability(LinkedList<File> models,
 			boolean decisionTakerExcludeable, boolean modelWithLanes, int probabilityForGatewayToHaveConstraint,
-			String directoryToStoreNewModels, int upperBoundHeuristicSearchWithBound, String suffixCSV, int amountThreads) {
+			String directoryToStoreNewModels, int upperBoundHeuristicSearchWithBound, String suffixCSV,
+			int amountThreads) {
 		int lowerBoundAmountParticipantsToExcludePerGtw = 1;
 
 		for (File file : models) {
