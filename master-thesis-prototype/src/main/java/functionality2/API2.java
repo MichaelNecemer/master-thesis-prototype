@@ -2,6 +2,7 @@ package functionality2;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -196,9 +197,63 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 			HashMap<BPMNTask, LinkedList<PriorityListEntry>> priorityListForOrigin = new HashMap<BPMNTask, LinkedList<PriorityListEntry>>();
 
 			for (HashSet<BPMNBusinessRuleTask> cluster : clusterSet) {
-				LinkedList<LinkedList<AdditionalActors>> currentCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
+				LinkedList<HashSet<BPMNParticipant>> currentCheapestAddActorsLists = new LinkedList<HashSet<BPMNParticipant>>();
 				HashMap<BPMNParticipant, Double> amountPathsPerParticipantInCluster = new HashMap<BPMNParticipant, Double>();
+				// there will be three default values set to 0 for the occurencesOfParticipantInCluster for each participant
+				// on index 0 -> amount participant is mandatory in cluster
+				// on index 1 -> amount participant is excluded in cluster
+				// on index 2 -> amount participant is actor of a brt in cluster
+				LinkedList<Integer>defaultValues = new LinkedList<Integer>();
+				defaultValues.add(0);
+				defaultValues.add(0);
+				defaultValues.add(0);
+				HashMap<BPMNParticipant, LinkedList<Integer>> occurencesOfParticipantInCluster = new HashMap<BPMNParticipant, LinkedList<Integer>>();
+				HashMap<BPMNExclusiveGateway, LinkedList<LinkedList<BPMNParticipant>>> mandatoryAndExcludedParticipantsPerGtw = new HashMap<BPMNExclusiveGateway, LinkedList<LinkedList<BPMNParticipant>>>();
+				
 				for (BPMNBusinessRuleTask brt : cluster) {
+					BPMNExclusiveGateway gtw = (BPMNExclusiveGateway) brt.getSuccessors().iterator().next();
+
+					LinkedList<BPMNParticipant> mandatoryParticipants = new LinkedList<BPMNParticipant>();
+					LinkedList<BPMNParticipant> excludedParticipants = new LinkedList<BPMNParticipant>();
+
+					for (Constraint constraint : gtw.getConstraints()) {
+						if (constraint instanceof MandatoryParticipantConstraint) {
+							MandatoryParticipantConstraint mandConstraint = (MandatoryParticipantConstraint) constraint;
+							BPMNParticipant mandatoryParticipant = mandConstraint.getMandatoryParticipant();
+							if (!mandatoryParticipants.contains(mandatoryParticipant)) {
+								mandatoryParticipants.add(mandatoryParticipant);
+								LinkedList<Integer>currValues = occurencesOfParticipantInCluster.getOrDefault(mandatoryParticipant, new LinkedList<Integer>(defaultValues));
+								int amountMandConstInClusterForParticipant = currValues.get(0);
+								currValues.set(0, ++amountMandConstInClusterForParticipant);
+								occurencesOfParticipantInCluster.put(mandatoryParticipant, currValues);
+							}
+						} else if (constraint instanceof ExcludeParticipantConstraint) {
+							ExcludeParticipantConstraint exclConstraint = (ExcludeParticipantConstraint) constraint;
+							BPMNParticipant excludedParticipant = exclConstraint.getParticipantToExclude();
+							if (!excludedParticipants.contains(excludedParticipant)) {
+								excludedParticipants.add(excludedParticipant);
+								LinkedList<Integer>currValues = occurencesOfParticipantInCluster.getOrDefault(excludedParticipant, new LinkedList<Integer>(defaultValues));
+								int amountExclConstInClusterForParticipant = currValues.get(1);
+								currValues.set(1, ++amountExclConstInClusterForParticipant);	
+								occurencesOfParticipantInCluster.put(excludedParticipant, currValues);
+							}
+						}
+					}
+					
+					LinkedList<LinkedList<BPMNParticipant>> mandatoryAndExcludedPerGtwList = new LinkedList<LinkedList<BPMNParticipant>>();
+					mandatoryAndExcludedPerGtwList.add(mandatoryParticipants);
+					mandatoryAndExcludedPerGtwList.add(excludedParticipants);
+					mandatoryAndExcludedParticipantsPerGtw.putIfAbsent(gtw, mandatoryAndExcludedPerGtwList);
+					
+		
+					BPMNParticipant partOfBrt = brt.getParticipant();
+					LinkedList<Integer>currValues = occurencesOfParticipantInCluster.getOrDefault(partOfBrt, new LinkedList<Integer>(defaultValues));
+					int amountParticipantIsActor = currValues.get(2);
+					currValues.set(2, ++amountParticipantIsActor);		
+					occurencesOfParticipantInCluster.put(partOfBrt, currValues);
+
+					
+					
 					for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : brt.getLastWriterList()
 							.entrySet()) {
 						BPMNDataObject dataObject = lastWriterEntry.getKey();
@@ -244,45 +299,74 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 					}
 				}
 
+				TreeMap<Double, TreeMap<Double, LinkedList<BPMNParticipant>>> testMap = new TreeMap<Double, TreeMap<Double, LinkedList<BPMNParticipant>>>();
 				TreeMap<Double, LinkedList<BPMNParticipant>> costMapForCluster = new TreeMap<Double, LinkedList<BPMNParticipant>>();
 				for (Entry<BPMNParticipant, Double> sorted : amountPathsPerParticipantInCluster.entrySet()) {
 					costMapForCluster.computeIfAbsent(sorted.getValue(), k -> new LinkedList<BPMNParticipant>())
 							.add(sorted.getKey());
+					
+					// the innerMap has the ascending order of the reuse quantity of a participant the cluster
+					// the innerMap has to be queried in reverse order to get the best participants 
+					int amountBrtsInsideCluster = cluster.size();
+					// substract the quantity where the participant is excluded due to constraints
+					// substract the quantity where the participant is actor of a brt in the cluster
+					// the possibleBrts is the amount of brts that the participant can possibly be an additional actor of
+					LinkedList<Integer>list = occurencesOfParticipantInCluster.get(sorted.getKey());
+					double possibleBrts = amountBrtsInsideCluster - list.get(1) - list.get(2);
+					double result = -1;
+					// if possibleBrts == 0 -> the participant can not be assigned to any brt inside the cluster
+					// participants that occur already in a bigger quantity of mandatory constraints will be preferred compared to other participants of same cost with a smaller quantity
+					if(possibleBrts>0) {
+						double amountMandatory = list.get(0);
+						result = amountMandatory / possibleBrts;							
+					}
+										
+					testMap.computeIfAbsent(sorted.getValue(), k -> new TreeMap<Double, LinkedList<BPMNParticipant>>()).computeIfAbsent(result, i -> new LinkedList<BPMNParticipant>()).add(sorted.getKey());
+										
 				}
 
 				for (BPMNBusinessRuleTask brt : cluster) {
+					BPMNExclusiveGateway gtw = (BPMNExclusiveGateway) brt.getSuccessors().iterator().next();
+					LinkedList<LinkedList<BPMNParticipant>> mandatoryAndExlucdedParticipantsForGtw = mandatoryAndExcludedParticipantsPerGtw.get(gtw);
 					LinkedList<AdditionalActors> additionalActorsForBrt = this
-							.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(brt, costMapForCluster,
+							.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(gtw, mandatoryAndExlucdedParticipantsForGtw.get(0), mandatoryAndExlucdedParticipantsForGtw.get(1), brt, costMapForCluster,
 									bound);
 
 					if (currentCheapestAddActorsLists.isEmpty()) {
 						for (AdditionalActors addActors : additionalActorsForBrt) {
-							LinkedList<AdditionalActors> currAddActors = new LinkedList<AdditionalActors>();
-							currAddActors.add(addActors);
+							HashSet<BPMNParticipant> currAddActors = new HashSet<BPMNParticipant>();
+							currAddActors.addAll(addActors.getAdditionalActors());
 							currentCheapestAddActorsLists.add(currAddActors);
 						}
 					} else {
-						// go through the current cheapest additionalActors of the cluster
+						// go through the list of current cheapest additionalActors of the cluster
 						// add those additional actors, that lead to a minimal increase of distinct
 						// additional actors in the current list
 
-						HashMap<Integer, Double> listIndexAndCostMap = new HashMap<Integer, Double>();
-
-						for (LinkedList<AdditionalActors> currCheapestAddActorsList : currentCheapestAddActorsLists) {
-
-							HashSet<BPMNParticipant> currAddActorsOfList = new HashSet<BPMNParticipant>();
-							for (AdditionalActors addActors : currCheapestAddActorsList) {
-								currAddActorsOfList.addAll(addActors.getAdditionalActors());
-							}
-
+						LinkedList<LinkedList<Integer>> increasePerIndexLists = new LinkedList<LinkedList<Integer>>();
+						int overallSmallestIncrease = Integer.MAX_VALUE;
+						
+						for (HashSet<BPMNParticipant> currCheapestAddActorsList : currentCheapestAddActorsLists) {
+							HashSet<BPMNParticipant> currentCheapestList = new HashSet<BPMNParticipant>();
+							currentCheapestList.addAll(currCheapestAddActorsList);
+							int size = currentCheapestList.size();
+							LinkedList<Integer> increasePerIndexList = new LinkedList<Integer>();
 							for (AdditionalActors addActorsCurrBrt : additionalActorsForBrt) {
-								int size = currAddActorsOfList.size();
-								currAddActorsOfList.addAll(addActorsCurrBrt.getAdditionalActors());
-								int sizeAfterAdding = currAddActorsOfList.size();
-								System.out.println(size + " " + sizeAfterAdding);
-							}
-
+								// check the increase
+								HashSet<BPMNParticipant> test = new HashSet<BPMNParticipant>();
+								test.addAll(currentCheapestList);
+								test.addAll(addActorsCurrBrt.getAdditionalActors());		
+								int increase = test.size() - size;
+								increasePerIndexList.add(increase);
+								if(increase < overallSmallestIncrease) {
+									overallSmallestIncrease = increase;
+								}
+							}							
+							increasePerIndexLists.add(increasePerIndexList);
 						}
+						
+						
+						
 					}
 
 				}
@@ -319,39 +403,20 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 
 	}
 
-	public LinkedList<AdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(
+	public LinkedList<AdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(BPMNExclusiveGateway gtw, LinkedList<BPMNParticipant>mandatoryParticipants, LinkedList<BPMNParticipant>excludedParticipants,
 			BPMNBusinessRuleTask brt, TreeMap<Double, LinkedList<BPMNParticipant>> costMap, int bound)
 			throws Exception {
 
 		LinkedList<AdditionalActors> addActorsCombinationsForBrt = new LinkedList<AdditionalActors>();
-
-		BPMNExclusiveGateway gtw = (BPMNExclusiveGateway) brt.getSuccessors().iterator().next();
 		int amountVerifiersToAssign = gtw.getAmountVerifiers();
 
-		LinkedList<BPMNParticipant> mandatoryParticipants = new LinkedList<BPMNParticipant>();
-		LinkedList<BPMNParticipant> excludedParticipants = new LinkedList<BPMNParticipant>();
-
-		for (Constraint constraint : gtw.getConstraints()) {
-			if (constraint instanceof MandatoryParticipantConstraint) {
-				MandatoryParticipantConstraint mandConstraint = (MandatoryParticipantConstraint) constraint;
-				BPMNParticipant mandatoryParticipant = mandConstraint.getMandatoryParticipant();
-				if (!mandatoryParticipants.contains(mandatoryParticipant)) {
-					mandatoryParticipants.add(mandatoryParticipant);
-				}
-			} else if (constraint instanceof ExcludeParticipantConstraint) {
-				ExcludeParticipantConstraint exclConstraint = (ExcludeParticipantConstraint) constraint;
-				BPMNParticipant excludedParticipant = exclConstraint.getParticipantToExclude();
-				if (!excludedParticipants.contains(excludedParticipant)) {
-					excludedParticipants.add(excludedParticipant);
-				}
-			}
-		}
-
+		
 		LinkedList<BPMNParticipant> possibleParticipantsLeft = new LinkedList<BPMNParticipant>();
-		// to remain the order of cost, iterate through the costMap and add the participants
-		for(LinkedList<BPMNParticipant>part: costMap.values()) {
+		// to remain the order of cost, iterate through the costMap and add the
+		// participants
+		for (LinkedList<BPMNParticipant> part : costMap.values()) {
 			possibleParticipantsLeft.addAll(part);
-		}		
+		}
 		possibleParticipantsLeft.removeAll(excludedParticipants);
 		possibleParticipantsLeft.removeAll(mandatoryParticipants);
 		possibleParticipantsLeft.remove(brt.getParticipant());
