@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -80,7 +81,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 	private LinkedList<Double> weightingParameters;
 	private HashMap<Enums.AlgorithmToPerform, Double> executionTimeMap;
 	private int bound;
-	private HashSet<HashSet<BPMNBusinessRuleTask>> clusterSet;
+	private LinkedList<LinkedList<BPMNBusinessRuleTask>> clusterSet;
 
 	public API2(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters) throws Exception {
 		if (weightingParameters.size() != 3) {
@@ -123,7 +124,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		this.staticSphereKey = "Static";
 		this.weakDynamicSphereKey = "Weak-Dynamic";
 		this.strongDynamicSphereKey = "Strong-Dynamic";
-		this.clusterSet = new HashSet<HashSet<BPMNBusinessRuleTask>>();
+		this.clusterSet = new LinkedList<LinkedList<BPMNBusinessRuleTask>>();
 		this.bound = 0;
 		// map all the elements from camunda
 		this.mapCamundaElements();
@@ -183,7 +184,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 
 			// build a cluster of dependent brts
 			// brts inside a cluster share at least 1 common origin
-			HashSet<HashSet<BPMNBusinessRuleTask>> clusterSet = this.buildCluster(this.businessRuleTasks);
+			LinkedList<LinkedList<BPMNBusinessRuleTask>> clusterSet = this.buildCluster();
 			this.clusterSet = clusterSet;
 
 			// compute a priority list for the whole cluster
@@ -195,21 +196,22 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 			// therefore participants that are more likely to be in sd will be preferred
 
 			HashMap<BPMNTask, LinkedList<PriorityListEntry>> priorityListForOrigin = new HashMap<BPMNTask, LinkedList<PriorityListEntry>>();
+			LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
 
-			for (HashSet<BPMNBusinessRuleTask> cluster : clusterSet) {
-				LinkedList<HashSet<BPMNParticipant>> currentCheapestAddActorsLists = new LinkedList<HashSet<BPMNParticipant>>();
+			for (LinkedList<BPMNBusinessRuleTask> cluster : clusterSet) {
 				HashMap<BPMNParticipant, Double> amountPathsPerParticipantInCluster = new HashMap<BPMNParticipant, Double>();
-				// there will be three default values set to 0 for the occurencesOfParticipantInCluster for each participant
+				// there will be three default values set to 0 for the
+				// occurencesOfParticipantInCluster for each participant
 				// on index 0 -> amount participant is mandatory in cluster
 				// on index 1 -> amount participant is excluded in cluster
 				// on index 2 -> amount participant is actor of a brt in cluster
-				LinkedList<Integer>defaultValues = new LinkedList<Integer>();
+				LinkedList<Integer> defaultValues = new LinkedList<Integer>();
 				defaultValues.add(0);
 				defaultValues.add(0);
 				defaultValues.add(0);
 				HashMap<BPMNParticipant, LinkedList<Integer>> occurencesOfParticipantInCluster = new HashMap<BPMNParticipant, LinkedList<Integer>>();
 				HashMap<BPMNExclusiveGateway, LinkedList<LinkedList<BPMNParticipant>>> mandatoryAndExcludedParticipantsPerGtw = new HashMap<BPMNExclusiveGateway, LinkedList<LinkedList<BPMNParticipant>>>();
-				
+
 				for (BPMNBusinessRuleTask brt : cluster) {
 					BPMNExclusiveGateway gtw = (BPMNExclusiveGateway) brt.getSuccessors().iterator().next();
 
@@ -222,7 +224,8 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 							BPMNParticipant mandatoryParticipant = mandConstraint.getMandatoryParticipant();
 							if (!mandatoryParticipants.contains(mandatoryParticipant)) {
 								mandatoryParticipants.add(mandatoryParticipant);
-								LinkedList<Integer>currValues = occurencesOfParticipantInCluster.getOrDefault(mandatoryParticipant, new LinkedList<Integer>(defaultValues));
+								LinkedList<Integer> currValues = occurencesOfParticipantInCluster
+										.getOrDefault(mandatoryParticipant, new LinkedList<Integer>(defaultValues));
 								int amountMandConstInClusterForParticipant = currValues.get(0);
 								currValues.set(0, ++amountMandConstInClusterForParticipant);
 								occurencesOfParticipantInCluster.put(mandatoryParticipant, currValues);
@@ -232,28 +235,27 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 							BPMNParticipant excludedParticipant = exclConstraint.getParticipantToExclude();
 							if (!excludedParticipants.contains(excludedParticipant)) {
 								excludedParticipants.add(excludedParticipant);
-								LinkedList<Integer>currValues = occurencesOfParticipantInCluster.getOrDefault(excludedParticipant, new LinkedList<Integer>(defaultValues));
+								LinkedList<Integer> currValues = occurencesOfParticipantInCluster
+										.getOrDefault(excludedParticipant, new LinkedList<Integer>(defaultValues));
 								int amountExclConstInClusterForParticipant = currValues.get(1);
-								currValues.set(1, ++amountExclConstInClusterForParticipant);	
+								currValues.set(1, ++amountExclConstInClusterForParticipant);
 								occurencesOfParticipantInCluster.put(excludedParticipant, currValues);
 							}
 						}
 					}
-					
+
 					LinkedList<LinkedList<BPMNParticipant>> mandatoryAndExcludedPerGtwList = new LinkedList<LinkedList<BPMNParticipant>>();
 					mandatoryAndExcludedPerGtwList.add(mandatoryParticipants);
 					mandatoryAndExcludedPerGtwList.add(excludedParticipants);
 					mandatoryAndExcludedParticipantsPerGtw.putIfAbsent(gtw, mandatoryAndExcludedPerGtwList);
-					
-		
+
 					BPMNParticipant partOfBrt = brt.getParticipant();
-					LinkedList<Integer>currValues = occurencesOfParticipantInCluster.getOrDefault(partOfBrt, new LinkedList<Integer>(defaultValues));
+					LinkedList<Integer> currValues = occurencesOfParticipantInCluster.getOrDefault(partOfBrt,
+							new LinkedList<Integer>(defaultValues));
 					int amountParticipantIsActor = currValues.get(2);
-					currValues.set(2, ++amountParticipantIsActor);		
+					currValues.set(2, ++amountParticipantIsActor);
 					occurencesOfParticipantInCluster.put(partOfBrt, currValues);
 
-					
-					
 					for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : brt.getLastWriterList()
 							.entrySet()) {
 						BPMNDataObject dataObject = lastWriterEntry.getKey();
@@ -299,82 +301,112 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 					}
 				}
 
-				TreeMap<Double, TreeMap<Double, LinkedList<BPMNParticipant>>> testMap = new TreeMap<Double, TreeMap<Double, LinkedList<BPMNParticipant>>>();
-				TreeMap<Double, LinkedList<BPMNParticipant>> costMapForCluster = new TreeMap<Double, LinkedList<BPMNParticipant>>();
+				TreeMap<Double, TreeMap<Double, LinkedList<BPMNParticipant>>> costMapForCluster = new TreeMap<Double, TreeMap<Double, LinkedList<BPMNParticipant>>>(
+						Collections.reverseOrder());
+
 				for (Entry<BPMNParticipant, Double> sorted : amountPathsPerParticipantInCluster.entrySet()) {
-					costMapForCluster.computeIfAbsent(sorted.getValue(), k -> new LinkedList<BPMNParticipant>())
-							.add(sorted.getKey());
-					
-					// the innerMap has the ascending order of the reuse quantity of a participant the cluster
-					// the innerMap has to be queried in reverse order to get the best participants 
+					BPMNParticipant currentParticipant = sorted.getKey();
+					// the innerMap has the ascending order of the reuse quantity of a participant
+					// the cluster
+					// the innerMap has to be queried in reverse order to get the best participants
 					int amountBrtsInsideCluster = cluster.size();
+
+					LinkedList<Integer> list = occurencesOfParticipantInCluster.get(currentParticipant);
+					if (list == null) {
+						// participant is neither in any mandatory or excluded constraints nor actor of
+						// any brt in the cluster
+						occurencesOfParticipantInCluster.put(currentParticipant,
+								new LinkedList<Integer>(defaultValues));
+						list = occurencesOfParticipantInCluster.get(currentParticipant);
+					}
+					// to get the brts where the participant can possibly be assigned as an
+					// additional actor for:
 					// substract the quantity where the participant is excluded due to constraints
 					// substract the quantity where the participant is actor of a brt in the cluster
-					// the possibleBrts is the amount of brts that the participant can possibly be an additional actor of
-					LinkedList<Integer>list = occurencesOfParticipantInCluster.get(sorted.getKey());
 					double possibleBrts = amountBrtsInsideCluster - list.get(1) - list.get(2);
 					double result = -1;
-					// if possibleBrts == 0 -> the participant can not be assigned to any brt inside the cluster
-					// participants that occur already in a bigger quantity of mandatory constraints will be preferred compared to other participants of same cost with a smaller quantity
-					if(possibleBrts>0) {
+					// if possibleBrts == 0 -> the participant can not be assigned to any brt inside
+					// the cluster
+					// participants that are already mandatory more often inside the cluster will be
+					// preferred
+					if (possibleBrts > 0) {
 						double amountMandatory = list.get(0);
-						result = amountMandatory / possibleBrts;							
+						double amountExcluded = list.get(1);
+						result = amountMandatory / possibleBrts - amountExcluded / possibleBrts;
+
 					}
-										
-					testMap.computeIfAbsent(sorted.getValue(), k -> new TreeMap<Double, LinkedList<BPMNParticipant>>()).computeIfAbsent(result, i -> new LinkedList<BPMNParticipant>()).add(sorted.getKey());
-										
+					costMapForCluster.computeIfAbsent(result, k -> new TreeMap<Double, LinkedList<BPMNParticipant>>())
+							.computeIfAbsent(sorted.getValue(), i -> new LinkedList<BPMNParticipant>())
+							.add(sorted.getKey());
 				}
 
 				for (BPMNBusinessRuleTask brt : cluster) {
 					BPMNExclusiveGateway gtw = (BPMNExclusiveGateway) brt.getSuccessors().iterator().next();
-					LinkedList<LinkedList<BPMNParticipant>> mandatoryAndExlucdedParticipantsForGtw = mandatoryAndExcludedParticipantsPerGtw.get(gtw);
+					LinkedList<LinkedList<BPMNParticipant>> mandatoryAndExlucdedParticipantsForGtw = mandatoryAndExcludedParticipantsPerGtw
+							.get(gtw);
 					LinkedList<AdditionalActors> additionalActorsForBrt = this
-							.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(gtw, mandatoryAndExlucdedParticipantsForGtw.get(0), mandatoryAndExlucdedParticipantsForGtw.get(1), brt, costMapForCluster,
-									bound);
+							.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(gtw,
+									mandatoryAndExlucdedParticipantsForGtw.get(0),
+									mandatoryAndExlucdedParticipantsForGtw.get(1), brt, costMapForCluster, bound);
 
-					if (currentCheapestAddActorsLists.isEmpty()) {
-						for (AdditionalActors addActors : additionalActorsForBrt) {
-							HashSet<BPMNParticipant> currAddActors = new HashSet<BPMNParticipant>();
-							currAddActors.addAll(addActors.getAdditionalActors());
-							currentCheapestAddActorsLists.add(currAddActors);
+					if (allCheapestAddActorsLists.isEmpty()) {
+						for (AdditionalActors addActorsCurrBrt : additionalActorsForBrt) {
+							LinkedList<AdditionalActors> newCheapest = new LinkedList<AdditionalActors>();
+							newCheapest.add(addActorsCurrBrt);
+							allCheapestAddActorsLists.add(newCheapest);
 						}
 					} else {
 						// go through the list of current cheapest additionalActors of the cluster
 						// add those additional actors, that lead to a minimal increase of distinct
 						// additional actors in the current list
 
-						LinkedList<LinkedList<Integer>> increasePerIndexLists = new LinkedList<LinkedList<Integer>>();
 						int overallSmallestIncrease = Integer.MAX_VALUE;
-						
-						for (HashSet<BPMNParticipant> currCheapestAddActorsList : currentCheapestAddActorsLists) {
-							HashSet<BPMNParticipant> currentCheapestList = new HashSet<BPMNParticipant>();
-							currentCheapestList.addAll(currCheapestAddActorsList);
-							int size = currentCheapestList.size();
-							LinkedList<Integer> increasePerIndexList = new LinkedList<Integer>();
+						LinkedList<LinkedList<AdditionalActors>> newCheapest = new LinkedList<LinkedList<AdditionalActors>>();
+
+						for (LinkedList<AdditionalActors> currCheapestAddActorsList : allCheapestAddActorsLists) {
+							HashSet<BPMNParticipant> currentCheapestAddActorsSet = new HashSet<BPMNParticipant>();
+							for (AdditionalActors currCheapestAddActors : currCheapestAddActorsList) {
+								currentCheapestAddActorsSet.addAll(currCheapestAddActors.getAdditionalActors());
+							}
+							int size = currentCheapestAddActorsSet.size();
+
 							for (AdditionalActors addActorsCurrBrt : additionalActorsForBrt) {
 								// check the increase
-								HashSet<BPMNParticipant> test = new HashSet<BPMNParticipant>();
-								test.addAll(currentCheapestList);
-								test.addAll(addActorsCurrBrt.getAdditionalActors());		
+								HashSet<BPMNParticipant> test = new HashSet<BPMNParticipant>(
+										currentCheapestAddActorsSet);
+								test.addAll(addActorsCurrBrt.getAdditionalActors());
 								int increase = test.size() - size;
-								increasePerIndexList.add(increase);
-								if(increase < overallSmallestIncrease) {
+								if (increase < overallSmallestIncrease) {
+									newCheapest = new LinkedList<LinkedList<AdditionalActors>>();
+									LinkedList<AdditionalActors> newCheapestList = new LinkedList<AdditionalActors>();
+									newCheapestList.addAll(currCheapestAddActorsList);
+									newCheapestList.add(addActorsCurrBrt);
+									newCheapest.add(newCheapestList);
 									overallSmallestIncrease = increase;
+								} else if (increase == overallSmallestIncrease) {
+									LinkedList<AdditionalActors> newCheapestList = new LinkedList<AdditionalActors>();
+									newCheapestList.addAll(currCheapestAddActorsList);
+									newCheapestList.add(addActorsCurrBrt);
+									newCheapest.add(newCheapestList);
 								}
-							}							
-							increasePerIndexLists.add(increasePerIndexList);
-						}
-						
-						
-						
-					}
+							}
 
+						}
+
+						allCheapestAddActorsLists = newCheapest;
+
+					}
 				}
 
 			}
 
-			// pModelAddActors =
-			// this.generateAllPossiblePModelWithAdditionalActors(combinationsPerBrt);
+			LinkedList<PModelWithAdditionalActors> pModelsList = new LinkedList<PModelWithAdditionalActors>();
+			for (LinkedList<AdditionalActors> additionalActorsList : allCheapestAddActorsLists) {
+				PModelWithAdditionalActors newModel = new PModelWithAdditionalActors(additionalActorsList,
+						this.weightingParameters);
+				pModelsList.add(newModel);
+			}
+			pModelAddActors = pModelsList;
 
 			// calculate the cost measure for the all additional actors combinations found
 			// with the heuristic
@@ -403,19 +435,21 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 
 	}
 
-	public LinkedList<AdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(BPMNExclusiveGateway gtw, LinkedList<BPMNParticipant>mandatoryParticipants, LinkedList<BPMNParticipant>excludedParticipants,
-			BPMNBusinessRuleTask brt, TreeMap<Double, LinkedList<BPMNParticipant>> costMap, int bound)
-			throws Exception {
+	public LinkedList<AdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(
+			BPMNExclusiveGateway gtw, LinkedList<BPMNParticipant> mandatoryParticipants,
+			LinkedList<BPMNParticipant> excludedParticipants, BPMNBusinessRuleTask brt,
+			TreeMap<Double, TreeMap<Double, LinkedList<BPMNParticipant>>> costMap, int bound) throws Exception {
 
 		LinkedList<AdditionalActors> addActorsCombinationsForBrt = new LinkedList<AdditionalActors>();
 		int amountVerifiersToAssign = gtw.getAmountVerifiers();
 
-		
 		LinkedList<BPMNParticipant> possibleParticipantsLeft = new LinkedList<BPMNParticipant>();
 		// to remain the order of cost, iterate through the costMap and add the
 		// participants
-		for (LinkedList<BPMNParticipant> part : costMap.values()) {
-			possibleParticipantsLeft.addAll(part);
+		for (TreeMap<Double, LinkedList<BPMNParticipant>> entry : costMap.values()) {
+			for (LinkedList<BPMNParticipant> part : entry.values()) {
+				possibleParticipantsLeft.addAll(part);
+			}
 		}
 		possibleParticipantsLeft.removeAll(excludedParticipants);
 		possibleParticipantsLeft.removeAll(mandatoryParticipants);
@@ -429,34 +463,38 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		LinkedList<BPMNParticipant> remainingWithBestCost = new LinkedList<BPMNParticipant>();
 
 		if (amountVerifiersToAssignFromPossibleParticipantsLeft > 0) {
-			for (Entry<Double, LinkedList<BPMNParticipant>> costEntry : costMap.entrySet()) {
-				// take all participants of the current cost that are not excluded and not the
-				// actor of the brt
-				LinkedList<BPMNParticipant> participantsWithCurrentCost = new LinkedList<BPMNParticipant>();
-				for (BPMNParticipant participant : costEntry.getValue()) {
-					if (possibleParticipantsLeft.contains(participant)) {
-						participantsWithCurrentCost.add(participant);
+			for (TreeMap<Double, LinkedList<BPMNParticipant>> entry : costMap.values()) {
+				for (Entry<Double, LinkedList<BPMNParticipant>> costEntry : entry.entrySet()) {
+					// take all participants of the current cost that are not excluded and not the
+					// actor of the brt
+					LinkedList<BPMNParticipant> participantsWithCurrentCost = new LinkedList<BPMNParticipant>();
+					if (costEntry.getKey() >= 0) {
+						for (BPMNParticipant participant : costEntry.getValue()) {
+							if (possibleParticipantsLeft.contains(participant)) {
+								participantsWithCurrentCost.add(participant);
+							}
+						}
 					}
-				}
 
-				// check if there are still voters needed
-				amountVerifiersToAssignFromPossibleParticipantsLeft = amountVerifiersToAssignFromPossibleParticipantsLeft
-						- participantsWithCurrentCost.size();
+					// check if there are still voters needed
+					amountVerifiersToAssignFromPossibleParticipantsLeft = amountVerifiersToAssignFromPossibleParticipantsLeft
+							- participantsWithCurrentCost.size();
 
-				if (amountVerifiersToAssignFromPossibleParticipantsLeft > 0) {
-					// there are less participants on the current cost level than needed
-					// take all of them
-					participantsWithBestCost.addAll(participantsWithCurrentCost);
-				} else if (amountVerifiersToAssignFromPossibleParticipantsLeft == 0) {
-					// there are exactly as many participants on the current cost level as needed
-					// take all of them and stop iterating
-					participantsWithBestCost.addAll(participantsWithCurrentCost);
-					break;
-				} else {
-					// there are more participants on the current cost level than needed
-					// add them to the remaining ones and stop iterating
-					remainingWithBestCost.addAll(participantsWithCurrentCost);
-					break;
+					if (amountVerifiersToAssignFromPossibleParticipantsLeft > 0) {
+						// there are less participants on the current cost level than needed
+						// take all of them
+						participantsWithBestCost.addAll(participantsWithCurrentCost);
+					} else if (amountVerifiersToAssignFromPossibleParticipantsLeft == 0) {
+						// there are exactly as many participants on the current cost level as needed
+						// take all of them and stop iterating
+						participantsWithBestCost.addAll(participantsWithCurrentCost);
+						break;
+					} else {
+						// there are more participants on the current cost level than needed
+						// add them to the remaining ones and stop iterating
+						remainingWithBestCost.addAll(participantsWithCurrentCost);
+						break;
+					}
 				}
 			}
 		}
@@ -1156,26 +1194,24 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 						String[] split = subStr.split(",");
 
-						// there is a tuple of the form
-						// (amountVerifiers,verifiersSameChoice,amountLoops)
-						try {
-							gtw.setAmountVerifiers(Integer.parseInt(split[0]));
-							gtw.setAmountVerifiersSameChoice(Integer.parseInt(split[1]));
-							gtw.setAmountLoops(Integer.parseInt(split[2]));
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					} else if (CommonFunctionality2.containsIgnoreCase(str, "[Verifiers]")
-							|| CommonFunctionality2.containsIgnoreCase(str, "[Voters]")) {
-						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
-						String[] split = subStr.split(",");
-
-						// there is a tuple of the form (amountVerifiers,verifiersSameChoice)
-						try {
-							gtw.setAmountVerifiers(Integer.parseInt(split[0]));
-							gtw.setAmountVerifiersSameChoice(Integer.parseInt(split[1]));
-						} catch (Exception e) {
-							e.printStackTrace();
+						if (split.length == 3) {
+							// there is a tuple of the form
+							// (amountVerifiers,verifiersSameChoice,amountLoops)
+							try {
+								gtw.setAmountVerifiers(Integer.parseInt(split[0]));
+								gtw.setAmountVerifiersSameChoice(Integer.parseInt(split[1]));
+								gtw.setAmountLoops(Integer.parseInt(split[2]));
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+						} else if (split.length == 2) {
+							// there is a tuple of the form (amountVerifiers,verifiersSameChoice)
+							try {
+								gtw.setAmountVerifiers(Integer.parseInt(split[0]));
+								gtw.setAmountVerifiersSameChoice(Integer.parseInt(split[1]));
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
 						}
 
 					} else if (CommonFunctionality2.containsIgnoreCase(str, "[Sphere]")) {
@@ -2751,19 +2787,21 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		this.privateSphere = privateSphere;
 	}
 
-	public HashSet<HashSet<BPMNBusinessRuleTask>> buildCluster(LinkedList<BPMNBusinessRuleTask> brtTasks) {
-		HashSet<HashSet<BPMNBusinessRuleTask>> cluster = new HashSet<HashSet<BPMNBusinessRuleTask>>();
-		for (BPMNBusinessRuleTask brt : brtTasks) {
-			HashSet<BPMNBusinessRuleTask> currCluster = new HashSet<BPMNBusinessRuleTask>();
+	public LinkedList<LinkedList<BPMNBusinessRuleTask>> buildCluster() throws Exception {
+		if(this.businessRuleTasks.isEmpty()) {
+			throw new Exception("No brts mapped!");
+		}
+		LinkedList<LinkedList<BPMNBusinessRuleTask>> cluster = new LinkedList<LinkedList<BPMNBusinessRuleTask>>();
+		for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
+			LinkedList<BPMNBusinessRuleTask> currCluster = new LinkedList<BPMNBusinessRuleTask>();
 			for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : brt.getLastWriterList().entrySet()) {
-				for (BPMNBusinessRuleTask brt2 : brtTasks) {
+				for (BPMNBusinessRuleTask brt2 : this.businessRuleTasks) {
 					for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry2 : brt2.getLastWriterList()
 							.entrySet()) {
 						if (!currCluster.contains(brt2)) {
 							if (lastWriterEntry2.getKey().equals(lastWriterEntry.getKey())) {
 								for (BPMNTask origin2 : lastWriterEntry2.getValue()) {
-									if (lastWriterEntry.getValue().contains(origin2)) {
-										currCluster.add(brt);
+									if (lastWriterEntry.getValue().contains(origin2)) {										
 										currCluster.add(brt2);
 									}
 								}
@@ -2774,7 +2812,9 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 				}
 
 			}
+			if(!cluster.contains(currCluster)) {
 			cluster.add(currCluster);
+			}
 		}
 		return cluster;
 	}
@@ -2791,11 +2831,12 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 		readerMap.putIfAbsent(origin.getParticipant(), paths);
 
 		for (LinkedList<BPMNElement> path : pathsFromOriginToEnd) {
-			LinkedList<BPMNParticipant> readersAlreadyCountedOnPath = new LinkedList<BPMNParticipant>();
+			HashSet<BPMNParticipant> readersAlreadyCountedOnPath = new HashSet<BPMNParticipant>();
 			for (BPMNElement pathEl : path) {
 				if (pathEl instanceof BPMNTask) {
 					BPMNTask task = (BPMNTask) pathEl;
 					BPMNParticipant participant = task.getParticipant();
+
 					if (!readersAlreadyCountedOnPath.contains(participant)) {
 						if (!occurencesOfParticipantMap.containsKey(participant)) {
 							occurencesOfParticipantMap.put(participant, 0.0);
@@ -2865,17 +2906,13 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 				// outgoing from origin
 				// check if data object requires Strong-Dynamic
 				if (dataObject.getDefaultSphere().contentEquals("Strong-Dynamic")) {
-					penalty += weightingParameters.get(0);
+					penalty += weightingParameters.get(2);
 				}
 			} else if (fractionOfPaths == 0) {
 				// reader does not read data object written by origin on any outgoing path
 
 				// if data object requires static -> reader needs to be at least static
 				if (dataObject.getDefaultSphere().contentEquals("Static")) {
-					// check if reader is in private sphere
-					if (!privateSphere.contains(participant)) {
-						penalty += 1;
-					}
 
 					// check if reader is in static sphere of data object
 					if (!dataObject.getStaticSphere().contains(participant)) {
@@ -2984,7 +3021,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 
 	}
 
-	public HashSet<HashSet<BPMNBusinessRuleTask>> getClusterSet() {
+	public LinkedList<LinkedList<BPMNBusinessRuleTask>> getClusterSet() {
 		return this.clusterSet;
 	}
 

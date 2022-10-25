@@ -31,16 +31,18 @@ public class TestClass {
 			pModel.printMeasure();
 			}
 			
-			LinkedList<PModelWithAdditionalActors>pInstHeuristic = api2.newMeasureHeuristic(0);
+			int bound = 0;
+			LinkedList<PModelWithAdditionalActors>pInstHeuristic = api2.newMeasureHeuristic(bound);
 			for(PModelWithAdditionalActors pModel: pInstHeuristic) {
 				pModel.printMeasure();
 			}
 			
 			// garbage collector will remove
 			//pInst = null;
-			
-			String result = CommonFunctionality2.compareResultsOfAlgorithmsForDifferentAPIs(pInstExhaustive, pInstHeuristic, 0);
+			String result = CommonFunctionality2.compareResultsOfAlgorithmsForDifferentAPIs(pInstHeuristic, pInstExhaustive, bound);
+			System.out.println("Cheapest heuristic: "+pInstHeuristic.size());
 			System.out.println("Result: "+result);		
+			System.out.println("ClusterSize: " + api2.getClusterSet().size());
 			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
