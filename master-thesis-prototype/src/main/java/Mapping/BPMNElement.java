@@ -8,7 +8,7 @@ import java.util.Objects;
 //All Elements in Camunda have at least a unique id
 //The sequenceFlow is mapped to having predecessors and successors for each BPMNElement
 
-public class BPMNElement {
+public class BPMNElement implements Comparable<BPMNElement>{
 	
 
 	protected String id;
@@ -182,6 +182,12 @@ public class BPMNElement {
 	        result = 31 * result + this.id.hashCode();
 	    }
 	    return result;
+	}
+
+	@Override
+	public int compareTo(BPMNElement e2) {
+		// TODO Auto-generated method stub
+		return this.getId().compareTo(e2.getId());
 	}
 	
 	

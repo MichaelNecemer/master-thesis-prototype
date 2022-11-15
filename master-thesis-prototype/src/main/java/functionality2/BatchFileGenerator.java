@@ -63,7 +63,7 @@ public class BatchFileGenerator {
 	static LinkedList<Integer> dataObjectBoundsMediumProcesses = new LinkedList<Integer>(Arrays.asList(1, 4));
 	static LinkedList<Integer> dataObjectBoundsLargeProcesses = new LinkedList<Integer>(Arrays.asList(1, 6));
 
-	static LinkedList<String> defaultSpheres = new LinkedList<String>(Arrays.asList("Private"));
+	static LinkedList<String> defaultSpheres = new LinkedList<String>(Arrays.asList("Private", "Weak-Dynamic", "Strong-Dynamic"));
 	static LinkedList<String> defaultNamesSeqFlowsXorSplits = new LinkedList<String>(Arrays.asList("true", "false"));
 	static int dynamicWriterProb = 0;
 	static int probPublicSphere = 0;
@@ -103,13 +103,14 @@ public class BatchFileGenerator {
 		String test5ToRun = "Test5ToRun";
 		String test6ToRun = "Test6ToRun";
 
-		methodsToRun.add(test1_1ToRun);
-		/*
-		 * methodsToRun.add(test1_2ToRun); methodsToRun.add(createRandomProcesses);
-		 * methodsToRun.add(test2ToRun); methodsToRun.add(test3ToRun);
-		 * methodsToRun.add(test4_1ToRun); methodsToRun.add(test4_2ToRun);
-		 * methodsToRun.add(test5ToRun);
-		 */
+		//methodsToRun.add(test1_1ToRun);		
+		//methodsToRun.add(test1_2ToRun); 
+		//methodsToRun.add(createRandomProcesses);
+		  methodsToRun.add(test2ToRun); 
+		/*methodsToRun.add(test3ToRun);
+		  methodsToRun.add(test4_1ToRun); 
+		  methodsToRun.add(test4_2ToRun);
+		  methodsToRun.add(test5ToRun);*/		 
 		// methodsToRun.add(test6ToRun);
 
 		String pathToFolderForModelsForTest1_1 = "";
@@ -161,8 +162,7 @@ public class BatchFileGenerator {
 			// needs 3 out of 5 = 10 possible combinations -> 6*10 = 60 possible
 			// combinations of participants
 			// so the boundary will be heavily influenced by the combination of verifiers
-			// per
-			// decision as well as the amount of decisions in the process
+			// per decision as well as the amount of decisions in the process
 
 			// the boundary test will set the max process size which will be taken for
 			// further tests
@@ -178,6 +178,9 @@ public class BatchFileGenerator {
 					.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1").getAbsolutePath();
 			int verifiersPerDecision = 3;
 			int privateSphere = 6;
+			LinkedList<String>sphere = new LinkedList<String>();
+			sphere.add("Private");
+			
 			// the amount of possible combinations of verifiers for the process will be
 			// increased by
 			// binom(5,3) -> 10 per decision
@@ -191,7 +194,7 @@ public class BatchFileGenerator {
 			BatchFileGenerator.performBoundaryTest1_1(1, 0, verifiersPerDecision, privateSphere,
 					boundForHeuristicSearch, 6, tasksFactor, 0, 0, percentageOfWritersClasses.get(1),
 					percentageOfReadersClasses.get(1), minDataObjectsPerDecision, maxDataObjectsPerDecision,
-					defaultSpheres, amountThreads, pathToFolderForModelsForTest1_1);
+					sphere, amountThreads, pathToFolderForModelsForTest1_1);
 
 			System.out.println("BoundartyTest1_1 finished!");
 		}
@@ -242,7 +245,7 @@ public class BatchFileGenerator {
 					.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "LargeProcessesFolder")
 					.getAbsolutePath();
 
-			int amountProcessesToCreatePerDecision = 50;
+			int amountProcessesToCreatePerDecision = 5;
 
 			ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
 
@@ -288,7 +291,7 @@ public class BatchFileGenerator {
 			} else {
 				String pathToFolderForModelsForTest2 = CommonFunctionality2
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test2-TradeOff").getAbsolutePath();
-				int modelsToTakePerDecision = 5;
+				int modelsToTakePerDecision = 3;
 				pathToSmallProcessesForTest2WithAnnotation = CommonFunctionality2
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest2, "SmallProcessesAnnotatedFolder")
 						.getAbsolutePath();
