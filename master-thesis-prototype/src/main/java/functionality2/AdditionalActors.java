@@ -1,4 +1,5 @@
 package functionality2;
+import java.util.HashSet;
 import java.util.LinkedList;
 
 import Mapping.BPMNBusinessRuleTask;
@@ -12,6 +13,12 @@ public class AdditionalActors {
 	public AdditionalActors(BPMNBusinessRuleTask currBrt, LinkedList<BPMNParticipant>additionalActors) {
 		this.currBrt = currBrt;
 		this.additionalActors = additionalActors;		
+	}
+	
+	public AdditionalActors (BPMNBusinessRuleTask currBrt, HashSet<BPMNParticipant>additionalActors) {
+		this.currBrt = currBrt;
+		this.additionalActors = new LinkedList<BPMNParticipant>();
+		this.additionalActors.addAll(additionalActors);
 	}
 
 	public BPMNBusinessRuleTask getCurrBrt() {

@@ -3369,10 +3369,6 @@ public class CommonFunctionality2 {
 		BpmnModelInstance preprocessedModel = null;
 		try {
 			preprocessedModel = doPreprocessing(modelInstance);
-			// doPreprocessing(modelInstance, startNode, endNode, endPointOfSearch,false,new
-			// LinkedList<FlowNode>(), new LinkedList<Gateway>(), new
-			// LinkedList<LinkedList<FlowNode>>(), new LinkedList<FlowNode>(), new
-			// LinkedList<LinkedList<FlowNode>>(), preprocessedModel);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -3752,5 +3748,7 @@ public class CommonFunctionality2 {
 
 		return "";
 	}
-
+	
+	
+	
 }
