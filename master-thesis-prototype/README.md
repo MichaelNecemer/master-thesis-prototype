@@ -1,5 +1,5 @@
 # Basic Info for using the Process Generator
-It will use the camunda java api for generating the visual elements of bpmn and enerate random block structured processes.
+It will use the camunda java api for generating the visual elements of bpmn and generate random block structured processes.
 The elements may be visually overlapping (although the camunda java api claims to bypass such issues)!
 
 # How to use the Process Generator?
