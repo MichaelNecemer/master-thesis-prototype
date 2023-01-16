@@ -644,12 +644,6 @@ public class GUI {
 										selectedAlgorithm = Enums.AlgorithmToPerform.HEURISTIC;
 										// read the bound value
 										bound = Integer.parseInt(jFormattedTextField1.getText());
-										if(bound <= 0) {
-										selectedAlgorithm = Enums.AlgorithmToPerform.HEURISTICWITHBOUND;
-										} else {
-											selectedAlgorithm = Enums.AlgorithmToPerform.HEURISTIC;
-										}
-
 									} else {
 										leftPanel.add(new JLabel("Error: " + "no algorithm selected!"));
 										frame.add(leftPanel);
@@ -699,7 +693,7 @@ public class GUI {
 										}
 										
 										if (selectedAlgorithm.equals(Enums.AlgorithmToPerform.HEURISTIC)
-												|| selectedAlgorithm.equals(Enums.AlgorithmToPerform.HEURISTICWITHBOUND)) {
+												) {
 											if (compareResultsAgainstExhaustiveSearch.isSelected() && api != null) {
 												
 												HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>> pInstancesExhaustive = null;

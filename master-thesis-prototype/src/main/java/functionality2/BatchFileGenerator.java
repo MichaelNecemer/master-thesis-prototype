@@ -181,6 +181,8 @@ public class BatchFileGenerator {
 			LinkedList<String>sphere = new LinkedList<String>();
 			sphere.add("Private");
 			
+			int stopAfterDecisions = 6;
+			
 			// the amount of possible combinations of verifiers for the process will be
 			// increased by
 			// binom(5,3) -> 10 per decision
@@ -194,7 +196,7 @@ public class BatchFileGenerator {
 			BatchFileGenerator.performBoundaryTest1_1(1, 0, verifiersPerDecision, privateSphere,
 					boundForHeuristicSearch, 6, tasksFactor, 0, 0, percentageOfWritersClasses.get(1),
 					percentageOfReadersClasses.get(1), minDataObjectsPerDecision, maxDataObjectsPerDecision,
-					sphere, amountThreads, pathToFolderForModelsForTest1_1);
+					sphere, amountThreads, stopAfterDecisions, pathToFolderForModelsForTest1_1);
 
 			System.out.println("BoundartyTest1_1 finished!");
 		}
@@ -1063,8 +1065,8 @@ public class BatchFileGenerator {
 	}
 
 	public static HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> runAlgorithmsAndWriteResultsToCSV(
-			API2 api, boolean runExhaustiveSearch, boolean runHeuristicSearch, boolean runHeuristicSearchWithBound, boolean runNaiveSearch,
-			int boundForHeuristicSearchWithBound,
+			API2 api, boolean runExhaustiveSearch, boolean runHeuristicSearch, boolean runNaiveSearch, boolean runIncrementalNaiveSearch,
+			int bound,
 			HashMap<Enums.AlgorithmToPerform, Integer> timeOutOrHeapSpaceExceptionMap, ResultsToCSVWriter writer,
 			ExecutorService service) {
 
@@ -1076,8 +1078,8 @@ public class BatchFileGenerator {
 		HashMap<Enums.AlgorithmToPerform, String> loggingMap = new HashMap<Enums.AlgorithmToPerform, String>();
 		boolean exhaustiveRunSuccessfully = false;
 		boolean heuristicRunSuccessfully = false;
-		boolean heuristicWithBoundRunSuccessfully = false;
-		boolean naiveSearchRunSuccessfully = false;
+		boolean naiveRunSucessfully = false;
+		boolean incrementalNaiveRunSuccessfully = false;
 
 		boolean heapSpaceError = false;
 
@@ -1167,7 +1169,7 @@ public class BatchFileGenerator {
 			}
 
 			if (runHeuristicSearch) {
-				api.setAlgorithmToPerform(Enums.AlgorithmToPerform.HEURISTIC, 0);
+				api.setAlgorithmToPerform(Enums.AlgorithmToPerform.HEURISTIC, bound);
 				Future<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> futureHeuristicSearch = service
 						.submit(api);
 				Exception exceptionHeuristicSearch = null;
@@ -1242,103 +1244,22 @@ public class BatchFileGenerator {
 				}
 			}
 
-			if (runHeuristicSearchWithBound) {
-				api.setAlgorithmToPerform(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
-						boundForHeuristicSearchWithBound);
-				Future<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> futureHeuristicSearchWithBound = service
+			if (runNaiveSearch) {
+				api.setAlgorithmToPerform(Enums.AlgorithmToPerform.NAIVE,
+						bound);
+				Future<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> futureNaiveSearchSolutions = service
 						.submit(api);
-				Exception exceptionHeuristicSearch = null;
+				Exception exceptionNaiveSearch = null;
 				try {
-					currentSolutionsMap = futureHeuristicSearchWithBound.get(timeOutForApiInMin, TimeUnit.MINUTES);
+					currentSolutionsMap = futureNaiveSearchSolutions.get(timeOutForApiInMin, TimeUnit.MINUTES);
 					LinkedList<PModelWithAdditionalActors> solutionsHeuristicWithBound = currentSolutionsMap
-							.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND);
+							.get(Enums.AlgorithmToPerform.NAIVE);
 					// get the total amount of solutions
-					totalAmountSolutionsMap.putIfAbsent(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
+					totalAmountSolutionsMap.putIfAbsent(Enums.AlgorithmToPerform.NAIVE,
 							solutionsHeuristicWithBound.size());
 					// get the amount of cheapest solutions
 					LinkedList<PModelWithAdditionalActors> cheapestModels = CommonFunctionality2
 							.getCheapestPModelsWithAdditionalActors(solutionsHeuristicWithBound);
-					cheapestSolutionsMap.putIfAbsent(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
-							cheapestModels.size());
-					if (!cheapestModels.isEmpty()) {
-						// get the cost of the cheapest solutions
-						cheapestSolutionCostMap.putIfAbsent(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
-								cheapestModels.get(0).getSumMeasure());
-					}
-					// get the logging
-					String logging = CommonFunctionality2.getLoggingForModelsWithAdditionalActors(
-							Enums.AlgorithmToPerform.HEURISTICWITHBOUND, api.getBusinessRuleTasks(),
-							solutionsHeuristicWithBound);
-					loggingMap.putIfAbsent(Enums.AlgorithmToPerform.HEURISTICWITHBOUND, logging);
-					heuristicWithBoundRunSuccessfully = true;
-					futureHeuristicSearchWithBound.cancel(true);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					exceptionHeuristicSearch = (InterruptedException) e;
-					e.printStackTrace();
-					futureHeuristicSearchWithBound.cancel(true);
-				} catch (ExecutionException e) {
-					// TODO Auto-generated catch block
-					if (e.getCause() instanceof OutOfMemoryError) {
-						exceptionHeuristicSearch = new HeapSpaceException(e.getMessage(), e.getCause());
-						timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
-								timeOutOrHeapSpaceExceptionMap.getOrDefault(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
-										0) + 1);
-						System.err.println("Heuristic with bound ran out of memory");
-						heapSpaceError = true;
-					} else {
-						exceptionHeuristicSearch = (ExecutionException) e;
-						e.printStackTrace();
-					}
-					futureHeuristicSearchWithBound.cancel(true);
-
-				} catch (TimeoutException e) {
-					// TODO Auto-generated catch block
-					exceptionHeuristicSearch = (TimeoutException) e;
-					timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
-							timeOutOrHeapSpaceExceptionMap.getOrDefault(Enums.AlgorithmToPerform.HEURISTICWITHBOUND, 0)
-									+ 1);
-					System.err.println("Timeout for heuristic search with bound!");
-					futureHeuristicSearchWithBound.cancel(true);
-				} catch (Error e) {
-					System.gc();
-					if (e instanceof OutOfMemoryError) {
-						exceptionHeuristicSearch = new HeapSpaceException(e.getMessage(), e.getCause());
-						timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
-								timeOutOrHeapSpaceExceptionMap.getOrDefault(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
-										0) + 1);
-						System.err.println("Heuristic search with bound ran out of memory");
-						heapSpaceError = true;
-					}
-					futureHeuristicSearchWithBound.cancel(true);
-				}
-
-				finally {
-					exceptionPerAlgorithm.putIfAbsent(Enums.AlgorithmToPerform.HEURISTICWITHBOUND,
-							exceptionHeuristicSearch);
-					futureHeuristicSearchWithBound.cancel(true);
-
-					// set the current solutions to null to garbage collect
-					currentSolutionsMap = null;
-				}
-			}
-			
-			if (runNaiveSearch) {
-				api.setAlgorithmToPerform(Enums.AlgorithmToPerform.NAIVE,
-						0);
-				Future<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> futureNaiveSearch = service
-						.submit(api);
-				Exception exceptionNaiveSearch = null;
-				try {
-					currentSolutionsMap = futureNaiveSearch.get(timeOutForApiInMin, TimeUnit.MINUTES);
-					LinkedList<PModelWithAdditionalActors> solutionsNaiveSearch = currentSolutionsMap
-							.get(Enums.AlgorithmToPerform.NAIVE);
-					// get the total amount of solutions
-					totalAmountSolutionsMap.putIfAbsent(Enums.AlgorithmToPerform.NAIVE,
-							solutionsNaiveSearch.size());
-					// get the amount of cheapest solutions
-					LinkedList<PModelWithAdditionalActors> cheapestModels = CommonFunctionality2
-							.getCheapestPModelsWithAdditionalActors(solutionsNaiveSearch);
 					cheapestSolutionsMap.putIfAbsent(Enums.AlgorithmToPerform.NAIVE,
 							cheapestModels.size());
 					if (!cheapestModels.isEmpty()) {
@@ -1349,15 +1270,15 @@ public class BatchFileGenerator {
 					// get the logging
 					String logging = CommonFunctionality2.getLoggingForModelsWithAdditionalActors(
 							Enums.AlgorithmToPerform.NAIVE, api.getBusinessRuleTasks(),
-							solutionsNaiveSearch);
+							solutionsHeuristicWithBound);
 					loggingMap.putIfAbsent(Enums.AlgorithmToPerform.NAIVE, logging);
-					naiveSearchRunSuccessfully= true;
-					futureNaiveSearch.cancel(true);
+					naiveRunSucessfully = true;
+					futureNaiveSearchSolutions.cancel(true);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					exceptionNaiveSearch = (InterruptedException) e;
 					e.printStackTrace();
-					futureNaiveSearch.cancel(true);
+					futureNaiveSearchSolutions.cancel(true);
 				} catch (ExecutionException e) {
 					// TODO Auto-generated catch block
 					if (e.getCause() instanceof OutOfMemoryError) {
@@ -1371,7 +1292,7 @@ public class BatchFileGenerator {
 						exceptionNaiveSearch = (ExecutionException) e;
 						e.printStackTrace();
 					}
-					futureNaiveSearch.cancel(true);
+					futureNaiveSearchSolutions.cancel(true);
 
 				} catch (TimeoutException e) {
 					// TODO Auto-generated catch block
@@ -1380,7 +1301,7 @@ public class BatchFileGenerator {
 							timeOutOrHeapSpaceExceptionMap.getOrDefault(Enums.AlgorithmToPerform.NAIVE, 0)
 									+ 1);
 					System.err.println("Timeout for naive search!");
-					futureNaiveSearch.cancel(true);
+					futureNaiveSearchSolutions.cancel(true);
 				} catch (Error e) {
 					System.gc();
 					if (e instanceof OutOfMemoryError) {
@@ -1391,13 +1312,94 @@ public class BatchFileGenerator {
 						System.err.println("Naive search ran out of memory");
 						heapSpaceError = true;
 					}
-					futureNaiveSearch.cancel(true);
+					futureNaiveSearchSolutions.cancel(true);
 				}
 
 				finally {
 					exceptionPerAlgorithm.putIfAbsent(Enums.AlgorithmToPerform.NAIVE,
 							exceptionNaiveSearch);
-					futureNaiveSearch.cancel(true);
+					futureNaiveSearchSolutions.cancel(true);
+
+					// set the current solutions to null to garbage collect
+					currentSolutionsMap = null;
+				}
+			}
+			
+			if (runIncrementalNaiveSearch) {
+				api.setAlgorithmToPerform(Enums.AlgorithmToPerform.INCREMENTALNAIVE,
+						bound);
+				Future<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> futureIncrementalNaiveSearchSolutions = service
+						.submit(api);
+				Exception exceptionIncrementalNaiveSearch = null;
+				try {
+					currentSolutionsMap = futureIncrementalNaiveSearchSolutions.get(timeOutForApiInMin, TimeUnit.MINUTES);
+					LinkedList<PModelWithAdditionalActors> solutionsNaiveSearch = currentSolutionsMap
+							.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE);
+					// get the total amount of solutions
+					totalAmountSolutionsMap.putIfAbsent(Enums.AlgorithmToPerform.INCREMENTALNAIVE,
+							solutionsNaiveSearch.size());
+					// get the amount of cheapest solutions
+					LinkedList<PModelWithAdditionalActors> cheapestModels = CommonFunctionality2
+							.getCheapestPModelsWithAdditionalActors(solutionsNaiveSearch);
+					cheapestSolutionsMap.putIfAbsent(Enums.AlgorithmToPerform.INCREMENTALNAIVE,
+							cheapestModels.size());
+					if (!cheapestModels.isEmpty()) {
+						// get the cost of the cheapest solutions
+						cheapestSolutionCostMap.putIfAbsent(Enums.AlgorithmToPerform.INCREMENTALNAIVE,
+								cheapestModels.get(0).getSumMeasure());
+					}
+					// get the logging
+					String logging = CommonFunctionality2.getLoggingForModelsWithAdditionalActors(
+							Enums.AlgorithmToPerform.INCREMENTALNAIVE, api.getBusinessRuleTasks(),
+							solutionsNaiveSearch);
+					loggingMap.putIfAbsent(Enums.AlgorithmToPerform.INCREMENTALNAIVE, logging);
+					incrementalNaiveRunSuccessfully= true;
+					futureIncrementalNaiveSearchSolutions.cancel(true);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					exceptionIncrementalNaiveSearch = (InterruptedException) e;
+					e.printStackTrace();
+					futureIncrementalNaiveSearchSolutions.cancel(true);
+				} catch (ExecutionException e) {
+					// TODO Auto-generated catch block
+					if (e.getCause() instanceof OutOfMemoryError) {
+						exceptionIncrementalNaiveSearch = new HeapSpaceException(e.getMessage(), e.getCause());
+						timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE,
+								timeOutOrHeapSpaceExceptionMap.getOrDefault(Enums.AlgorithmToPerform.INCREMENTALNAIVE,
+										0) + 1);
+						System.err.println("Incremental naive search ran out of memory");
+						heapSpaceError = true;
+					} else {
+						exceptionIncrementalNaiveSearch = (ExecutionException) e;
+						e.printStackTrace();
+					}
+					futureIncrementalNaiveSearchSolutions.cancel(true);
+
+				} catch (TimeoutException e) {
+					// TODO Auto-generated catch block
+					exceptionIncrementalNaiveSearch = (TimeoutException) e;
+					timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE,
+							timeOutOrHeapSpaceExceptionMap.getOrDefault(Enums.AlgorithmToPerform.INCREMENTALNAIVE, 0)
+									+ 1);
+					System.err.println("Timeout for incremental naive search!");
+					futureIncrementalNaiveSearchSolutions.cancel(true);
+				} catch (Error e) {
+					System.gc();
+					if (e instanceof OutOfMemoryError) {
+						exceptionIncrementalNaiveSearch = new HeapSpaceException(e.getMessage(), e.getCause());
+						timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE,
+								timeOutOrHeapSpaceExceptionMap.getOrDefault(Enums.AlgorithmToPerform.INCREMENTALNAIVE,
+										0) + 1);
+						System.err.println("Incremental naive search ran out of memory");
+						heapSpaceError = true;
+					}
+					futureIncrementalNaiveSearchSolutions.cancel(true);
+				}
+
+				finally {
+					exceptionPerAlgorithm.putIfAbsent(Enums.AlgorithmToPerform.INCREMENTALNAIVE,
+							exceptionIncrementalNaiveSearch);
+					futureIncrementalNaiveSearchSolutions.cancel(true);
 
 					// set the current solutions to null to garbage collect
 					currentSolutionsMap = null;
@@ -1408,66 +1410,9 @@ public class BatchFileGenerator {
 			System.err.println("Some other exception has happened!");
 			e.printStackTrace();
 		} finally {
-			String isCheapestSolutionOfHeuristicInExhaustiveSearch = "null";
-			if (exhaustiveRunSuccessfully && heuristicRunSuccessfully) {
-				if (cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == null
-						|| cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.HEURISTIC) == null) {
-					isCheapestSolutionOfHeuristicInExhaustiveSearch = "false";
-				} else {
-					double costCheapestSolutionExhaustive = cheapestSolutionCostMap
-							.get(Enums.AlgorithmToPerform.EXHAUSTIVE);
-					double costCheapestSolutionHeuristic = cheapestSolutionCostMap
-							.get(Enums.AlgorithmToPerform.HEURISTIC);
-					if (costCheapestSolutionExhaustive == costCheapestSolutionHeuristic) {
-						isCheapestSolutionOfHeuristicInExhaustiveSearch = "true";
-					} else {
-						isCheapestSolutionOfHeuristicInExhaustiveSearch = "false";
-					}
-				}
-			}
 			
-			String isCheapestSolutionOflocalMinWithBoundInExhaustiveSearch = "null";
-			if (exhaustiveRunSuccessfully && heuristicWithBoundRunSuccessfully) {
-				if (cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == null
-						|| cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND) == null) {
-					isCheapestSolutionOflocalMinWithBoundInExhaustiveSearch = "false";
-				} else {
-					double costCheapestSolutionExhaustive = cheapestSolutionCostMap
-							.get(Enums.AlgorithmToPerform.EXHAUSTIVE);
-					double costCheapestSolutionHeuristicWithBound = cheapestSolutionCostMap
-							.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND);
-					if (costCheapestSolutionExhaustive == costCheapestSolutionHeuristicWithBound) {
-						isCheapestSolutionOflocalMinWithBoundInExhaustiveSearch = "true";
-					} else {
-						isCheapestSolutionOflocalMinWithBoundInExhaustiveSearch = "false";
-					}
-				}
-
-			}
-			
-			String isCheapestSolutionOfNaiveInExhaustiveSearch = "null";
-			if (exhaustiveRunSuccessfully && naiveSearchRunSuccessfully) {
-				if (cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == null
-						|| cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.NAIVE) == null) {
-					isCheapestSolutionOfNaiveInExhaustiveSearch = "false";
-				} else {
-					double costCheapestSolutionExhaustive = cheapestSolutionCostMap
-							.get(Enums.AlgorithmToPerform.EXHAUSTIVE);
-					double costCheapestSolutionNaive = cheapestSolutionCostMap
-							.get(Enums.AlgorithmToPerform.NAIVE);
-					if (costCheapestSolutionExhaustive == costCheapestSolutionNaive) {
-						isCheapestSolutionOfNaiveInExhaustiveSearch = "true";
-					} else {
-						isCheapestSolutionOfNaiveInExhaustiveSearch = "false";
-					}
-				}
-				
-			}
-
 			writer.writeResultsOfAlgorithmsToCSVFile(api, cheapestSolutionCostMap, totalAmountSolutionsMap,
-					cheapestSolutionsMap, loggingMap, exceptionPerAlgorithm,
-					isCheapestSolutionOfHeuristicInExhaustiveSearch,
-					isCheapestSolutionOflocalMinWithBoundInExhaustiveSearch, isCheapestSolutionOfNaiveInExhaustiveSearch);
+					cheapestSolutionsMap, loggingMap, exceptionPerAlgorithm);
 
 		}
 
@@ -1977,7 +1922,7 @@ public class BatchFileGenerator {
 			int amountTasksToStartWith, int tasksFactor, int lowerBoundAmountParallelGtws,
 			int upperBoundAmountParallelGtws, int amountWritersInPercent, int amountReadersInPercent,
 			int minDataObjectsPerDecision, int maxDataObjectsPerDecision, LinkedList<String> sphereList,
-			int amountThreads, String pathToFolderForModelsForBoundaryTest) {
+			int amountThreads, int stopAfterDecisions, String pathToFolderForModelsForBoundaryTest) {
 
 		int amountParallelGtws = ThreadLocalRandom.current().nextInt(lowerBoundAmountParallelGtws,
 				upperBoundAmountParallelGtws + 1);
@@ -1991,8 +1936,8 @@ public class BatchFileGenerator {
 		boolean outOfMemoryError = false;
 		boolean runExhaustiveSearch = true;
 		boolean runHeuristicSearch = true;
-		boolean runHeuristicSearchWithBound = true;
 		boolean runNaiveSearch = true;
+		boolean runIncrementalNaiveSearch = true;
 		boolean finishTest = false;
 
 		int i = 0;
@@ -2000,8 +1945,8 @@ public class BatchFileGenerator {
 			timeOutOrHeapSpaceExceptionMap.clear();
 			timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
 			timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.HEURISTIC, 0);
-			timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.HEURISTICWITHBOUND, 0);
 			timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.NAIVE, 0);
+			timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, 0);
 
 
 			int amountDataObjectsToCreate = amountDecisionsToStart;
@@ -2116,7 +2061,7 @@ public class BatchFileGenerator {
 			for (API2 api : apiList) {
 				HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
 						.runAlgorithmsAndWriteResultsToCSV(api, runExhaustiveSearch, runHeuristicSearch,
-								runHeuristicSearchWithBound, runNaiveSearch, upperBoundSolutionsForLocalMinWithBound,
+								runNaiveSearch, runIncrementalNaiveSearch, upperBoundSolutionsForLocalMinWithBound,
 								timeOutOrHeapSpaceExceptionMap, writer, executor);
 				if (returnMap.get(true) != null) {
 					outOfMemoryError = true;
@@ -2134,8 +2079,11 @@ public class BatchFileGenerator {
 				if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.HEURISTIC) == apiList.size()) {
 					runHeuristicSearch = false;
 				}
-				if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND) == apiList.size()) {
-					runHeuristicSearchWithBound = false;
+				if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.NAIVE) == apiList.size()) {
+					runNaiveSearch = false;
+				}
+				if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == apiList.size()) {
+					runIncrementalNaiveSearch = false;
 				}
 			}
 
@@ -2143,17 +2091,20 @@ public class BatchFileGenerator {
 					+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE)
 					+ ", timeOutsHeuristicSearch: "
 					+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.HEURISTIC)
-					+ ", timeOutsHeuristicSearchWithBound" + upperBoundSolutionsForLocalMinWithBound + ": "
-					+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND));
+					+ ", timeOutsNaiveSearch: "
+					+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.NAIVE)
+					+", timeOutsIncrementalNaiveSearch: "
+					+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE)
+					);
 
 			amountDecisionsToStart++;
 
-			if (runExhaustiveSearch == false && runHeuristicSearch == false && runHeuristicSearchWithBound == false) {
+			if (runExhaustiveSearch == false && runHeuristicSearch == false && runNaiveSearch == false && runIncrementalNaiveSearch == false) {
 				finishTest = true;
 			}
 
 			i++;
-			if (i == 7) {
+			if (i == stopAfterDecisions) {
 				finishTest = true;
 			}
 		} while ((!finishTest) && (!outOfMemoryError));
@@ -2165,7 +2116,7 @@ public class BatchFileGenerator {
 	}
 
 	public static void performBoundaryTest1_2(File file, int privateSphereLowerBound,
-			int amountNewProcessesToCreatePerIteration, int upperBoundSolutionsForHeuristicSearch,
+			int amountNewProcessesToCreatePerIteration, int boundForAlgorithms,
 			int amountThreadPools, String directoryToStore) {
 
 		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStore, "test1_2-results");
@@ -2186,10 +2137,11 @@ public class BatchFileGenerator {
 
 			timeOutMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
 			timeOutMap.put(Enums.AlgorithmToPerform.HEURISTIC, 0);
-			timeOutMap.put(Enums.AlgorithmToPerform.HEURISTICWITHBOUND, 0);
+			timeOutMap.put(Enums.AlgorithmToPerform.NAIVE, 0);
+			timeOutMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, 0);
 
 			HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
-					.runAlgorithmsAndWriteResultsToCSV(api, true, true, true, true, upperBoundSolutionsForHeuristicSearch,
+					.runAlgorithmsAndWriteResultsToCSV(api, true, true, true, true, boundForAlgorithms,
 							timeOutMap, writer, executor);
 			if (returnMap.get(true) != null) {
 				outOfMemoryException = true;
@@ -2198,14 +2150,10 @@ public class BatchFileGenerator {
 				timeOutMap = returnMap.get(false);
 			}
 
-			System.out.println("timeOutsExhaustiveSearch: " + timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE)
-					+ ", timeOutsHeuristicSearch: " + timeOutMap.get(Enums.AlgorithmToPerform.HEURISTIC)
-					+ ", timeOutsHeuristicSearchWithBound: "
-					+ timeOutMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND));
-
 			if ((timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == 1
 					&& timeOutMap.get(Enums.AlgorithmToPerform.HEURISTIC) == 1
-					&& timeOutMap.get(Enums.AlgorithmToPerform.HEURISTICWITHBOUND) == 1)
+					&& timeOutMap.get(Enums.AlgorithmToPerform.NAIVE) == 1
+					&& timeOutMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == 1)
 					|| outOfMemoryException == true) {
 				break;
 			}

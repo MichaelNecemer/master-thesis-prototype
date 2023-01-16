@@ -4,7 +4,7 @@ public class Enums {
 	
 	
 	public static enum AlgorithmToPerform {
-		EXHAUSTIVE, HEURISTIC, HEURISTICWITHBOUND, NAIVE, INCREMENTALNAIVE
+		EXHAUSTIVE, HEURISTIC, NAIVE, INCREMENTALNAIVE
 	}
 	
 	

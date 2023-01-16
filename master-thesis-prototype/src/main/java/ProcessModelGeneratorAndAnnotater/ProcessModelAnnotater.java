@@ -162,7 +162,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	public File checkCorrectnessAndWriteChangesToFile() throws Exception {
 		File newFile = null;
-		CommonFunctionality.isCorrectModel(this.modelInstance);
+		CommonFunctionality2.isCorrectModel(this.modelInstance);
 		newFile = this.writeChangesToFile();
 		if (newFile == null) {
 			throw new Exception("Model not valid - try another readers/writers assertion!");
@@ -248,12 +248,12 @@ public class ProcessModelAnnotater implements Callable<File> {
 			}
 			System.out.println("Writers to be inserted: " + amountWriters);
 			System.out.println("Readers to be inserted: " + amountReaders);
-			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality
+			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality2
 					.computeRepartitionNumber(amountWriters, this.dataObjects.size(), 1);
 			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
 			LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
 
-			List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality
+			List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality2
 					.computeRepartitionNumber(amountReaders, this.dataObjects.size(), 0);
 
 			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
@@ -265,7 +265,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 				taskList.add(task);
 				if (ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(task)) {
 					LinkedList<Task> tasksBeforeBrt = new LinkedList<Task>();
-					LinkedList<LinkedList<FlowNode>> pathsBetweenStartAndBrt = CommonFunctionality
+					LinkedList<LinkedList<FlowNode>> pathsBetweenStartAndBrt = CommonFunctionality2
 							.getAllPathsBetweenNodes(this.modelInstance, this.modelInstance
 									.getModelElementsByType(StartEvent.class).iterator().next().getId(), task.getId());
 					for (LinkedList<FlowNode> subPath : pathsBetweenStartAndBrt) {
@@ -309,7 +309,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 								} else if (exclGtwStack.isEmpty() && !paraGtwStack.isEmpty()) {
 									// f is unconditional and on the path to brt 
 									// there are parallels in between
-									LinkedList<LinkedList<FlowNode>> pathsBetweenTaskAndBrt = CommonFunctionality
+									LinkedList<LinkedList<FlowNode>> pathsBetweenTaskAndBrt = CommonFunctionality2
 											.getAllPathsBetweenNodes(this.modelInstance, f.getId(), task.getId());
 									if(pathsBetweenTaskAndBrt.isEmpty()) {
 										insert = false;
@@ -337,10 +337,10 @@ public class ProcessModelAnnotater implements Callable<File> {
 					BusinessRuleTask currBrt = entry.getKey();
 					for (DataInputAssociation dia : currBrt.getDataInputAssociations()) {
 						for (ItemAwareElement iae : dia.getSources()) {
-							DataObjectReference daoR = CommonFunctionality
+							DataObjectReference daoR = CommonFunctionality2
 									.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
 							if (daoR != null && !(alreadyMapped.contains(daoR))) {
-								Task writerBeforeDecision = CommonFunctionality.getRandomItem(entry.getValue());
+								Task writerBeforeDecision = CommonFunctionality2.getRandomItem(entry.getValue());
 								this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(index),
 										subAmountReaders.get(index), dynamicWriter, daoR,
 										defaultSpheresForDynamicWriter, writerBeforeDecision);
@@ -356,7 +356,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 				// there is no brt inserted
 				// choose a random task
 				for (int i = 0; i < dataObjects.size(); i++) {
-					Task writerBeforeDecision = CommonFunctionality.getRandomItem(taskList);
+					Task writerBeforeDecision = CommonFunctionality2.getRandomItem(taskList);
 					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i),
 							subAmountReaders.get(i), dynamicWriter, dataObjects.get(i), defaultSpheresForDynamicWriter,
 							writerBeforeDecision);
@@ -575,7 +575,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		Bpmn.validateModel(this.modelInstance);
 		String fileName = this.fileNameForNewFile;
 
-		File file = CommonFunctionality.createFileWithinDirectory(this.pathWhereToCreateAnnotatedFile, fileName);
+		File file = CommonFunctionality2.createFileWithinDirectory(this.pathWhereToCreateAnnotatedFile, fileName);
 
 		System.out.println("File path: " + file.getAbsolutePath());
 		Bpmn.writeModelToFile(file, modelInstance);
@@ -651,7 +651,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 		String taskName = "InsertedTask" + idForTask;
 		if (!modelWithLanes) {
-			taskName += " " + CommonFunctionality.getRandomItem(differentParticipants);
+			taskName += " " + CommonFunctionality2.getRandomItem(differentParticipants);
 		}
 		idForTask++;
 
@@ -885,7 +885,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 							String nameForBrt = "InsertedBrt" + idForBrt;
 							if (!modelWithLanes) {
 								// add a random participantName to the nameForBrt
-								nameForBrt += " " + CommonFunctionality.getRandomItem(differentParticipants);
+								nameForBrt += " " + CommonFunctionality2.getRandomItem(differentParticipants);
 							}
 
 							mt.builder().businessRuleTask().name(nameForBrt).connectTo(xor.getId());
@@ -912,7 +912,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 							String nameForBrt = "InsertedBrt" + idForBrt;
 							if (!modelWithLanes) {
 								// add a random participantName to the nameForBrt
-								nameForBrt += CommonFunctionality.getRandomItem(differentParticipants);
+								nameForBrt += CommonFunctionality2.getRandomItem(differentParticipants);
 							}
 
 							nodeBeforeXorSplit.builder().businessRuleTask().name(nameForBrt).connectTo(xor.getId());
@@ -1077,7 +1077,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 										int prob = ThreadLocalRandom.current().nextInt(0, 100);
 										if (probToTakeAlreadyMappedVariableForDecision >= prob) {
 											LinkedList<Character> alreadyMapped = alreadyMappedVariables.get(daoR);
-											char randomCharAlreadyMapped = CommonFunctionality
+											char randomCharAlreadyMapped = CommonFunctionality2
 													.getRandomItem(alreadyMapped);
 											decisionBuilder.append(randomCharAlreadyMapped);
 										}
@@ -1098,7 +1098,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 									if (dataObjectsPerDecisionLeft > 0) {
 										// get a random operator from operators
-										String randomOperator = CommonFunctionality.getRandomItem(operators);
+										String randomOperator = CommonFunctionality2.getRandomItem(operators);
 										decisionBuilder.append(randomOperator);
 									}
 
@@ -1143,7 +1143,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 				task = writerBeforeDecision;
 				inFrontOfDecision = true;
 			} else {
-				task = CommonFunctionality.getRandomItem(allAvailableTasks);
+				task = CommonFunctionality2.getRandomItem(allAvailableTasks);
 			}
 			if (!taskIsBrtFollowedByXorSplit(task)) {
 				// task will be a writer to the dataObject if it is not a brt followed by a xor
@@ -1193,7 +1193,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 				System.err.println("Interrupted! " + Thread.currentThread().getName());
 				throw new InterruptedException();
 			}
-			Task task = CommonFunctionality.getRandomItem(allAvailableTasks);
+			Task task = CommonFunctionality2.getRandomItem(allAvailableTasks);
 
 			if (!taskIsBrtFollowedByXorSplit(task)) {
 				boolean toBeReader = true;

@@ -34,6 +34,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import functionality.CommonFunctionality;
+import functionality2.CommonFunctionality2;
 
 public class ProcessGenerator implements Callable {
 
@@ -395,7 +396,7 @@ public class ProcessGenerator implements Callable {
 	private File writeChangesToFile() throws NullPointerException, Exception {
 		// validate and write model to file
 		// add the generated models to the given directory
-		if (!CommonFunctionality.isModelBlockStructured(this.modelInstance)) {
+		if (!CommonFunctionality2.isModelBlockStructured(this.modelInstance)) {
 			throw new Exception("Model not block structured!");
 		}
 		
@@ -407,7 +408,7 @@ public class ProcessGenerator implements Callable {
 
 		// check if parallel branches have at least 1 element
 		// check if one of both xor branches has at least 1 element
-		if (!CommonFunctionality.testGatewaysForElements(this.modelInstance)) {
+		if (!CommonFunctionality2.testGatewaysForElements(this.modelInstance)) {
 			throw new Exception("Branches have not the minimum amount of elements before join!");
 		}
 
@@ -415,7 +416,7 @@ public class ProcessGenerator implements Callable {
 		String pathOfProcessFile = this.directoryToStore;
 		String fileName = "randomProcessModel" + this.processId + ".bpmn";
 
-		File file = CommonFunctionality.createFileWithinDirectory(pathOfProcessFile, fileName);
+		File file = CommonFunctionality2.createFileWithinDirectory(pathOfProcessFile, fileName);
 
 		Bpmn.writeModelToFile(file, this.modelInstance);
 
@@ -532,10 +533,10 @@ public class ProcessGenerator implements Callable {
 		while (!Thread.currentThread().isInterrupted() && !modelIsValid) {
 			this.generateProcess(this.allPaths, this.possibleNodeTypes, this.amountTasksToBeInserted,
 					this.amountXorsToBeInserted, this.amountParallelsToBeInserted);
-			int xorSplits = CommonFunctionality.getAmountExclusiveGtwSplits(this.modelInstance);
-			int parallelGtwsGenerated = CommonFunctionality.getAmountParallelGtwSplits(this.modelInstance);
+			int xorSplits = CommonFunctionality2.getAmountExclusiveGtwSplits(this.modelInstance);
+			int parallelGtwsGenerated = CommonFunctionality2.getAmountParallelGtwSplits(this.modelInstance);
 			int amountTasks = this.modelInstance.getModelElementsByType(Task.class).size();
-			int globalSphere = CommonFunctionality.getGlobalSphere(this.modelInstance, false);
+			int globalSphere = CommonFunctionality2.getPrivateSphere(this.modelInstance, false);
 
 			if (xorSplits == this.amountXorsToBeInserted && parallelGtwsGenerated == this.amountParallelsToBeInserted
 					&& amountTasks == this.amountTasksToBeInserted && globalSphere == this.amountParticipants) {

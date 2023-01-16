@@ -1196,8 +1196,7 @@ public class CommonFunctionality2 {
 		if (!modelWithLanes) {
 			// if the model is without lanes -> the participants must be extracted from the
 			// task name
-			participantName = task.getName().substring(task.getName().indexOf("[") + 1,
-					task.getName().indexOf("]"));
+			participantName = task.getName().substring(task.getName().indexOf("[") + 1, task.getName().indexOf("]"));
 			return participantName;
 
 		} else {
@@ -1206,7 +1205,7 @@ public class CommonFunctionality2 {
 			for (Lane l : modelInstance.getModelElementsByType(Lane.class)) {
 				for (FlowNode nodeOnLane : l.getFlowNodeRefs()) {
 					if (nodeOnLane.equals(task)) {
-						participantName =  l.getName().trim();
+						participantName = l.getName().trim();
 					}
 				}
 			}
@@ -2734,17 +2733,19 @@ public class CommonFunctionality2 {
 				// check if the cheapest bruteForce solutions contain all localMin solutions
 				for (PModelWithAdditionalActors cheapestExhaustiveSolution : cheapestExhaustiveSolutions) {
 					for (PModelWithAdditionalActors cheapestHeuristicSolution : modelsFoundWithHeuristicSearch) {
-						if (cheapestExhaustiveSolution
-								.getSumMeasure() == (cheapestHeuristicSolution.getSumMeasure())) {
+						if (cheapestExhaustiveSolution.getSumMeasure() == (cheapestHeuristicSolution.getSumMeasure())) {
 							boolean count = true;
 							for (AdditionalActors exhaustiveAddActors : cheapestExhaustiveSolution
 									.getAdditionalActorsList()) {
-								for (AdditionalActors heuristicAddActors: cheapestHeuristicSolution.getAdditionalActorsList()) {
+								for (AdditionalActors heuristicAddActors : cheapestHeuristicSolution
+										.getAdditionalActorsList()) {
 									if (exhaustiveAddActors.getCurrBrt().equals(heuristicAddActors.getCurrBrt())) {
 										int size = exhaustiveAddActors.getAdditionalActors().size();
 										int entryEqual = 0;
-										for (BPMNParticipant bruteForcePart : exhaustiveAddActors.getAdditionalActors()) {
-											for (BPMNParticipant localMinPart : heuristicAddActors.getAdditionalActors()) {
+										for (BPMNParticipant bruteForcePart : exhaustiveAddActors
+												.getAdditionalActors()) {
+											for (BPMNParticipant localMinPart : heuristicAddActors
+													.getAdditionalActors()) {
 												if (bruteForcePart.getId().contentEquals(localMinPart.getId())) {
 													entryEqual++;
 												}
@@ -2762,7 +2763,8 @@ public class CommonFunctionality2 {
 							}
 							if (count) {
 								countCheapestSolutionFoundWithExhaustive++;
-								if (countCheapestSolutionFoundWithExhaustive == cheapestHeuristicSolution.getAdditionalActorsList().size()) {
+								if (countCheapestSolutionFoundWithExhaustive == cheapestHeuristicSolution
+										.getAdditionalActorsList().size()) {
 									return "true";
 								}
 							}
@@ -2772,13 +2774,44 @@ public class CommonFunctionality2 {
 					}
 
 				}
-			
+
 			}
 			if (countCheapestSolutionFoundWithExhaustive == modelsFoundWithHeuristicSearch.size()) {
 				return "true";
 			} else {
 				return "false";
 			}
+		} catch (NullPointerException ex) {
+			return "null";
+		}
+
+	}
+
+	public static String compareCostOfCheapestSolutionsOfAlgorithms(
+			LinkedList<PModelWithAdditionalActors> solutionsFoundWithAlgorithm1,
+			LinkedList<PModelWithAdditionalActors> solutionsFoundWithAlgorithm2) {
+
+		try {
+			if (solutionsFoundWithAlgorithm1 == null || solutionsFoundWithAlgorithm2 == null) {
+				return "null";
+			}
+			if (solutionsFoundWithAlgorithm1.isEmpty() || solutionsFoundWithAlgorithm2.isEmpty()) {
+				return "null";
+			}
+
+			LinkedList<PModelWithAdditionalActors> cheapestSolutionsAlgorithm1 = CommonFunctionality2
+					.getCheapestPModelsWithAdditionalActors(solutionsFoundWithAlgorithm1);
+			LinkedList<PModelWithAdditionalActors> cheapestSolutionsAlgorithm2 = CommonFunctionality2
+					.getCheapestPModelsWithAdditionalActors(solutionsFoundWithAlgorithm2);
+
+			// only check if the cheapest solutions have the same cost
+			if (cheapestSolutionsAlgorithm1.get(0).getSumMeasure() == cheapestSolutionsAlgorithm2.get(0)
+					.getSumMeasure()) {
+				return "true";
+			} else {
+				return "false";
+			}
+
 		} catch (NullPointerException ex) {
 			return "null";
 		}
@@ -3081,9 +3114,8 @@ public class CommonFunctionality2 {
 
 	public static void addExcludeParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName,
 			int probabilityForGatewayToHaveConstraint, int lowerBoundAmountParticipantsToExcludePerGtw,
-			boolean alwaysMaxConstrained, boolean modelWithLanes,
-			String directoryToStore) throws Exception {
-		
+			boolean alwaysMaxConstrained, boolean modelWithLanes, String directoryToStore) throws Exception {
+
 		if (lowerBoundAmountParticipantsToExcludePerGtw < 0) {
 			throw new Exception("LowerBoundAmountParticipantsToExclude must be >= 0!");
 		}
@@ -3100,10 +3132,10 @@ public class CommonFunctionality2 {
 					LinkedList<String> participantsToChooseFrom = CommonFunctionality2
 							.getPrivateSphereList(modelInstance, modelWithLanes);
 					int privateSphereSize = participantsToChooseFrom.size();
-					String brtBeforeGtwParticipant = CommonFunctionality2.getParticipantOfTask(modelInstance, brtBeforeGtw, modelWithLanes);
+					String brtBeforeGtwParticipant = CommonFunctionality2.getParticipantOfTask(modelInstance,
+							brtBeforeGtw, modelWithLanes);
 					participantsToChooseFrom.remove(brtBeforeGtwParticipant);
-					
-					
+
 					if (!participantsToChooseFrom.isEmpty()) {
 
 						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
@@ -3118,7 +3150,8 @@ public class CommonFunctionality2 {
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
-											randomAmountConstraintsForGtw = privateSphereSize - amountVerifiersNeeded - 1;
+											randomAmountConstraintsForGtw = privateSphereSize - amountVerifiersNeeded
+													- 1;
 										} else {
 											int maxConstraint = privateSphereSize - amountVerifiersNeeded - 1;
 
@@ -3215,9 +3248,9 @@ public class CommonFunctionality2 {
 
 	public static void addMandatoryParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName,
 			int probabilityForGatewayToHaveConstraint, int lowerBoundAmountParticipantsToBeMandatoryPerGtw,
-			int upperBoundAmountParticipantsToBeMandatoryPerGtw, 
-			boolean alwaysMaxConstrained, boolean modelWithLanes, String directoryToStore) throws Exception {
-	
+			int upperBoundAmountParticipantsToBeMandatoryPerGtw, boolean alwaysMaxConstrained, boolean modelWithLanes,
+			String directoryToStore) throws Exception {
+
 		boolean constraintInserted = false;
 		boolean maxMandConstrained = true;
 
@@ -3231,12 +3264,13 @@ public class CommonFunctionality2 {
 				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
-					
+
 					LinkedList<String> participantsToChooseFrom = CommonFunctionality2
 							.getPrivateSphereList(modelInstance, modelWithLanes);
-					
-					String brtBeforeGtwParticipant = CommonFunctionality2.getParticipantOfTask(modelInstance, brtBeforeGtw, modelWithLanes);
-					participantsToChooseFrom.remove(brtBeforeGtwParticipant);					
+
+					String brtBeforeGtwParticipant = CommonFunctionality2.getParticipantOfTask(modelInstance,
+							brtBeforeGtw, modelWithLanes);
+					participantsToChooseFrom.remove(brtBeforeGtwParticipant);
 
 					if (!participantsToChooseFrom.isEmpty()) {
 
@@ -3249,7 +3283,7 @@ public class CommonFunctionality2 {
 
 										String[] data = subStr.split(",");
 										int amountVerifiersNeeded = Integer.parseInt(data[0]);
-										if(amountVerifiersNeeded > participantsToChooseFrom.size()) {
+										if (amountVerifiersNeeded > participantsToChooseFrom.size()) {
 											amountVerifiersNeeded = participantsToChooseFrom.size();
 										}
 										int randomAmountConstraintsForGtw = 0;
@@ -3260,7 +3294,7 @@ public class CommonFunctionality2 {
 											if (upperBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
 												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVerifiersNeeded;
 											}
-											
+
 											if (upperBoundAmountParticipantsToBeMandatoryPerGtw > amountVerifiersNeeded) {
 												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVerifiersNeeded;
 											}
@@ -3271,7 +3305,7 @@ public class CommonFunctionality2 {
 														upperBoundAmountParticipantsToBeMandatoryPerGtw + 1);
 											} else if (lowerBoundAmountParticipantsToBeMandatoryPerGtw == upperBoundAmountParticipantsToBeMandatoryPerGtw) {
 												randomAmountConstraintsForGtw = upperBoundAmountParticipantsToBeMandatoryPerGtw;
-											} 
+											}
 										}
 
 										if (randomAmountConstraintsForGtw != amountVerifiersNeeded) {
@@ -3735,20 +3769,16 @@ public class CommonFunctionality2 {
 		}
 
 		/*
-		for (int i = 1; i < pModels.size(); i++) {
-			PModelWithAdditionalActors currInst = pModels.get(i);
-			// check if each brt with xor split has additional actors
-			for (AdditionalActors addActors : currInst.getAdditionalActorsList()) {
-				if (!brts.contains(addActors.getCurrBrt())) {
-					return "Not every decision has been calculated with " + algorithm.name();
-				}
-			}
-
-		}*/
+		 * for (int i = 1; i < pModels.size(); i++) { PModelWithAdditionalActors
+		 * currInst = pModels.get(i); // check if each brt with xor split has additional
+		 * actors for (AdditionalActors addActors : currInst.getAdditionalActorsList())
+		 * { if (!brts.contains(addActors.getCurrBrt())) { return
+		 * "Not every decision has been calculated with " + algorithm.name(); } }
+		 * 
+		 * }
+		 */
 
 		return "";
 	}
-	
-	
-	
+
 }
