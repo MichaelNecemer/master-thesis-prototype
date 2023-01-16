@@ -1,3 +1,14 @@
+# Basic Info for using the Process Generator
+-> It will use the camunda java api
+-> Generate random block structured processes
+
+1. simply clone the repository 
+2. go into the "processModelGeneratorAndAnnotater" package
+3. use the "ProcessGeneratorMain" class
+
+
+____________________________Automatically generated____________________________________
+
 # Camunda BPM Process Application
 A Process Application for [Camunda BPM](http://docs.camunda.org).
 
