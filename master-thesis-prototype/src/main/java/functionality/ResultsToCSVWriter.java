@@ -14,8 +14,7 @@ import org.camunda.bpm.model.bpmn.instance.FlowNode;
 
 import com.opencsv.CSVWriter;
 
-import Mapping.BPMNBusinessRuleTask;
-import Mapping.ProcessInstanceWithVoters;
+import mapping.BPMNBusinessRuleTask;
 
 public class ResultsToCSVWriter {
 
@@ -28,21 +27,19 @@ public class ResultsToCSVWriter {
 					CSVWriter.DEFAULT_ESCAPE_CHARACTER, CSVWriter.DEFAULT_LINE_END);
 
 			rows = new ArrayList<>();
-			String[] header = new String[] { "fileName", "pathToFile", "logging", "exceptionLocalMin",
-					"exceptionBruteForce", "exceptionLocalMinWithLimit", "totalAmountSolutions",
-					"solution(s) bruteForce", "solution(s) localMinimumAlgorithm",
-					"solution(s) localMinimumAlgorithmWithLimit", "amount cheapest solution(s) bruteForce",
-					"costCheapestSolutionBruteForce", "costCheapestSolutionLocalMin",
-					"costCheapestSolutionLocalMinWithLimit", "averageCostAllBruteForceSolutions",
-					"executionTimeLocalMinimumAlogrithm in sec", "executionTimeLocalMinWithLimit in sec",
-					"executionTimeBruteForce in sec", "deltaExecutionTime in sec (localMin - bruteForce)",
-					"deltaExecutionTime in sec (localMinWithLimit - bruteForce)",
-					"isCheapestSolutionOfLocalMinInBruteForce", "isCheapestSolutionOfLocalMinWithLimitInBruteForce",
-					"amountPaths", "amountReaders", "amountWriters", "amountDataObjects",
-					"averageAmountDataObjectsPerDecision", "amountReadersPerDataObject", "amountWritersPerDataObject",
-					"amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements",
-					"amountSumVoters", "averageAmountVoters", "globalSphereSize", "averageSphereSum", "dependentBrts","pathsThroughProcess",
-					"deciderOrVerifier" };
+			String[] header = new String[] { "fileName", "pathToFile", "logging", "exceptionExhaustive",
+					"exceptionHeuristic", "exceptionNaive", "exceptionIncrementalNaive", "total amount solutions exhaustive", "total amount solutions heuristic", "total amount solutions naive", "total amount solutions incremental naive",
+					"amount cheapest solutions exhaustive", "amount cheapest solutions heuristic", "amount cheapest solutions naive", "amount solutions incremental naive",
+					"costCheapestSolutionExhaustive", "costCheapestSolutionHeuristic",
+					"costCheapestSolutionNaive", "costCheapestSolutionIncrementalNaive", "executionTimeExhaustive in sec",
+					"executionTimeHeuristic in sec", "executionTimeNaive in sec",  "executionTimeIncrementalNaive in sec",
+					"deltaExecutionTime in sec (heuristic - exhaustive)",
+					"deltaExecutionTime in sec (naive - exhaustive)","deltaExecutionTime in sec (incremental naive - exhaustive)",
+					 "amountReaders", "amountWriters",
+					"amountDataObjects", "averageAmountDataObjectsPerDecision", "amountReadersPerDataObject",
+					"amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks",
+					"amountElements", "amountSumVerifiers", "averageAmountVerifiers", "privateSphereSize", "averageSphereSum",
+					 "pathsThroughProcess"};
 			this.rows.add(header);
 
 		} catch (IOException e) {
@@ -52,68 +49,113 @@ public class ResultsToCSVWriter {
 
 	}
 
-	public void writeResultsOfOneAlgorithmToCSVFile(API api,
-			HashMap<String, LinkedList<ProcessInstanceWithVoters>> algorithmMap,
-			HashMap<String, Exception> exceptionPerAlgorithm) {
-		String pathToFile = "null";
-		String fileName = "null";
-		LinkedList<ProcessInstanceWithVoters> pInstancesLocalMin = null;
-		LinkedList<ProcessInstanceWithVoters> pInstancesBruteForce = null;
-		String localMinAlgorithmTime = "null";
-		String bruteForceAlgorithmTime = "null";
-		String timeDifference = "null";
+	public void writeResultsOfAlgorithmsToCSVFile(API2 api,
+			HashMap<Enums.AlgorithmToPerform, Double> cheapestSolutionCostMap,
+			HashMap<Enums.AlgorithmToPerform, Integer> totalAmountSolutionsMap,
+			HashMap<Enums.AlgorithmToPerform, Integer> cheapestSolutionsMap,
+			HashMap<Enums.AlgorithmToPerform, String> loggingMap,
+			HashMap<Enums.AlgorithmToPerform, Exception> exceptionPerAlgorithm) {
+		// call this method after algorithms ran
+		// compare the execution of algorithms
+		// write the metadata to a csv file
+
+		String pathToFile = api.getProcessModelFile().getAbsolutePath();
+		String fileName = api.getProcessModelFile().getName();
 		String logging = "null";
 
-		if (api != null && pathToFile.contentEquals("null") && fileName.contentEquals("null")) {
-			pathToFile = api.getProcessFile().getAbsolutePath();
-			fileName = api.getProcessFile().getName();
-		}
+		String totalAmountSolutionsExhaustiveSearch = "";
+		String amountCheapestSolutionsExhaustive = "null";
+		String costCheapestSolutionExhaustive = "null";
 
-		for (Entry<String, LinkedList<ProcessInstanceWithVoters>> algorithmEntry : algorithmMap.entrySet()) {
-			String algorithm = algorithmEntry.getKey();
-			if (algorithm.contentEquals("bruteForce")) {
-				pInstancesBruteForce = algorithmEntry.getValue();
-				bruteForceAlgorithmTime = api.getExecutionTimeBruteForceAlgorithm() + "";
-			} else if (algorithm.contentEquals("localMin")) {
-				pInstancesLocalMin = algorithmEntry.getValue();
-				localMinAlgorithmTime = api.getExecutionTimeLocalMinimumAlgorithm() + "";
+		String totalAmountSolutionsHeuristicSearch = "";
+		String costCheapestSolutionHeuristic = "null";
+		String amountCheapestSolutionsHeuristic = "null";
+		
+		String totalAmountSolutionsNaiveSearch = "";
+		String amountCheapestSolutionsNaiveSearch = "null";
+		String costCheapestSolutionNaiveSearch = "null";
+
+
+		String totalAmountSolutionsIncrementalNaiveSearch = "";
+		String amountCheapestSolutionsIncrementalNaiveSearch= "null";
+		String costCheapestSolutionIncrementalNaiveSearch= "null";
+		
+	
+		String heuristicSearchExecutionTime = "null";
+		String exhaustiveSearchExecutionTime = "null";
+		String naiveSearchExecutionTime = "null";
+		String incrementalNaiveSearchExecutionTime = "null";
+		String timeDifferenceHeuristicAndExhaustive = "null";
+		String timeDifferenceNaiveAndExhaustive = "null";
+		String timeDifferenceIncrementalNaiveAndExhaustive = "null";
+
+		
+		
+		if (cheapestSolutionCostMap != null) {
+			if (cheapestSolutionCostMap.containsKey(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
+				costCheapestSolutionExhaustive = cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) + "";
 			}
-
+			if (cheapestSolutionCostMap.containsKey(Enums.AlgorithmToPerform.HEURISTIC)) {
+				costCheapestSolutionHeuristic = cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.HEURISTIC) + "";
+			}
+			if (cheapestSolutionCostMap.containsKey(Enums.AlgorithmToPerform.NAIVE)) {
+				costCheapestSolutionNaiveSearch = cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.NAIVE) + "";
+			}
+			if (cheapestSolutionCostMap.containsKey(Enums.AlgorithmToPerform.INCREMENTALNAIVE)) {
+				costCheapestSolutionIncrementalNaiveSearch = cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
+			}
 		}
 
-		if ((!localMinAlgorithmTime.contentEquals("null")) && (!bruteForceAlgorithmTime.contentEquals("null"))) {
-			timeDifference = (Double.parseDouble(localMinAlgorithmTime) - Double.parseDouble(bruteForceAlgorithmTime))
+		if (totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) != null) {
+			totalAmountSolutionsExhaustiveSearch = totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE)
 					+ "";
+			amountCheapestSolutionsExhaustive = cheapestSolutionsMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) + "";
+			exhaustiveSearchExecutionTime = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.EXHAUSTIVE) + "";
+			logging = loggingMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE);
 		}
 
-		// map the cheapest process instances to rows in the csv file
-
-		String amountCheapestSolutionsLocalMin = "null";
-		String costCheapestSolution = "null";
-		if (pInstancesLocalMin != null && !pInstancesLocalMin.isEmpty()) {
-			costCheapestSolution = pInstancesLocalMin.get(0).getCostForModelInstance() + "";
-			amountCheapestSolutionsLocalMin = pInstancesLocalMin.size() + "";
+		if (totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.HEURISTIC) != null) {
+			totalAmountSolutionsHeuristicSearch = totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.HEURISTIC) + "";
+			amountCheapestSolutionsHeuristic = cheapestSolutionsMap.get(Enums.AlgorithmToPerform.HEURISTIC) + "";
+			heuristicSearchExecutionTime = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.HEURISTIC) + "";
+			logging = loggingMap.get(Enums.AlgorithmToPerform.HEURISTIC);
 		}
 
-		String amountCheapestSolutionsBruteForce = "null";
-		String averageCostAllSolutions = "null";
-		String amountSolutionsBruteForce = "null";
-		if (pInstancesBruteForce != null && !pInstancesBruteForce.isEmpty()) {
-			LinkedList<ProcessInstanceWithVoters> cheapestBruteForceInst = CommonFunctionality
-					.getCheapestProcessInstancesWithVoters(pInstancesBruteForce);
-			amountCheapestSolutionsBruteForce = cheapestBruteForceInst.size() + "";
-			amountSolutionsBruteForce = pInstancesBruteForce.size() + "";
-			averageCostAllSolutions = CommonFunctionality.getAverageCostForAllModelInstances(pInstancesBruteForce) + "";
-			if (costCheapestSolution.contentEquals("null")) {
-				costCheapestSolution = cheapestBruteForceInst.get(0).getCostForModelInstance() + "";
-
-			}
-
+		
+		if (totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.NAIVE) != null) {
+			totalAmountSolutionsNaiveSearch = totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.NAIVE) + "";
+			amountCheapestSolutionsNaiveSearch= cheapestSolutionsMap.get(Enums.AlgorithmToPerform.NAIVE) + "";
+			naiveSearchExecutionTime = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.NAIVE) + "";
+			logging = loggingMap.get(Enums.AlgorithmToPerform.NAIVE);
 		}
 
+		if (totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) != null) {
+			totalAmountSolutionsIncrementalNaiveSearch = totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
+			amountCheapestSolutionsIncrementalNaiveSearch= cheapestSolutionsMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
+			incrementalNaiveSearchExecutionTime = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
+			logging = loggingMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE);
+		}
+		
+		if ((!heuristicSearchExecutionTime.contentEquals("null"))
+				&& (!exhaustiveSearchExecutionTime.contentEquals("null"))) {
+			timeDifferenceHeuristicAndExhaustive = (Double.parseDouble(heuristicSearchExecutionTime)
+					- Double.parseDouble(exhaustiveSearchExecutionTime)) + "";
+		}
+		
+		if ((!naiveSearchExecutionTime.contentEquals("null"))
+				&& (!exhaustiveSearchExecutionTime.contentEquals("null"))) {
+			timeDifferenceNaiveAndExhaustive = (Double.parseDouble(naiveSearchExecutionTime)
+					- Double.parseDouble(exhaustiveSearchExecutionTime)) + "";
+		}
+		
+		if ((!incrementalNaiveSearchExecutionTime.contentEquals("null"))
+				&& (!exhaustiveSearchExecutionTime.contentEquals("null"))) {
+			timeDifferenceIncrementalNaiveAndExhaustive = (Double.parseDouble(incrementalNaiveSearchExecutionTime)
+					- Double.parseDouble(exhaustiveSearchExecutionTime)) + "";
+		}
+		
 		String readersPerDataObject = "null";
 		String writersPerDataObject = "null";
-		String amountSolutions = "null";
 		String allPathsThroughProcess = "null";
 		String amountExclusiveGtwSplits = "null";
 		String amountParallelGtwSplits = "null";
@@ -121,27 +163,14 @@ public class ResultsToCSVWriter {
 		String amountElements = "null";
 		String sumAmountVotersOfModel = "null";
 		String averageAmountVotersOfModel = "null";
-		String globalSphereSize = "null";
+		String privateSphereSize = "null";
 		String sphereSumOfModel = "null";
-		String deciderOrVerifier = "null";
 		String amountReaders = "null";
 		String amountWriters = "null";
 		String amountDataObjects = "null";
 		String averageAmountDataObjectsPerDecision = "null";
-		String pathsThroughProcess = "null";
 
 		if (api != null) {
-			allPathsThroughProcess = api.getAllPathsThroughProcess().size() + "";
-			amountExclusiveGtwSplits = CommonFunctionality.getAmountExclusiveGtwSplits(api.getModelInstance()) + "";
-			amountParallelGtwSplits = CommonFunctionality.getAmountParallelGtwSplits(api.getModelInstance()) + "";
-			amountTasks = CommonFunctionality.getAmountTasks(api.getModelInstance()) + "";
-			amountElements = CommonFunctionality.getAmountElements(api.getModelInstance()) + "";
-			sumAmountVotersOfModel = CommonFunctionality.getSumAmountVotersOfModel(api.getModelInstance()) + "";
-			averageAmountVotersOfModel = CommonFunctionality.getAverageAmountVotersOfModel(api.getModelInstance()) + "";
-			globalSphereSize = CommonFunctionality.getGlobalSphere(api.getModelInstance(), api.modelWithLanes()) + "";
-			sphereSumOfModel = CommonFunctionality.getSphereSumOfModel(api.getModelInstance()) + "";
-			amountSolutions = api.getAmountPossibleCombinationsOfParticipants();
-			deciderOrVerifier = api.getDeciderOrVerifier();
 			amountDataObjects = CommonFunctionality.getAmountDataObjects(api.getModelInstance()) + "";
 
 			double sumDataObjects = 0;
@@ -150,6 +179,16 @@ public class ResultsToCSVWriter {
 			}
 			averageAmountDataObjectsPerDecision = sumDataObjects / api.getBusinessRuleTasks().size() + "";
 
+			allPathsThroughProcess = api.getAllPathsThroughProcess().size() + "";
+			amountExclusiveGtwSplits = CommonFunctionality.getAmountExclusiveGtwSplits(api.getModelInstance()) + "";
+			amountParallelGtwSplits = CommonFunctionality.getAmountParallelGtwSplits(api.getModelInstance()) + "";
+			amountTasks = CommonFunctionality.getAmountTasks(api.getModelInstance()) + "";
+			amountElements = CommonFunctionality.getAmountElements(api.getModelInstance()) + "";
+			sumAmountVotersOfModel = CommonFunctionality.getSumAmountVerifiersOfModel(api.getModelInstance()) + "";
+			averageAmountVotersOfModel = CommonFunctionality.getAverageAmountVerifiersOfModel(api.getModelInstance())
+					+ "";
+			privateSphereSize = CommonFunctionality.getPrivateSphere(api.getModelInstance(), false) + "";
+			sphereSumOfModel = CommonFunctionality.getSphereSumOfModel(api.getModelInstance()) + "";
 			double readers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
 					.getReadersForDataObjects(api.getModelInstance()).entrySet()) {
@@ -159,7 +198,7 @@ public class ResultsToCSVWriter {
 			}
 
 			amountReaders = readers + "";
-			readersPerDataObject = (readers/sumDataObjects) + "";
+			readersPerDataObject = (readers / sumDataObjects) + "";
 
 			double writers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
@@ -169,303 +208,46 @@ public class ResultsToCSVWriter {
 				}
 			}
 			amountWriters = writers + "";
-			writersPerDataObject = (writers/sumDataObjects) + "";
-			pathsThroughProcess = api.getPathsThroughProcess()+"";
-		}
-
-		String exceptionNameLocalMin = "null";
-		if (exceptionPerAlgorithm.get("localMin") != null) {
-			exceptionNameLocalMin = exceptionPerAlgorithm.get("localMin").getClass().getCanonicalName();
-		}
-		String exceptionNameBruteForce = "null";
-		if (exceptionPerAlgorithm.get("bruteForce") != null) {
-			exceptionNameBruteForce = exceptionPerAlgorithm.get("bruteForce").getClass().getCanonicalName();
-		}
-
-		String[] row = new String[] { fileName, pathToFile, logging, exceptionNameLocalMin, exceptionNameBruteForce,
-				amountSolutions, amountSolutionsBruteForce, amountCheapestSolutionsLocalMin,
-				amountCheapestSolutionsBruteForce, costCheapestSolution, averageCostAllSolutions, localMinAlgorithmTime,
-				bruteForceAlgorithmTime, timeDifference, "null", allPathsThroughProcess, amountReaders, amountWriters,
-				amountDataObjects, averageAmountDataObjectsPerDecision, readersPerDataObject, writersPerDataObject,
-				amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks, amountElements, sumAmountVotersOfModel,
-				averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, pathsThroughProcess, deciderOrVerifier };
-
-		this.rows.add(row);
-
-	}
-
-	public void writeResultsOfAlgorithmsToCSVFile(API bruteForceApi, API localMinApi, API localMinWithLimitApi,
-			HashMap<String, LinkedList<ProcessInstanceWithVoters>> algorithmMap,
-			HashMap<String, Exception> exceptionPerAlgorithm, String isCheapestSolutionInBruteForce,
-			String isCheapestSolutionWithLimitInBruteForce) {
-		// call this method after algorithms ran
-		// compare the execution of algorithms
-		// write the metadata to a csv file
-
-		String pathToFile = bruteForceApi.getProcessFile().getAbsolutePath();
-		String fileName = bruteForceApi.getProcessFile().getName();
-		String logging = "null";
-
-		LinkedList<ProcessInstanceWithVoters> pInstancesLocalMin = null;
-		LinkedList<ProcessInstanceWithVoters> pInstancesBruteForce = null;
-		LinkedList<ProcessInstanceWithVoters> pInstancesLocalMinWithLimit = null;
-		String localMinAlgorithmTime = "null";
-		String bruteForceAlgorithmTime = "null";
-		String localMinWithLimitAlgorithmTime = "null";
-		String timeDifferenceLocalMinBruteForce = "null";
-		String timeDifferenceLocalMinWithLimitBruteForce = "null";
-		String pathsThroughProcess = "null";
-
-		if (algorithmMap.get(localMinApi.getAlgorithmToPerform()) != null) {
-			pInstancesLocalMin = algorithmMap.get(localMinApi.getAlgorithmToPerform());
-			localMinAlgorithmTime = localMinApi.getExecutionTimeLocalMinimumAlgorithm() + "";
-			if(pathsThroughProcess.contentEquals("null")) {
-				pathsThroughProcess = localMinApi.getPathsThroughProcess()+"";
-			}
-			for (ProcessInstanceWithVoters pInst : pInstancesLocalMin) {
-				for (BPMNBusinessRuleTask brt : localMinApi.getBusinessRuleTasks()) {
-					if (brt.getSuccessors().get(0).getSuccessors().size() == 2) {
-						if (!pInst.getVotersMap().containsKey(brt)) {
-							// when a processInstance does not contain a brt needed for a decision
-							// log
-							logging = "Not every decision has been calculated with localMinApi!";
-						}
-					}
-
-				}
-
-			}
+			writersPerDataObject = (writers / sumDataObjects) + "";
 
 		}
 
-		if (algorithmMap.get(bruteForceApi.getAlgorithmToPerform()) != null) {
-			pInstancesBruteForce = algorithmMap.get(bruteForceApi.getAlgorithmToPerform());
-			bruteForceAlgorithmTime = bruteForceApi.getExecutionTimeBruteForceAlgorithm() + "";
-			if(pathsThroughProcess.contentEquals("null")) {
-				pathsThroughProcess = bruteForceApi.getPathsThroughProcess()+"";
-			}
-			for (ProcessInstanceWithVoters pInst : pInstancesBruteForce) {
-				for (BPMNBusinessRuleTask brt : bruteForceApi.getBusinessRuleTasks()) {
-					if (brt.getSuccessors().get(0).getSuccessors().size() == 2) {
-						if (!pInst.getVotersMap().containsKey(brt)) {
-							// when a processInstance does not contain a brt needed for a decision
-							// log
-							logging = "Not every decision has been calculated with bruteForce!";
-						}
-					}
-
-				}
-
-			}
-
+		String exceptionNameExhaustive = "null";
+		if (exceptionPerAlgorithm.get(Enums.AlgorithmToPerform.EXHAUSTIVE) != null) {
+			exceptionNameExhaustive = exceptionPerAlgorithm.get(Enums.AlgorithmToPerform.EXHAUSTIVE).getClass()
+					.getCanonicalName();
 		}
 
-		if (algorithmMap.get(localMinWithLimitApi.getAlgorithmToPerform()) != null) {
-			pInstancesLocalMinWithLimit = algorithmMap.get(localMinWithLimitApi.getAlgorithmToPerform());
-			localMinWithLimitAlgorithmTime = localMinWithLimitApi.getExecutionTimeLocalMinimumAlgorithmWithLimit() + "";
-			if(pathsThroughProcess.contentEquals("null")) {
-				pathsThroughProcess = localMinWithLimitApi.getPathsThroughProcess()+"";
-			}
-			for (ProcessInstanceWithVoters pInst : pInstancesLocalMinWithLimit) {
-				for (BPMNBusinessRuleTask brt : localMinWithLimitApi.getBusinessRuleTasks()) {
-					if (brt.getSuccessors().get(0).getSuccessors().size() == 2) {
-						if (!pInst.getVotersMap().containsKey(brt)) {
-							// when a processInstance does not contain a brt needed for a decision
-							// log
-							logging = "Not every decision has been calculated with localMinWithLimit!";
-						}
-					}
-
-				}
-
-			}
-
+		String exceptionNameHeuristic = "null";
+		if (exceptionPerAlgorithm.get(Enums.AlgorithmToPerform.HEURISTIC) != null) {
+			exceptionNameHeuristic = exceptionPerAlgorithm.get(Enums.AlgorithmToPerform.HEURISTIC).getClass()
+					.getCanonicalName();
 		}
 
-		if ((!localMinAlgorithmTime.contentEquals("null")) && (!bruteForceAlgorithmTime.contentEquals("null"))) {
-			timeDifferenceLocalMinBruteForce = (Double.parseDouble(localMinAlgorithmTime)
-					- Double.parseDouble(bruteForceAlgorithmTime)) + "";
-		}
-
-		if ((!localMinWithLimitAlgorithmTime.contentEquals("null"))
-				&& (!bruteForceAlgorithmTime.contentEquals("null"))) {
-			timeDifferenceLocalMinWithLimitBruteForce = (Double.parseDouble(localMinWithLimitAlgorithmTime)
-					- Double.parseDouble(bruteForceAlgorithmTime)) + "";
-		}
-
-		// map the cheapest process instances to rows in the csv file
-
-		String amountCheapestSolutionsLocalMin = "null";
-		String costCheapestSolutionLocalMin = "null";
-		if (pInstancesLocalMin != null && !pInstancesLocalMin.isEmpty()) {
-			costCheapestSolutionLocalMin = pInstancesLocalMin.get(0).getCostForModelInstance() + "";
-			amountCheapestSolutionsLocalMin = pInstancesLocalMin.size() + "";
-		}
-
-		String amountCheapestSolutionsBruteForce = "null";
-		String averageCostAllSolutions = "null";
-		String amountSolutionsBruteForce = "null";
-		String costCheapestSolutionBruteForce = "null";
-		String amountDataObjects = "null";
-		String averageAmountDataObjectsPerDecision = "null";
-
-		if (pInstancesBruteForce != null && !pInstancesBruteForce.isEmpty()) {
-			LinkedList<ProcessInstanceWithVoters> cheapestBruteForceInst = CommonFunctionality
-					.getCheapestProcessInstancesWithVoters(pInstancesBruteForce);
-			amountCheapestSolutionsBruteForce = cheapestBruteForceInst.size() + "";
-			amountSolutionsBruteForce = pInstancesBruteForce.size() + "";
-			averageCostAllSolutions = CommonFunctionality.getAverageCostForAllModelInstances(pInstancesBruteForce) + "";
-			costCheapestSolutionBruteForce = cheapestBruteForceInst.get(0).getCostForModelInstance() + "";
-		}
-
-		String amountCheapestSolutionsLocalMinWithLimit = "null";
-		String costCheapestSolutionLocalMinWithLimit = "null";
-		if (pInstancesLocalMinWithLimit != null && !pInstancesLocalMinWithLimit.isEmpty()) {
-			costCheapestSolutionLocalMinWithLimit = pInstancesLocalMinWithLimit.get(0).getCostForModelInstance() + "";
-			amountCheapestSolutionsLocalMinWithLimit = pInstancesLocalMinWithLimit.size() + "";
-
-		}
-
-		String readersPerDataObject = "null";
-		String writersPerDataObject = "null";
-		StringBuilder dependentBrts = new StringBuilder();
-		String allPathsThroughProcess = "null";
-		String amountExclusiveGtwSplits = "null";
-		String amountParallelGtwSplits = "null";
-		String amountTasks = "null";
-		String amountElements = "null";
-		String sumAmountVotersOfModel = "null";
-		String averageAmountVotersOfModel = "null";
-		String globalSphereSize = "null";
-		String sphereSumOfModel = "null";
-		String amountMaxSolutionsBruteForce = "null";
-		String amountMaxSolutionsLocalMin = "null";
-		String amountMaxSolutionsLocalMinWithLimit = "null";
-		String deciderOrVerifier = "null";
-		String amountReaders = "null";
-		String amountWriters = "null";
-
-		if (bruteForceApi != null) {
-			amountDataObjects = CommonFunctionality.getAmountDataObjects(bruteForceApi.getModelInstance()) + "";
-
-			double sumDataObjects = 0;
-			for (BPMNBusinessRuleTask brt : bruteForceApi.getBusinessRuleTasks()) {
-				sumDataObjects += brt.getDataObjects().size();
-			}
-			averageAmountDataObjectsPerDecision = sumDataObjects / bruteForceApi.getBusinessRuleTasks().size() + "";
-
-			allPathsThroughProcess = bruteForceApi.getAllPathsThroughProcess().size() + "";
-			amountExclusiveGtwSplits = CommonFunctionality.getAmountExclusiveGtwSplits(bruteForceApi.getModelInstance())
-					+ "";
-			amountParallelGtwSplits = CommonFunctionality.getAmountParallelGtwSplits(bruteForceApi.getModelInstance())
-					+ "";
-			amountTasks = CommonFunctionality.getAmountTasks(bruteForceApi.getModelInstance()) + "";
-			amountElements = CommonFunctionality.getAmountElements(bruteForceApi.getModelInstance()) + "";
-			sumAmountVotersOfModel = CommonFunctionality.getSumAmountVotersOfModel(bruteForceApi.getModelInstance())
-					+ "";
-			averageAmountVotersOfModel = CommonFunctionality
-					.getAverageAmountVotersOfModel(bruteForceApi.getModelInstance()) + "";
-			globalSphereSize = CommonFunctionality.getGlobalSphere(bruteForceApi.getModelInstance(),
-					bruteForceApi.modelWithLanes()) + "";
-			sphereSumOfModel = CommonFunctionality.getSphereSumOfModel(bruteForceApi.getModelInstance()) + "";
-			deciderOrVerifier = bruteForceApi.getDeciderOrVerifier();
-			double readers = 0;
-			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
-					.getReadersForDataObjects(bruteForceApi.getModelInstance()).entrySet()) {
-				for (FlowNode f : entr.getValue()) {
-					readers++;
-				}
-			}
-
-			amountReaders = readers + "";
-			readersPerDataObject = (readers/sumDataObjects) + "";
-
-			double writers = 0;
-			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
-					.getWritersForDataObjects(bruteForceApi.getModelInstance()).entrySet()) {
-				for (FlowNode f : entr.getValue()) {
-					writers++;
-				}
-			}
-			amountWriters = writers + "";
-			writersPerDataObject = (writers/sumDataObjects) + "";
-
-			boolean dependentBrtsInProcess = false;
-			/*for (BPMNBusinessRuleTask brt : bruteForceApi.getBusinessRuleTasks()) {
-				if (!brt.getRelatedBrts().isEmpty()) {
-					dependentBrtsInProcess = true;
-					break;
-				}
-			}*/
-
-			dependentBrts.append(dependentBrtsInProcess + "");
-
-		}
-
-		String exceptionNameLocalMin = "null";
-		if (exceptionPerAlgorithm.get("localMin") != null) {
-			exceptionNameLocalMin = exceptionPerAlgorithm.get("localMin").getClass().getCanonicalName();
-		} else {
-			amountMaxSolutionsLocalMin = localMinApi.getAmountPossibleCombinationsOfParticipants();
-		}
-		String exceptionNameBruteForce = "null";
-		if (exceptionPerAlgorithm.get("bruteForce") != null) {
-			exceptionNameBruteForce = exceptionPerAlgorithm.get("bruteForce").getClass().getCanonicalName();
-		} else {
-			amountMaxSolutionsBruteForce = bruteForceApi.getAmountPossibleCombinationsOfParticipants();
-		}
-
-		String exceptionNameLocalMinWithLimit = "null";
-		if (exceptionPerAlgorithm.get(localMinWithLimitApi.getAlgorithmToPerform()) != null) {
-			exceptionNameLocalMinWithLimit = exceptionPerAlgorithm.get(localMinWithLimitApi.getAlgorithmToPerform())
+		String exceptionNameNaive = "null";
+		if (exceptionPerAlgorithm.get(Enums.AlgorithmToPerform.NAIVE) != null) {
+			exceptionNameNaive = exceptionPerAlgorithm.get(Enums.AlgorithmToPerform.NAIVE)
 					.getClass().getCanonicalName();
-		} else {
-			amountMaxSolutionsLocalMinWithLimit = localMinWithLimitApi.getAmountPossibleCombinationsOfParticipants();
 		}
 
-		LinkedList<String> amountMaxSolutionsList = new LinkedList<String>();
-		amountMaxSolutionsList.add(amountMaxSolutionsBruteForce);
-		amountMaxSolutionsList.add(amountMaxSolutionsLocalMin);
-		amountMaxSolutionsList.add(amountMaxSolutionsLocalMinWithLimit);
-		String amountSolutions = "null";
-		for (int i = 0; i < amountMaxSolutionsList.size() - 1; i++) {
-			String currStr = amountMaxSolutionsList.get(i);
-			String nextStr = amountMaxSolutionsList.get(i + 1);
-			int currStrInt = 0;
-			int nextStrInt = 0;
-			if (amountSolutions.contentEquals("null")) {
-				if (currStr.contentEquals("Overflow") || nextStr.contentEquals("Overflow")) {
-					amountSolutions = "Overflow";
-				}
-			}
-
-			if ((!currStr.contentEquals("null")) && (!currStr.contentEquals("Overflow"))) {
-				currStrInt = Integer.parseInt(currStr);
-			}
-
-			if ((!nextStr.contentEquals("null")) && (!nextStr.contentEquals("Overflow"))) {
-				nextStrInt = Integer.parseInt(nextStr);
-			}
-
-			if (nextStrInt > currStrInt) {
-				amountSolutions = nextStr;
-			} else if (nextStrInt <= currStrInt) {
-				amountSolutions = currStr;
-			}
+		String exceptionNameIncrementalNaive = "null";
+		if (exceptionPerAlgorithm.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) != null) {
+			exceptionNameIncrementalNaive = exceptionPerAlgorithm.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE)
+					.getClass().getCanonicalName();
 		}
-
-		String[] row = new String[] { fileName, pathToFile, logging, exceptionNameLocalMin, exceptionNameBruteForce,
-				exceptionNameLocalMinWithLimit, amountSolutions, amountSolutionsBruteForce,
-				amountCheapestSolutionsLocalMin, amountCheapestSolutionsLocalMinWithLimit,
-				amountCheapestSolutionsBruteForce, costCheapestSolutionBruteForce, costCheapestSolutionLocalMin,
-				costCheapestSolutionLocalMinWithLimit, averageCostAllSolutions, localMinAlgorithmTime,
-				localMinWithLimitAlgorithmTime, bruteForceAlgorithmTime, timeDifferenceLocalMinBruteForce,
-				timeDifferenceLocalMinWithLimitBruteForce, isCheapestSolutionInBruteForce,
-				isCheapestSolutionWithLimitInBruteForce, allPathsThroughProcess, amountReaders, amountWriters,
-				amountDataObjects, averageAmountDataObjectsPerDecision, readersPerDataObject, writersPerDataObject,
-				amountExclusiveGtwSplits, amountParallelGtwSplits, amountTasks, amountElements, sumAmountVotersOfModel,
-				averageAmountVotersOfModel, globalSphereSize, sphereSumOfModel, dependentBrts.toString(), pathsThroughProcess,
-				deciderOrVerifier };
+		
+	
+		String[] row = new String[] { fileName, pathToFile, logging, exceptionNameExhaustive, exceptionNameHeuristic,
+				exceptionNameNaive, exceptionNameIncrementalNaive, totalAmountSolutionsExhaustiveSearch, totalAmountSolutionsHeuristicSearch, totalAmountSolutionsNaiveSearch, totalAmountSolutionsIncrementalNaiveSearch,
+				amountCheapestSolutionsExhaustive, amountCheapestSolutionsHeuristic,
+				amountCheapestSolutionsNaiveSearch, amountCheapestSolutionsIncrementalNaiveSearch, costCheapestSolutionExhaustive,
+				costCheapestSolutionHeuristic, costCheapestSolutionNaiveSearch, costCheapestSolutionIncrementalNaiveSearch,
+				exhaustiveSearchExecutionTime, heuristicSearchExecutionTime, naiveSearchExecutionTime,incrementalNaiveSearchExecutionTime,
+				timeDifferenceHeuristicAndExhaustive, timeDifferenceNaiveAndExhaustive, timeDifferenceIncrementalNaiveAndExhaustive,
+				amountReaders, amountWriters, amountDataObjects, averageAmountDataObjectsPerDecision,
+				readersPerDataObject, writersPerDataObject, amountExclusiveGtwSplits, amountParallelGtwSplits,
+				amountTasks, amountElements, sumAmountVotersOfModel, averageAmountVotersOfModel, privateSphereSize,
+				sphereSumOfModel, allPathsThroughProcess};
 
 		this.rows.add(row);
 

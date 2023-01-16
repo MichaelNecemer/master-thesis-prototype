@@ -1,6 +1,6 @@
 package functionality;
 
-import Mapping.BPMNParticipant;
+import mapping.BPMNParticipant;
 
 public class ExcludeParticipantConstraint extends Constraint{
 	
