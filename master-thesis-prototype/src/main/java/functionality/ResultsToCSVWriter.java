@@ -49,7 +49,7 @@ public class ResultsToCSVWriter {
 
 	}
 
-	public void writeResultsOfAlgorithmsToCSVFile(API2 api,
+	public void writeResultsOfAlgorithmsToCSVFile(API api,
 			HashMap<Enums.AlgorithmToPerform, Double> cheapestSolutionCostMap,
 			HashMap<Enums.AlgorithmToPerform, Integer> totalAmountSolutionsMap,
 			HashMap<Enums.AlgorithmToPerform, Integer> cheapestSolutionsMap,

@@ -975,10 +975,10 @@ public class BatchFileGenerator {
 
 	}
 
-	public static LinkedList<API2> mapFilesToAPI(String pathToFiles, ResultsToCSVWriter writer) {
+	public static LinkedList<API> mapFilesToAPI(String pathToFiles, ResultsToCSVWriter writer) {
 		// iterate through all files in the directory and run algorithms on annotated
 		// models
-		LinkedList<API2> apiList = new LinkedList<API2>();
+		LinkedList<API> apiList = new LinkedList<API>();
 		File dir = new File(pathToFiles);
 		File[] directoryListing = dir.listFiles();
 		Arrays.sort(directoryListing, Comparator.comparingLong(File::lastModified));
@@ -997,7 +997,7 @@ public class BatchFileGenerator {
 		for (String pathToFile : paths) {
 			File f = new File(pathToFile);
 			try {
-				API2 api = new API2(pathToFile, costParameters);
+				API api = new API(pathToFile, costParameters);
 				apiList.add(api);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
@@ -1010,10 +1010,10 @@ public class BatchFileGenerator {
 		return apiList;
 	}
 
-	public static LinkedList<API2> mapFilesToAPI(LinkedList<File> files, ResultsToCSVWriter writer) {
+	public static LinkedList<API> mapFilesToAPI(LinkedList<File> files, ResultsToCSVWriter writer) {
 		// iterate through all files in the directory and run algorithms on annotated
 		// models
-		LinkedList<API2> apiList = new LinkedList<API2>();
+		LinkedList<API> apiList = new LinkedList<API>();
 
 		LinkedList<String> paths = new LinkedList<String>();
 		if (files != null) {
@@ -1026,7 +1026,7 @@ public class BatchFileGenerator {
 
 		for (String pathToFile : paths) {
 			try {
-				API2 api = new API2(pathToFile, costParameters);
+				API api = new API(pathToFile, costParameters);
 				apiList.add(api);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
@@ -1065,7 +1065,7 @@ public class BatchFileGenerator {
 	}
 
 	public static HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> runAlgorithmsAndWriteResultsToCSV(
-			API2 api, boolean runExhaustiveSearch, boolean runHeuristicSearch, boolean runNaiveSearch, boolean runIncrementalNaiveSearch,
+			API api, boolean runExhaustiveSearch, boolean runHeuristicSearch, boolean runNaiveSearch, boolean runIncrementalNaiveSearch,
 			int bound,
 			HashMap<Enums.AlgorithmToPerform, Integer> timeOutOrHeapSpaceExceptionMap, ResultsToCSVWriter writer,
 			ExecutorService service) {
@@ -1425,9 +1425,9 @@ public class BatchFileGenerator {
 	public static void runAlgorithmsAndWriteResultsToCSV(LinkedList<File> files, boolean runExhaustiveSearch,
 			boolean runHeuristicSearch, boolean runHeuristicSearchWithBound, boolean runNaiveSearch, int boundForHeuristicSearchWithBound,
 			ResultsToCSVWriter writer, ExecutorService service) {
-		LinkedList<API2> apiList = BatchFileGenerator.mapFilesToAPI(files, writer);
+		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(files, writer);
 		if (!apiList.isEmpty()) {
-			for (API2 api : apiList) {
+			for (API api : apiList) {
 				BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, runExhaustiveSearch, runHeuristicSearch,
 						runHeuristicSearchWithBound,runNaiveSearch, boundForHeuristicSearchWithBound,
 						new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, service);
@@ -1441,9 +1441,9 @@ public class BatchFileGenerator {
 	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels,
 			boolean runExhaustiveSearch, boolean runHeuristicSearch, boolean runHeuristicSearchWithBound, boolean runNaiveSearch,
 			int boundForHeuristicSearchWithBound, ResultsToCSVWriter writer, ExecutorService service) {
-		LinkedList<API2> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithAnnotatedModels, writer);
+		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithAnnotatedModels, writer);
 		if (!apiList.isEmpty()) {
-			for (API2 api : apiList) {
+			for (API api : apiList) {
 				BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(api, runExhaustiveSearch, runHeuristicSearch,
 						runHeuristicSearchWithBound, runNaiveSearch, boundForHeuristicSearchWithBound,
 						new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, service);
@@ -2054,11 +2054,11 @@ public class BatchFileGenerator {
 				}
 			}
 			// map annotated models
-			LinkedList<API2> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderForModelsWithDecisionsAnnotated,
+			LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderForModelsWithDecisionsAnnotated,
 					writer);
 
 			// perform all algorithms and count the timeouts
-			for (API2 api : apiList) {
+			for (API api : apiList) {
 				HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
 						.runAlgorithmsAndWriteResultsToCSV(api, runExhaustiveSearch, runHeuristicSearch,
 								runNaiveSearch, runIncrementalNaiveSearch, upperBoundSolutionsForLocalMinWithBound,
@@ -2129,10 +2129,10 @@ public class BatchFileGenerator {
 				amountNewProcessesToCreatePerIteration, directoryToStore);
 
 		// map annotated models
-		LinkedList<API2> apiList = BatchFileGenerator.mapFilesToAPI(directoryToStore, writer);
+		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(directoryToStore, writer);
 		boolean outOfMemoryException = false;
 		// perform all algorithms and count the timeouts
-		for (API2 api : apiList) {
+		for (API api : apiList) {
 			HashMap<Enums.AlgorithmToPerform, Integer> timeOutMap = new HashMap<Enums.AlgorithmToPerform, Integer>();
 
 			timeOutMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);

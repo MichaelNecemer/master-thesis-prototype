@@ -54,7 +54,7 @@ import mapping.DecisionEvaluation;
 import mapping.InfixToPostfix;
 import mapping.Label;
 
-public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> {
+public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> {
 
 	private BpmnModelInstance modelInstance;
 	private File processModelFile;
@@ -80,7 +80,7 @@ public class API2 implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLi
 	private int bound;
 	private LinkedList<LinkedList<BPMNBusinessRuleTask>> clusterSet;
 
-	public API2(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters) throws Exception {
+	public API(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters) throws Exception {
 		if (weightingParameters.size() != 3) {
 			throw new Exception("Not exactly 3 weighting cost parameters (Alpha, Beta, Gamma) in the list!");
 		}

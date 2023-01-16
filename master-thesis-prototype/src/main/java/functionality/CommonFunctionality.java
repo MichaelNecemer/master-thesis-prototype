@@ -1928,7 +1928,7 @@ public class CommonFunctionality {
 
 	}
 
-	public static void generateNewModelsWithAnnotatedChosenParticipants(API2 api,
+	public static void generateNewModelsWithAnnotatedChosenParticipants(API api,
 			LinkedList<PModelWithAdditionalActors> pInstances, int upperBoundNewModels,
 			String directoryToStoreAnnotatedModels) {
 		// for each solution -> generate a new bpmn file
@@ -2115,7 +2115,7 @@ public class CommonFunctionality {
 
 	}
 
-	public static void generateNewModelsWithVerifiersAsBpmnConstruct(API2 api,
+	public static void generateNewModelsWithVerifiersAsBpmnConstruct(API api,
 			LinkedList<PModelWithAdditionalActors> pInstances, int upperBoundNewModels, String directoryToStoreModels,
 			boolean votingAsSubProcess, boolean mapModel) throws Exception, IOException {
 
@@ -2303,7 +2303,7 @@ public class CommonFunctionality {
 
 	}
 
-	private static void addTasksToVotingSystem(API2 api, BpmnModelInstance modelInstance, int i, BusinessRuleTask brt,
+	private static void addTasksToVotingSystem(API api, BpmnModelInstance modelInstance, int i, BusinessRuleTask brt,
 			BPMNExclusiveGateway bpmnEx, AbstractFlowNodeBuilder builder, String parallelSplit,
 			LinkedList<BPMNParticipant> verifiers, BPMNParticipant troubleShooter, String parallelJoin,
 			int exclusiveGtwCount, boolean votingAsSubProcess, boolean onlyOneTask) {

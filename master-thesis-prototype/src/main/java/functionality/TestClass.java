@@ -23,7 +23,7 @@ public class TestClass {
 		LinkedList<Double> costForUpgradingSpheres = new LinkedList<>(Arrays.asList(1.0, 1.0, 1.0));
 
 		try {
-			API2 api2 = new API2(pathToFile, costForUpgradingSpheres);			
+			API api2 = new API(pathToFile, costForUpgradingSpheres);			
 		
 			
 			LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(false, 1);

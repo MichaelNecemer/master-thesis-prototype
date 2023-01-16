@@ -48,7 +48,7 @@ import mapping.BPMNExclusiveGateway;
 public class GUI {
 	// small GUI where users can import a camunda bpmn model and generate the
 	// optimal solutions
-	static API2 api = null;
+	static API api = null;
 	static BPMNExclusiveGateway bpmnEx = null;
 	static int sumVotes = 0;
 	static JCheckBox compareResultsAgainstExhaustiveSearch;
@@ -416,7 +416,7 @@ public class GUI {
 						leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.PAGE_AXIS));
 
 						try {
-							api = new API2(pathToInputFile, costMeasureWeightingParameters);
+							api = new API(pathToInputFile, costMeasureWeightingParameters);
 							leftPanel.add(new JLabel("Troubleshooter: " + api.getTroubleShooter().getName()));
 							leftPanel.add(
 									new JLabel("Paths through process: " + api.getAllPathsThroughProcess().size()));
