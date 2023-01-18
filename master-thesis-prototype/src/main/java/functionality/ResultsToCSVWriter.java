@@ -158,7 +158,7 @@ public class ResultsToCSVWriter {
 		String writersPerDataObject = "null";
 		String allPathsThroughProcess = "null";
 		String amountExclusiveGtwSplits = "null";
-		String amountParallelGtwSplits = "null";
+		String amountParallelGtwSplitsBeforePreprocessing = "null";
 		String amountTasks = "null";
 		String amountElements = "null";
 		String sumAmountVotersOfModel = "null";
@@ -181,7 +181,7 @@ public class ResultsToCSVWriter {
 
 			allPathsThroughProcess = api.getAllPathsThroughProcess().size() + "";
 			amountExclusiveGtwSplits = CommonFunctionality.getAmountExclusiveGtwSplits(api.getModelInstance()) + "";
-			amountParallelGtwSplits = CommonFunctionality.getAmountParallelGtwSplits(api.getModelInstance()) + "";
+			amountParallelGtwSplitsBeforePreprocessing = api.getAmountParallelsBeforePreprocessing() + "";
 			amountTasks = CommonFunctionality.getAmountTasks(api.getModelInstance()) + "";
 			amountElements = CommonFunctionality.getAmountElements(api.getModelInstance()) + "";
 			sumAmountVotersOfModel = CommonFunctionality.getSumAmountVerifiersOfModel(api.getModelInstance()) + "";
@@ -245,7 +245,7 @@ public class ResultsToCSVWriter {
 				exhaustiveSearchExecutionTime, heuristicSearchExecutionTime, naiveSearchExecutionTime,incrementalNaiveSearchExecutionTime,
 				timeDifferenceHeuristicAndExhaustive, timeDifferenceNaiveAndExhaustive, timeDifferenceIncrementalNaiveAndExhaustive,
 				amountReaders, amountWriters, amountDataObjects, averageAmountDataObjectsPerDecision,
-				readersPerDataObject, writersPerDataObject, amountExclusiveGtwSplits, amountParallelGtwSplits,
+				readersPerDataObject, writersPerDataObject, amountExclusiveGtwSplits, amountParallelGtwSplitsBeforePreprocessing,
 				amountTasks, amountElements, sumAmountVotersOfModel, averageAmountVotersOfModel, privateSphereSize,
 				sphereSumOfModel, allPathsThroughProcess};
 

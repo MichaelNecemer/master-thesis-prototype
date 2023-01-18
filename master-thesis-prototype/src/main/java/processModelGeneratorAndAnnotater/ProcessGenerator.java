@@ -35,7 +35,7 @@ import org.w3c.dom.NodeList;
 
 import functionality.CommonFunctionality;
 
-public class ProcessGenerator implements Callable {
+public class ProcessGenerator implements Callable<File> {
 
 	private static int processGeneratorId = 1;
 	private int processId;
@@ -57,10 +57,12 @@ public class ProcessGenerator implements Callable {
 	private int probabilityForJoinGtw;
 	private int nestingDepthFactor;
 	private HashMap<String, Integer[]> percentagesForNodesToBeDrawn;
+	private int maxTriesForGeneratingProcess;
 
 	public ProcessGenerator(String directoryToStore, int amountParticipants, int amountTasksToBeInserted,
 			int amountXorsToBeInserted, int amountParallelsToBeInserted, int taskProb, int xorSplitProb,
-			int parallelSplitProb, int probabilityForJoinGtw, int nestingDepthFactor) throws Exception {
+			int parallelSplitProb, int probabilityForJoinGtw, int nestingDepthFactor, int maxTriesForGeneratingProcess)
+			throws Exception {
 		// process model will have 1 StartEvent and 1 EndEvent
 		if (taskProb + xorSplitProb + parallelSplitProb > 100) {
 			throw new Exception("taskProb+xorSplitProb+parallelSplitProb!=100");
@@ -89,6 +91,10 @@ public class ProcessGenerator implements Callable {
 		this.possibleNodeTypes = new LinkedList<String>();
 		this.probabilityForJoinGtw = probabilityForJoinGtw;
 		this.nestingDepthFactor = nestingDepthFactor;
+
+		// if set to 0 it is not bounded to max tries
+		this.maxTriesForGeneratingProcess = maxTriesForGeneratingProcess;
+
 		if (amountTasksToBeInserted > 0) {
 			this.possibleNodeTypes.add("Task");
 		}
@@ -398,9 +404,9 @@ public class ProcessGenerator implements Callable {
 		if (!CommonFunctionality.isModelBlockStructured(this.modelInstance)) {
 			throw new Exception("Model not block structured!");
 		}
-		
-		for(Task task:this.modelInstance.getModelElementsByType(Task.class)) {
-			if(task.getIncoming().size()>1) {
+
+		for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
+			if (task.getIncoming().size() > 1) {
 				throw new Exception("Task can not have >1 incoming edges");
 			}
 		}
@@ -528,8 +534,9 @@ public class ProcessGenerator implements Callable {
 	public File call() throws Exception {
 		// TODO Auto-generated method stub
 		boolean modelIsValid = false;
-		int tries = 1;
+		int tries = 0;
 		while (!Thread.currentThread().isInterrupted() && !modelIsValid) {
+
 			this.generateProcess(this.allPaths, this.possibleNodeTypes, this.amountTasksToBeInserted,
 					this.amountXorsToBeInserted, this.amountParallelsToBeInserted);
 			int xorSplits = CommonFunctionality.getAmountExclusiveGtwSplits(this.modelInstance);
@@ -547,11 +554,21 @@ public class ProcessGenerator implements Callable {
 					} else {
 						System.out.println("Try " + tries + ": model did not satisfy specified amounts! Trying again!");
 						tries++;
+						if (this.maxTriesForGeneratingProcess > 0) {
+							if (tries == this.maxTriesForGeneratingProcess) {
+								return null;
+							}
+						}
 					}
 				} catch (Exception e) {
 					System.out.println(e.getMessage());
 					System.out.println("Try " + tries + ": generated Model not valid! Trying again!");
 					tries++;
+					if (this.maxTriesForGeneratingProcess > 0) {
+						if (tries == this.maxTriesForGeneratingProcess) {
+							return null;
+						}
+					}
 				}
 			}
 			// if no valid model has been generated -> try generating a new one

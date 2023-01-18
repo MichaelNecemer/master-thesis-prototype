@@ -1792,8 +1792,7 @@ public class CommonFunctionality {
 			List<LinkedList<Integer>> verifiersCombsPerGtwLists = CommonFunctionality
 					.computeRepartitionNumberWithResultBound((int) processDimensionSize, amountDecisions,
 							(int) minVerifiersCombsPerDecision, 5);
-			LinkedList<Integer> verifiersCombsPerGtwList = CommonFunctionality
-					.getRandomItem(verifiersCombsPerGtwLists);
+			LinkedList<Integer> verifiersCombsPerGtwList = CommonFunctionality.getRandomItem(verifiersCombsPerGtwLists);
 
 			for (int i = 0; i < verifiersCombsPerGtwList.size(); i++) {
 				int currVerifiersComb = verifiersCombsPerGtwList.get(i);
@@ -2344,8 +2343,7 @@ public class CommonFunctionality {
 			ServiceTask st = (ServiceTask) CommonFunctionality.getFlowNodeByBPMNNodeId(modelInstance, serviceTaskId);
 			st.getOutgoing().iterator().next().getId();
 			CommonFunctionality.addInformationToServiceTasks(modelInstance, st,
-					(BPMNExclusiveGateway) CommonFunctionality.getNodeById(api.getProcessElements(),
-							targetGtw.getId()),
+					(BPMNExclusiveGateway) CommonFunctionality.getNodeById(api.getProcessElements(), targetGtw.getId()),
 					false);
 
 			for (BPMNDataObject dao : allBPMNDataObjects) {
@@ -3764,17 +3762,16 @@ public class CommonFunctionality {
 		if (pModels == null) {
 			return "";
 		}
-
 		/*
-		 * for (int i = 1; i < pModels.size(); i++) { PModelWithAdditionalActors
-		 * currInst = pModels.get(i); // check if each brt with xor split has additional
-		 * actors for (AdditionalActors addActors : currInst.getAdditionalActorsList())
-		 * { if (!brts.contains(addActors.getCurrBrt())) { return
-		 * "Not every decision has been calculated with " + algorithm.name(); } }
-		 * 
-		 * }
-		 */
-
+		for (int i = 1; i < pModels.size(); i++) {
+			PModelWithAdditionalActors currInst = pModels.get(i);
+			for (AdditionalActors addActors : currInst.getAdditionalActorsList()) {
+				if (!brts.contains(addActors.getCurrBrt())) {
+					return "Not every decision has been calculated with " + algorithm.name();
+				}
+			}
+		}
+	*/
 		return "";
 	}
 

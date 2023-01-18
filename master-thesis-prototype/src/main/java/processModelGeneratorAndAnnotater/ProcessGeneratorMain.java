@@ -11,16 +11,17 @@ public class ProcessGeneratorMain {
 	int probabilityForJoinGtw = 0;
 	int nestingDepthFactor = 20;
 	int amountModelsToCreate = 5;
-	int probTask = 50;
-	int probXorGtw = 30;
-	int probParallelGtw = 20;
+	int probTask = 33;
+	int probXorGtw = 33;
+	int probParallelGtw = 33;
+	int maxTriesForGeneratingProcess = 100;
 	
 	while(amountModelsToCreate>0) {
 	ProcessGenerator pGen;
 	try {
 		pGen = new ProcessGenerator(pathWhereToCreateModels,amountParticipants,amountTasksToBeInserted,
 				amountXorsToBeInserted, amountParallelsToBeInserted, probTask, probXorGtw, probParallelGtw, probabilityForJoinGtw,
-				nestingDepthFactor);
+				nestingDepthFactor, maxTriesForGeneratingProcess);
 		try {
 			pGen.call();
 			amountModelsToCreate--;
