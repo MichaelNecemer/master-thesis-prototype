@@ -207,7 +207,75 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			TreeMap<BPMNParticipant, Double> sumWeightedPaths = new TreeMap<BPMNParticipant, Double>();
 			TreeMap<BPMNParticipant, Double> sumDependentBrts = new TreeMap<BPMNParticipant, Double>();
 			TreeMap<BPMNParticipant, HashSet<BPMNBusinessRuleTask>> dependentBrtsForParticipantMap = new TreeMap<BPMNParticipant, HashSet<BPMNBusinessRuleTask>>();
-			
+
+			for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
+				BPMNExclusiveGateway gtw = (BPMNExclusiveGateway) brt.getSuccessors().iterator().next();
+
+				LinkedList<BPMNParticipant> mandatoryParticipantsForGtw = new LinkedList<BPMNParticipant>();
+				LinkedList<BPMNParticipant> excludedParticipantsForGtw = new LinkedList<BPMNParticipant>();
+
+				
+				LinkedList<LinkedList<BPMNParticipant>> mandatoryAndExcludedPerGtwList = new LinkedList<LinkedList<BPMNParticipant>>();
+				mandatoryAndExcludedPerGtwList.add(mandatoryParticipantsForGtw);
+				mandatoryAndExcludedPerGtwList.add(excludedParticipantsForGtw);
+				mandatoryAndExcludedParticipantsPerGtw.putIfAbsent(gtw, mandatoryAndExcludedPerGtwList);
+
+				BPMNParticipant actorOfBrt = brt.getParticipant();
+				LinkedList<Integer> currValues = occurencesOfParticipantInCluster.getOrDefault(actorOfBrt,
+						new LinkedList<Integer>(defaultValues));
+				int amountParticipantIsActor = currValues.get(2);
+				currValues.set(2, ++amountParticipantIsActor);
+				occurencesOfParticipantInCluster.put(actorOfBrt, currValues);
+
+				for (Entry<BPMNDataObject, ArrayList<BPMNTask>> lastWriterEntry : brt.getLastWriterList().entrySet()) {
+					BPMNDataObject dataObject = lastWriterEntry.getKey();
+					for (BPMNTask origin : lastWriterEntry.getValue()) {
+
+						if (!pathsFromOriginToEndMap.containsKey(origin)) {
+
+							// get or compute the paths from origin to end
+							LinkedList<LinkedList<BPMNElement>> pathsFromOriginToEnd = this
+									.getOrComputePathsFromOriginToEnd(pathsFromOriginToEndMap, origin);
+
+							// compute the priority list for the origin
+							// calculate the amount of paths where a certain reader reads the dataObject
+							// from the origin
+							LinkedList<PriorityListEntry> priorityListForOriginAndDataObject = this
+									.computePriorityListForOrigin(origin, dataObject, pathsFromOriginToEnd,
+											potentialAddActors);
+							priorityListForOrigin.computeIfAbsent(origin, k -> new LinkedList<PriorityListEntry>())
+									.addAll(priorityListForOriginAndDataObject);
+
+							for (PriorityListEntry pEntry : priorityListForOriginAndDataObject) {
+								BPMNParticipant participant = pEntry.getReader();
+								double amountPathsWithoutAddActors = pEntry.getAmountPathsWhereReaderReadsDataObject();
+								double amountPathsWithAddActors = pEntry
+										.getAmountPathsWhereReaderReadsDataObjectWithAdditionalActors();
+
+								HashSet<BPMNBusinessRuleTask> dependentBrtsForParticipant = pEntry.getDependentBrts();
+								double depBrtSize = dependentBrtsForParticipant.size();
+								dependentBrtsForParticipantMap
+										.computeIfAbsent(participant, k -> new HashSet<BPMNBusinessRuleTask>())
+										.addAll(dependentBrtsForParticipant);
+
+								double weightOfOrigin = Math.pow(2, -origin.getLabels().size());
+
+								double costForPart = sumWeightedPaths.getOrDefault(participant, 0.0);
+
+								double minLabelSize = pEntry.getMinLabelSizeOfReader();
+								// use the minLabelSize of the reader
+								// to not prefer participants in branches
+								double weightedPaths = weightOfOrigin
+										* (amountPathsWithAddActors + amountPathsWithoutAddActors);
+								sumWeightedPaths.put(participant, costForPart + weightedPaths);
+
+								double sumDep = sumDependentBrts.getOrDefault(participant, 0.0);
+								sumDependentBrts.put(participant, sumDep + depBrtSize);
+							}
+						}
+					}
+				}
+			}
 
 			TreeMap<Double, TreeMap<Double, HashSet<BPMNParticipant>>> pathMap = new TreeMap<Double, TreeMap<Double, HashSet<BPMNParticipant>>>(
 					Collections.reverseOrder());
