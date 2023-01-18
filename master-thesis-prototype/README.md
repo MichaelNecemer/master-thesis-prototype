@@ -1,3 +1,20 @@
+# Basic Info for using the Process Generator
+It will use the camunda java api for generating the visual elements of bpmn and generate random block structured processes.
+The elements may be visually overlapping (although the camunda java api claims to bypass such issues)!
+
+# How to use the Process Generator?
+1. simply clone the repository 
+2. go into the "processModelGeneratorAndAnnotater" package
+3. use the "ProcessGeneratorMain" class
+
+## Inject data objects and readers / writers - use the Process Model Annotater!
+optional:
+The generated models may then be used as an input to the "ProcessModelAnnotater" which inserts data objects and reader and writer dependencies.
+
+
+
+# The instructions below are automatically generated!
+
 # Camunda BPM Process Application
 A Process Application for [Camunda BPM](http://docs.camunda.org).
 
