@@ -26,8 +26,8 @@ public class TestClass {
 			API api2 = new API(pathToFile, costForUpgradingSpheres);			
 		
 			
-			//LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(false, 1);
-			LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(true, 1);
+			LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(false, 1);
+			//LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(true, 1);
 
 			
 			for(PModelWithAdditionalActors pModel: pInstNaive) {
@@ -54,14 +54,14 @@ public class TestClass {
 			
 			// garbage collector will remove
 			//pInst = null;
-			//String result = CommonFunctionality2.compareCostOfCheapestSolutionsOfAlgorithms(pInstHeuristic, pInstExhaustive);
-			//System.out.println("Cheapest heuristic: "+pInstHeuristic.size());
-			//System.out.println("Result: "+result);		
+			String result = CommonFunctionality.compareCostOfCheapestSolutionsOfAlgorithms(pInstHeuristic, pInstExhaustive);
+			System.out.println("Cheapest heuristic: "+pInstHeuristic.size());
+			System.out.println("Result: "+result);		
 			System.out.println("__________________");
 			//String naiveIsCheapest = CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstNaive, pInstExhaustive, bound);
 			//System.out.println("naiveIsCheapest: "+naiveIsCheapest);
 			//System.out.println(pInstNaive.get(0).getSumMeasure());
-			//System.out.println("costOfCheapestSolutionIsSame: "+CommonFunctionality.compareCostOfCheapestSolutionsOfAlgorithms(pInstNaive, pInstExhaustive));
+			System.out.println("costOfCheapestSolutionIsSame: "+CommonFunctionality.compareCostOfCheapestSolutionsOfAlgorithms(pInstNaive, pInstExhaustive));
 
 			
 		} catch (Exception e) {
