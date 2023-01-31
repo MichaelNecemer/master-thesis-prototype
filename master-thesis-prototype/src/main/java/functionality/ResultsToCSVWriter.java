@@ -28,18 +28,22 @@ public class ResultsToCSVWriter {
 
 			rows = new ArrayList<>();
 			String[] header = new String[] { "fileName", "pathToFile", "logging", "exceptionExhaustive",
-					"exceptionHeuristic", "exceptionNaive", "exceptionIncrementalNaive", "total amount solutions exhaustive", "total amount solutions heuristic", "total amount solutions naive", "total amount solutions incremental naive",
-					"amount cheapest solutions exhaustive", "amount cheapest solutions heuristic", "amount cheapest solutions naive", "amount solutions incremental naive",
-					"costCheapestSolutionExhaustive", "costCheapestSolutionHeuristic",
-					"costCheapestSolutionNaive", "costCheapestSolutionIncrementalNaive", "executionTimeExhaustive in sec",
-					"executionTimeHeuristic in sec", "executionTimeNaive in sec",  "executionTimeIncrementalNaive in sec",
-					"deltaExecutionTime in sec (heuristic - exhaustive)",
-					"deltaExecutionTime in sec (naive - exhaustive)","deltaExecutionTime in sec (incremental naive - exhaustive)",
-					 "amountReaders", "amountWriters",
-					"amountDataObjects", "averageAmountDataObjectsPerDecision", "amountReadersPerDataObject",
-					"amountWritersPerDataObject", "amountExclusiveGateways", "amountParallelGateways", "amountTasks",
-					"amountElements", "amountSumVerifiers", "averageAmountVerifiers", "privateSphereSize", "averageSphereSum",
-					 "pathsThroughProcess"};
+					"exceptionHeuristic", "exceptionNaive", "exceptionIncrementalNaive",
+					"total amount solutions exhaustive", "total amount solutions heuristic",
+					"total amount solutions naive", "total amount solutions incremental naive",
+					"amount cheapest solutions exhaustive", "amount cheapest solutions heuristic",
+					"amount cheapest solutions naive", "amount solutions incremental naive",
+					"costCheapestSolutionExhaustive", "costCheapestSolutionHeuristic", "costCheapestSolutionNaive",
+					"costCheapestSolutionIncrementalNaive", "exhaustive combsGen in sec",
+					"exhaustive calcMeasure in sec", "exhaustive executionTime in sec", "heuristic combsGen in sec",
+					"heuristic calcMeasure in sec", "heuristic executionTime in sec", "naive combsGen in sec",
+					"naive calcMeasure in sec", "naive executionTime in sec", "incrementalNaive combsGen in sec",
+					"incrementalNaive calcMeasure in sec", "incrementalNaive executionTime in sec", "amountReaders",
+					"amountWriters", "amountDataObjects", "averageAmountDataObjectsPerDecision",
+					"amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways",
+					"amountParallelGateways", "amountTasks", "amountElements", "amountSumVerifiers",
+					"averageAmountVerifiers", "privateSphereSize", "averageSphereSum", "pathsThroughProcess",
+					"amountMandConst", "amountExclConst" };
 			this.rows.add(header);
 
 		} catch (IOException e) {
@@ -70,27 +74,34 @@ public class ResultsToCSVWriter {
 		String totalAmountSolutionsHeuristicSearch = "";
 		String costCheapestSolutionHeuristic = "null";
 		String amountCheapestSolutionsHeuristic = "null";
-		
+
 		String totalAmountSolutionsNaiveSearch = "";
 		String amountCheapestSolutionsNaiveSearch = "null";
 		String costCheapestSolutionNaiveSearch = "null";
 
-
 		String totalAmountSolutionsIncrementalNaiveSearch = "";
-		String amountCheapestSolutionsIncrementalNaiveSearch= "null";
-		String costCheapestSolutionIncrementalNaiveSearch= "null";
-		
-	
-		String heuristicSearchExecutionTime = "null";
-		String exhaustiveSearchExecutionTime = "null";
-		String naiveSearchExecutionTime = "null";
-		String incrementalNaiveSearchExecutionTime = "null";
-		String timeDifferenceHeuristicAndExhaustive = "null";
-		String timeDifferenceNaiveAndExhaustive = "null";
-		String timeDifferenceIncrementalNaiveAndExhaustive = "null";
+		String amountCheapestSolutionsIncrementalNaiveSearch = "null";
+		String costCheapestSolutionIncrementalNaiveSearch = "null";
 
-		
-		
+		String exhaustiveSearchExecutionTime = "null";
+		String exhaustiveSearchGenCombsTime = "null";
+		String exhaustiveSearchCalcMeasureTime = "null";
+
+		String heuristicSearchExecutionTime = "null";
+		String heuristicSearchGenCombsTime = "null";
+		String heuristicSearchCalcMeasureTime = "null";
+
+		String naiveSearchExecutionTime = "null";
+		String naiveSearchGenCombsTime = "null";
+		String naiveSearchCalcMeasureTime = "null";
+
+		String incrementalNaiveSearchExecutionTime = "null";
+		String incrementalNaiveSearchGenCombsTime = "null";
+		String incrementalNaiveSearchCalcMeasureTime = "null";
+
+		String amountMandConst = api.getMandatoryParticipantConstraints().size() + "";
+		String amountExclConst = api.getExcludeParticipantConstraints().size() + "";
+
 		if (cheapestSolutionCostMap != null) {
 			if (cheapestSolutionCostMap.containsKey(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
 				costCheapestSolutionExhaustive = cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) + "";
@@ -102,7 +113,8 @@ public class ResultsToCSVWriter {
 				costCheapestSolutionNaiveSearch = cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.NAIVE) + "";
 			}
 			if (cheapestSolutionCostMap.containsKey(Enums.AlgorithmToPerform.INCREMENTALNAIVE)) {
-				costCheapestSolutionIncrementalNaiveSearch = cheapestSolutionCostMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
+				costCheapestSolutionIncrementalNaiveSearch = cheapestSolutionCostMap
+						.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
 			}
 		}
 
@@ -110,50 +122,45 @@ public class ResultsToCSVWriter {
 			totalAmountSolutionsExhaustiveSearch = totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE)
 					+ "";
 			amountCheapestSolutionsExhaustive = cheapestSolutionsMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) + "";
-			exhaustiveSearchExecutionTime = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.EXHAUSTIVE) + "";
+			LinkedList<Double> timeList = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.EXHAUSTIVE);
+			exhaustiveSearchGenCombsTime = timeList.get(0) + "";
+			exhaustiveSearchCalcMeasureTime = timeList.get(1) + "";
+			exhaustiveSearchExecutionTime = timeList.get(2) + "";
 			logging = loggingMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE);
 		}
 
 		if (totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.HEURISTIC) != null) {
 			totalAmountSolutionsHeuristicSearch = totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.HEURISTIC) + "";
 			amountCheapestSolutionsHeuristic = cheapestSolutionsMap.get(Enums.AlgorithmToPerform.HEURISTIC) + "";
-			heuristicSearchExecutionTime = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.HEURISTIC) + "";
+			LinkedList<Double> timeList = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.HEURISTIC);
+			heuristicSearchGenCombsTime = timeList.get(0) + "";
+			heuristicSearchCalcMeasureTime = timeList.get(1) + "";
+			heuristicSearchExecutionTime = timeList.get(2) + "";
 			logging = loggingMap.get(Enums.AlgorithmToPerform.HEURISTIC);
 		}
 
-		
 		if (totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.NAIVE) != null) {
 			totalAmountSolutionsNaiveSearch = totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.NAIVE) + "";
-			amountCheapestSolutionsNaiveSearch= cheapestSolutionsMap.get(Enums.AlgorithmToPerform.NAIVE) + "";
-			naiveSearchExecutionTime = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.NAIVE) + "";
+			amountCheapestSolutionsNaiveSearch = cheapestSolutionsMap.get(Enums.AlgorithmToPerform.NAIVE) + "";
+			LinkedList<Double> timeList = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.NAIVE);
+			naiveSearchGenCombsTime = timeList.get(0) + "";
+			naiveSearchCalcMeasureTime = timeList.get(1) + "";
+			naiveSearchExecutionTime = timeList.get(2) + "";
 			logging = loggingMap.get(Enums.AlgorithmToPerform.NAIVE);
 		}
 
 		if (totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) != null) {
-			totalAmountSolutionsIncrementalNaiveSearch = totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
-			amountCheapestSolutionsIncrementalNaiveSearch= cheapestSolutionsMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
-			incrementalNaiveSearchExecutionTime = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
+			totalAmountSolutionsIncrementalNaiveSearch = totalAmountSolutionsMap
+					.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
+			amountCheapestSolutionsIncrementalNaiveSearch = cheapestSolutionsMap
+					.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
+			LinkedList<Double> timeList = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.INCREMENTALNAIVE);
+			incrementalNaiveSearchGenCombsTime = timeList.get(0) + "";
+			incrementalNaiveSearchCalcMeasureTime = timeList.get(1) + "";
+			incrementalNaiveSearchExecutionTime = timeList.get(2) + "";
 			logging = loggingMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE);
 		}
-		
-		if ((!heuristicSearchExecutionTime.contentEquals("null"))
-				&& (!exhaustiveSearchExecutionTime.contentEquals("null"))) {
-			timeDifferenceHeuristicAndExhaustive = (Double.parseDouble(heuristicSearchExecutionTime)
-					- Double.parseDouble(exhaustiveSearchExecutionTime)) + "";
-		}
-		
-		if ((!naiveSearchExecutionTime.contentEquals("null"))
-				&& (!exhaustiveSearchExecutionTime.contentEquals("null"))) {
-			timeDifferenceNaiveAndExhaustive = (Double.parseDouble(naiveSearchExecutionTime)
-					- Double.parseDouble(exhaustiveSearchExecutionTime)) + "";
-		}
-		
-		if ((!incrementalNaiveSearchExecutionTime.contentEquals("null"))
-				&& (!exhaustiveSearchExecutionTime.contentEquals("null"))) {
-			timeDifferenceIncrementalNaiveAndExhaustive = (Double.parseDouble(incrementalNaiveSearchExecutionTime)
-					- Double.parseDouble(exhaustiveSearchExecutionTime)) + "";
-		}
-		
+
 		String readersPerDataObject = "null";
 		String writersPerDataObject = "null";
 		String allPathsThroughProcess = "null";
@@ -184,9 +191,10 @@ public class ResultsToCSVWriter {
 			amountParallelGtwSplitsBeforePreprocessing = api.getAmountParallelsBeforePreprocessing() + "";
 			amountTasks = CommonFunctionality.getAmountTasks(api.getModelInstance()) + "";
 			amountElements = CommonFunctionality.getAmountElements(api.getModelInstance()) + "";
-			sumAmountVotersOfModel = CommonFunctionality.getSumAmountVerifiersOfModel(api.getModelInstance()) + "";
-			averageAmountVotersOfModel = CommonFunctionality.getAverageAmountVerifiersOfModel(api.getModelInstance())
+			sumAmountVotersOfModel = CommonFunctionality.getAverageAmountAdditionalActorsOfModel(api.getModelInstance())
 					+ "";
+			averageAmountVotersOfModel = CommonFunctionality
+					.getAverageAmountAdditionalActorsOfModel(api.getModelInstance()) + "";
 			privateSphereSize = CommonFunctionality.getPrivateSphere(api.getModelInstance(), false) + "";
 			sphereSumOfModel = CommonFunctionality.getSphereSumOfModel(api.getModelInstance()) + "";
 			double readers = 0;
@@ -226,8 +234,8 @@ public class ResultsToCSVWriter {
 
 		String exceptionNameNaive = "null";
 		if (exceptionPerAlgorithm.get(Enums.AlgorithmToPerform.NAIVE) != null) {
-			exceptionNameNaive = exceptionPerAlgorithm.get(Enums.AlgorithmToPerform.NAIVE)
-					.getClass().getCanonicalName();
+			exceptionNameNaive = exceptionPerAlgorithm.get(Enums.AlgorithmToPerform.NAIVE).getClass()
+					.getCanonicalName();
 		}
 
 		String exceptionNameIncrementalNaive = "null";
@@ -235,19 +243,23 @@ public class ResultsToCSVWriter {
 			exceptionNameIncrementalNaive = exceptionPerAlgorithm.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE)
 					.getClass().getCanonicalName();
 		}
-		
-	
+
 		String[] row = new String[] { fileName, pathToFile, logging, exceptionNameExhaustive, exceptionNameHeuristic,
-				exceptionNameNaive, exceptionNameIncrementalNaive, totalAmountSolutionsExhaustiveSearch, totalAmountSolutionsHeuristicSearch, totalAmountSolutionsNaiveSearch, totalAmountSolutionsIncrementalNaiveSearch,
-				amountCheapestSolutionsExhaustive, amountCheapestSolutionsHeuristic,
-				amountCheapestSolutionsNaiveSearch, amountCheapestSolutionsIncrementalNaiveSearch, costCheapestSolutionExhaustive,
-				costCheapestSolutionHeuristic, costCheapestSolutionNaiveSearch, costCheapestSolutionIncrementalNaiveSearch,
-				exhaustiveSearchExecutionTime, heuristicSearchExecutionTime, naiveSearchExecutionTime,incrementalNaiveSearchExecutionTime,
-				timeDifferenceHeuristicAndExhaustive, timeDifferenceNaiveAndExhaustive, timeDifferenceIncrementalNaiveAndExhaustive,
-				amountReaders, amountWriters, amountDataObjects, averageAmountDataObjectsPerDecision,
-				readersPerDataObject, writersPerDataObject, amountExclusiveGtwSplits, amountParallelGtwSplitsBeforePreprocessing,
-				amountTasks, amountElements, sumAmountVotersOfModel, averageAmountVotersOfModel, privateSphereSize,
-				sphereSumOfModel, allPathsThroughProcess};
+				exceptionNameNaive, exceptionNameIncrementalNaive, totalAmountSolutionsExhaustiveSearch,
+				totalAmountSolutionsHeuristicSearch, totalAmountSolutionsNaiveSearch,
+				totalAmountSolutionsIncrementalNaiveSearch, amountCheapestSolutionsExhaustive,
+				amountCheapestSolutionsHeuristic, amountCheapestSolutionsNaiveSearch,
+				amountCheapestSolutionsIncrementalNaiveSearch, costCheapestSolutionExhaustive,
+				costCheapestSolutionHeuristic, costCheapestSolutionNaiveSearch,
+				costCheapestSolutionIncrementalNaiveSearch, exhaustiveSearchGenCombsTime,
+				exhaustiveSearchCalcMeasureTime, exhaustiveSearchExecutionTime,  heuristicSearchGenCombsTime,
+				heuristicSearchCalcMeasureTime, heuristicSearchExecutionTime,naiveSearchGenCombsTime,
+				naiveSearchCalcMeasureTime,naiveSearchExecutionTime,  incrementalNaiveSearchGenCombsTime,
+				incrementalNaiveSearchCalcMeasureTime, incrementalNaiveSearchExecutionTime, amountReaders, amountWriters, amountDataObjects,
+				averageAmountDataObjectsPerDecision, readersPerDataObject, writersPerDataObject,
+				amountExclusiveGtwSplits, amountParallelGtwSplitsBeforePreprocessing, amountTasks, amountElements,
+				sumAmountVotersOfModel, averageAmountVotersOfModel, privateSphereSize, sphereSumOfModel,
+				allPathsThroughProcess, amountMandConst, amountExclConst };
 
 		this.rows.add(row);
 

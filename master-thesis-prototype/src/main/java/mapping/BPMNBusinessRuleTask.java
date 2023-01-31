@@ -12,7 +12,6 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 	private HashMap<BPMNDataObject, ArrayList<BPMNTask>> lastWriters;
 	private DecisionEvaluation decisionEvaluation;
 	private double falseRate;
-	private LinkedList<VoterForXorArc> voterArcs;
 	
 
 	public BPMNBusinessRuleTask(String id, String name) {
@@ -23,7 +22,6 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 		//false rate is only for testing purposes 
 		//it is a pseudo random double between min and max (e.g. 0.01 and 0.1)
 		this.setRandomFalseRateBetween(0.01, 0.1);	
-		this.voterArcs= new LinkedList<VoterForXorArc>();
 	}
 	
 
@@ -64,13 +62,7 @@ public class BPMNBusinessRuleTask extends BPMNTask {
 		return this.falseRate;
 	}
 
-	public LinkedList<VoterForXorArc> getVoterArcs() {
-		return voterArcs;
-	}
 
-	public void setVoterArcs(LinkedList<VoterForXorArc> voterArcs) {
-		this.voterArcs = voterArcs;
-	}
 	
 	
 }

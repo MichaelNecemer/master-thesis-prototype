@@ -749,7 +749,7 @@ public class GUI {
 											try {
 												// check whether or not voting should be inside subprocess and whether or
 												// not it should be mapped
-												CommonFunctionality.generateNewModelsWithVerifiersAsBpmnConstruct(api,
+												CommonFunctionality.generateNewModelsWithAddActorsAsBpmnConstruct(api,
 														pModelSolutions.get(selectedAlgorithm), amountModelsToCreate,
 														props.getProperty("defaultDirectoryForStoringModels"),
 														subProcessBox.isSelected(), mapModelBox.isSelected());

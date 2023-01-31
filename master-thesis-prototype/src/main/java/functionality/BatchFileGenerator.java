@@ -85,14 +85,15 @@ public class BatchFileGenerator {
 	static ArrayList<Integer> amountXorsSmallProcessesBounds = new ArrayList<>(Arrays.asList(1, 2));
 	static ArrayList<Integer> amountXorsMediumProcessesBounds = new ArrayList<>(Arrays.asList(3, 4));
 	static ArrayList<Integer> amountXorsLargeProcessesBounds = new ArrayList<>(Arrays.asList(5, 6));
-
+	static ArrayList<Integer> amountXorsSuperLargeProcessesBounds = new ArrayList<>(Arrays.asList(7,8));
+	
 	// bounds for nestingDepthFactor and probJoinGtw
 	static ArrayList<Integer> nestingDepthFactorBounds = new ArrayList<>(Arrays.asList(1, 25));
 	static ArrayList<Integer> probJoinGtwBounds = new ArrayList<>(Arrays.asList(1, 25));
 
 	// boundary tests shared bounds
-	static int boundaryTest1_1privateSphere = 6;
-	static int boundaryTest1_1verifiersPerDecision = 3;
+	static int boundaryTest1_1_privateSphere = 6;
+	static int boundaryTest1_1_addActorsPerDecision = 3;
 
 	public static void main(String[] args) throws Exception {
 		String pathToRootFolder = CommonFunctionality.fileWithDirectoryAssurance(root, "EvaluationSetup")
@@ -112,12 +113,12 @@ public class BatchFileGenerator {
 		// methodsToRun.add(test1_1ToRun);
 		// methodsToRun.add(test1_2ToRun);
 		// methodsToRun.add(createRandomProcesses);
-		// methodsToRun.add(test2ToRun);
+		methodsToRun.add(test2ToRun);
 		/*
 		 * methodsToRun.add(test3ToRun); methodsToRun.add(test4_1ToRun);
 		 * methodsToRun.add(test4_2ToRun); methodsToRun.add(test5ToRun);
 		 */
-		methodsToRun.add(test6ToRun);
+		//methodsToRun.add(test6ToRun);
 
 		String pathToFolderForModelsForTest1_1 = "";
 		String pathToSmallProcessesFolderWithoutAnnotation = "";
@@ -163,11 +164,11 @@ public class BatchFileGenerator {
 			// Test with 1.1 - 1 unique dataObject per decision
 			// The amount solutions generated will be the binomial coefficient for each
 			// decision multiplied
-			// e.g. 2 decisions - 1. needs 2 out of 4 verifiers = 6 possible combinations,
+			// e.g. 2 decisions - 1. needs 2 out of 4 additional actors = 6 possible combinations,
 			// 2.
 			// needs 3 out of 5 = 10 possible combinations -> 6*10 = 60 possible
 			// combinations of participants
-			// so the boundary will be heavily influenced by the combination of verifiers
+			// so the boundary will be heavily influenced by the combination of additional actors
 			// per decision as well as the amount of decisions in the process
 
 			// the boundary test will set the max process size which will be taken for
@@ -187,13 +188,13 @@ public class BatchFileGenerator {
 					.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1").getAbsolutePath();
 
 			LinkedList<String> sphere = new LinkedList<String>();
-			sphere.add("Private");
+			sphere.add("Strong-Dynamic");
 
-			int stopAfterDecisions = 100;
+			int stopAfterDecisions = 50;
 
-			// the amount of possible combinations of verifiers for the process will be
+			// the amount of possible combinations of additional actors for the process will be
 			// increased by
-			// binom(5,3) -> 10 per decision
+			// binom(5,3) -> 10 additional combs per decision
 			// the actor of the brt itself can not be an additional actor to the brt and is
 			// therefore excluded
 			// e.g. with 0 decisions = 0, 1 decision = 10, 2 decisions = 100, ...
@@ -205,7 +206,7 @@ public class BatchFileGenerator {
 			int tasksFactor = 4;
 
 			BatchFileGenerator.performBoundaryTest1_1(amountProcessesPerIteration, 0,
-					boundaryTest1_1verifiersPerDecision, boundaryTest1_1privateSphere, amountSolutionsToBeGenerated, 6,
+					boundaryTest1_1_addActorsPerDecision, boundaryTest1_1_privateSphere, amountSolutionsToBeGenerated, 6,
 					tasksFactor, 0, 0, percentageOfWritersClasses.get(1), percentageOfReadersClasses.get(1),
 					minDataObjectsPerDecision, maxDataObjectsPerDecision, sphere, amountThreads, stopAfterDecisions,
 					pathToFolderForModelsForTest1_1);
@@ -236,10 +237,10 @@ public class BatchFileGenerator {
 
 				// the private sphere lower bound for this test is influenced by the boundary
 				// test 1_1
-				// i.e. the numbers of verifiers we are looking for in 1_1
-				// it must be at least 1 bigger than the amount of verifiers
+				// i.e. the numbers of additional actors we are looking for in 1_1
+				// it must be at least 1 bigger than the amount of additional actors
 				// else the models are not valid
-				int privateSphereLowerBound = boundaryTest1_1verifiersPerDecision + 1;
+				int privateSphereLowerBound = boundaryTest1_1_addActorsPerDecision + 1;
 
 				BatchFileGenerator.performBoundaryTest1_2(model, privateSphereLowerBound, newModelsPerIteration,
 						amountSolutionsToBeGenerated, amountThreads, pathToFolderForModelsForTest1_2);
@@ -291,7 +292,15 @@ public class BatchFileGenerator {
 						5, 5, 31, 45, i, i, 0, 4, amountProcessesToCreatePerDecision, randomProcessGeneratorService,
 						true);
 			}
-
+			
+			// xl processes
+			for (int i = amountXorsSuperLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
+				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation,
+						5, 5, 31, 45, i, i, 0, 4, amountProcessesToCreatePerDecision, randomProcessGeneratorService,
+						true);
+			}
+			
+			
 			randomProcessGeneratorService.shutdownNow();
 			System.out.println("All random processes generated!");
 		}
@@ -302,11 +311,11 @@ public class BatchFileGenerator {
 			// add dataObjects with private sphere and 1 voter per decision
 			// add readers/writers combinations - generate new models (9 new models for //
 			// each)
-			// increase the amount of verifiers needed for decisions till the private
+			// increase the amount of additional actors needed for decisions till the private
 			// sphere-1 (because the actor of the brt itself is excluded)
 			// of that process is reached on all xors
 			// increase privity requirements to next stricter sphere for all dataObjects
-			int modelsToTakePerDecision = 20;
+			int modelsToTakePerDecision = 5;
 
 			if (pathToSmallProcessesFolderWithoutAnnotation.isEmpty()
 					&& pathToMediumProcessesFolderWithoutAnnotation.isEmpty()
@@ -559,7 +568,6 @@ public class BatchFileGenerator {
 
 		if (methodsToRun.contains(test5ToRun)) {
 			// Test 5 - "mandatory participants"
-			// Search for the best set of verifiers
 			// take all models from trade off test
 
 			if (pathToSmallProcessesForTest2WithAnnotation.isEmpty()
@@ -582,7 +590,7 @@ public class BatchFileGenerator {
 						.getAllModelsFromFolder(pathToLargeProcessesWithAnnotation);
 
 				String pathToFolderForModelsForTest5 = CommonFunctionality
-						.fileWithDirectoryAssurance(pathToRootFolder, "Test5_SearchForBestVerifiers").getAbsolutePath();
+						.fileWithDirectoryAssurance(pathToRootFolder, "Test5_MandadtoryConstraints").getAbsolutePath();
 
 				String pathToFolderForSmallModelsForTest5 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "SmallModels").getAbsolutePath();
@@ -593,13 +601,13 @@ public class BatchFileGenerator {
 				String pathToFolderForLargeModelsForTest5 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "LargeModels").getAbsolutePath();
 
-				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(smallProcessesFromTradeOffTest, false,
+				BatchFileGenerator.performTestWithMandatoryConstraints(smallProcessesFromTradeOffTest, false,
 						pathToFolderForSmallModelsForTest5, amountSolutionsToBeGenerated, "small", amountThreads);
 
-				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(mediumProcessesFromTradeOffTest, false,
+				BatchFileGenerator.performTestWithMandatoryConstraints(mediumProcessesFromTradeOffTest, false,
 						pathToFolderForMediumModelsForTest5, amountSolutionsToBeGenerated, "medium", amountThreads);
 
-				BatchFileGenerator.performTestWithSearchForSetOfBestVerifiers(largeProcessesFromTradeOffTest, false,
+				BatchFileGenerator.performTestWithMandatoryConstraints(largeProcessesFromTradeOffTest, false,
 						pathToFolderForLargeModelsForTest5, amountSolutionsToBeGenerated, "large", amountThreads);
 
 				System.out.println("Test 5 finished!");
@@ -620,7 +628,7 @@ public class BatchFileGenerator {
 			int upperBoundTasks = 40;
 			int upperBoundXorGtws = 10;
 			int upperBoundParallelGtws = 6;
-			int amountProcesses = 10;
+			int amountProcesses = 20;
 			int minDataObjectsPerDecisionTest6 = dataObjectBoundsRealWorld.get(0);
 			int maxDataObjectsPerDecisionTest6 = dataObjectBoundsRealWorld.get(1);
 			int probabilityForGatewayToHaveExclConstraint = 30;
@@ -1180,8 +1188,8 @@ public class BatchFileGenerator {
 			futureAlgSearch.cancel(true);
 		} catch (ExecutionException e) {
 			// TODO Auto-generated catch block
-			if(e.getCause() instanceof NotEnoughVerifiersException) {
-				exception = new NotEnoughVerifiersException(e.getMessage(), e.getCause());
+			if(e.getCause() instanceof NotEnoughAddActorsException) {
+				exception = new NotEnoughAddActorsException(e.getMessage(), e.getCause());
 				logging = e.getMessage();
 			}			
 			else if (e.getCause() instanceof OutOfMemoryError) {
@@ -1263,7 +1271,7 @@ public class BatchFileGenerator {
 		// -> at least 12 readers and 12 writers needed, since every data object will
 		// have to be first written and then get read by some brt
 
-		// amount verifiers per gtw will be between 2 and privateSphere
+		// amount additional actors per gtw will be between 2 and privateSphere
 
 		// Test each model with small, medium and large amount of writers and readers
 		// in this case, small, medium and large will be added on top of the already
@@ -1283,7 +1291,7 @@ public class BatchFileGenerator {
 					int amountTasks = processModel.getModelElementsByType(Task.class).size();
 					int amountDecisions = CommonFunctionality.getAmountExclusiveGtwSplits(processModel);
 					int privateSphere = CommonFunctionality.getPrivateSphere(processModel, false);
-					int amountVerifiersUpperBound = ThreadLocalRandom.current().nextInt(2, privateSphere + 1);
+					int amountAddActorsUpperBound = ThreadLocalRandom.current().nextInt(2, privateSphere + 1);
 
 					boolean modelIsValid = false;
 					int triesPerModel = 100;
@@ -1317,7 +1325,7 @@ public class BatchFileGenerator {
 								int minDataObjectsPerDecision = maxAmountUniqueDataObjects / amountDecisions;
 								pModel.generateDataObjects(maxAmountUniqueDataObjects, sphere);
 								pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision,
-										minDataObjectsPerDecision, 2, amountVerifiersUpperBound, 0, true);
+										minDataObjectsPerDecision, 2, amountAddActorsUpperBound, 0, true);
 								int amountWritersNeededForDataObjects = maxAmountUniqueDataObjects;
 								int amountReadersNeededForDataObjects = maxAmountUniqueDataObjects;
 
@@ -1506,7 +1514,7 @@ public class BatchFileGenerator {
 					amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(dataObjectBounds.get(0),
 							dataObjectBounds.get(1) + 1);
 
-					// create model with amountRandomCountDataObjects dataObjects, 0 verifiers and
+					// create model with amountRandomCountDataObjects dataObjects, 0 additional actors and
 					// empty string as starting sphere
 					pModel.generateDataObjects(amountRandomCountDataObjectsToCreate, emptySphere);
 					// connect between 1 and amountRandomCountDataObjectsToCreate per decision
@@ -1648,9 +1656,9 @@ public class BatchFileGenerator {
 			}
 		}
 		executor.shutdownNow();
-		// for each model that has been generated with 0 verifiers per decision and
+		// for each model that has been generated with 0 additional actors per decision and
 		// empty sphere annotated for each dataObject
-		// -> generate new ones where the amount of verifiers is increased by 1 on each
+		// -> generate new ones where the amount of additional actors is increased by 1 on each
 		// step till the models
 		// privateSphereSize-1 is reached
 		// -> generate new ones where privity requirement is increased to next stricter
@@ -1680,10 +1688,10 @@ public class BatchFileGenerator {
 							String currentSphere = defaultSpheres.get(spheresIndex);
 							CommonFunctionality.increaseSpherePerDataObject(currModel, currentSphere);
 
-							for (int verifiersAmountIndex = 1; verifiersAmountIndex <= privateSphereSize
-									- 1; verifiersAmountIndex++) {
-								String suffix = "_" + currentSphere + "_verifiers" + verifiersAmountIndex;
-								CommonFunctionality.increaseVerifiersPerDataObject(currModel, verifiersAmountIndex);
+							for (int addActorsAmountIndex = 1; addActorsAmountIndex <= privateSphereSize
+									- 1; addActorsAmountIndex++) {
+								String suffix = "_" + currentSphere + "_addActors" + addActorsAmountIndex;
+								CommonFunctionality.increaseAdditionalActorsPerDataObject(currModel, addActorsAmountIndex);
 								String modelName = annotatedModel.getName().substring(0,
 										annotatedModel.getName().indexOf(".bpmn"));
 								try {
@@ -1721,7 +1729,7 @@ public class BatchFileGenerator {
 	}
 
 	public static void performBoundaryTest1_1(int amountProcessesPerIteration, int amountDecisionsToStart,
-			int verifiersPerDecision, int privateSphere, int upperBoundSolutionsForLocalMinWithBound,
+			int addActorsPerDecision, int privateSphere, int upperBoundSolutionsForLocalMinWithBound,
 			int amountTasksToStartWith, int tasksFactor, int lowerBoundAmountParallelGtws,
 			int upperBoundAmountParallelGtws, int amountWritersInPercent, int amountReadersInPercent,
 			int minDataObjectsPerDecision, int maxDataObjectsPerDecision, LinkedList<String> sphereList,
@@ -1812,8 +1820,8 @@ public class BatchFileGenerator {
 						Object[] argumentsForThirdMethod = new Object[6];
 						argumentsForThirdMethod[0] = minDataObjectsPerDecision;
 						argumentsForThirdMethod[1] = maxDataObjectsPerDecision;
-						argumentsForThirdMethod[2] = verifiersPerDecision;
-						argumentsForThirdMethod[3] = verifiersPerDecision;
+						argumentsForThirdMethod[2] = addActorsPerDecision;
+						argumentsForThirdMethod[3] = addActorsPerDecision;
 						argumentsForThirdMethod[4] = 0;
 						argumentsForThirdMethod[5] = true;
 						methodsToBeCalledMap.putIfAbsent(thirdMethodToBeCalledName, argumentsForThirdMethod);
@@ -1977,10 +1985,10 @@ public class BatchFileGenerator {
 
 	}
 
-	public static void performTestWithSearchForSetOfBestVerifiers(LinkedList<File> models, boolean modelWithLanes,
+	public static void performTestWithMandatoryConstraints(LinkedList<File> models, boolean modelWithLanes,
 			String directoryToStoreNewModels, int upperBoundHeuristicSearchWithBound, String suffixCSV,
 			int amountThreads) {
-		// the decision taker must always be part of the verifiers
+		// the decision taker must always be part of the additional actors
 		int probabilityForGatwayToHaveMandPartConst = 100;
 
 		for (File file : models) {

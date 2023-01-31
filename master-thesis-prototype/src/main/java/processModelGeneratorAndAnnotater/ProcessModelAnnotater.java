@@ -733,7 +733,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 			ExclusiveGateway gtw = (ExclusiveGateway) brt.getOutgoing().iterator().next().getTarget();
 
 			// insert tuples for xor-gateways
-			// tuples are e.g. (3,2,5) -> 3 verifiers needed, 2 have to decide the same, loop
+			// tuples are e.g. (3,2,5) -> 3 additional actors needed, 2 have to decide the same, loop
 			// goes 5 times until the troubleshooter will take decision
 			// tuple can also be only: {Public}
 			boolean insert = true;
@@ -752,9 +752,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 				// check if decision will be public
 				int decideIfPublic = ThreadLocalRandom.current().nextInt(1, 101);
 
-				TextAnnotation verifiersAnnotation = modelInstance.newInstance(TextAnnotation.class);
+				TextAnnotation addActorsAnnotation = modelInstance.newInstance(TextAnnotation.class);
 				StringBuilder textContentBuilder = new StringBuilder();
-				textContentBuilder.append("[Verifiers]{");
+				textContentBuilder.append("[AdditionalActors]{");
 
 				if (probPublicDecision >= decideIfPublic) {
 					// xor will be annotated with {Public}
@@ -762,37 +762,37 @@ public class ProcessModelAnnotater implements Callable<File> {
 					textContentBuilder.append("Public");
 
 				} else {
-					int randomCountVerifiersNeeded = ThreadLocalRandom.current().nextInt(
+					int randomCountAdditionalActorsNeeded = ThreadLocalRandom.current().nextInt(
 							lowerBoundAmountParticipantsPerDecision, upperBoundAmountParticipantsPerDecision + 1);
 
-					// second argument -> verifiers that need to decide the same
-					// must be bigger than the verifiers needed divided by 2 and rounded up to next int
-					// e.g. if 3 verifiers are needed -> 2 or 3 must decide the same
-					// e.g. if 5 verifiers are needed -> 3,4 or 5 must decide the same
-					int lowerBound = (int) Math.ceil((double) randomCountVerifiersNeeded / 2);
+					// second argument -> additional actors that need to decide the same
+					// must be bigger than the additional actors needed divided by 2 and rounded up to next int
+					// e.g. if 3 additional actors are needed -> 2 or 3 must decide the same
+					// e.g. if 5 additional actors are needed -> 3,4 or 5 must decide the same
+					int lowerBound = (int) Math.ceil((double) randomCountAdditionalActorsNeeded / 2);
 
-					int randomCountVerifiersSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
-							randomCountVerifiersNeeded + 1);
+					int randomCountAddActorsSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
+							randomCountAdditionalActorsNeeded + 1);
 					int randomCountIterations = ThreadLocalRandom.current().nextInt(1, 10 + 1);
 
 					// generate TextAnnotations for xor-splits
-					textContentBuilder.append(randomCountVerifiersNeeded + "," + randomCountVerifiersSameDecision + ","
+					textContentBuilder.append(randomCountAdditionalActorsNeeded + "," + randomCountAddActorsSameDecision + ","
 							+ randomCountIterations);
 
 				}
 				textContentBuilder.append("}");
 
-				verifiersAnnotation.setTextFormat("text/plain");
+				addActorsAnnotation.setTextFormat("text/plain");
 				Text text = modelInstance.newInstance(Text.class);
 				text.setTextContent(textContentBuilder.toString());
-				verifiersAnnotation.setText(text);
-				gtw.getParentElement().addChildElement(verifiersAnnotation);
+				addActorsAnnotation.setText(text);
+				gtw.getParentElement().addChildElement(addActorsAnnotation);
 
-				generateShapeForTextAnnotation(verifiersAnnotation, gtw);
+				generateShapeForTextAnnotation(addActorsAnnotation, gtw);
 
 				Association assoc = modelInstance.newInstance(Association.class);
 				assoc.setSource(gtw);
-				assoc.setTarget(verifiersAnnotation);
+				assoc.setTarget(addActorsAnnotation);
 				gtw.getParentElement().addChildElement(assoc);
 				// DI element for the edge
 				BpmnEdge edge = modelInstance.newInstance(BpmnEdge.class);
@@ -1232,7 +1232,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 			int lowerBoundAmountParticipantsToExcludePerGtw, int upperBoundAmountParticipantsToExcludePerGtw,
 			boolean alwaysMaxConstrained) throws Exception {
 		// upperBoundAmountParticipantsToExclude is the difference between the amount of
-		// needed verifiers and the private Sphere minus the actor of the brt
+		// needed additional actors and the private Sphere minus the actor of the brt
 		
 		if (probabilityForGatewayToHaveConstraint <= 0) {
 			return;
@@ -1262,18 +1262,18 @@ public class ProcessModelAnnotater implements Callable<File> {
 						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 							for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 								if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-									if (tx.getTextContent().startsWith("[Verifiers]")) {
+									if (tx.getTextContent().startsWith("[AdditionalActors]")) {
 										String subStr = tx.getTextContent().substring(
 												tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
 
 										String[] data = subStr.split(",");
-										int amountVerifiersNeeded = Integer.parseInt(data[0]);
+										int amountAddActorsNeeded = Integer.parseInt(data[0]);
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
-											randomAmountConstraintsForGtw = privateSphereSize - amountVerifiersNeeded - 1;
+											randomAmountConstraintsForGtw = privateSphereSize - amountAddActorsNeeded - 1;
 										} else {
-											int maxConstraint = privateSphereSize - amountVerifiersNeeded - 1;
+											int maxConstraint = privateSphereSize - amountAddActorsNeeded - 1;
 
 											if (maxConstraint <= 0) {
 												// no constraints possible -> else model will not be valid
@@ -1377,26 +1377,26 @@ public class ProcessModelAnnotater implements Callable<File> {
 						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 							for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
 								if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-									if (tx.getTextContent().startsWith("[Verifiers]")) {
+									if (tx.getTextContent().startsWith("[AdditionalActors]")) {
 										String subStr = tx.getTextContent().substring(
 												tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
 
 										String[] data = subStr.split(",");
-										int amountVerifiersNeeded = Integer.parseInt(data[0]);
-										if(amountVerifiersNeeded > participantsToChooseFrom.size()) {
-											amountVerifiersNeeded = participantsToChooseFrom.size();
+										int amountAddActorsNeeded = Integer.parseInt(data[0]);
+										if(amountAddActorsNeeded > participantsToChooseFrom.size()) {
+											amountAddActorsNeeded = participantsToChooseFrom.size();
 										}
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
-											randomAmountConstraintsForGtw = amountVerifiersNeeded;
+											randomAmountConstraintsForGtw = amountAddActorsNeeded;
 										} else {
 											if (upperBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
-												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVerifiersNeeded;
+												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountAddActorsNeeded;
 											}
 											
-											if (upperBoundAmountParticipantsToBeMandatoryPerGtw > amountVerifiersNeeded) {
-												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountVerifiersNeeded;
+											if (upperBoundAmountParticipantsToBeMandatoryPerGtw > amountAddActorsNeeded) {
+												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountAddActorsNeeded;
 											}
 
 											if (lowerBoundAmountParticipantsToBeMandatoryPerGtw < upperBoundAmountParticipantsToBeMandatoryPerGtw) {

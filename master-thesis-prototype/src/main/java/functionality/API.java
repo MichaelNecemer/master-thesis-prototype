@@ -76,9 +76,8 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 	private String weakDynamicSphereKey;
 	private String strongDynamicSphereKey;
 	private LinkedList<Double> weightingParameters;
-	private HashMap<Enums.AlgorithmToPerform, Double> executionTimeMap;
+	private HashMap<Enums.AlgorithmToPerform, LinkedList<Double>> executionTimeMap;
 	private int bound;
-	private LinkedList<LinkedList<BPMNBusinessRuleTask>> clusterSet;
 	private int amountParallelsBeforePreprocessing;
 
 	public API(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters) throws Exception {
@@ -113,7 +112,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		// set the default algorithm to perform
 		this.setAlgorithmToPerform(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
 		// set the default cluster condition
-		this.executionTimeMap = new HashMap<Enums.AlgorithmToPerform, Double>();
+		this.executionTimeMap = new HashMap<Enums.AlgorithmToPerform, LinkedList<Double>>();
 		this.mandatoryParticipantConstraints = new LinkedList<MandatoryParticipantConstraint>();
 		this.excludeParticipantConstraints = new LinkedList<ExcludeParticipantConstraint>();
 		this.modelWithLanes = false;
@@ -145,41 +144,53 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 		// generate all possible combinations of additional readers
 		additionalActorsCombs = this.generatePossibleCombinationsOfAdditionalActorsWithBound(this.bound);
+		long endTimeGeneratingCombs = System.nanoTime();
 
 		// calculate the cost measure for all possible additional actors combinations
 		this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject,
 				new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>(),
 				new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
 
-		long endTime = System.nanoTime();
-		long executionTime = endTime - startTime;
-		double executionTimeInSeconds = (double) executionTime / 1000000000;
-		System.out.println("Execution time exhaustive search in sec: " + executionTimeInSeconds);
-		System.out.println("Combs with exhaustive search: " + additionalActorsCombs.size());
-		this.executionTimeMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, executionTimeInSeconds);
+		long endTimeExhaustiveSearch = System.nanoTime();
+		
+		long timeForGeneratingCombs = endTimeGeneratingCombs - startTime; 
+		long timeForCalculatingMeasure = endTimeExhaustiveSearch - endTimeGeneratingCombs;
+		long executionTimeExhaustive = endTimeExhaustiveSearch - startTime;
+		
+		LinkedList<Double> timeList = new LinkedList<Double>();
+		timeList.add((double)timeForGeneratingCombs/1000000000);
+		timeList.add((double)timeForCalculatingMeasure/1000000000);
+		timeList.add((double)executionTimeExhaustive/1000000000);
+		System.out.println("Exhaustive search generated solutions: "+additionalActorsCombs.size());
+		System.out.println("Exhaustive search execution time in sec: "+timeList.get(3));
+		this.executionTimeMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, timeList);
 		return additionalActorsCombs;
 	}
 
 	public LinkedList<PModelWithAdditionalActors> heuristicSearch(int bound) throws Exception {
 
-		long startTime = System.nanoTime();
+		long startTimeHeuristicSearch = System.nanoTime();
 
 		// compute static sphere per data object without add actors
 		HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
 				.computeStaticSpherePerDataObject();
 
 		LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
-
 		LinkedList<PModelWithAdditionalActors> pModelAddActors = new LinkedList<PModelWithAdditionalActors>();
+
+		long endTimeGeneratingCombsHeuristicSearch = 0;
+		
+		HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
+
+		// the following maps will contain paths from origins ongoing to avoid
+		// redundant calculations
+		HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
+		HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap = new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>();
+
+
 		if (!staticSpherePerDataObject.isEmpty()) {
 			// compute wd sphere for origins without additional actors
-			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
-
-			// the following maps will contain paths from origins ongoing to avoid
-			// redundant calculations
-			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
-			HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap = new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>();
-
+			
 			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
 
 			allCheapestAddActorsLists = this.queryBrtsInTopologicalOrderAndAssignAdditionalActorsForHeuristicSearch(
@@ -193,61 +204,42 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 				pModelAddActors.add(newModel);
 			}
 
-			/*
-			 * 
-			 * for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
-			 * BPMNExclusiveGateway gtw = (BPMNExclusiveGateway)
-			 * brt.getSuccessors().iterator().next();
-			 * LinkedList<LinkedList<BPMNParticipant>>
-			 * mandatoryAndExlucdedParticipantsForGtw =
-			 * mandatoryAndExcludedParticipantsPerGtw .get(gtw);
-			 * LinkedList<AdditionalActors> additionalActorsForBrt = this
-			 * .generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(gtw,
-			 * mandatoryAndExlucdedParticipantsForGtw.get(0),
-			 * mandatoryAndExlucdedParticipantsForGtw.get(1), brt, pathMap, bound);
-			 * 
-			 * if (allCheapestAddActorsLists.isEmpty()) { for (AdditionalActors
-			 * addActorsCurrBrt : additionalActorsForBrt) { LinkedList<AdditionalActors>
-			 * newCheapest = new LinkedList<AdditionalActors>();
-			 * newCheapest.add(addActorsCurrBrt);
-			 * allCheapestAddActorsLists.add(newCheapest); } } else { // go through the list
-			 * of current cheapest additionalActors // add those additional actors, that
-			 * lead to a minimal increase of distinct // additional actors in the current
-			 * list allCheapestAddActorsLists =
-			 * this.computeListsWithMinIncreaseOfAddActors(allCheapestAddActorsLists,
-			 * additionalActorsForBrt); } }
-			 * 
-			 * for (LinkedList<AdditionalActors> additionalActorsList :
-			 * allCheapestAddActorsLists) { PModelWithAdditionalActors newModel = new
-			 * PModelWithAdditionalActors(additionalActorsList, this.weightingParameters);
-			 * pModelAddActors.add(newModel); }
-			 */
-
+			endTimeGeneratingCombsHeuristicSearch = System.nanoTime();
 			// calculate the cost measure for the all additional actors combinations found
 			// with the heuristic search
 			this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
 					pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
 
 		} else {
+			// any combination satisfying the constraints is a cheapest one
+			// the measure is only calculated for evaluating the execution time
 			pModelAddActors = this.generatePossibleCombinationsOfAdditionalActorsWithBound(bound);
+			endTimeGeneratingCombsHeuristicSearch = System.nanoTime();	
+			
+			this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
+					pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
 		}
 
-		long endTime = System.nanoTime();
-		long executionTime = endTime - startTime;
-		double executionTimeInSeconds = (double) executionTime / 1000000000;
-		this.executionTimeMap.put(Enums.AlgorithmToPerform.HEURISTIC, executionTimeInSeconds);
-
-		System.out.println("Combs with heuristic: " + pModelAddActors.size());
-		System.out.println(
-				"Execution time heuristic search with bound = " + bound + " in sec: " + executionTimeInSeconds);
-
+		long endTimeHeuristicSearch = System.nanoTime();
+		
+		long timeForGeneratingCombsHeuristic = endTimeGeneratingCombsHeuristicSearch - startTimeHeuristicSearch; 
+		long timeForCalculatingMeasureHeuristic = endTimeHeuristicSearch - endTimeGeneratingCombsHeuristicSearch;
+		long executionTimeHeuristic = endTimeHeuristicSearch - startTimeHeuristicSearch;
+		
+		LinkedList<Double> timeList = new LinkedList<Double>();
+		timeList.add((double)timeForGeneratingCombsHeuristic/1000000000);
+		timeList.add((double)timeForCalculatingMeasureHeuristic/1000000000);
+		timeList.add((double)executionTimeHeuristic/1000000000);
+		System.out.println("Heuristic search generated solutions: "+pModelAddActors.size());
+		System.out.println("Heuristic search execution time in sec: "+timeList.get(3));
+		this.executionTimeMap.put(Enums.AlgorithmToPerform.HEURISTIC, timeList);
 		return pModelAddActors;
 
 	}
 
 	public LinkedList<PModelWithAdditionalActors> naiveSearch(boolean incremental, int bound)
-			throws NullPointerException, InterruptedException, NotEnoughVerifiersException, Exception {
-		long startTime = System.nanoTime();
+			throws NullPointerException, InterruptedException, NotEnoughAddActorsException, Exception {
+		long startTimeNaiveSearch = System.nanoTime();
 
 		// compute static sphere per data object without add actors
 		HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
@@ -292,22 +284,31 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			additionalActorsCombs.add(newModel);
 		}
 
+		long endTimeGeneratingCombsNaive = System.nanoTime();
 		// calculate the cost measure for all possible additional actors combinations
 		this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject,
 				pathsFromOriginToEndMap,
 				new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
 
-		long endTime = System.nanoTime();
-		long executionTime = endTime - startTime;
-		double executionTimeInSeconds = (double) executionTime / 1000000000;
+		long endTimeNaiveSearch = System.nanoTime();
+		
+		long timeForGeneratingCombsNaive = endTimeGeneratingCombsNaive - startTimeNaiveSearch; 
+		long timeForCalculatingMeasureNaive = endTimeNaiveSearch - endTimeGeneratingCombsNaive;
+		long executionTimeNaive = endTimeNaiveSearch - startTimeNaiveSearch;
+		
+		LinkedList<Double> timeList = new LinkedList<Double>();
+		timeList.add((double)timeForGeneratingCombsNaive/1000000000);
+		timeList.add((double)timeForCalculatingMeasureNaive/1000000000);
+		timeList.add((double)executionTimeNaive/1000000000);
+
 		if (incremental) {
-			System.out.println("Execution time incremental naive search in sec: " + executionTimeInSeconds);
-			System.out.println("Combs with incremental naive search: " + additionalActorsCombs.size());
-			this.executionTimeMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, executionTimeInSeconds);
+			System.out.println("Naive search generated solutions: "+additionalActorsCombs.size());
+			System.out.println("Naive search execution time in sec: "+timeList.get(3));
+			this.executionTimeMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, timeList);
 		} else {
-			System.out.println("Execution time with naive search in sec: " + executionTimeInSeconds);
-			System.out.println("Combs with naive search: " + additionalActorsCombs.size());
-			this.executionTimeMap.put(Enums.AlgorithmToPerform.NAIVE, executionTimeInSeconds);
+			System.out.println("Incremental naive search generated solutions: "+additionalActorsCombs.size());
+			System.out.println("Incremental naive search execution time in sec: "+timeList.get(3));
+			this.executionTimeMap.put(Enums.AlgorithmToPerform.NAIVE, timeList);
 		}
 		return additionalActorsCombs;
 	}
@@ -318,7 +319,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			TreeMap<Double, TreeMap<Double, HashSet<BPMNParticipant>>> pathMap, int bound) throws Exception {
 
 		LinkedList<AdditionalActors> addActorsCombinationsForBrt = new LinkedList<AdditionalActors>();
-		int amountVerifiersToAssign = gtw.getAmountVerifiers();
+		int amountVerifiersToAssign = gtw.getAmountAddActors();
 
 		LinkedList<BPMNParticipant> possibleParticipantsLeft = new LinkedList<BPMNParticipant>();
 		// to remain the order of cost, iterate through the costMap and add the
@@ -417,12 +418,12 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			BPMNExclusiveGateway gtw, int verifiersToFind, LinkedList<BPMNParticipant> mandatoryParticipants,
 			LinkedList<BPMNParticipant> possibleParticipantsAsAddActors, BPMNBusinessRuleTask brt,
 			Map<Double, LinkedList<BPMNParticipant>> bestParticipantsMap, int bound)
-			throws InterruptedException, NotEnoughVerifiersException {
+			throws InterruptedException, NotEnoughAddActorsException {
 
 		LinkedList<AdditionalActors> addActorsCombinationsForBrt = new LinkedList<AdditionalActors>();
 		LinkedList<BPMNParticipant> participantsWithBestCost = new LinkedList<BPMNParticipant>();
 		LinkedList<BPMNParticipant> remainingWithBestCost = new LinkedList<BPMNParticipant>();
-		int sumVerifiersOfGtw = gtw.getAmountVerifiers();
+		int sumVerifiersOfGtw = gtw.getAmountAddActors();
 
 		if (verifiersToFind > 0) {
 			for (Entry<Double, LinkedList<BPMNParticipant>> entry : bestParticipantsMap.entrySet()) {
@@ -473,7 +474,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			listToAdd.addAll(mandatoryParticipants);
 			listToAdd.addAll(participantsWithBestCost);
 			if (listToAdd.size() < sumVerifiersOfGtw) {
-				throw new NotEnoughVerifiersException(sumVerifiersOfGtw + " verifiers needed for " + gtw.getId()
+				throw new NotEnoughAddActorsException(sumVerifiersOfGtw + " verifiers needed for " + gtw.getId()
 						+ " but only " + listToAdd.size() + " found!");
 			}
 			AdditionalActors addActors = new AdditionalActors(brt, listToAdd);
@@ -485,7 +486,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 				currList.addAll(0, participantsWithBestCost);
 				currList.addAll(0, mandatoryParticipants);
 				if (currList.size() < sumVerifiersOfGtw) {
-					throw new NotEnoughVerifiersException(sumVerifiersOfGtw + " verifiers needed for " + gtw.getId()
+					throw new NotEnoughAddActorsException(sumVerifiersOfGtw + " verifiers needed for " + gtw.getId()
 							+ " but only " + currList.size() + " found!");
 				}
 				AdditionalActors addActors = new AdditionalActors(brt, currList);
@@ -494,7 +495,111 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 		}
 		if (addActorsCombinationsForBrt.isEmpty()) {
-			throw new NotEnoughVerifiersException("No possible combination of verifiers for " + brt.getId());
+			throw new NotEnoughAddActorsException("No possible combination of verifiers for " + brt.getId());
+		}
+
+		return addActorsCombinationsForBrt;
+
+	}
+
+	public LinkedList<AdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt2(
+			BPMNExclusiveGateway gtw, int verifiersToFind, LinkedList<BPMNParticipant> mandatoryParticipants,
+			LinkedList<BPMNParticipant> possibleParticipantsAsAddActors, BPMNBusinessRuleTask brt,
+			Map<Double, LinkedList<BPMNParticipant>> bestParticipantsMap,
+			Map<Double, LinkedList<BPMNParticipant>> tieBrakerMap, int bound)
+			throws InterruptedException, NotEnoughAddActorsException {
+
+		LinkedList<AdditionalActors> addActorsCombinationsForBrt = new LinkedList<AdditionalActors>();
+		LinkedList<BPMNParticipant> participantsWithBestCost = new LinkedList<BPMNParticipant>();
+		LinkedList<BPMNParticipant> remainingWithBestCost = new LinkedList<BPMNParticipant>();
+		int sumVerifiersOfGtw = gtw.getAmountAddActors();
+
+		if (verifiersToFind > 0) {
+			for (Entry<Double, LinkedList<BPMNParticipant>> entry : bestParticipantsMap.entrySet()) {
+				// take all participants of the current cost that are not excluded and not the
+				// actor of the brt
+				LinkedList<BPMNParticipant> participantsWithCurrentCost = new LinkedList<BPMNParticipant>();
+				for (BPMNParticipant participant : entry.getValue()) {
+					if (possibleParticipantsAsAddActors.contains(participant)
+							&& !mandatoryParticipants.contains(participant)) {
+						participantsWithCurrentCost.add(participant);
+					}
+				}
+
+				// check if there are still voters needed
+				verifiersToFind = verifiersToFind - participantsWithCurrentCost.size();
+
+				if (verifiersToFind > 0) {
+					// there are less participants on the current cost level than needed
+					// take all of them
+					participantsWithBestCost.addAll(participantsWithCurrentCost);
+				} else if (verifiersToFind == 0) {
+					// there are exactly as many participants on the current cost level as needed
+					// take all of them and stop iterating
+					participantsWithBestCost.addAll(participantsWithCurrentCost);
+					break;
+				} else {
+					// there are more participants on the current cost level than needed
+					// stop iterating
+					remainingWithBestCost.addAll(participantsWithCurrentCost);
+					break;
+				}
+
+			}
+		}
+
+		LinkedList<LinkedList<BPMNParticipant>> lists = new LinkedList<LinkedList<BPMNParticipant>>();
+		int amountParticipantsToTakeFromRemaining = sumVerifiersOfGtw - mandatoryParticipants.size()
+				- participantsWithBestCost.size();
+
+		if (tieBrakerMap != null && amountParticipantsToTakeFromRemaining > 0) {
+			// sort the remaining participants to take by their cost in the tieBrakerMap
+			LinkedList<BPMNParticipant> remainingSortedByTieBraker = new LinkedList<BPMNParticipant>();
+			for (Entry<Double, LinkedList<BPMNParticipant>> entry : tieBrakerMap.entrySet()) {
+				// preserve the order of the local cheapest list 
+				// to get same results as incremental naive when the tieBrakerMap has the same elements
+				// on the plateau
+				for(BPMNParticipant remainingPart: remainingWithBestCost) {
+					if (entry.getValue().contains(remainingPart)) {
+						remainingSortedByTieBraker.add(remainingPart);
+					}
+				}
+			}
+			remainingWithBestCost = remainingSortedByTieBraker;
+		}
+		
+		if (!remainingWithBestCost.isEmpty() && amountParticipantsToTakeFromRemaining > 0) {
+			lists = Combination.getPermutationsWithBound(remainingWithBestCost, amountParticipantsToTakeFromRemaining,
+					bound);
+		}
+
+		if (lists.isEmpty()) {
+			LinkedList<BPMNParticipant> listToAdd = new LinkedList<BPMNParticipant>();
+			listToAdd.addAll(mandatoryParticipants);
+			listToAdd.addAll(participantsWithBestCost);
+			if (listToAdd.size() < sumVerifiersOfGtw) {
+				throw new NotEnoughAddActorsException(sumVerifiersOfGtw + " verifiers needed for " + gtw.getId()
+						+ " but only " + listToAdd.size() + " found!");
+			}
+			AdditionalActors addActors = new AdditionalActors(brt, listToAdd);
+			addActorsCombinationsForBrt.add(addActors);
+		} else {
+			// iterate through all combinations
+			for (int i = 0; i < lists.size(); i++) {
+				LinkedList<BPMNParticipant> currList = lists.get(i);
+				currList.addAll(0, participantsWithBestCost);
+				currList.addAll(0, mandatoryParticipants);
+				if (currList.size() < sumVerifiersOfGtw) {
+					throw new NotEnoughAddActorsException(sumVerifiersOfGtw + " verifiers needed for " + gtw.getId()
+							+ " but only " + currList.size() + " found!");
+				}
+				AdditionalActors addActors = new AdditionalActors(brt, currList);
+				addActorsCombinationsForBrt.add(addActors);
+			}
+
+		}
+		if (addActorsCombinationsForBrt.isEmpty()) {
+			throw new NotEnoughAddActorsException("No possible combination of verifiers for " + brt.getId());
 		}
 
 		return addActorsCombinationsForBrt;
@@ -502,7 +607,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 	}
 
 	public LinkedList<PModelWithAdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBound(int bound)
-			throws InterruptedException, NotEnoughVerifiersException {
+			throws InterruptedException, NotEnoughAddActorsException {
 		LinkedList<LinkedList<Object>> combinationsPerBrt = new LinkedList<LinkedList<Object>>();
 
 		// if bound <= 0 -> unbounded
@@ -526,7 +631,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 	private LinkedList<PModelWithAdditionalActors> generateAllPossiblePModelWithAdditionalActors(
 			LinkedList<LinkedList<Object>> combinationsPerBrt)
-			throws InterruptedException, NotEnoughVerifiersException {
+			throws InterruptedException, NotEnoughAddActorsException {
 		// generate all possible combinations of additional actors for brts
 
 		LinkedList<PModelWithAdditionalActors> pModelWithAddActorsList = new LinkedList<PModelWithAdditionalActors>();
@@ -548,12 +653,12 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 	private LinkedList<AdditionalActors> generateAdditionalActorsForBrtsWithConstraintsAndBound(
 			BPMNBusinessRuleTask currBrt, LinkedList<BPMNParticipant> allPossibleActors,
 			LinkedList<BPMNParticipant> allMandatoryActors, LinkedList<BPMNParticipant> preferredParticipants,
-			int boundForAddActors) throws InterruptedException, NotEnoughVerifiersException {
+			int boundForAddActors) throws InterruptedException, NotEnoughAddActorsException {
 
 		BPMNExclusiveGateway bpmnEx = (BPMNExclusiveGateway) currBrt.getSuccessors().iterator().next();
 		LinkedList<AdditionalActors> additionalActorsForBrt = new LinkedList<AdditionalActors>();
 
-		int boundCombsForNotMandatoryParticipants = bpmnEx.getAmountVerifiers() - allMandatoryActors.size();
+		int boundCombsForNotMandatoryParticipants = bpmnEx.getAmountAddActors() - allMandatoryActors.size();
 		LinkedList<BPMNParticipant> notMands = new LinkedList<BPMNParticipant>(allPossibleActors);
 		notMands.removeAll(allMandatoryActors);
 		if (preferredParticipants != null) {
@@ -609,8 +714,8 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 					}
 					LinkedList<BPMNParticipant> currListClone = (LinkedList<BPMNParticipant>) currList.clone();
 					currListClone.addAll(remaining.get(j));
-					if (currListClone.size() != bpmnEx.getAmountVerifiers()) {
-						throw new NotEnoughVerifiersException(bpmnEx.getAmountVerifiers() + " verifiers needed for "
+					if (currListClone.size() != bpmnEx.getAmountAddActors()) {
+						throw new NotEnoughAddActorsException(bpmnEx.getAmountAddActors() + " verifiers needed for "
 								+ bpmnEx.getId() + " but only " + currListClone.size() + " found!");
 					}
 
@@ -619,8 +724,8 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 				}
 			} else {
-				if (currList.size() != bpmnEx.getAmountVerifiers()) {
-					throw new NotEnoughVerifiersException(bpmnEx.getAmountVerifiers() + " verifiers needed for "
+				if (currList.size() != bpmnEx.getAmountAddActors()) {
+					throw new NotEnoughAddActorsException(bpmnEx.getAmountAddActors() + " verifiers needed for "
 							+ bpmnEx.getId() + " but only " + currList.size() + " found!");
 				}
 				AdditionalActors addActors = new AdditionalActors(currBrt, currList);
@@ -630,7 +735,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		}
 
 		if (additionalActorsForBrt.isEmpty()) {
-			throw new NotEnoughVerifiersException("No possible combination of verifiers for " + currBrt.getId());
+			throw new NotEnoughAddActorsException("No possible combination of verifiers for " + currBrt.getId());
 		}
 
 		return additionalActorsForBrt;
@@ -1129,9 +1234,9 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 				}
 			}
 
-			if (partsInMandatoryConstraintsForGtw.size() > xorGtw.getAmountVerifiers()) {
+			if (partsInMandatoryConstraintsForGtw.size() > xorGtw.getAmountAddActors()) {
 				throw new Exception("Mandatory participants > amount verifiers needed at " + xorGtw.getId() + " ("
-						+ partsInMandatoryConstraintsForGtw.size() + " > " + xorGtw.getAmountVerifiers() + ")");
+						+ partsInMandatoryConstraintsForGtw.size() + " > " + xorGtw.getAmountAddActors() + ")");
 			}
 
 		}
@@ -1145,7 +1250,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		// map the annotated amount of needed voters to the BPMNExclusiveGateways
 		// map the sphere connected to the gateway
 
-		if (gtw.getAmountVerifiers() > this.privateSphere.size()) {
+		if (gtw.getAmountAddActors() > this.privateSphere.size()) {
 			throw new Exception("Amount of verifiers for " + gtw.getId() + " can not be > private sphere!");
 		}
 
@@ -1157,26 +1262,26 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 					if (!(str.contains("[") && str.contains("]") && str.contains("{") && str.contains("}"))) {
 						throw new Exception("Annotation: " + a.getId() + " not modeled in correct form [...]{...}");
 					}
-					if (CommonFunctionality.containsIgnoreCase(str, "[Verifiers]")
-							|| CommonFunctionality.containsIgnoreCase(str, "[Voters]")) {
+					if (CommonFunctionality.containsIgnoreCase(str, "[AdditionalActors]")
+							|| CommonFunctionality.containsIgnoreCase(str, "[Verifiers]")) {
 						String subStr = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 						String[] split = subStr.split(",");
 
 						if (split.length == 3) {
 							// there is a tuple of the form
-							// (amountVerifiers,verifiersSameChoice,amountLoops)
+							// (amountAdditionalActors,additionalActorsSameChoice,amountLoops)
 							try {
-								gtw.setAmountVerifiers(Integer.parseInt(split[0]));
-								gtw.setAmountVerifiersSameChoice(Integer.parseInt(split[1]));
+								gtw.setAmountAddActors(Integer.parseInt(split[0]));
+								gtw.setAmountAddActorsSameChoice(Integer.parseInt(split[1]));
 								gtw.setAmountLoops(Integer.parseInt(split[2]));
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
 						} else if (split.length == 2) {
-							// there is a tuple of the form (amountVerifiers,verifiersSameChoice)
+							// there is a tuple of the form (amountAdditionalActors, additionalActorsSameChoice)
 							try {
-								gtw.setAmountVerifiers(Integer.parseInt(split[0]));
-								gtw.setAmountVerifiersSameChoice(Integer.parseInt(split[1]));
+								gtw.setAmountAddActors(Integer.parseInt(split[0]));
+								gtw.setAmountAddActorsSameChoice(Integer.parseInt(split[1]));
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
@@ -2133,11 +2238,11 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		this.bound = bound;
 	}
 
-	public HashMap<Enums.AlgorithmToPerform, Double> getExecutionTimeMap() {
+	public HashMap<Enums.AlgorithmToPerform, LinkedList<Double>> getExecutionTimeMap() {
 		return executionTimeMap;
 	}
 
-	public void setExecutionTimeMap(HashMap<Enums.AlgorithmToPerform, Double> executionTimeMap) {
+	public void setExecutionTimeMap(HashMap<Enums.AlgorithmToPerform, LinkedList<Double>> executionTimeMap) {
 		this.executionTimeMap = executionTimeMap;
 	}
 
@@ -2889,282 +2994,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		return cluster;
 	}
 
-	public LinkedList<PriorityListEntry> computePriorityListForOrigin(BPMNTask origin, BPMNDataObject dataObject,
-			LinkedList<LinkedList<BPMNElement>> pathsFromOriginToEnd,
-			HashMap<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> alreadyChosenAddActors) {
-		LinkedList<PriorityListEntry> priorityList = new LinkedList<PriorityListEntry>();
-		HashMap<BPMNParticipant, Double> readerMapWithoutAddActors = new HashMap<BPMNParticipant, Double>();
-		HashMap<BPMNParticipant, Double> readerMapWithAddActors = new HashMap<BPMNParticipant, Double>();
-		HashMap<BPMNParticipant, HashSet<BPMNBusinessRuleTask>> dependentBrtsForParticipant = new HashMap<BPMNParticipant, HashSet<BPMNBusinessRuleTask>>();
-
-		// the origin has the data it writes on any outgoing path
-		double paths = pathsFromOriginToEnd.size();
-		readerMapWithoutAddActors.putIfAbsent(origin.getParticipant(), paths);
-		readerMapWithAddActors.putIfAbsent(origin.getParticipant(), paths);
-
-		HashMap<BPMNParticipant, Double> minLabel = new HashMap<BPMNParticipant, Double>();
-
-		for (LinkedList<BPMNElement> path : pathsFromOriginToEnd) {
-			HashSet<BPMNParticipant> readersAlreadyCountedOnPathWithoutAddActors = new HashSet<BPMNParticipant>();
-			HashSet<BPMNParticipant> readersAlreadyCountedOnPathWithAddActors = new HashSet<BPMNParticipant>();
-			for (BPMNElement pathEl : path) {
-				if (pathEl instanceof BPMNTask) {
-					BPMNTask task = (BPMNTask) pathEl;
-					BPMNParticipant participant = task.getParticipant();
-
-					if (task.equals(origin)) {
-						readersAlreadyCountedOnPathWithoutAddActors.add(participant);
-						readersAlreadyCountedOnPathWithAddActors.add(participant);
-						minLabel.putIfAbsent(participant, Math.pow(2, origin.getLabels().size()));
-						continue;
-					}
-
-					if (!readersAlreadyCountedOnPathWithoutAddActors.contains(participant)) {
-						if (!readerMapWithoutAddActors.containsKey(participant)) {
-							readerMapWithoutAddActors.put(participant, 0.0);
-						}
-					}
-
-					if (!readersAlreadyCountedOnPathWithAddActors.contains(participant)) {
-						if (!readerMapWithAddActors.containsKey(participant)) {
-							readerMapWithAddActors.put(participant, 0.0);
-						}
-					}
-
-					if (dataObject.getReaders().contains(task) && !task.equals(origin)) {
-						// another reader to same dataObject found
-						// get that reader and increase the amount of occurrences
-						if (minLabel.get(participant) == null) {
-							double minLabelSize = Math.pow(2, task.getLabels().size());
-							minLabel.put(participant, minLabelSize);
-						} else {
-							double minLabelSize = minLabel.get(participant);
-							double currMinLabelSize = Math.pow(2, task.getLabels().size());
-							if (currMinLabelSize < minLabelSize) {
-								minLabel.put(participant, currMinLabelSize);
-							}
-						}
-
-						if (!readersAlreadyCountedOnPathWithoutAddActors.contains(participant)) {
-							double occurrencesOfReader = readerMapWithoutAddActors.get(participant) + 1;
-							readerMapWithoutAddActors.put(participant, occurrencesOfReader);
-							readersAlreadyCountedOnPathWithoutAddActors.add(participant);
-						}
-
-						if (!readersAlreadyCountedOnPathWithAddActors.contains(participant)) {
-							double occurrencesOfReader = readerMapWithAddActors.get(participant) + 1;
-							readerMapWithAddActors.put(participant, occurrencesOfReader);
-							readersAlreadyCountedOnPathWithAddActors.add(participant);
-						}
-
-						if (task instanceof BPMNBusinessRuleTask && this.businessRuleTasks.contains(task)) {
-							// a brt found on the path that reads the data object written by the origin
-
-							// for the potentialAddActors of the brt the potential sphere changes need to be
-							// considered
-							LinkedList<BPMNParticipant> potentialAddActors = alreadyChosenAddActors.getOrDefault(task,
-									new LinkedList<BPMNParticipant>());
-
-							for (BPMNParticipant potAddActor : potentialAddActors) {
-								if (!readersAlreadyCountedOnPathWithAddActors.contains(potAddActor)) {
-									if (!readerMapWithAddActors.containsKey(potAddActor)) {
-										readerMapWithAddActors.put(potAddActor, 0.0);
-									}
-									double occurrencesOfReader = readerMapWithAddActors.get(potAddActor) + 1;
-									readerMapWithAddActors.put(potAddActor, occurrencesOfReader);
-									readersAlreadyCountedOnPathWithAddActors.add(potAddActor);
-								}
-
-								dependentBrtsForParticipant
-										.computeIfAbsent(potAddActor, k -> new HashSet<BPMNBusinessRuleTask>())
-										.add((BPMNBusinessRuleTask) task);
-
-							}
-
-						}
-
-					}
-
-					if (dataObject.getWriters().contains(task) && !task.equals(origin)) {
-						// another writer to same dataObject found
-						// do not look further on that path
-						break;
-					}
-
-				}
-
-			}
-
-		}
-
-		for (BPMNParticipant participant : this.privateSphere) {
-			if (!readerMapWithoutAddActors.containsKey(participant)) {
-				readerMapWithoutAddActors.put(participant, 0.0);
-			}
-			if (!readerMapWithAddActors.containsKey(participant)) {
-				readerMapWithAddActors.put(participant, 0.0);
-			}
-			if (!minLabel.containsKey(participant)) {
-				minLabel.put(participant, Double.MAX_VALUE);
-			}
-		}
-
-		for (Entry<BPMNParticipant, Double> readerMapEntry : readerMapWithoutAddActors.entrySet()) {
-			// calculate the penalty for reading the data object
-
-			BPMNParticipant participant = readerMapEntry.getKey();
-
-			// get the percentage of paths on which a participant reads the data object
-			double amountPathsOnWhichParticipantHasDataWithoutAddActors = readerMapEntry.getValue();
-			double fractionOfPaths = amountPathsOnWhichParticipantHasDataWithoutAddActors / pathsFromOriginToEnd.size();
-
-			double amountPathsOnWhichParticipantHasDataWithAddActors = readerMapWithAddActors.get(participant);
-			double fractionOfPathsWithAddActors = amountPathsOnWhichParticipantHasDataWithAddActors
-					/ pathsFromOriginToEnd.size();
-
-			// if fractionOfPaths == 1 -> reader reads data object written by origin on each
-			// outgoing path starting at origin
-			// reader is SD at position of the origin
-			double penalty = 0;
-
-			if (fractionOfPaths < 1 && fractionOfPaths > 0) {
-				// reader reads data object written by origin on some paths, but not all
-				// outgoing from origin
-				// check if data object requires Strong-Dynamic
-				if (dataObject.getDefaultSphere().contentEquals("Strong-Dynamic")) {
-					penalty += weightingParameters.get(2);
-				}
-			} else if (fractionOfPaths == 0) {
-				// reader does not read data object written by origin on any outgoing path
-
-				// if data object requires static -> reader needs to be at least static
-				if (dataObject.getDefaultSphere().contentEquals("Static")) {
-
-					// check if reader is in static sphere of data object
-					if (!dataObject.getStaticSphere().contains(participant)) {
-						penalty += weightingParameters.get(0);
-					}
-				} else if (dataObject.getDefaultSphere().contentEquals("Weak-Dynamic")) {
-
-					// check if reader is in static sphere of data object
-					if (!dataObject.getStaticSphere().contains(participant)) {
-						penalty += weightingParameters.get(0);
-					}
-
-					// the penalty for not being wd needs to be assigned too
-					penalty += weightingParameters.get(1);
-
-				} else if (dataObject.getDefaultSphere().contentEquals("Strong-Dynamic")) {
-
-					if (!dataObject.getStaticSphere().contains(participant)) {
-						penalty += weightingParameters.get(0);
-					}
-
-					// the penalty for not being wd needs to be assigned too
-					penalty += weightingParameters.get(1);
-
-					// the penalty for not being sd needs to be assigned too
-					penalty += weightingParameters.get(2);
-				}
-
-			}
-
-			double penaltyWithAdditionalActors = 0;
-			if (fractionOfPathsWithAddActors < 1 && fractionOfPathsWithAddActors > 0) {
-				// reader reads data object written by origin on some paths, but not all
-				// outgoing from origin
-				// check if data object requires Strong-Dynamic
-				if (dataObject.getDefaultSphere().contentEquals("Strong-Dynamic")) {
-					penaltyWithAdditionalActors += weightingParameters.get(2);
-				}
-			} else if (fractionOfPathsWithAddActors == 0) {
-				// reader does not read data object written by origin on any outgoing path
-
-				// if data object requires static -> reader needs to be at least static
-				if (dataObject.getDefaultSphere().contentEquals("Static")) {
-
-					// check if reader is in static sphere of data object
-					boolean isStatic = false;
-					for (Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> potAddActorsEntry : alreadyChosenAddActors
-							.entrySet()) {
-						if (dataObject.getStaticSphereElements().contains(potAddActorsEntry.getKey())) {
-							if (potAddActorsEntry.getValue().contains(participant)) {
-								if (dataObject.getStaticSphere().contains(participant)) {
-									isStatic = true;
-									break;
-								}
-							}
-
-						}
-					}
-					if (!isStatic) {
-						penaltyWithAdditionalActors += weightingParameters.get(0);
-					}
-
-				} else if (dataObject.getDefaultSphere().contentEquals("Weak-Dynamic")) {
-
-					// check if reader is in static sphere of data object with additional actors!
-					boolean isStatic = false;
-					for (Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> potAddActorsEntry : alreadyChosenAddActors
-							.entrySet()) {
-						if (dataObject.getStaticSphereElements().contains(potAddActorsEntry.getKey())) {
-							if (potAddActorsEntry.getValue().contains(participant)) {
-								if (dataObject.getStaticSphere().contains(participant)) {
-									isStatic = true;
-									break;
-								}
-							}
-
-						}
-					}
-					if (!isStatic) {
-						penaltyWithAdditionalActors += weightingParameters.get(0);
-					}
-
-					// the penalty for not being wd needs to be assigned too
-					penaltyWithAdditionalActors += weightingParameters.get(1);
-
-				} else if (dataObject.getDefaultSphere().contentEquals("Strong-Dynamic")) {
-
-					boolean isStatic = false;
-					for (Entry<BPMNBusinessRuleTask, LinkedList<BPMNParticipant>> potAddActorsEntry : alreadyChosenAddActors
-							.entrySet()) {
-						if (dataObject.getStaticSphereElements().contains(potAddActorsEntry.getKey())) {
-							if (potAddActorsEntry.getValue().contains(participant)) {
-								if (dataObject.getStaticSphere().contains(participant)) {
-									isStatic = true;
-									break;
-								}
-							}
-
-						}
-					}
-					if (!isStatic) {
-						penaltyWithAdditionalActors += weightingParameters.get(0);
-					}
-
-					// the penalty for not being wd needs to be assigned too
-					penaltyWithAdditionalActors += weightingParameters.get(1);
-
-					// the penalty for not being sd needs to be assigned too
-					penaltyWithAdditionalActors += weightingParameters.get(2);
-				}
-
-			}
-
-			double labelSumForParticipant = minLabel.get(participant);
-			HashSet<BPMNBusinessRuleTask> dependentBrts = dependentBrtsForParticipant.getOrDefault(participant,
-					new HashSet<BPMNBusinessRuleTask>());
-
-			PriorityListEntry entry = new PriorityListEntry(origin, dataObject, participant, dependentBrts,
-					amountPathsOnWhichParticipantHasDataWithoutAddActors,
-					amountPathsOnWhichParticipantHasDataWithAddActors, fractionOfPaths, fractionOfPathsWithAddActors,
-					labelSumForParticipant, penalty, penaltyWithAdditionalActors);
-			priorityList.add(entry);
-		}
-
-		return priorityList;
-	}
+	
 
 	public void calculateMeasure(LinkedList<PModelWithAdditionalActors> additionalActorsCombs,
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
@@ -3276,10 +3106,6 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 	}
 
-	public LinkedList<LinkedList<BPMNBusinessRuleTask>> getClusterSet() {
-		return this.clusterSet;
-	}
-
 	public BPMNParticipant getTroubleShooter() {
 		return this.troubleShooter;
 	}
@@ -3372,7 +3198,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 					BPMNGateway gtw = (BPMNGateway) currentBrt.getSuccessors().iterator().next();
 					BPMNExclusiveGateway exclGtw = (BPMNExclusiveGateway) gtw;
-					int amountVerifiers = exclGtw.getAmountVerifiers();
+					int amountAddActors = exclGtw.getAmountAddActors();
 
 					// get all potential additional actors of the current brt
 					LinkedList<LinkedList<BPMNParticipant>> potentialAddActorsLists = this
@@ -3381,7 +3207,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 					HashSet<BPMNParticipant> cheapestAddActors = new HashSet<BPMNParticipant>();
 					// add all mandatory participants
 					cheapestAddActors.addAll(potentialAddActorsLists.get(1));
-					int verifiersToFind = amountVerifiers - cheapestAddActors.size();
+					int addActorsToFind = amountAddActors - cheapestAddActors.size();
 
 					LinkedList<AdditionalActors> addActorsForBrt = new LinkedList<AdditionalActors>();
 
@@ -3391,7 +3217,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 					TreeMap<Double, LinkedList<BPMNParticipant>> localCheapestPotentialAddActors = this
 							.getLocalCheapestPotentialAddActorsForBrt(currentBrt, pathsFromOriginToEndMap,
 									staticSpherePerDataObject, wdSpherePerDataObject, clusterSet,
-									potentialAddActorsLists, alreadyChosenAdditionalActors, verifiersToFind);
+									potentialAddActorsLists, alreadyChosenAdditionalActors, addActorsToFind);
 
 					if (clusterSet.size() > 1) {
 						TreeMap<BPMNParticipant, Double> tieBraker = new TreeMap<BPMNParticipant, Double>();
@@ -3402,7 +3228,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 								TreeMap<Double, LinkedList<BPMNParticipant>> cheapestPotentialAddActorsForOtherBrt = this
 										.getLocalCheapestPotentialAddActorsForBrt((BPMNBusinessRuleTask) otherBrt,
 												pathsFromOriginToEndMap, staticSpherePerDataObject,
-												wdSpherePerDataObject, alreadyChosenAdditionalActors, clusterSet);
+												wdSpherePerDataObject, alreadyChosenAdditionalActors);
 
 								for (Entry<Double, LinkedList<BPMNParticipant>> entry : cheapestPotentialAddActorsForOtherBrt
 										.entrySet()) {
@@ -3425,14 +3251,14 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 						// generate the additional actors for the current brt using the best options
 						addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt2(exclGtw,
-								verifiersToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
-								currentBrt, bestParticipantsMap, bound);
+								addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
+								currentBrt, localCheapestPotentialAddActors, bestParticipantsMap, bound);
 
 					} else {
 						// generate the additional actors using the local cheapest combinations of the
 						// current brt
 						addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt2(exclGtw,
-								verifiersToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
+								addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
 								currentBrt, localCheapestPotentialAddActors, bound);
 
 					}
@@ -3776,15 +3602,15 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		LinkedList<AdditionalActors> addActorsForBrt = new LinkedList<AdditionalActors>();
 		BPMNGateway gtw = (BPMNGateway) currentBrt.getSuccessors().iterator().next();
 		BPMNExclusiveGateway exclGtw = (BPMNExclusiveGateway) gtw;
-		int amountVerifiers = exclGtw.getAmountVerifiers();
+		int amountAddActors = exclGtw.getAmountAddActors();
 		LinkedList<LinkedList<BPMNParticipant>> potentialAddActors = this.getPotentialAddActorsListsForBrt(currentBrt);
 
 		HashSet<BPMNParticipant> cheapestAddActors = new HashSet<BPMNParticipant>();
 		// add all mandatory participants
 		cheapestAddActors.addAll(potentialAddActors.get(1));
-		int verifiersToFind = amountVerifiers - cheapestAddActors.size();
+		int addActorsToFind = amountAddActors - cheapestAddActors.size();
 
-		if (verifiersToFind == 0) {
+		if (addActorsToFind == 0) {
 			// there are exactly as many participants mandatory as needed
 			AdditionalActors addActors = new AdditionalActors(currentBrt, cheapestAddActors);
 			addActorsForBrt.add(addActors);
@@ -3886,7 +3712,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			}
 
 			addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt2(exclGtw,
-					verifiersToFind, potentialAddActors.get(1), potentialAddActors.get(0), currentBrt, cheapest, bound);
+					addActorsToFind, potentialAddActors.get(1), potentialAddActors.get(0), currentBrt, cheapest, bound);
 		}
 
 		return addActorsForBrt;
@@ -3986,7 +3812,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject,
 			HashSet<BPMNTask> clusterSet, LinkedList<LinkedList<BPMNParticipant>> potentialAddActorsLists,
 			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyFoundAdditionalActorsPerBrt,
-			int verifiersToFind) throws Exception {
+			int addActorsToFind) throws Exception {
 
 		HashSet<BPMNParticipant> cheapestAddActors = new HashSet<BPMNParticipant>();
 		// add all mandatory participants
@@ -3994,7 +3820,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 		TreeMap<Double, LinkedList<BPMNParticipant>> localCheapestPotentialAddActors = new TreeMap<Double, LinkedList<BPMNParticipant>>();
 
-		if (verifiersToFind == 0) {
+		if (addActorsToFind == 0) {
 			// compute the additional actors already
 			// cause it is defined through mandatory constraints
 			localCheapestPotentialAddActors.putIfAbsent(0.0, new LinkedList<BPMNParticipant>(cheapestAddActors));
@@ -4012,11 +3838,11 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap,
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
 			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject,
-			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyFoundAdditionalActorsPerBrt,
-			HashSet<BPMNTask> clusterSet) throws Exception {
+			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyFoundAdditionalActorsPerBrt)
+			throws Exception {
 		BPMNGateway gtw = (BPMNGateway) currentBrt.getSuccessors().iterator().next();
 		BPMNExclusiveGateway exclGtw = (BPMNExclusiveGateway) gtw;
-		int amountVerifiers = exclGtw.getAmountVerifiers();
+		int amountAddActors = exclGtw.getAmountAddActors();
 
 		// get all potential additional actors of the current brt
 		LinkedList<LinkedList<BPMNParticipant>> potentialAddActorsLists = this
@@ -4025,11 +3851,11 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		HashSet<BPMNParticipant> cheapestAddActors = new HashSet<BPMNParticipant>();
 		// add all mandatory participants
 		cheapestAddActors.addAll(potentialAddActorsLists.get(1));
-		int verifiersToFind = amountVerifiers - cheapestAddActors.size();
+		int addActorsToFind = amountAddActors - cheapestAddActors.size();
 
 		TreeMap<Double, LinkedList<BPMNParticipant>> localCheapestPotentialAddActors = new TreeMap<Double, LinkedList<BPMNParticipant>>();
 
-		if (verifiersToFind == 0) {
+		if (addActorsToFind == 0) {
 			// compute the additional actors already
 			// cause it is defined through mandatory constraints
 			localCheapestPotentialAddActors.putIfAbsent(0.0, new LinkedList<BPMNParticipant>(cheapestAddActors));
@@ -4037,9 +3863,27 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			// compute the local cheapest potential additional actors for the currentBrt
 			localCheapestPotentialAddActors = this.getCheapestPotentialAdditionalActorsForBrtHeuristic(currentBrt,
 					pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject,
-					alreadyFoundAdditionalActorsPerBrt, clusterSet);
+					alreadyFoundAdditionalActorsPerBrt, new HashSet<BPMNTask>());
 		}
 		return localCheapestPotentialAddActors;
+	}
+
+	public LinkedList<MandatoryParticipantConstraint> getMandatoryParticipantConstraints() {
+		return mandatoryParticipantConstraints;
+	}
+
+	public void setMandatoryParticipantConstraints(
+			LinkedList<MandatoryParticipantConstraint> mandatoryParticipantConstraints) {
+		this.mandatoryParticipantConstraints = mandatoryParticipantConstraints;
+	}
+
+	public LinkedList<ExcludeParticipantConstraint> getExcludeParticipantConstraints() {
+		return excludeParticipantConstraints;
+	}
+
+	public void setExcludeParticipantConstraints(
+			LinkedList<ExcludeParticipantConstraint> excludeParticipantConstraints) {
+		this.excludeParticipantConstraints = excludeParticipantConstraints;
 	}
 
 }
