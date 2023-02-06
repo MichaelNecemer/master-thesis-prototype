@@ -3039,10 +3039,10 @@ public class CommonFunctionality {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
 					LinkedList<String> participantsToChooseFrom = CommonFunctionality
 							.getPrivateSphereList(modelInstance, modelWithLanes);
-					int privateSphereSize = participantsToChooseFrom.size();
 					String brtBeforeGtwParticipant = CommonFunctionality.getParticipantOfTask(modelInstance,
 							brtBeforeGtw, modelWithLanes);
 					participantsToChooseFrom.remove(brtBeforeGtwParticipant);
+					int amountPossibleAddActors = participantsToChooseFrom.size();
 
 					if (!participantsToChooseFrom.isEmpty()) {
 
@@ -3058,10 +3058,9 @@ public class CommonFunctionality {
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
-											randomAmountConstraintsForGtw = privateSphereSize - amountAddActorsNeeded
-													- 1;
+											randomAmountConstraintsForGtw = amountPossibleAddActors - amountAddActorsNeeded;
 										} else {
-											int maxConstraint = privateSphereSize - amountAddActorsNeeded - 1;
+											int maxConstraint =  amountPossibleAddActors - amountAddActorsNeeded;
 
 											if (maxConstraint <= 0) {
 												// no constraints possible -> else model will not be valid
@@ -3084,7 +3083,7 @@ public class CommonFunctionality {
 
 										Collections.shuffle(participantsToChooseFrom);
 										Iterator<String> partIter = participantsToChooseFrom.iterator();
-										if (randomAmountConstraintsForGtw < (privateSphereSize
+										if (randomAmountConstraintsForGtw < (amountPossibleAddActors
 												- amountAddActorsNeeded)) {
 											maxConstrainedModel = false;
 										}
@@ -3156,7 +3155,7 @@ public class CommonFunctionality {
 
 	public static void addMandatoryParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName,
 			int probabilityForGatewayToHaveConstraint, int lowerBoundAmountParticipantsToBeMandatoryPerGtw,
-			int upperBoundAmountParticipantsToBeMandatoryPerGtw, boolean alwaysMaxConstrained, boolean modelWithLanes,
+			boolean alwaysMaxConstrained, boolean modelWithLanes,
 			String directoryToStore) throws Exception {
 
 		boolean constraintInserted = false;
@@ -3179,6 +3178,7 @@ public class CommonFunctionality {
 					String brtBeforeGtwParticipant = CommonFunctionality.getParticipantOfTask(modelInstance,
 							brtBeforeGtw, modelWithLanes);
 					participantsToChooseFrom.remove(brtBeforeGtwParticipant);
+				
 
 					if (!participantsToChooseFrom.isEmpty()) {
 
@@ -3194,19 +3194,13 @@ public class CommonFunctionality {
 										if (amountAddActorsNeeded > participantsToChooseFrom.size()) {
 											amountAddActorsNeeded = participantsToChooseFrom.size();
 										}
+										
+										int upperBoundAmountParticipantsToBeMandatoryPerGtw = amountAddActorsNeeded;
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
 											randomAmountConstraintsForGtw = amountAddActorsNeeded;
-										} else {
-											if (upperBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
-												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountAddActorsNeeded;
-											}
-
-											if (upperBoundAmountParticipantsToBeMandatoryPerGtw > amountAddActorsNeeded) {
-												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountAddActorsNeeded;
-											}
-
+										} else {											
 											if (lowerBoundAmountParticipantsToBeMandatoryPerGtw < upperBoundAmountParticipantsToBeMandatoryPerGtw) {
 												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
 														lowerBoundAmountParticipantsToBeMandatoryPerGtw,
