@@ -180,7 +180,8 @@ public class BatchFileGenerator {
 			// limit
 			// count amount of timeouts
 			// do that while there are not timeouts on all processes for the algorithms
-
+			int timeoutProcessGeneratorInMinutes = 10;
+			
 			int minDataObjectsPerDecision = 1;
 			int maxDataObjectsPerDecision = 1;
 
@@ -211,7 +212,7 @@ public class BatchFileGenerator {
 					boundaryTest1_1_addActorsPerDecision, boundaryTest1_1_privateSphere, amountSolutionsToBeGenerated,
 					6, tasksFactor, 0, 0, percentageOfWritersClasses.get(1), percentageOfReadersClasses.get(1),
 					minDataObjectsPerDecision, maxDataObjectsPerDecision, sphere, amountThreads, stopAfterDecisions,
-					pathToFolderForModelsForTest1_1);
+					pathToFolderForModelsForTest1_1, timeoutProcessGeneratorInMinutes);
 
 			System.out.println("BoundartyTest1_1 finished!");
 		}
@@ -278,28 +279,28 @@ public class BatchFileGenerator {
 			for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation,
 						5, 5, 6, 15, i, i, 0, 2, amountProcessesToCreatePerDecision, randomProcessGeneratorService,
-						true);
+						true, timeOutForProcessGeneratorInMin);
 			}
 
 			// medium processes: 5 participants, 16-30 tasks, 3-4 xors, 0-3 parallels
 			for (int i = amountXorsMediumProcessesBounds.get(0); i <= amountXorsMediumProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
 						pathToMediumProcessesFolderWithoutAnnotation, 5, 5, 16, 30, i, i, 0, 3,
-						amountProcessesToCreatePerDecision, randomProcessGeneratorService, true);
+						amountProcessesToCreatePerDecision, randomProcessGeneratorService, true, timeOutForProcessGeneratorInMin);
 			}
 
 			// large processes: 5 participants, 31-45 tasks, 5-6 xors, 0-4, parallels
 			for (int i = amountXorsLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation,
 						5, 5, 31, 45, i, i, 0, 4, amountProcessesToCreatePerDecision, randomProcessGeneratorService,
-						true);
+						true, timeOutForProcessGeneratorInMin);
 			}
 
 			// xl processes
 			for (int i = amountXorsSuperLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation,
 						5, 5, 31, 45, i, i, 0, 4, amountProcessesToCreatePerDecision, randomProcessGeneratorService,
-						true);
+						true, timeOutForProcessGeneratorInMin);
 			}
 
 			randomProcessGeneratorService.shutdownNow();
@@ -661,7 +662,7 @@ public class BatchFileGenerator {
 					lowerBoundAmountParticipantsToExclude, upperBoundAmountParticipantsToExclude,
 					alwaysMaxExclConstrained, probabilityForGatewayToHaveMandConstraint,
 					lowerBoundAmountParticipantsToBeMandatory, upperBoundAmountParticipantsToBeMandatory,
-					alwaysMaxMandConstrained, amountSolutionsToBeGenerated, amountThreads);
+					alwaysMaxMandConstrained, amountSolutionsToBeGenerated, amountThreads, timeOutForProcessGeneratorInMin);
 			System.out.println("Test 6 finished!");
 		}
 
@@ -678,12 +679,12 @@ public class BatchFileGenerator {
 			int lowerBoundAmountParticipantsToExclude, int upperBoundAmountParticipantsToExclude,
 			boolean alwaysMaxExclConstrained, int probabilityForGatewayToHaveMandConstraint,
 			int lowerBoundAmountParticipantsToBeMandatory, int upperBoundAmountParticipantsToBeMandatory,
-			boolean alwaysMaxMandConstrained, int boundForSolutionsToBeGenerated, int amountThreads) {
+			boolean alwaysMaxMandConstrained, int boundForSolutionsToBeGenerated, int amountThreads, int timeoutProcessGen) {
 
 		ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
 		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathWhereToCreateProcessesWithoutAnnotation, 2,
 				upperBoundParticipants, lowerBoundTasks, upperBoundTasks, 1, upperBoundXorGtws, 0,
-				upperBoundParallelGtws, amountProcesses, randomProcessGeneratorService, false);
+				upperBoundParallelGtws, amountProcesses, randomProcessGeneratorService, false, timeOutForProcessGeneratorInMin);
 		randomProcessGeneratorService.shutdownNow();
 
 		int publicDecisionProb = 0;
@@ -891,7 +892,7 @@ public class BatchFileGenerator {
 	public static void generateRandomProcessesWithinGivenRanges(String pathToFiles, int lowerBoundParticipants,
 			int upperBoundParticipants, int lowerBoundTasks, int upperBoundTasks, int lowerBoundXorGtws,
 			int upperBoundXorGtws, int lowerBoundParallelGtws, int upperBoundParallelGtws, int amountProcesses,
-			ExecutorService executor, boolean testForNodesBeforeGtws) {
+			ExecutorService executor, boolean testForNodesBeforeGtws, int timeoutForProcessGenerator ) {
 
 		for (int i = 1; i <= amountProcesses; i++) {
 
@@ -1739,7 +1740,7 @@ public class BatchFileGenerator {
 			int amountTasksToStartWith, int tasksFactor, int lowerBoundAmountParallelGtws,
 			int upperBoundAmountParallelGtws, int amountWritersInPercent, int amountReadersInPercent,
 			int minDataObjectsPerDecision, int maxDataObjectsPerDecision, LinkedList<String> sphereList,
-			int amountThreads, int stopAfterDecisions, String pathToFolderForModelsForBoundaryTest) {
+			int amountThreads, int stopAfterDecisions, String pathToFolderForModelsForBoundaryTest, int timeoutProcessGenInMin) {
 
 		int amountParallelGtws = ThreadLocalRandom.current().nextInt(lowerBoundAmountParallelGtws,
 				upperBoundAmountParallelGtws + 1);
@@ -1784,7 +1785,7 @@ public class BatchFileGenerator {
 			BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToFolderForModelsWithDecisions,
 					privateSphere, privateSphere, amountTasksWithFactor, amountTasksWithFactor, amountDecisionsToStart,
 					amountDecisionsToStart, amountParallelGtws, amountParallelGtws, amountProcessesPerIteration,
-					executor, false);
+					executor, false, timeoutProcessGenInMin);
 
 			// annotate the processes
 			File folder = new File(pathToFolderForModelsWithDecisions);

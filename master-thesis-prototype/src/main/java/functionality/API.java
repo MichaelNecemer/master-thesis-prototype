@@ -313,109 +313,8 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		return additionalActorsCombs;
 	}
 
+
 	public LinkedList<AdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(
-			BPMNExclusiveGateway gtw, LinkedList<BPMNParticipant> mandatoryParticipants,
-			LinkedList<BPMNParticipant> excludedParticipants, BPMNBusinessRuleTask brt,
-			TreeMap<Double, TreeMap<Double, HashSet<BPMNParticipant>>> pathMap, int bound) throws Exception {
-
-		LinkedList<AdditionalActors> addActorsCombinationsForBrt = new LinkedList<AdditionalActors>();
-		int amountVerifiersToAssign = gtw.getAmountAddActors();
-
-		LinkedList<BPMNParticipant> possibleParticipantsLeft = new LinkedList<BPMNParticipant>();
-		// to remain the order of cost, iterate through the costMap and add the
-		// participants
-		for (TreeMap<Double, HashSet<BPMNParticipant>> entry : pathMap.values()) {
-			for (HashSet<BPMNParticipant> part : entry.values()) {
-				possibleParticipantsLeft.addAll(part);
-			}
-		}
-		possibleParticipantsLeft.removeAll(excludedParticipants);
-		possibleParticipantsLeft.removeAll(mandatoryParticipants);
-		possibleParticipantsLeft.remove(brt.getParticipant());
-
-		// mandatory participants will definitely be in each possible combination
-		int amountVerifiersToAssignFromPossibleParticipantsLeft = amountVerifiersToAssign
-				- mandatoryParticipants.size();
-
-		LinkedList<BPMNParticipant> participantsWithBestCost = new LinkedList<BPMNParticipant>();
-		LinkedList<BPMNParticipant> remainingWithBestCost = new LinkedList<BPMNParticipant>();
-
-		if (amountVerifiersToAssignFromPossibleParticipantsLeft > 0) {
-			for (TreeMap<Double, HashSet<BPMNParticipant>> entry : pathMap.values()) {
-				outerloop: for (Entry<Double, HashSet<BPMNParticipant>> costEntry : entry.entrySet()) {
-					// take all participants of the current cost that are not excluded and not the
-					// actor of the brt
-					LinkedList<BPMNParticipant> participantsWithCurrentCost = new LinkedList<BPMNParticipant>();
-					if (costEntry.getKey() >= 0) {
-						for (BPMNParticipant participant : costEntry.getValue()) {
-							if (possibleParticipantsLeft.contains(participant)) {
-								participantsWithCurrentCost.add(participant);
-							}
-						}
-					}
-
-					// check if there are still voters needed
-					amountVerifiersToAssignFromPossibleParticipantsLeft = amountVerifiersToAssignFromPossibleParticipantsLeft
-							- participantsWithCurrentCost.size();
-
-					if (amountVerifiersToAssignFromPossibleParticipantsLeft > 0) {
-						// there are less participants on the current cost level than needed
-						// take all of them
-						participantsWithBestCost.addAll(participantsWithCurrentCost);
-					} else if (amountVerifiersToAssignFromPossibleParticipantsLeft == 0) {
-						// there are exactly as many participants on the current cost level as needed
-						// take all of them and stop iterating
-						participantsWithBestCost.addAll(participantsWithCurrentCost);
-						break outerloop;
-					} else {
-						// there are more participants on the current cost level than needed
-						// add them to the remaining ones and stop iterating
-						remainingWithBestCost.addAll(participantsWithCurrentCost);
-						break outerloop;
-					}
-				}
-			}
-
-		}
-
-		LinkedList<LinkedList<BPMNParticipant>> lists = new LinkedList<LinkedList<BPMNParticipant>>();
-		int amountParticipantsToTakeFromRemaining = amountVerifiersToAssign - mandatoryParticipants.size()
-				- participantsWithBestCost.size();
-
-		if (!remainingWithBestCost.isEmpty() && amountParticipantsToTakeFromRemaining > 0) {
-			// sort the remainingWithBestCost by the amount they have already been chosen
-			lists = Combination.getPermutationsWithBound(remainingWithBestCost, amountParticipantsToTakeFromRemaining,
-					bound);
-		}
-
-		if (lists.isEmpty()) {
-			LinkedList<BPMNParticipant> listToAdd = new LinkedList<BPMNParticipant>();
-			listToAdd.addAll(mandatoryParticipants);
-			listToAdd.addAll(participantsWithBestCost);
-			AdditionalActors addActors = new AdditionalActors(brt, listToAdd);
-			addActorsCombinationsForBrt.add(addActors);
-		} else {
-			// iterate through all combinations
-			for (int i = 0; i < lists.size(); i++) {
-				LinkedList<BPMNParticipant> currList = lists.get(i);
-				currList.addAll(0, participantsWithBestCost);
-				currList.addAll(0, mandatoryParticipants);
-
-				AdditionalActors addActors = new AdditionalActors(brt, currList);
-				addActorsCombinationsForBrt.add(addActors);
-			}
-
-		}
-		if (addActorsCombinationsForBrt.isEmpty()) {
-			throw new Exception("No possible combination of verifiers for " + brt.getId());
-		}
-
-		return addActorsCombinationsForBrt;
-
-	}
-
-
-	public LinkedList<AdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt2(
 			BPMNExclusiveGateway gtw, int verifiersToFind, LinkedList<BPMNParticipant> mandatoryParticipants,
 			LinkedList<BPMNParticipant> possibleParticipantsAsAddActors, BPMNBusinessRuleTask brt,
 			Map<Double, LinkedList<BPMNParticipant>> bestParticipantsMap,
@@ -3239,7 +3138,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 						}
 
 						// generate the additional actors for the current brt using the best options
-						addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt2(exclGtw,
+						addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
 								addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
 								currentBrt, localCheapestPotentialAddActors, bestParticipantsMap,
 								amountParticipantChosenAsAddActor, bound);
@@ -3247,7 +3146,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 					} else {
 						// generate the additional actors using the local cheapest combinations of the
 						// current brt
-						addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt2(exclGtw,
+						addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
 								addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
 								currentBrt, localCheapestPotentialAddActors, null, amountParticipantChosenAsAddActor, bound);
 
@@ -3647,7 +3546,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 					incremental, currentBrt, pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject,
 					alreadyChosenAdditionalActorsPerBrt, new HashSet<BPMNTask>());
 
-			addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt2(exclGtw,
+			addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
 					addActorsToFind, potentialAddActors.get(1), potentialAddActors.get(0), currentBrt, cheapest, null, null,
 					bound);
 		}
