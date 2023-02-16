@@ -15,13 +15,14 @@ public class ProcessGeneratorMain {
 	int probXorGtw = 33;
 	int probParallelGtw = 33;
 	int maxTriesForGeneratingProcess = 100;
+	boolean testIfElementsInBranches = true;
 	
 	while(amountModelsToCreate>0) {
 	ProcessGenerator pGen;
 	try {
 		pGen = new ProcessGenerator(pathWhereToCreateModels,amountParticipants,amountTasksToBeInserted,
 				amountXorsToBeInserted, amountParallelsToBeInserted, probTask, probXorGtw, probParallelGtw, probabilityForJoinGtw,
-				nestingDepthFactor, maxTriesForGeneratingProcess);
+				nestingDepthFactor, maxTriesForGeneratingProcess, testIfElementsInBranches);
 		try {
 			pGen.call();
 			amountModelsToCreate--;

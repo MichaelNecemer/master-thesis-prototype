@@ -8,6 +8,7 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -37,8 +38,10 @@ import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
 import org.camunda.bpm.model.bpmn.instance.DataObject;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.DataOutputAssociation;
+import org.camunda.bpm.model.bpmn.instance.EndEvent;
 import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
+import org.camunda.bpm.model.bpmn.instance.Gateway;
 import org.camunda.bpm.model.bpmn.instance.ItemAwareElement;
 import org.camunda.bpm.model.bpmn.instance.Lane;
 import org.camunda.bpm.model.bpmn.instance.ManualTask;
@@ -62,6 +65,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import functionality.CommonFunctionality;
+import processModelGeneratorAndAnnotater.LabelForAnnotater;
 
 public class ProcessModelAnnotater implements Callable<File> {
 	// class takes a process model and annotates it with dataObjects, readers,
@@ -75,21 +79,18 @@ public class ProcessModelAnnotater implements Callable<File> {
 	private LinkedList<String> differentParticipants;
 	private int idForTask;
 	private int idForBrt;
-	private String pathToFile;
 	private String pathWhereToCreateAnnotatedFile;
-	private String fileNameSuffix;
 	private boolean dataObjectsConnectedToBrts;
 	private String fileNameForNewFile;
 	private String directoryForNewFile;
 	private LinkedHashMap<String, Object[]> methodsToRunWithinCall;
+	private HashMap<FlowNode, LinkedList<LabelForAnnotater>> labelForNode;
 
 	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix)
 			throws Exception {
 		this.process = new File(pathToFile);
 		this.modelInstance = Bpmn.readModelFromFile(process);
-		this.pathToFile = pathToFile;
 		this.pathWhereToCreateAnnotatedFile = pathWhereToCreateAnnotatedFile;
-		this.fileNameSuffix = fileNameSuffix;
 
 		this.idForTask = 1;
 		this.idForBrt = 1;
@@ -103,6 +104,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		this.methodsToRunWithinCall = new LinkedHashMap<String, Object[]>();
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
+		this.labelForNode = generateLabels();
 	}
 
 	public void setMethodsToRunWithinCall(LinkedHashMap<String, Object[]> methodsToRunWithinCall) {
@@ -215,6 +217,175 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	}
 
+	public void annotateModelWithReadersAndWriters(int amountWriters, int amountReaders) throws Exception {
+		if (amountWriters < this.dataObjects.size()) {
+			throw new Exception("Amount of writers must be >= amount of DataObjects!");
+		}
+
+		if (!this.dataObjectsConnectedToBrts) {
+			throw new Exception(
+					"Method: connectDataObjectsToBrtsAndTuplesForXorSplits() needs to be called before annotating the model with readers and writers!");
+		}
+
+		// check how many readers there are already in the model
+		int sumExistingReaders = modelInstance.getModelElementsByType(DataInputAssociation.class).size();
+		int sumExistingWriters = modelInstance.getModelElementsByType(DataOutputAssociation.class).size();
+
+		if (amountWriters >= sumExistingWriters) {
+			amountWriters = amountWriters - sumExistingWriters;
+		}
+
+		if (amountReaders >= sumExistingReaders) {
+			amountReaders = amountReaders - sumExistingReaders;
+		}
+		System.out.println("Writers to be inserted: " + amountWriters);
+		System.out.println("Readers to be inserted: " + amountReaders);
+		List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality.computeRepartitionNumber(amountWriters,
+				this.dataObjects.size(), 1);
+		int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
+		LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
+
+		List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders,
+				this.dataObjects.size(), 0);
+
+		int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
+		LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
+
+		// first insert the readers randomly
+		HashSet<Task> allAvailableTasks = new HashSet<Task>();
+		allAvailableTasks.addAll(modelInstance.getModelElementsByType(Task.class));
+		FlowNode firstNodeAfterStart = modelInstance.getModelElementsByType(StartEvent.class).iterator().next()
+				.getOutgoing().iterator().next().getTarget();
+		allAvailableTasks.remove(firstNodeAfterStart);
+
+		HashSet<DataInputAssociation> readersAssociations = new HashSet<DataInputAssociation>();
+		readersAssociations.addAll(modelInstance.getModelElementsByType(DataInputAssociation.class));
+
+		HashMap<DataObjectReference, HashSet<Task>> readersPerDataObject = new HashMap<DataObjectReference, HashSet<Task>>();
+
+		// randomly assign readers per data objects
+		for (int i = 0; i < this.dataObjects.size(); i++) {
+			DataObjectReference dataORef = this.dataObjects.get(i);
+			int amountReadersForDataObject = subAmountReaders.get(i);
+
+			do {
+				// get a random task that is not a brt (since they are connected already)
+				// and not the first task in the process (reserved as potential needed initial
+				// origin)
+				Task currentTask = CommonFunctionality.getRandomItem(allAvailableTasks);
+				allAvailableTasks.remove(currentTask);
+
+				if (!ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(currentTask)) {
+					// make that task a reader if it is not already
+					boolean toBeReader = true;
+					for (DataInputAssociation dia : currentTask.getDataInputAssociations()) {
+						for (ItemAwareElement iae : dia.getSources()) {
+							if (iae.getId().contentEquals(dataORef.getId())) {
+								toBeReader = false;
+							}
+						}
+					}
+
+					if (toBeReader) {
+						DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
+						Property p1 = modelInstance.newInstance(Property.class);
+						p1.setName("__targetRef_placeholder");
+						currentTask.addChildElement(p1);
+						dia.setTarget(p1);
+						currentTask.getDataInputAssociations().add(dia);
+						dia.getSources().add(dataORef);
+						generateDIElementForReader(dia, getShape(dataORef.getId()), getShape(currentTask.getId()));
+						amountReadersForDataObject--;
+						readersPerDataObject.computeIfAbsent(dataORef, k -> new HashSet<Task>()).add(currentTask);
+					}
+
+				} else {
+					for (DataInputAssociation dia : currentTask.getDataInputAssociations()) {
+						for (ItemAwareElement iae : dia.getSources()) {
+							if (iae.getId().contentEquals(dataORef.getId())) {
+								readersPerDataObject.computeIfAbsent(dataORef, k -> new HashSet<Task>())
+										.add(currentTask);
+							}
+						}
+					}
+				}
+
+			} while (amountReadersForDataObject > 0);
+
+		}
+
+		// get all paths from start to a reader to get potential initial origins
+		HashMap<Task, LinkedList<LinkedList<FlowNode>>> pathsToReader = new HashMap<Task, LinkedList<LinkedList<FlowNode>>>();
+
+		HashMap<DataObjectReference, HashSet<FlowNode>> intersectionMap = new HashMap<DataObjectReference, HashSet<FlowNode>>();
+
+		StartEvent stEvent = modelInstance.getModelElementsByType(StartEvent.class).iterator().next();
+
+		for (Entry<DataObjectReference, HashSet<Task>> readersEntry : readersPerDataObject.entrySet()) {
+			HashSet<FlowNode> intersection = new HashSet<FlowNode>();
+			boolean initialRun = true;
+
+			for (Task reader : readersEntry.getValue()) {
+				LinkedList<LinkedList<FlowNode>> allPathsBetweenStartAndReader = pathsToReader.get(reader);
+				if (allPathsBetweenStartAndReader == null) {
+					allPathsBetweenStartAndReader = CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
+							stEvent.getId(), reader.getId());
+					pathsToReader.put(reader, allPathsBetweenStartAndReader);
+				}
+
+				// intersection
+				for (LinkedList<FlowNode> pathBetweenStartAndReader : allPathsBetweenStartAndReader) {
+					if (initialRun) {
+						intersection.addAll(pathBetweenStartAndReader);
+						initialRun = false;
+					} else {
+						intersection.retainAll(pathBetweenStartAndReader);
+					}
+				}
+			}
+
+			intersectionMap.putIfAbsent(readersEntry.getKey(), intersection);
+		}
+
+		int index = 0;
+
+		for (Entry<DataObjectReference, HashSet<FlowNode>> intersectionEntry : intersectionMap.entrySet()) {
+
+			boolean getNextWriterFromIntersected = true;
+			LinkedList<FlowNode> intersectedNodes = new LinkedList<FlowNode>(intersectionEntry.getValue());
+			while (getNextWriterFromIntersected && !intersectedNodes.isEmpty()) {
+				// get random node from intersected
+				int randomNodeIndex = ThreadLocalRandom.current().nextInt(0, intersectedNodes.size() + 1);
+				FlowNode currentNode = intersectedNodes.get(randomNodeIndex);
+				if (currentNode instanceof Task) {
+					Task currTask = (Task) currentNode;
+					if (!ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(currentNode)) {
+
+						// make task a writer
+
+						// coin flip if we search for next writer
+						int flip = ThreadLocalRandom.current().nextInt(0, 100);
+						if (flip < 50) {
+							getNextWriterFromIntersected = false;
+						}
+
+					}
+				}
+
+				intersectedNodes.remove(currentNode);
+			}
+
+		}
+
+		// insert writers
+		EndEvent eEvent = modelInstance.getModelElementsByType(EndEvent.class).iterator().next();
+		LinkedList<LinkedList<FlowNode>> allPathsBetweenStartAndEnd = CommonFunctionality
+				.getAllPathsBetweenNodes(modelInstance, stEvent.getId(), eEvent.getId());
+
+		HashMap<BusinessRuleTask, LinkedList<Task>> unconditionalPossibleOrigins = new HashMap<BusinessRuleTask, LinkedList<Task>>();
+
+	}
+
 	public void annotateModelWithFixedAmountOfReadersAndWriters(int amountWriters, int amountReaders, int dynamicWriter,
 			LinkedList<String> defaultSpheresForDynamicWriter) throws InterruptedException, Exception {
 		// amountWriters and amountReaders is for whole process
@@ -258,12 +429,14 @@ public class ProcessModelAnnotater implements Callable<File> {
 			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
 			LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
 
-			HashMap<BusinessRuleTask, LinkedList<Task>> possibleWritersBeforeBrt = new HashMap<BusinessRuleTask, LinkedList<Task>>();
+			HashMap<BusinessRuleTask, LinkedList<Task>> unconditionalPossibleOrigins = new HashMap<BusinessRuleTask, LinkedList<Task>>();
+
 			List<Task> taskList = new LinkedList<Task>();
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
 				taskList.add(task);
 				if (ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(task)) {
-					LinkedList<Task> tasksBeforeBrt = new LinkedList<Task>();
+					LinkedList<Task> unconditionalTasksBeforeBrt = new LinkedList<Task>();
+
 					LinkedList<LinkedList<FlowNode>> pathsBetweenStartAndBrt = CommonFunctionality
 							.getAllPathsBetweenNodes(this.modelInstance, this.modelInstance
 									.getModelElementsByType(StartEvent.class).iterator().next().getId(), task.getId());
@@ -291,6 +464,18 @@ public class ProcessModelAnnotater implements Callable<File> {
 							}
 
 							if (f instanceof Task && !ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(f)) {
+								// there must be an initial origin writing the data object in front of the first
+								// reader
+
+								// if the current task is inside a parallel branch:
+								// the initial writer may be in the same branch
+								// -> if there is no reader in the other branch already!
+								// -> if there are > 1 origins to find for the data object
+								// else the initial writer has to be somewhere in front of the parallel split
+
+								// if the task is inside a xor branch:
+								// the initial writer(
+
 								// possible lastWriters must be unconditional and in front of the brt
 								// because they may get read in the other branch of the brt too
 								// if brt is inside a parallel branch -> last writer can be in the same branch
@@ -306,32 +491,32 @@ public class ProcessModelAnnotater implements Callable<File> {
 									// f is conditional -> can not be a lastWriter
 									insert = false;
 								} else if (exclGtwStack.isEmpty() && !paraGtwStack.isEmpty()) {
-									// f is unconditional and on the path to brt 
+									// f is unconditional and on the path to brt
 									// there are parallels in between
 									LinkedList<LinkedList<FlowNode>> pathsBetweenTaskAndBrt = CommonFunctionality
 											.getAllPathsBetweenNodes(this.modelInstance, f.getId(), task.getId());
-									if(pathsBetweenTaskAndBrt.isEmpty()) {
+									if (pathsBetweenTaskAndBrt.isEmpty()) {
 										insert = false;
 									}
 
 								}
 
-								if (insert && !tasksBeforeBrt.contains(f)) {
-									tasksBeforeBrt.add((Task) f);
+								if (insert && !unconditionalTasksBeforeBrt.contains(f)) {
+									unconditionalTasksBeforeBrt.add((Task) f);
 								}
 							}
 
 						}
 					}
-					possibleWritersBeforeBrt.putIfAbsent((BusinessRuleTask) task, tasksBeforeBrt);
+					unconditionalPossibleOrigins.putIfAbsent((BusinessRuleTask) task, unconditionalTasksBeforeBrt);
 				}
 			}
 
-			if (!possibleWritersBeforeBrt.isEmpty()) {
+			if (!unconditionalPossibleOrigins.isEmpty()) {
 
 				int index = 0;
 				LinkedList<DataObjectReference> alreadyMapped = new LinkedList<DataObjectReference>();
-				for (Entry<BusinessRuleTask, LinkedList<Task>> entry : possibleWritersBeforeBrt.entrySet()) {
+				for (Entry<BusinessRuleTask, LinkedList<Task>> entry : unconditionalPossibleOrigins.entrySet()) {
 					// get the dataObjects connected to the brt
 					BusinessRuleTask currBrt = entry.getKey();
 					for (DataInputAssociation dia : currBrt.getDataInputAssociations()) {
@@ -339,10 +524,11 @@ public class ProcessModelAnnotater implements Callable<File> {
 							DataObjectReference daoR = CommonFunctionality
 									.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
 							if (daoR != null && !(alreadyMapped.contains(daoR))) {
-								Task writerBeforeDecision = CommonFunctionality.getRandomItem(entry.getValue());
+								// randomly choose one of the tasks as the initial origin of the data object
+								Task initialOrigin = CommonFunctionality.getRandomItem(entry.getValue());
 								this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(index),
 										subAmountReaders.get(index), dynamicWriter, daoR,
-										defaultSpheresForDynamicWriter, writerBeforeDecision);
+										defaultSpheresForDynamicWriter, initialOrigin);
 								index++;
 								alreadyMapped.add(daoR);
 							}
@@ -355,10 +541,10 @@ public class ProcessModelAnnotater implements Callable<File> {
 				// there is no brt inserted
 				// choose a random task
 				for (int i = 0; i < dataObjects.size(); i++) {
-					Task writerBeforeDecision = CommonFunctionality.getRandomItem(taskList);
+					Task initialOrigin = CommonFunctionality.getRandomItem(taskList);
 					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i),
 							subAmountReaders.get(i), dynamicWriter, dataObjects.get(i), defaultSpheresForDynamicWriter,
-							writerBeforeDecision);
+							initialOrigin);
 				}
 			}
 
@@ -560,11 +746,16 @@ public class ProcessModelAnnotater implements Callable<File> {
 		}
 		fileNumber++;
 		StringBuilder annotatedFileNameBuilder = new StringBuilder();
-
-		annotatedFileNameBuilder.append(fileName + "_annotated" + fileNumber);
-		if (!suffixFileName.contentEquals("_annotated")) {
-			annotatedFileNameBuilder.append(suffixFileName);
+		annotatedFileNameBuilder.append(fileName);
+		if(fileName.contains("_annotated")) {
+			annotatedFileNameBuilder.append("_"+suffixFileName);
+		} else {
+			annotatedFileNameBuilder.append("_annotated" + fileNumber);
+			if (!suffixFileName.contentEquals("_annotated")) {
+				annotatedFileNameBuilder.append("_"+suffixFileName);
+			}
 		}
+		
 		annotatedFileNameBuilder.append(".bpmn");
 		return annotatedFileNameBuilder.toString();
 	}
@@ -733,7 +924,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 			ExclusiveGateway gtw = (ExclusiveGateway) brt.getOutgoing().iterator().next().getTarget();
 
 			// insert tuples for xor-gateways
-			// tuples are e.g. (3,2,5) -> 3 additional actors needed, 2 have to decide the same, loop
+			// tuples are e.g. (3,2,5) -> 3 additional actors needed, 2 have to decide the
+			// same, loop
 			// goes 5 times until the troubleshooter will take decision
 			// tuple can also be only: {Public}
 			boolean insert = true;
@@ -766,7 +958,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 							lowerBoundAmountParticipantsPerDecision, upperBoundAmountParticipantsPerDecision + 1);
 
 					// second argument -> additional actors that need to decide the same
-					// must be bigger than the additional actors needed divided by 2 and rounded up to next int
+					// must be bigger than the additional actors needed divided by 2 and rounded up
+					// to next int
 					// e.g. if 3 additional actors are needed -> 2 or 3 must decide the same
 					// e.g. if 5 additional actors are needed -> 3,4 or 5 must decide the same
 					int lowerBound = (int) Math.ceil((double) randomCountAdditionalActorsNeeded / 2);
@@ -776,8 +969,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 					int randomCountIterations = ThreadLocalRandom.current().nextInt(1, 10 + 1);
 
 					// generate TextAnnotations for xor-splits
-					textContentBuilder.append(randomCountAdditionalActorsNeeded + "," + randomCountAddActorsSameDecision + ","
-							+ randomCountIterations);
+					textContentBuilder.append(randomCountAdditionalActorsNeeded + "," + randomCountAddActorsSameDecision
+							+ "," + randomCountIterations);
 
 				}
 				textContentBuilder.append("}");
@@ -861,7 +1054,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 					if (!(nodeBeforeXorSplit instanceof BusinessRuleTask)) {
 						// new businessRuletask needs to be inserted
-						// delete old sequence flow					
+						// delete old sequence flow
 						if (nodeBeforeXorSplit instanceof Task) {
 							// the fluent builder doesn't work on tasks
 							// change the task to a manual task and after using the fluent api change it
@@ -1120,7 +1313,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 			Task writerBeforeDecision) throws InterruptedException {
 		// iterate through all tasks of the process and assign readers and writers
 		// if task is a writer - add the dynamic writer sphere if necessary
-		// task can only be either reader or writer to a specific dataObject
 		// if amountWriters == 0 -> need to connect the writerBeforeDecision if it is
 		// not null
 
@@ -1146,19 +1338,11 @@ public class ProcessModelAnnotater implements Callable<File> {
 			}
 			if (!taskIsBrtFollowedByXorSplit(task)) {
 				// task will be a writer to the dataObject if it is not a brt followed by a xor
-				// split or a reader/writer to the dataObject already
 				// businessRuleTasks right before xor-splits can not be writers
 				boolean toBeInserted = true;
 				for (DataOutputAssociation dao : task.getDataOutputAssociations()) {
 					if (dao.getTarget().getId().contentEquals(dataORef.getId())) {
 						toBeInserted = false;
-					}
-				}
-				for (DataInputAssociation dia : task.getDataInputAssociations()) {
-					for (ItemAwareElement iae : dia.getSources()) {
-						if (iae.getId().contentEquals(dataORef.getId())) {
-							toBeInserted = false;
-						}
 					}
 				}
 				if (toBeInserted) {
@@ -1185,8 +1369,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		} while (i < amountWriters);
 
 		while (j < amountReaders) {
-			// task will be a reader if it is not a reader or writer to the dataObject
-			// already
+			// task will be a reader if it is not a reader already
 			// brts followed by a xor-split will always be readers to some dataObjects
 			if (Thread.currentThread().isInterrupted()) {
 				System.err.println("Interrupted! " + Thread.currentThread().getName());
@@ -1196,11 +1379,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 			if (!taskIsBrtFollowedByXorSplit(task)) {
 				boolean toBeReader = true;
-				for (DataOutputAssociation dao : task.getDataOutputAssociations()) {
-					if (dao.getTarget().getId().contentEquals(dataORef.getId())) {
-						toBeReader = false;
-					}
-				}
 				for (DataInputAssociation dia : task.getDataInputAssociations()) {
 					for (ItemAwareElement iae : dia.getSources()) {
 						if (iae.getId().contentEquals(dataORef.getId())) {
@@ -1233,7 +1411,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 			boolean alwaysMaxConstrained) throws Exception {
 		// upperBoundAmountParticipantsToExclude is the difference between the amount of
 		// needed additional actors and the private Sphere minus the actor of the brt
-		
+
 		if (probabilityForGatewayToHaveConstraint <= 0) {
 			return;
 		}
@@ -1249,14 +1427,15 @@ public class ProcessModelAnnotater implements Callable<File> {
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
 					String decisionTakerName = brtBeforeGtw.getName();
-					LinkedList<String> participantsToChooseFrom = CommonFunctionality.getPrivateSphereList(modelInstance,
-							modelWithLanes);
+					LinkedList<String> participantsToChooseFrom = CommonFunctionality
+							.getPrivateSphereList(modelInstance, modelWithLanes);
 					int privateSphereSize = participantsToChooseFrom.size();
-					
-					String participantName = CommonFunctionality.getParticipantOfTask(modelInstance, brtBeforeGtw, modelWithLanes);
+
+					String participantName = CommonFunctionality.getParticipantOfTask(modelInstance, brtBeforeGtw,
+							modelWithLanes);
 
 					participantsToChooseFrom.remove(participantName);
-					
+
 					if (!participantsToChooseFrom.isEmpty()) {
 
 						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
@@ -1271,7 +1450,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
-											randomAmountConstraintsForGtw = privateSphereSize - amountAddActorsNeeded - 1;
+											randomAmountConstraintsForGtw = privateSphereSize - amountAddActorsNeeded
+													- 1;
 										} else {
 											int maxConstraint = privateSphereSize - amountAddActorsNeeded - 1;
 
@@ -1352,7 +1532,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 	public void addMandatoryParticipantConstraintsOnModel(int probabilityForGatewayToHaveConstraint,
 			int lowerBoundAmountParticipantsToBeMandatoryPerGtw, int upperBoundAmountParticipantsToBeMandatoryPerGtw,
 			boolean alwaysMaxConstrained) throws Exception {
-		
+
 		if (probabilityForGatewayToHaveConstraint <= 0) {
 			return;
 		}
@@ -1367,11 +1547,12 @@ public class ProcessModelAnnotater implements Callable<File> {
 				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
-					LinkedList<String> participantsToChooseFrom = CommonFunctionality.getPrivateSphereList(modelInstance,
-							modelWithLanes);
-					String brtBeforeGtwParticipant = CommonFunctionality.getParticipantOfTask(modelInstance, brtBeforeGtw, modelWithLanes);
+					LinkedList<String> participantsToChooseFrom = CommonFunctionality
+							.getPrivateSphereList(modelInstance, modelWithLanes);
+					String brtBeforeGtwParticipant = CommonFunctionality.getParticipantOfTask(modelInstance,
+							brtBeforeGtw, modelWithLanes);
 					participantsToChooseFrom.remove(brtBeforeGtwParticipant);
-					
+
 					if (!participantsToChooseFrom.isEmpty()) {
 
 						for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
@@ -1383,7 +1564,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 										String[] data = subStr.split(",");
 										int amountAddActorsNeeded = Integer.parseInt(data[0]);
-										if(amountAddActorsNeeded > participantsToChooseFrom.size()) {
+										if (amountAddActorsNeeded > participantsToChooseFrom.size()) {
 											amountAddActorsNeeded = participantsToChooseFrom.size();
 										}
 										int randomAmountConstraintsForGtw = 0;
@@ -1394,7 +1575,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 											if (upperBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
 												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountAddActorsNeeded;
 											}
-											
+
 											if (upperBoundAmountParticipantsToBeMandatoryPerGtw > amountAddActorsNeeded) {
 												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountAddActorsNeeded;
 											}
@@ -1405,10 +1586,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 														upperBoundAmountParticipantsToBeMandatoryPerGtw + 1);
 											} else if (lowerBoundAmountParticipantsToBeMandatoryPerGtw == upperBoundAmountParticipantsToBeMandatoryPerGtw) {
 												randomAmountConstraintsForGtw = upperBoundAmountParticipantsToBeMandatoryPerGtw;
-											} 
+											}
 										}
 
-										
 										Collections.shuffle(participantsToChooseFrom);
 										Iterator<String> partIter = participantsToChooseFrom.iterator();
 
@@ -1561,6 +1741,90 @@ public class ProcessModelAnnotater implements Callable<File> {
 		}
 
 		return null;
+
+	}
+
+	public HashMap<FlowNode, LinkedList<LabelForAnnotater>> generateLabels() {
+		HashMap<FlowNode, LinkedList<LabelForAnnotater>> labelsForNodes = new HashMap<FlowNode, LinkedList<LabelForAnnotater>>();
+		// iterate through process and generate the labels
+		
+		FlowNode startEvent = modelInstance.getModelElementsByType(StartEvent.class).iterator().next();
+		
+		setLabels(startEvent, new LinkedList<SequenceFlow>(), new LinkedList<LabelForAnnotater>(), new LinkedList<LabelForAnnotater>(), labelsForNodes);
+		
+		return labelsForNodes;
+
+	}
+
+	private void setLabels(FlowNode currentNode, LinkedList<SequenceFlow> stack,
+			LinkedList<LabelForAnnotater> currentLabels, LinkedList<LabelForAnnotater> allGeneratedLabels,
+			HashMap<FlowNode, LinkedList<LabelForAnnotater>> labelsPerNode) {
+
+		stack.addAll(currentNode.getOutgoing());
+
+		if (stack.isEmpty()) {
+			return;
+		}
+		
+		
+		while (!stack.isEmpty()) {
+			SequenceFlow currentSeqFlow = stack.pop();
+
+			FlowNode targetFlowNode = currentSeqFlow.getTarget();
+		
+			// add the labels to the current node
+			if (labelsPerNode.get(currentNode) == null) {
+				if (!currentLabels.isEmpty()) {
+					LinkedList<LabelForAnnotater>labelList = new LinkedList<LabelForAnnotater>();
+					labelList.addAll(currentLabels);
+					labelsPerNode.put(currentNode, labelList);
+				}
+			}
+
+			
+
+			if (currentNode instanceof Gateway) {
+				if (currentNode.getOutgoing().size() == 2) {
+					// currentNode is split
+
+					// generate a label if it does not exist yet
+					boolean labelExists = false;
+					for (LabelForAnnotater labelAlreadyGenerated : allGeneratedLabels) {
+						if (labelAlreadyGenerated.getSplitNode().equals(currentNode)
+								&& labelAlreadyGenerated.getOutgoingFlow().equals(currentSeqFlow)) {
+							labelExists = true;
+							break;
+						}
+					}
+
+					if (!labelExists) {
+						LabelForAnnotater label = new LabelForAnnotater(currentNode, currentSeqFlow);
+						allGeneratedLabels.add(label);
+						currentLabels.add(label);
+					}
+
+				} else if (currentNode.getIncoming().size() == 2) {
+					// currentNode is join
+					// remove the last added label
+					currentLabels.pollLast();
+					LinkedList<LabelForAnnotater>labels = labelsPerNode.get(currentNode);
+					if(labels!=null) {
+						labels.pollLast();
+						if(labels.isEmpty()) {
+							labelsPerNode.remove(currentNode);
+						}
+					}
+					
+					
+				}
+				
+				
+			}
+
+			this.setLabels(targetFlowNode,  new LinkedList<SequenceFlow>(), currentLabels, allGeneratedLabels,
+					labelsPerNode);
+
+		}
 
 	}
 

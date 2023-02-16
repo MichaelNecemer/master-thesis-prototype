@@ -29,20 +29,20 @@ public class ResultsToCSVWriter {
 			rows = new ArrayList<>();
 			String[] header = new String[] { "fileName", "pathToFile", "logging", "exceptionExhaustive",
 					"exceptionHeuristic", "exceptionNaive", "exceptionIncrementalNaive",
-					"total amount solutions exhaustive", "total amount solutions heuristic",
-					"total amount solutions naive", "total amount solutions incremental naive",
-					"amount cheapest solutions exhaustive", "amount cheapest solutions heuristic",
-					"amount cheapest solutions naive", "amount solutions incremental naive",
+					"totalAmountSolutionsExhaustive", "totalAmountSolutionsHeuristic",
+					"totalAmountSolutionsNaive", "totalAmountSolutionsIncrementalNaive",
+					"amountCheapestSolutionsExhaustive", "amountCheapestSolutionsHeuristic",
+					"amountCheapestSolutionsNaive", "amountSolutionsIncrementalNaive",
 					"costCheapestSolutionExhaustive", "costCheapestSolutionHeuristic", "costCheapestSolutionNaive",
-					"costCheapestSolutionIncrementalNaive", "exhaustive combsGen in sec",
-					"exhaustive calcMeasure in sec", "exhaustive executionTime in sec", "heuristic combsGen in sec",
-					"heuristic calcMeasure in sec", "heuristic executionTime in sec", "naive combsGen in sec",
-					"naive calcMeasure in sec", "naive executionTime in sec", "incrementalNaive combsGen in sec",
-					"incrementalNaive calcMeasure in sec", "incrementalNaive executionTime in sec", "amountReaders",
+					"costCheapestSolutionIncrementalNaive", "exhaustiveCombsGenInSec",
+					"exhaustiveCalcMeasureInSec", "exhaustiveExecutionTimeInSec", "heuristicCombsGenInSec",
+					"heuristicCalcMeasureInSec", "heuristicExecutionTimeInSec", "naiveCombsGenInSec",
+					"naiveCalcMeasureInSec", "naiveExecutionTimeInSec", "incrementalNaiveCombsGenInSec",
+					"incrementalNaiveCalcMeasureInSec", "incrementalNaiveExecutionTimeInSec", "amountReaders",
 					"amountWriters", "amountDataObjects", "averageAmountDataObjectsPerDecision",
 					"amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways",
-					"amountParallelGateways", "amountTasks", "amountElements", "amountSumVerifiers",
-					"averageAmountVerifiers", "privateSphereSize", "averageSphereSum", "pathsThroughProcess",
+					"amountParallelGateways", "amountTasks", "amountElements", "amountSumAddActors",
+					"averageAmountAddActors", "privateSphereSize", "averageSphereSum", "pathsThroughProcess",
 					"amountMandConst", "amountExclConst" };
 			this.rows.add(header);
 
@@ -168,8 +168,8 @@ public class ResultsToCSVWriter {
 		String amountParallelGtwSplitsBeforePreprocessing = "null";
 		String amountTasks = "null";
 		String amountElements = "null";
-		String sumAmountVotersOfModel = "null";
-		String averageAmountVotersOfModel = "null";
+		String sumAmountAddActorsOfModel = "null";
+		String averageAmountAddActorsOfModel = "null";
 		String privateSphereSize = "null";
 		String sphereSumOfModel = "null";
 		String amountReaders = "null";
@@ -191,9 +191,9 @@ public class ResultsToCSVWriter {
 			amountParallelGtwSplitsBeforePreprocessing = api.getAmountParallelsBeforePreprocessing() + "";
 			amountTasks = CommonFunctionality.getAmountTasks(api.getModelInstance()) + "";
 			amountElements = CommonFunctionality.getAmountElements(api.getModelInstance()) + "";
-			sumAmountVotersOfModel = CommonFunctionality.getAverageAmountAdditionalActorsOfModel(api.getModelInstance())
+			sumAmountAddActorsOfModel = CommonFunctionality.getSumAmountAddActorsOfModel(api.getModelInstance())
 					+ "";
-			averageAmountVotersOfModel = CommonFunctionality
+			averageAmountAddActorsOfModel = CommonFunctionality
 					.getAverageAmountAdditionalActorsOfModel(api.getModelInstance()) + "";
 			privateSphereSize = CommonFunctionality.getPrivateSphere(api.getModelInstance(), false) + "";
 			sphereSumOfModel = CommonFunctionality.getSphereSumOfModel(api.getModelInstance()) + "";
@@ -258,7 +258,7 @@ public class ResultsToCSVWriter {
 				incrementalNaiveSearchCalcMeasureTime, incrementalNaiveSearchExecutionTime, amountReaders, amountWriters, amountDataObjects,
 				averageAmountDataObjectsPerDecision, readersPerDataObject, writersPerDataObject,
 				amountExclusiveGtwSplits, amountParallelGtwSplitsBeforePreprocessing, amountTasks, amountElements,
-				sumAmountVotersOfModel, averageAmountVotersOfModel, privateSphereSize, sphereSumOfModel,
+				sumAmountAddActorsOfModel, averageAmountAddActorsOfModel, privateSphereSize, sphereSumOfModel,
 				allPathsThroughProcess, amountMandConst, amountExclConst };
 
 		this.rows.add(row);

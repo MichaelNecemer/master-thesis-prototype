@@ -58,10 +58,11 @@ public class ProcessGenerator implements Callable<File> {
 	private int nestingDepthFactor;
 	private HashMap<String, Integer[]> percentagesForNodesToBeDrawn;
 	private int maxTriesForGeneratingProcess;
+	private boolean testIfMinElementsInBranches;
 
 	public ProcessGenerator(String directoryToStore, int amountParticipants, int amountTasksToBeInserted,
 			int amountXorsToBeInserted, int amountParallelsToBeInserted, int taskProb, int xorSplitProb,
-			int parallelSplitProb, int probabilityForJoinGtw, int nestingDepthFactor, int maxTriesForGeneratingProcess)
+			int parallelSplitProb, int probabilityForJoinGtw, int nestingDepthFactor, int maxTriesForGeneratingProcess, boolean testIfMinElementsInBranches)
 			throws Exception {
 		// process model will have 1 StartEvent and 1 EndEvent
 		if (taskProb + xorSplitProb + parallelSplitProb > 100) {
@@ -94,6 +95,10 @@ public class ProcessGenerator implements Callable<File> {
 
 		// if set to 0 it is not bounded to max tries
 		this.maxTriesForGeneratingProcess = maxTriesForGeneratingProcess;
+		
+		// will check if there is at least 1 element in one xor branch
+		// will check if there is at lest 1 element in parallel branches
+		this.testIfMinElementsInBranches = testIfMinElementsInBranches;
 
 		if (amountTasksToBeInserted > 0) {
 			this.possibleNodeTypes.add("Task");
@@ -398,7 +403,7 @@ public class ProcessGenerator implements Callable<File> {
 		this.participantsUsed.clear();
 	}
 
-	private File writeChangesToFile() throws NullPointerException, Exception {
+	private File writeChangesToFile(boolean testForMinElementsInBranches) throws NullPointerException, Exception {
 		// validate and write model to file
 		// add the generated models to the given directory
 		if (!CommonFunctionality.isModelBlockStructured(this.modelInstance)) {
@@ -407,14 +412,16 @@ public class ProcessGenerator implements Callable<File> {
 
 		for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
 			if (task.getIncoming().size() > 1) {
-				throw new Exception("Task can not have >1 incoming edges");
+				throw new Exception("Task can not have > 1 incoming edges");
 			}
 		}
 
+		if(testForMinElementsInBranches) {
 		// check if parallel branches have at least 1 element
 		// check if one of both xor branches has at least 1 element
 		if (!CommonFunctionality.testGatewaysForElements(this.modelInstance)) {
 			throw new Exception("Branches have not the minimum amount of elements before join!");
+		}
 		}
 
 		Bpmn.validateModel(this.modelInstance);
@@ -542,12 +549,12 @@ public class ProcessGenerator implements Callable<File> {
 			int xorSplits = CommonFunctionality.getAmountExclusiveGtwSplits(this.modelInstance);
 			int parallelGtwsGenerated = CommonFunctionality.getAmountParallelGtwSplits(this.modelInstance);
 			int amountTasks = this.modelInstance.getModelElementsByType(Task.class).size();
-			int globalSphere = CommonFunctionality.getPrivateSphere(this.modelInstance, false);
+			int privateSphere = CommonFunctionality.getPrivateSphere(this.modelInstance, false);
 
 			if (xorSplits == this.amountXorsToBeInserted && parallelGtwsGenerated == this.amountParallelsToBeInserted
-					&& amountTasks == this.amountTasksToBeInserted && globalSphere == this.amountParticipants) {
+					&& amountTasks == this.amountTasksToBeInserted && privateSphere == this.amountParticipants) {
 				try {
-					File f = writeChangesToFile();
+					File f = writeChangesToFile(this.testIfMinElementsInBranches);
 					if (f != null) {
 						System.out.println("File written: " + f.getAbsolutePath());
 						return f;

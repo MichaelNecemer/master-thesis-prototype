@@ -464,6 +464,10 @@ public class CommonFunctionality {
 
 		Iterator<LinkedList<FlowNode>> subPathsIter = subPaths.iterator();
 		while (subPathsIter.hasNext()) {
+			if (Thread.currentThread().isInterrupted()) {
+				System.err.println("Interrupted! " + Thread.currentThread().getName());
+				throw new InterruptedException();
+			}
 			LinkedList<FlowNode> subPath = subPathsIter.next();
 			if ((!subPath.getLast().equals(endNode)) && (!subPath.contains(endNode))) {
 				subPathsIter.remove();
@@ -524,10 +528,32 @@ public class CommonFunctionality {
 										.getAllPathsBetweenNodes(modelInstance, modelInstance
 												.getModelElementsByType(StartEvent.class).iterator().next().getId(),
 												currTask.getId());
+								
+								HashMap<FlowNode, LinkedList<ParallelGateway>> writerInBranch = new HashMap<FlowNode, LinkedList<ParallelGateway>>();
 
 								for (LinkedList<FlowNode> pathToReader : pathsToReader) {
 									boolean writerOnPath = false;
-									for (FlowNode nodeOnPathToReader : pathToReader) {
+									HashMap<ParallelGateway, FlowNode> branchOfCurrTask = new HashMap<ParallelGateway, FlowNode>();
+									LinkedList<ParallelGateway> openParallelSplits = new LinkedList<ParallelGateway>();
+
+									for (int index = 0; index < pathToReader.size(); index++) {
+										FlowNode nodeOnPathToReader = pathToReader.get(index);
+										// when there is a parallel gateway on the path to the reader
+										// check other branch for a writer too
+										if (nodeOnPathToReader instanceof ParallelGateway
+												&& nodeOnPathToReader.getOutgoing().size() >= 2) {
+											// parallel Split found on path
+											openParallelSplits.add((ParallelGateway) nodeOnPathToReader);
+											branchOfCurrTask.putIfAbsent((ParallelGateway) nodeOnPathToReader,
+													pathToReader.get(index + 1));
+										}
+										
+										if (nodeOnPathToReader instanceof ParallelGateway
+												&& nodeOnPathToReader.getIncoming().size() >= 2) {
+											// parallel Join found on path
+											openParallelSplits.pollLast();											
+										}
+										
 										if (nodeOnPathToReader instanceof Task) {
 											if (CommonFunctionality.isWriterForDataObject((Task) nodeOnPathToReader,
 													iae)) {
@@ -536,6 +562,12 @@ public class CommonFunctionality {
 										}
 									}
 									if (!writerOnPath) {
+										// check other branches of parallel splits on the path
+										// the writer may be writing in one parallel branch if the reader reads after the join
+										if(!openParallelSplits.isEmpty()) {
+											
+										}
+										
 										writersOnPaths = false;
 									}
 								}
@@ -1003,6 +1035,9 @@ public class CommonFunctionality {
 		return correspondingGtw;
 
 	}
+	
+	
+	
 
 	public static boolean isModelBlockStructured(BpmnModelInstance modelInstance)
 			throws NullPointerException, Exception {
