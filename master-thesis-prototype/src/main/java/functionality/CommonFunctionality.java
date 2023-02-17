@@ -528,7 +528,7 @@ public class CommonFunctionality {
 										.getAllPathsBetweenNodes(modelInstance, modelInstance
 												.getModelElementsByType(StartEvent.class).iterator().next().getId(),
 												currTask.getId());
-								
+
 								HashMap<FlowNode, LinkedList<ParallelGateway>> writerInBranch = new HashMap<FlowNode, LinkedList<ParallelGateway>>();
 
 								for (LinkedList<FlowNode> pathToReader : pathsToReader) {
@@ -547,13 +547,13 @@ public class CommonFunctionality {
 											branchOfCurrTask.putIfAbsent((ParallelGateway) nodeOnPathToReader,
 													pathToReader.get(index + 1));
 										}
-										
+
 										if (nodeOnPathToReader instanceof ParallelGateway
 												&& nodeOnPathToReader.getIncoming().size() >= 2) {
 											// parallel Join found on path
-											openParallelSplits.pollLast();											
+											openParallelSplits.pollLast();
 										}
-										
+
 										if (nodeOnPathToReader instanceof Task) {
 											if (CommonFunctionality.isWriterForDataObject((Task) nodeOnPathToReader,
 													iae)) {
@@ -563,11 +563,12 @@ public class CommonFunctionality {
 									}
 									if (!writerOnPath) {
 										// check other branches of parallel splits on the path
-										// the writer may be writing in one parallel branch if the reader reads after the join
-										if(!openParallelSplits.isEmpty()) {
-											
+										// the writer may be writing in one parallel branch if the reader reads after
+										// the join
+										if (!openParallelSplits.isEmpty()) {
+
 										}
-										
+
 										writersOnPaths = false;
 									}
 								}
@@ -1035,9 +1036,6 @@ public class CommonFunctionality {
 		return correspondingGtw;
 
 	}
-	
-	
-	
 
 	public static boolean isModelBlockStructured(BpmnModelInstance modelInstance)
 			throws NullPointerException, Exception {
@@ -1484,7 +1482,7 @@ public class CommonFunctionality {
 
 	public static int getAmountFromPercentageWithMinimum(int amountTasks, int percentage, int min) {
 		double amountFromPercentage = (double) amountTasks * percentage / 100;
-		int amountTasksToBeWriter = (int) Math.ceil(amountFromPercentage);
+		int amountTasksToBeWriter = (int) Math.round(amountFromPercentage);
 		if (amountTasksToBeWriter < min) {
 			return min;
 		}
@@ -1494,7 +1492,7 @@ public class CommonFunctionality {
 
 	public static int getAmountFromPercentage(int amountTasks, int percentage) {
 		double amountFromPercentage = (double) amountTasks * percentage / 100;
-		return (int) Math.ceil(amountFromPercentage);
+		return (int) Math.round(amountFromPercentage);
 
 	}
 
@@ -1961,7 +1959,8 @@ public class CommonFunctionality {
 					CommonFunctionality.generateShapeForTextAnnotation(modelInstance, sphere, gtw);
 
 				} else {
-					// annotate the chosen Participants to the xor-split that will be the additional actors
+					// annotate the chosen Participants to the xor-split that will be the additional
+					// actors
 					sphere = modelInstance.newInstance(TextAnnotation.class);
 					sphere.setTextFormat("text/plain");
 
@@ -3093,9 +3092,10 @@ public class CommonFunctionality {
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
-											randomAmountConstraintsForGtw = amountPossibleAddActors - amountAddActorsNeeded;
+											randomAmountConstraintsForGtw = amountPossibleAddActors
+													- amountAddActorsNeeded;
 										} else {
-											int maxConstraint =  amountPossibleAddActors - amountAddActorsNeeded;
+											int maxConstraint = amountPossibleAddActors - amountAddActorsNeeded;
 
 											if (maxConstraint <= 0) {
 												// no constraints possible -> else model will not be valid
@@ -3190,8 +3190,7 @@ public class CommonFunctionality {
 
 	public static void addMandatoryParticipantConstraintsOnModel(BpmnModelInstance modelInstance, String modelName,
 			int probabilityForGatewayToHaveConstraint, int lowerBoundAmountParticipantsToBeMandatoryPerGtw,
-			boolean alwaysMaxConstrained, boolean modelWithLanes,
-			String directoryToStore) throws Exception {
+			boolean alwaysMaxConstrained, boolean modelWithLanes, String directoryToStore) throws Exception {
 
 		boolean constraintInserted = false;
 		boolean maxMandConstrained = true;
@@ -3213,7 +3212,6 @@ public class CommonFunctionality {
 					String brtBeforeGtwParticipant = CommonFunctionality.getParticipantOfTask(modelInstance,
 							brtBeforeGtw, modelWithLanes);
 					participantsToChooseFrom.remove(brtBeforeGtwParticipant);
-				
 
 					if (!participantsToChooseFrom.isEmpty()) {
 
@@ -3229,13 +3227,13 @@ public class CommonFunctionality {
 										if (amountAddActorsNeeded > participantsToChooseFrom.size()) {
 											amountAddActorsNeeded = participantsToChooseFrom.size();
 										}
-										
+
 										int upperBoundAmountParticipantsToBeMandatoryPerGtw = amountAddActorsNeeded;
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
 											randomAmountConstraintsForGtw = amountAddActorsNeeded;
-										} else {											
+										} else {
 											if (lowerBoundAmountParticipantsToBeMandatoryPerGtw < upperBoundAmountParticipantsToBeMandatoryPerGtw) {
 												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(
 														lowerBoundAmountParticipantsToBeMandatoryPerGtw,
@@ -3377,83 +3375,139 @@ public class CommonFunctionality {
 				Iterator<SequenceFlow> seqIter = pSplit.getOutgoing().iterator();
 				while (seqIter.hasNext()) {
 					SequenceFlow curr = seqIter.next();
-					pBranchesFirstElements.add(curr.getTarget());
+					FlowNode currNode = curr.getTarget();
+					if (!currNode.equals(pJoin)) {
+						pBranchesFirstElements.add(curr.getTarget());
+					}
 					curr.getParentElement().removeChildElement(curr);
 				}
-				
 
 				// get nodeBeforePSplit
-				// delete incoming seq of pSplit into first branch
+				// delete incoming seq of pSplit
 				// seq may be from a xor-split -> preserve the name
 				SequenceFlow incomingToPSplit = pSplit.getIncoming().iterator().next();
 				String nameOfIncomingToPSplit = incomingToPSplit.getName();
 				FlowNode nodeBeforePSplit = incomingToPSplit.getSource();
 				incomingToPSplit.getParentElement().removeChildElement(incomingToPSplit);
 
-				
 				// connect nodeBeforePSplit to element in first branch
-				FlowNode firstBranchFirstElement = pBranchesFirstElements.get(0);
-				convertToUseBuilderAndConnectToNode(preprocessedModel, nodeBeforePSplit, nameOfIncomingToPSplit,
-						firstBranchFirstElement);
-				// get last element of first branch before join and remove outgoing seqFlow
-				LinkedList<LinkedList<FlowNode>> pathsBetweenElements = goDfs(preprocessedModel,
-						firstBranchFirstElement, pJoin, new LinkedList<SequenceFlow>(), new LinkedList<FlowNode>(),
-						new LinkedList<LinkedList<FlowNode>>());
-				LinkedList<FlowNode> pathBetweenElements = pathsBetweenElements.get(0);
 
-				SequenceFlow seqFlowOfLastElementInBranchToPJoin = null;
-				if (pathBetweenElements.size() == 1) {
-					// only join is after firstBranchFirstElement
-					// get outgoing sequenceFlow of firstBranchFirstElement
-					seqFlowOfLastElementInBranchToPJoin = firstBranchFirstElement.getOutgoing().iterator().next();
+				if (pBranchesFirstElements.isEmpty()) {
+					// both branches of pSplit are directly connected to pJoin
+					// connect the nodeBeforePSplit directly to the nodeAfterPJoin
+					FlowNode nodeAfterPJoin = pJoin.getOutgoing().iterator().next().getTarget();
+
+					SequenceFlow outgoingFromPJoin = pJoin.getOutgoing().iterator().next();
+
+					outgoingFromPJoin.getParentElement().removeChildElement(outgoingFromPJoin);
+
+					convertToUseBuilderAndConnectToNode(preprocessedModel, nodeBeforePSplit, nameOfIncomingToPSplit,
+							nodeAfterPJoin);
+
+				} else if (pBranchesFirstElements.size() == 1) {
+					// one branch of pSplit is directly connected to the pJoin
+					// the other branch has elements
+					// remove the branch that is directly connected to the pJoin
+					FlowNode firstBranchFirstElement = pBranchesFirstElements.get(0);
+					convertToUseBuilderAndConnectToNode(preprocessedModel, nodeBeforePSplit, nameOfIncomingToPSplit,
+							firstBranchFirstElement);
+					// get last element of first branch before join and remove outgoing seqFlow
+					LinkedList<LinkedList<FlowNode>> pathsBetweenElements = goDfs(preprocessedModel,
+							firstBranchFirstElement, pJoin, new LinkedList<SequenceFlow>(), new LinkedList<FlowNode>(),
+							new LinkedList<LinkedList<FlowNode>>());
+					LinkedList<FlowNode> pathBetweenElements = pathsBetweenElements.get(0);
+
+					SequenceFlow seqFlowOfLastElementInBranchToPJoin = null;
+
+					if (pathBetweenElements.size() == 1) {
+						// only join is after firstBranchFirstElement
+						// get outgoing sequenceFlow of firstBranchFirstElement
+						seqFlowOfLastElementInBranchToPJoin = firstBranchFirstElement.getOutgoing().iterator().next();
+					} else {
+						int index = pathBetweenElements.size() - 2;
+						seqFlowOfLastElementInBranchToPJoin = pathBetweenElements.get(index).getOutgoing().iterator()
+								.next();
+					}
+
+					FlowNode lastElementInBranchBeforePJoin = seqFlowOfLastElementInBranchToPJoin.getSource();
+					seqFlowOfLastElementInBranchToPJoin.getParentElement()
+							.removeChildElement(seqFlowOfLastElementInBranchToPJoin);
+
+					// connect the last element in the branch to the nodeAfterPSplit
+					FlowNode nodeAfterPJoin = pJoin.getOutgoing().iterator().next().getTarget();
+
+					SequenceFlow outgoingFromPJoin = pJoin.getOutgoing().iterator().next();
+					outgoingFromPJoin.getParentElement().removeChildElement(outgoingFromPJoin);
+
+					convertToUseBuilderAndConnectToNode(preprocessedModel, lastElementInBranchBeforePJoin, null,
+							nodeAfterPJoin);
+
 				} else {
-					int index = pathBetweenElements.size() - 2;
-					seqFlowOfLastElementInBranchToPJoin = pathBetweenElements.get(index).getOutgoing().iterator()
-							.next();
+					// both branches have elements
+					FlowNode firstBranchFirstElement = pBranchesFirstElements.get(0);
+					convertToUseBuilderAndConnectToNode(preprocessedModel, nodeBeforePSplit, nameOfIncomingToPSplit,
+							firstBranchFirstElement);
+					// get last element of first branch before join and remove outgoing seqFlow
+					LinkedList<LinkedList<FlowNode>> pathsBetweenElements = goDfs(preprocessedModel,
+							firstBranchFirstElement, pJoin, new LinkedList<SequenceFlow>(), new LinkedList<FlowNode>(),
+							new LinkedList<LinkedList<FlowNode>>());
+					LinkedList<FlowNode> pathBetweenElements = pathsBetweenElements.get(0);
+
+					SequenceFlow seqFlowOfLastElementInBranchToPJoin = null;
+
+					if (pathBetweenElements.size() == 1) {
+						// only join is after firstBranchFirstElement
+						// get outgoing sequenceFlow of firstBranchFirstElement
+						seqFlowOfLastElementInBranchToPJoin = firstBranchFirstElement.getOutgoing().iterator().next();
+					} else {
+						int index = pathBetweenElements.size() - 2;
+						seqFlowOfLastElementInBranchToPJoin = pathBetweenElements.get(index).getOutgoing().iterator()
+								.next();
+					}
+
+					FlowNode lastElementInBranchBeforePJoin = seqFlowOfLastElementInBranchToPJoin.getSource();
+					seqFlowOfLastElementInBranchToPJoin.getParentElement()
+							.removeChildElement(seqFlowOfLastElementInBranchToPJoin);
+
+					// connect to first element of second branch
+					FlowNode secondBranchFirstElement = pBranchesFirstElements.get(1);
+					convertToUseBuilderAndConnectToNode(preprocessedModel, lastElementInBranchBeforePJoin, null,
+							secondBranchFirstElement);
+
+					// get last element of second branch before join and remove outgoing seqFlow to
+					// the join
+					LinkedList<LinkedList<FlowNode>> pathsBetweenElements2 = goDfs(preprocessedModel,
+							secondBranchFirstElement, pJoin, new LinkedList<SequenceFlow>(), new LinkedList<FlowNode>(),
+							new LinkedList<LinkedList<FlowNode>>());
+					LinkedList<FlowNode> pathBetweenElements2 = pathsBetweenElements2.get(0);
+
+					SequenceFlow seqFlowOfLastElementInBranch2ToPJoin = null;
+					if (pathBetweenElements2.size() == 1) {
+						// only join is after secondBranchFirstElement
+						// get outgoing sequenceFlow of firstBranchFirstElement
+						seqFlowOfLastElementInBranch2ToPJoin = secondBranchFirstElement.getOutgoing().iterator().next();
+					} else {
+						int index2 = pathBetweenElements2.size() - 2;
+						seqFlowOfLastElementInBranch2ToPJoin = pathBetweenElements2.get(index2).getOutgoing().iterator()
+								.next();
+					}
+
+					FlowNode lastElementInBranch2BeforePJoin = seqFlowOfLastElementInBranch2ToPJoin.getSource();
+					seqFlowOfLastElementInBranch2ToPJoin.getParentElement()
+							.removeChildElement(seqFlowOfLastElementInBranch2ToPJoin);
+
+					FlowNode nodeAfterPJoin = pJoin.getOutgoing().iterator().next().getTarget();
+					// remove outgoing sequence flow of pJoin
+					// since last element of second branch will be connected to the node after pJoin
+					SequenceFlow outgoingFromPJoin = pJoin.getOutgoing().iterator().next();
+					String label = outgoingFromPJoin.getName();
+
+					outgoingFromPJoin.getParentElement().removeChildElement(outgoingFromPJoin);
+					// connect last element of second branch to node after pJoin
+					convertToUseBuilderAndConnectToNode(preprocessedModel, lastElementInBranch2BeforePJoin, label,
+							nodeAfterPJoin);
 				}
-
-				FlowNode lastElementInBranchBeforePJoin = seqFlowOfLastElementInBranchToPJoin.getSource();
-				seqFlowOfLastElementInBranchToPJoin.getParentElement()
-						.removeChildElement(seqFlowOfLastElementInBranchToPJoin);
-
-				// connect to first element of second branch
-				FlowNode secondBranchFirstElement = pBranchesFirstElements.get(1);
-				convertToUseBuilderAndConnectToNode(preprocessedModel, lastElementInBranchBeforePJoin, null,
-						secondBranchFirstElement);
-
-				// get last element of second branch before join and remove outgoing seqFlow to the join
-				LinkedList<LinkedList<FlowNode>> pathsBetweenElements2 = goDfs(preprocessedModel,
-						secondBranchFirstElement, pJoin, new LinkedList<SequenceFlow>(), new LinkedList<FlowNode>(),
-						new LinkedList<LinkedList<FlowNode>>());
-				LinkedList<FlowNode> pathBetweenElements2 = pathsBetweenElements2.get(0);
-
-				SequenceFlow seqFlowOfLastElementInBranch2ToPJoin = null;
-				if (pathBetweenElements2.size() == 1) {
-					// only join is after secondBranchFirstElement
-					// get outgoing sequenceFlow of firstBranchFirstElement
-					seqFlowOfLastElementInBranch2ToPJoin = secondBranchFirstElement.getOutgoing().iterator().next();
-				} else {
-					int index2 = pathBetweenElements2.size() - 2;
-					seqFlowOfLastElementInBranch2ToPJoin = pathBetweenElements2.get(index2).getOutgoing().iterator()
-							.next();
-				}
-				
-				FlowNode lastElementInBranch2BeforePJoin = seqFlowOfLastElementInBranch2ToPJoin.getSource();
-				seqFlowOfLastElementInBranch2ToPJoin.getParentElement()
-						.removeChildElement(seqFlowOfLastElementInBranch2ToPJoin);
-
-				FlowNode nodeAfterPJoin = pJoin.getOutgoing().iterator().next().getTarget();
-				// remove outgoing sequence flow of pJoin
-				// since last element of second branch will be connected to the node after pJoin
-				SequenceFlow outgoingFromPJoin = pJoin.getOutgoing().iterator().next();
-				String label = outgoingFromPJoin.getName();
-				
-				outgoingFromPJoin.getParentElement().removeChildElement(outgoingFromPJoin);
-				// connect last element of second branch to node after pJoin
-				convertToUseBuilderAndConnectToNode(preprocessedModel, lastElementInBranch2BeforePJoin, label,
-						nodeAfterPJoin);
-			}			
-			
+			}
 
 		}
 
@@ -3713,16 +3767,14 @@ public class CommonFunctionality {
 			return "";
 		}
 		/*
-		for (int i = 1; i < pModels.size(); i++) {
-			PModelWithAdditionalActors currInst = pModels.get(i);
-			for (AdditionalActors addActors : currInst.getAdditionalActorsList()) {
-				if (!brts.contains(addActors.getCurrBrt())) {
-					return "Not every decision has been calculated with " + algorithm.name();
-				}
-			}
-		}
-	*/
+		 * for (int i = 1; i < pModels.size(); i++) { PModelWithAdditionalActors
+		 * currInst = pModels.get(i); for (AdditionalActors addActors :
+		 * currInst.getAdditionalActorsList()) { if
+		 * (!brts.contains(addActors.getCurrBrt())) { return
+		 * "Not every decision has been calculated with " + algorithm.name(); } } }
+		 */
 		return "";
 	}
+	
 
 }

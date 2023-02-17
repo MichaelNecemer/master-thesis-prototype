@@ -65,7 +65,6 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import functionality.CommonFunctionality;
-import processModelGeneratorAndAnnotater.LabelForAnnotater;
 
 public class ProcessModelAnnotater implements Callable<File> {
 	// class takes a process model and annotates it with dataObjects, readers,
@@ -114,48 +113,50 @@ public class ProcessModelAnnotater implements Callable<File> {
 	}
 
 	public void connectDataObjectsToBrtsAndTuplesForXorSplits(int minDataObjectsPerDecision,
-			int maxDataObjectsPerDecision, int amountParticipantsPerDecisionLowerBound,
-			int amountParticipantsPerDecisionUpperBound, int probPublicDecision, boolean allDataObjectsUniquePerGtw) {
+			int maxDataObjectsPerDecision, int maxAmountReadersThroughDataObjectConnection,
+			int amountParticipantsPerDecisionLowerBound, int amountParticipantsPerDecisionUpperBound,
+			int probPublicDecision, boolean allDataObjectsUniquePerGtw) throws Exception {
 		if (!this.dataObjects.isEmpty()) {
 			LinkedList<DataObjectReference> dataObjectsToChoseFrom = new LinkedList<DataObjectReference>();
 			dataObjectsToChoseFrom.addAll(this.dataObjects);
+
+			int minReaderThroughDataObjectConnection = this.dataObjects.size() * minDataObjectsPerDecision;
+
+			if (minReaderThroughDataObjectConnection > maxAmountReadersThroughDataObjectConnection) {
+				throw new Exception("MinReaderThroughDataObjectConnectionToBrt: " + minReaderThroughDataObjectConnection
+						+ " can not be > maxAmountReaders: " + maxAmountReadersThroughDataObjectConnection);
+			}
+
+			LinkedList<Task> brts = new LinkedList<Task>();
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
 				if (taskIsBrtFollowedByXorSplit(task)) {
-					if (maxDataObjectsPerDecision <= 0) {
-						int amountDataObjects = modelInstance.getModelElementsByType(DataObjectReference.class).size();
-						if (amountDataObjects == minDataObjectsPerDecision) {
-							maxDataObjectsPerDecision = amountDataObjects;
-						} else if (amountDataObjects > minDataObjectsPerDecision) {
-							maxDataObjectsPerDecision = ThreadLocalRandom.current().nextInt(minDataObjectsPerDecision,
-									amountDataObjects + 1);
-
-						}
-					}
-
-					int upperBoundAnnotatedDataObjects = maxDataObjectsPerDecision;
-					if (maxDataObjectsPerDecision > this.dataObjects.size()) {
-						upperBoundAnnotatedDataObjects = this.dataObjects.size();
-					}
-					int boundedValue = 0;
-					if (upperBoundAnnotatedDataObjects == minDataObjectsPerDecision) {
-						boundedValue = upperBoundAnnotatedDataObjects;
-					} else {
-						boundedValue = ThreadLocalRandom.current().nextInt(minDataObjectsPerDecision,
-								(upperBoundAnnotatedDataObjects + 1));
-					}
-
-					if (allDataObjectsUniquePerGtw) {
-						dataObjectsToChoseFrom = this.addRandomUniqueDataObjectsForBrt(task, dataObjectsToChoseFrom,
-								boundedValue);
-					} else {
-						this.addRandomDataObjectsForBrt(task, boundedValue);
-					}
-					this.addTuplesForXorSplits(task, probPublicDecision, amountParticipantsPerDecisionLowerBound,
-							amountParticipantsPerDecisionUpperBound);
-
+					brts.add(task);
 				}
+			}
+
+			List<LinkedList<Integer>> subAmountDataObjectsToConnectToBrtsLists = CommonFunctionality
+					.computeRepartitionNumber(maxAmountReadersThroughDataObjectConnection, brts.size(),
+							minDataObjectsPerDecision);
+			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountDataObjectsToConnectToBrtsLists.size());
+			LinkedList<Integer> subAmountDataObjectsToConnectToBrts = subAmountDataObjectsToConnectToBrtsLists
+					.get(randomNum2);
+
+			int index = 0;
+			for (Task task : brts) {
+				int amountDataObjectsToConnect = subAmountDataObjectsToConnectToBrts.get(index);
+				index++;
+
+				if (allDataObjectsUniquePerGtw) {
+					dataObjectsToChoseFrom = this.addRandomUniqueDataObjectsForBrt(task, dataObjectsToChoseFrom,
+							amountDataObjectsToConnect);
+				} else {
+					this.addRandomDataObjectsForBrt(task, amountDataObjectsToConnect);
+				}
+				this.addTuplesForXorSplits(task, probPublicDecision, amountParticipantsPerDecisionLowerBound,
+						amountParticipantsPerDecisionUpperBound);
 
 			}
+
 		}
 		this.dataObjectsConnectedToBrts = true;
 
@@ -747,15 +748,15 @@ public class ProcessModelAnnotater implements Callable<File> {
 		fileNumber++;
 		StringBuilder annotatedFileNameBuilder = new StringBuilder();
 		annotatedFileNameBuilder.append(fileName);
-		if(fileName.contains("_annotated")) {
-			annotatedFileNameBuilder.append("_"+suffixFileName);
+		if (fileName.contains("_annotated")) {
+			annotatedFileNameBuilder.append(suffixFileName);
 		} else {
 			annotatedFileNameBuilder.append("_annotated" + fileNumber);
 			if (!suffixFileName.contentEquals("_annotated")) {
-				annotatedFileNameBuilder.append("_"+suffixFileName);
+				annotatedFileNameBuilder.append(suffixFileName);
 			}
 		}
-		
+
 		annotatedFileNameBuilder.append(".bpmn");
 		return annotatedFileNameBuilder.toString();
 	}
@@ -1747,11 +1748,12 @@ public class ProcessModelAnnotater implements Callable<File> {
 	public HashMap<FlowNode, LinkedList<LabelForAnnotater>> generateLabels() {
 		HashMap<FlowNode, LinkedList<LabelForAnnotater>> labelsForNodes = new HashMap<FlowNode, LinkedList<LabelForAnnotater>>();
 		// iterate through process and generate the labels
-		
+
 		FlowNode startEvent = modelInstance.getModelElementsByType(StartEvent.class).iterator().next();
-		
-		setLabels(startEvent, new LinkedList<SequenceFlow>(), new LinkedList<LabelForAnnotater>(), new LinkedList<LabelForAnnotater>(), labelsForNodes);
-		
+
+		setLabels(startEvent, new LinkedList<SequenceFlow>(), new LinkedList<LabelForAnnotater>(),
+				new LinkedList<LabelForAnnotater>(), labelsForNodes);
+
 		return labelsForNodes;
 
 	}
@@ -1765,23 +1767,20 @@ public class ProcessModelAnnotater implements Callable<File> {
 		if (stack.isEmpty()) {
 			return;
 		}
-		
-		
+
 		while (!stack.isEmpty()) {
 			SequenceFlow currentSeqFlow = stack.pop();
 
 			FlowNode targetFlowNode = currentSeqFlow.getTarget();
-		
+
 			// add the labels to the current node
 			if (labelsPerNode.get(currentNode) == null) {
 				if (!currentLabels.isEmpty()) {
-					LinkedList<LabelForAnnotater>labelList = new LinkedList<LabelForAnnotater>();
+					LinkedList<LabelForAnnotater> labelList = new LinkedList<LabelForAnnotater>();
 					labelList.addAll(currentLabels);
 					labelsPerNode.put(currentNode, labelList);
 				}
 			}
-
-			
 
 			if (currentNode instanceof Gateway) {
 				if (currentNode.getOutgoing().size() == 2) {
@@ -1807,21 +1806,19 @@ public class ProcessModelAnnotater implements Callable<File> {
 					// currentNode is join
 					// remove the last added label
 					currentLabels.pollLast();
-					LinkedList<LabelForAnnotater>labels = labelsPerNode.get(currentNode);
-					if(labels!=null) {
+					LinkedList<LabelForAnnotater> labels = labelsPerNode.get(currentNode);
+					if (labels != null) {
 						labels.pollLast();
-						if(labels.isEmpty()) {
+						if (labels.isEmpty()) {
 							labelsPerNode.remove(currentNode);
 						}
 					}
-					
-					
+
 				}
-				
-				
+
 			}
 
-			this.setLabels(targetFlowNode,  new LinkedList<SequenceFlow>(), currentLabels, allGeneratedLabels,
+			this.setLabels(targetFlowNode, new LinkedList<SequenceFlow>(), currentLabels, allGeneratedLabels,
 					labelsPerNode);
 
 		}
