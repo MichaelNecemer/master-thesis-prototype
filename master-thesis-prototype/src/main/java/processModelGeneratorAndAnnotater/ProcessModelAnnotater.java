@@ -118,14 +118,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 			int probPublicDecision, boolean allDataObjectsUniquePerGtw) throws Exception {
 		if (!this.dataObjects.isEmpty()) {
 			LinkedList<DataObjectReference> dataObjectsToChoseFrom = new LinkedList<DataObjectReference>();
-			dataObjectsToChoseFrom.addAll(this.dataObjects);
-
-			int minReaderThroughDataObjectConnection = this.dataObjects.size() * minDataObjectsPerDecision;
-
-			if (minReaderThroughDataObjectConnection > maxAmountReadersThroughDataObjectConnection) {
-				throw new Exception("MinReaderThroughDataObjectConnectionToBrt: " + minReaderThroughDataObjectConnection
-						+ " can not be > maxAmountReaders: " + maxAmountReadersThroughDataObjectConnection);
-			}
+			dataObjectsToChoseFrom.addAll(this.dataObjects);		
 
 			LinkedList<Task> brts = new LinkedList<Task>();
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
@@ -133,6 +126,19 @@ public class ProcessModelAnnotater implements Callable<File> {
 					brts.add(task);
 				}
 			}
+			
+			int minReaderThroughDataObjectConnection = brts.size() * minDataObjectsPerDecision;
+			int maxReaderThroughDataObjectConnection = brts.size() * maxDataObjectsPerDecision;
+			
+			if (minReaderThroughDataObjectConnection > maxAmountReadersThroughDataObjectConnection) {
+				throw new Exception("MinReaderThroughDataObjectConnectionToBrt: " + minReaderThroughDataObjectConnection
+						+ " can not be > maxAmountReaders: " + maxAmountReadersThroughDataObjectConnection);
+			}
+			
+			if(maxAmountReadersThroughDataObjectConnection > maxReaderThroughDataObjectConnection) {
+				maxAmountReadersThroughDataObjectConnection = maxReaderThroughDataObjectConnection;
+			}
+			
 
 			List<LinkedList<Integer>> subAmountDataObjectsToConnectToBrtsLists = CommonFunctionality
 					.computeRepartitionNumber(maxAmountReadersThroughDataObjectConnection, brts.size(),
@@ -406,17 +412,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 						"Method: connectDataObjectsToBrtsAndTuplesForXorSplits() needs to be called before annotating the model with readers and writers!");
 			}
 
-			// check how many readers there are already in the model
-			int sumExistingReaders = modelInstance.getModelElementsByType(DataInputAssociation.class).size();
-			int sumExistingWriters = modelInstance.getModelElementsByType(DataOutputAssociation.class).size();
-
-			if (amountWriters >= sumExistingWriters) {
-				amountWriters = amountWriters - sumExistingWriters;
-			}
-
-			if (amountReaders >= sumExistingReaders) {
-				amountReaders = amountReaders - sumExistingReaders;
-			}
 			System.out.println("Writers to be inserted: " + amountWriters);
 			System.out.println("Readers to be inserted: " + amountReaders);
 			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality

@@ -1480,7 +1480,7 @@ public class CommonFunctionality {
 		}
 	}
 
-	public static int getAmountFromPercentageWithMinimum(int amountTasks, int percentage, int min) {
+	public static int getAmountFromPercentageWithMinimum(int amountTasks, double percentage, int min) {
 		double amountFromPercentage = (double) amountTasks * percentage / 100;
 		int amountTasksToBeWriter = (int) Math.round(amountFromPercentage);
 		if (amountTasksToBeWriter < min) {
@@ -1490,10 +1490,9 @@ public class CommonFunctionality {
 
 	}
 
-	public static int getAmountFromPercentage(int amountTasks, int percentage) {
+	public static int getAmountFromPercentage(int amountTasks, double percentage) {
 		double amountFromPercentage = (double) amountTasks * percentage / 100;
 		return (int) Math.round(amountFromPercentage);
-
 	}
 
 	public static File writeChangesToFile(BpmnModelInstance modelInstance, String fileName,

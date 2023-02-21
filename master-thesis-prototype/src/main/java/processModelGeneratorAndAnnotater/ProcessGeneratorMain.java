@@ -14,7 +14,6 @@ public class ProcessGeneratorMain {
 	int probTask = 33;
 	int probXorGtw = 33;
 	int probParallelGtw = 33;
-	int maxTriesForGeneratingProcess = 100;
 	boolean testIfElementsInBranches = true;
 	
 	while(amountModelsToCreate>0) {
@@ -22,7 +21,7 @@ public class ProcessGeneratorMain {
 	try {
 		pGen = new ProcessGenerator(pathWhereToCreateModels,amountParticipants,amountTasksToBeInserted,
 				amountXorsToBeInserted, amountParallelsToBeInserted, probTask, probXorGtw, probParallelGtw, probabilityForJoinGtw,
-				nestingDepthFactor, maxTriesForGeneratingProcess, testIfElementsInBranches);
+				nestingDepthFactor, testIfElementsInBranches);
 		try {
 			pGen.call();
 			amountModelsToCreate--;
