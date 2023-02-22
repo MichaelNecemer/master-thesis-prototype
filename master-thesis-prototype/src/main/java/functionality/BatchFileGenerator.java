@@ -1,9 +1,7 @@
 package functionality;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -22,13 +20,8 @@ import java.util.concurrent.TimeoutException;
 
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
-import org.camunda.bpm.model.bpmn.instance.BusinessRuleTask;
 import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
-import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
-import org.camunda.bpm.model.bpmn.instance.FlowNode;
-import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
-import org.camunda.bpm.model.bpmn.instance.StartEvent;
 import org.camunda.bpm.model.bpmn.instance.Task;
 
 import processModelGeneratorAndAnnotater.ProcessGenerator;
@@ -220,11 +213,9 @@ public class BatchFileGenerator {
 			int tasksFactor = 4;
 			int tasksToStartWith = 6;
 			
-			// we take 10% readers and 10% writers
-			// 1 decision, 1 data object -> 1 reader, 1 writer
-			// 2 decisions, 2 data objects -> 2 reader, 2 writer
-			double percentageOfWriters = 10;
-			double percentageOfReaders = 10;
+			// we take the max amount of writers and readers			
+			double percentageOfWriters = percentageOfWritersClasses.get(2);
+			double percentageOfReaders = percentageOfReadersClasses.get(2);
 
 			BatchFileGenerator.performBoundaryTest1_1(amountProcessesPerIteration, 0,
 					boundaryTest1_1_addActorsPerDecision, boundaryTest1_1_privateSphere, amountSolutionsToBeGenerated,
@@ -1859,12 +1850,7 @@ public class BatchFileGenerator {
 				int amountTasksWithFactor = amountTasksToStartWith + (amountDecisionsToStart * tasksFactor);
 				amountParallelGtws = ThreadLocalRandom.current().nextInt(lowerBoundAmountParallelGtws,
 						upperBoundAmountParallelGtws + 1);
-				int amountWriters = CommonFunctionality.getAmountFromPercentageWithMinimum(amountTasksWithFactor,
-						amountWritersInPercent, amountDataObjectsToCreate);
-				int minAmountReaders = CommonFunctionality.getAmountFromPercentageWithMinimum(amountTasksWithFactor,
-						amountReadersInPercent, amountDataObjectsToCreate);
-				int amountReadersPercentage = CommonFunctionality.getAmountFromPercentage(amountTasksWithFactor, amountReadersInPercent);
-				int amoundReadersLeft = minAmountReaders - amountReadersPercentage;
+			
 				
 				// generate processes
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToFolderForModelsWithDecisions,
@@ -1894,6 +1880,17 @@ public class BatchFileGenerator {
 						try {
 							p = new ProcessModelAnnotater(modelCopy.getAbsolutePath(),
 									pathToFolderForModelsWithDecisionsAnnotated, "_annotated");
+							int tasks = CommonFunctionality.getAmountTasks(p.getModelInstance());
+							
+							int amountWriters = CommonFunctionality.getAmountFromPercentageWithMinimum(tasks,
+									amountWritersInPercent, amountDataObjectsToCreate);
+							int minAmountReaders = amountDataObjectsToCreate;
+							int amountReadersPercentage = CommonFunctionality.getAmountFromPercentage(tasks, amountReadersInPercent);
+							int amoundReadersLeft = amountReadersPercentage - minAmountReaders;
+							if(amoundReadersLeft<0) {
+								amoundReadersLeft = 0;
+							}
+							
 							// add the methods to be called
 							LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
 
