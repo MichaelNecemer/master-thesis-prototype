@@ -40,8 +40,8 @@ public class BatchFileGenerator {
 	// static String root = System.getProperty("user.home") + "/Desktop";
 	static String root = System.getProperty("user.home") + "/Onedrive/Desktop";
 
-	static int timeOutForProcessGeneratorInMin = 10;
-	static int timeOutForProcessModelAnnotaterInMin = 7;
+	static int timeOutForProcessGeneratorInMin = 20;
+	static int timeOutForProcessModelAnnotaterInMin = 10;
 	// API is the class where the computations will be done
 	static int timeOutForApiInMin = 3;
 
@@ -2016,6 +2016,7 @@ public class BatchFileGenerator {
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
+			executor.shutdownNow();
 			writer.writeRowsToCSVAndcloseWriter();
 		}
 
@@ -2028,10 +2029,9 @@ public class BatchFileGenerator {
 		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStore, "test1_2-results");
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
+		ExecutorService executor = Executors.newFixedThreadPool(amountThreadPools);
+
 		try {
-
-			ExecutorService executor = Executors.newFixedThreadPool(amountThreadPools);
-
 			CommonFunctionality.generateNewModelsUntilPrivateSphereReached(file, privateSphereLowerBound,
 					amountNewProcessesToCreatePerIteration, directoryToStore);
 
@@ -2070,6 +2070,7 @@ public class BatchFileGenerator {
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
+			executor.shutdownNow();
 			writer.writeRowsToCSVAndcloseWriter();
 		}
 	}

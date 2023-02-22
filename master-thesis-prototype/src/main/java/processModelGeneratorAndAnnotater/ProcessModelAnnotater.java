@@ -140,9 +140,10 @@ public class ProcessModelAnnotater implements Callable<File> {
 			}
 			
 
+			int maxCombs = 100000;			
 			List<LinkedList<Integer>> subAmountDataObjectsToConnectToBrtsLists = CommonFunctionality
-					.computeRepartitionNumber(maxAmountReadersThroughDataObjectConnection, brts.size(),
-							minDataObjectsPerDecision);
+					.computeRepartitionNumberWithResultBound(maxAmountReadersThroughDataObjectConnection, brts.size(),
+							minDataObjectsPerDecision, maxCombs);
 			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountDataObjectsToConnectToBrtsLists.size());
 			LinkedList<Integer> subAmountDataObjectsToConnectToBrts = subAmountDataObjectsToConnectToBrtsLists
 					.get(randomNum2);
@@ -414,13 +415,37 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 			System.out.println("Writers to be inserted: " + amountWriters);
 			System.out.println("Readers to be inserted: " + amountReaders);
-			List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality
+			
+			// for large processes we can not compute each possible combination of amount of readers/writers
+			// for the data objects to be inserted
+			boolean useMaxCombs = false;
+			int maxCombs = 100000;
+			
+			if(amountWriters > 15 || amountReaders > 15) {
+				if(this.dataObjects.size() > 15) {
+					useMaxCombs = true;
+				}
+			}
+			List<LinkedList<Integer>> subAmountWritersLists = null;
+			if(useMaxCombs) {
+				subAmountWritersLists = CommonFunctionality
+						.computeRepartitionNumberWithResultBound(amountWriters, this.dataObjects.size(), 1, maxCombs);
+			} else {
+			subAmountWritersLists = CommonFunctionality
 					.computeRepartitionNumber(amountWriters, this.dataObjects.size(), 1);
+			}
 			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
 			LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
-
-			List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality
-					.computeRepartitionNumber(amountReaders, this.dataObjects.size(), 0);
+			
+			List<LinkedList<Integer>> subAmountReadersLists = null;
+			if(useMaxCombs) {
+				subAmountReadersLists = CommonFunctionality
+						.computeRepartitionNumberWithResultBound(amountReaders, this.dataObjects.size(), 0, maxCombs);
+			} else {
+				subAmountReadersLists = CommonFunctionality
+						.computeRepartitionNumber(amountReaders, this.dataObjects.size(), 0);
+			}
+			
 
 			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
 			LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
