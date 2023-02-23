@@ -118,7 +118,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 			int probPublicDecision, boolean allDataObjectsUniquePerGtw) throws Exception {
 		if (!this.dataObjects.isEmpty()) {
 			LinkedList<DataObjectReference> dataObjectsToChoseFrom = new LinkedList<DataObjectReference>();
-			dataObjectsToChoseFrom.addAll(this.dataObjects);		
+			dataObjectsToChoseFrom.addAll(this.dataObjects);
 
 			LinkedList<Task> brts = new LinkedList<Task>();
 			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
@@ -126,21 +126,20 @@ public class ProcessModelAnnotater implements Callable<File> {
 					brts.add(task);
 				}
 			}
-			
+
 			int minReaderThroughDataObjectConnection = brts.size() * minDataObjectsPerDecision;
 			int maxReaderThroughDataObjectConnection = brts.size() * maxDataObjectsPerDecision;
-			
+
 			if (minReaderThroughDataObjectConnection > maxAmountReadersThroughDataObjectConnection) {
 				throw new Exception("MinReaderThroughDataObjectConnectionToBrt: " + minReaderThroughDataObjectConnection
 						+ " can not be > maxAmountReaders: " + maxAmountReadersThroughDataObjectConnection);
 			}
-			
-			if(maxAmountReadersThroughDataObjectConnection > maxReaderThroughDataObjectConnection) {
+
+			if (maxAmountReadersThroughDataObjectConnection > maxReaderThroughDataObjectConnection) {
 				maxAmountReadersThroughDataObjectConnection = maxReaderThroughDataObjectConnection;
 			}
-			
 
-			int maxCombs = 100000;			
+			int maxCombs = 100000;
 			List<LinkedList<Integer>> subAmountDataObjectsToConnectToBrtsLists = CommonFunctionality
 					.computeRepartitionNumberWithResultBound(maxAmountReadersThroughDataObjectConnection, brts.size(),
 							minDataObjectsPerDecision, maxCombs);
@@ -166,6 +165,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 		}
 		this.dataObjectsConnectedToBrts = true;
+		this.removeDataObjectsWithoutConnectionsToDecisionsFromModel();
 
 	}
 
@@ -225,7 +225,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	}
 
-	public void annotateModelWithReadersAndWriters(int amountWriters, int amountReaders) throws Exception {
+	public void annotateModelWithFixedAmountOfReadersAndWriters(int amountWriters, int amountReaders,
+			int dynamicWriterProb, LinkedList<String> defaultSpheresForDynamicWriter) throws Exception {
 		if (amountWriters < this.dataObjects.size()) {
 			throw new Exception("Amount of writers must be >= amount of DataObjects!");
 		}
@@ -248,77 +249,81 @@ public class ProcessModelAnnotater implements Callable<File> {
 		}
 		System.out.println("Writers to be inserted: " + amountWriters);
 		System.out.println("Readers to be inserted: " + amountReaders);
-		List<LinkedList<Integer>> subAmountWritersLists = CommonFunctionality.computeRepartitionNumber(amountWriters,
-				this.dataObjects.size(), 1);
+		// for large processes we can not compute each possible combination of amount of
+		// readers/writers
+		// for the data objects to be inserted
+		boolean useMaxCombs = false;
+		int maxCombs = 100000;
+
+		if (amountWriters > 15 || amountReaders > 15) {
+			if (this.dataObjects.size() > 15) {
+				useMaxCombs = true;
+			}
+		}
+		List<LinkedList<Integer>> subAmountWritersLists = null;
+		if (useMaxCombs) {
+			subAmountWritersLists = CommonFunctionality.computeRepartitionNumberWithResultBound(amountWriters,
+					this.dataObjects.size(), 1, maxCombs);
+		} else {
+			subAmountWritersLists = CommonFunctionality.computeRepartitionNumber(amountWriters, this.dataObjects.size(),
+					1);
+		}
 		int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
 		LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
 
-		List<LinkedList<Integer>> subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders,
-				this.dataObjects.size(), 0);
+		List<LinkedList<Integer>> subAmountReadersLists = null;
+		if (useMaxCombs) {
+			subAmountReadersLists = CommonFunctionality.computeRepartitionNumberWithResultBound(amountReaders,
+					this.dataObjects.size(), 0, maxCombs);
+		} else {
+			subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders, this.dataObjects.size(),
+					0);
+		}
 
 		int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
 		LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
 
 		// first insert the readers randomly
-		HashSet<Task> allAvailableTasks = new HashSet<Task>();
-		allAvailableTasks.addAll(modelInstance.getModelElementsByType(Task.class));
+		// there must be an initial origin (without read)
+		HashSet<Task> allAvailableTasksAsReaders = new HashSet<Task>();
+		allAvailableTasksAsReaders.addAll(modelInstance.getModelElementsByType(Task.class));
 		FlowNode firstNodeAfterStart = modelInstance.getModelElementsByType(StartEvent.class).iterator().next()
 				.getOutgoing().iterator().next().getTarget();
-		allAvailableTasks.remove(firstNodeAfterStart);
+		allAvailableTasksAsReaders.remove(firstNodeAfterStart);
 
-		HashSet<DataInputAssociation> readersAssociations = new HashSet<DataInputAssociation>();
-		readersAssociations.addAll(modelInstance.getModelElementsByType(DataInputAssociation.class));
-
-		HashMap<DataObjectReference, HashSet<Task>> readersPerDataObject = new HashMap<DataObjectReference, HashSet<Task>>();
-
+		HashMap<DataObjectReference, LinkedList<FlowNode>> readersPerDataObject = CommonFunctionality.getReadersForDataObjects(modelInstance);
+		
 		// randomly assign readers per data objects
 		for (int i = 0; i < this.dataObjects.size(); i++) {
 			DataObjectReference dataORef = this.dataObjects.get(i);
-			int amountReadersForDataObject = subAmountReaders.get(i);
-
-			do {
+			int amountReadersForDataObjectToInsert = subAmountReaders.get(i);
+			HashSet<Task> allAvailableTasksAsReadersForDataObject = new HashSet<Task>();
+			allAvailableTasksAsReadersForDataObject.addAll(allAvailableTasksAsReaders);
+			// remove all tasks that are already readers for the data object
+			allAvailableTasksAsReadersForDataObject.removeAll(readersPerDataObject.get(dataORef));
+			
+			while(amountReadersForDataObjectToInsert > 0) {
 				// get a random task that is not a brt (since they are connected already)
 				// and not the first task in the process (reserved as potential needed initial
 				// origin)
-				Task currentTask = CommonFunctionality.getRandomItem(allAvailableTasks);
-				allAvailableTasks.remove(currentTask);
+				Task currentTask = CommonFunctionality.getRandomItem(allAvailableTasksAsReadersForDataObject);
+				allAvailableTasksAsReadersForDataObject.remove(currentTask);
 
 				if (!ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(currentTask)) {
-					// make that task a reader if it is not already
-					boolean toBeReader = true;
-					for (DataInputAssociation dia : currentTask.getDataInputAssociations()) {
-						for (ItemAwareElement iae : dia.getSources()) {
-							if (iae.getId().contentEquals(dataORef.getId())) {
-								toBeReader = false;
-							}
-						}
-					}
-
-					if (toBeReader) {
-						DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
-						Property p1 = modelInstance.newInstance(Property.class);
-						p1.setName("__targetRef_placeholder");
-						currentTask.addChildElement(p1);
-						dia.setTarget(p1);
-						currentTask.getDataInputAssociations().add(dia);
-						dia.getSources().add(dataORef);
-						generateDIElementForReader(dia, getShape(dataORef.getId()), getShape(currentTask.getId()));
-						amountReadersForDataObject--;
-						readersPerDataObject.computeIfAbsent(dataORef, k -> new HashSet<Task>()).add(currentTask);
-					}
-
-				} else {
-					for (DataInputAssociation dia : currentTask.getDataInputAssociations()) {
-						for (ItemAwareElement iae : dia.getSources()) {
-							if (iae.getId().contentEquals(dataORef.getId())) {
-								readersPerDataObject.computeIfAbsent(dataORef, k -> new HashSet<Task>())
-										.add(currentTask);
-							}
-						}
-					}
+					// make that task a reader
+					DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
+					Property p1 = modelInstance.newInstance(Property.class);
+					p1.setName("__targetRef_placeholder");
+					currentTask.addChildElement(p1);
+					dia.setTarget(p1);
+					currentTask.getDataInputAssociations().add(dia);
+					dia.getSources().add(dataORef);
+					generateDIElementForReader(dia, getShape(dataORef.getId()), getShape(currentTask.getId()));
+					amountReadersForDataObjectToInsert--;
+					readersPerDataObject.computeIfAbsent(dataORef, k -> new LinkedList<FlowNode>()).add(currentTask);
 				}
 
-			} while (amountReadersForDataObject > 0);
+			} 
 
 		}
 
@@ -329,16 +334,16 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 		StartEvent stEvent = modelInstance.getModelElementsByType(StartEvent.class).iterator().next();
 
-		for (Entry<DataObjectReference, HashSet<Task>> readersEntry : readersPerDataObject.entrySet()) {
+		for (Entry<DataObjectReference, LinkedList<FlowNode>> readersEntry : readersPerDataObject.entrySet()) {
 			HashSet<FlowNode> intersection = new HashSet<FlowNode>();
 			boolean initialRun = true;
 
-			for (Task reader : readersEntry.getValue()) {
+			for (FlowNode reader : readersEntry.getValue()) {
 				LinkedList<LinkedList<FlowNode>> allPathsBetweenStartAndReader = pathsToReader.get(reader);
 				if (allPathsBetweenStartAndReader == null) {
 					allPathsBetweenStartAndReader = CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
 							stEvent.getId(), reader.getId());
-					pathsToReader.put(reader, allPathsBetweenStartAndReader);
+					pathsToReader.put((Task)reader, allPathsBetweenStartAndReader);
 				}
 
 				// intersection
@@ -355,222 +360,122 @@ public class ProcessModelAnnotater implements Callable<File> {
 			intersectionMap.putIfAbsent(readersEntry.getKey(), intersection);
 		}
 
-		int index = 0;
+		
 
-		for (Entry<DataObjectReference, HashSet<FlowNode>> intersectionEntry : intersectionMap.entrySet()) {
-
+		// randomly assign the writers per data objects
+		for (int i = 0; i < this.dataObjects.size(); i++) {
+			DataObjectReference dataORef = this.dataObjects.get(i);
+			int amountWritersForDataObjectToAssign = subAmountWriters.get(i);
 			boolean getNextWriterFromIntersected = true;
-			LinkedList<FlowNode> intersectedNodes = new LinkedList<FlowNode>(intersectionEntry.getValue());
-			while (getNextWriterFromIntersected && !intersectedNodes.isEmpty()) {
-				// get random node from intersected
-				int randomNodeIndex = ThreadLocalRandom.current().nextInt(0, intersectedNodes.size() + 1);
-				FlowNode currentNode = intersectedNodes.get(randomNodeIndex);
-				if (currentNode instanceof Task) {
-					Task currTask = (Task) currentNode;
-					if (!ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(currentNode)) {
-
-						// make task a writer
-
-						// coin flip if we search for next writer
-						int flip = ThreadLocalRandom.current().nextInt(0, 100);
-						if (flip < 50) {
-							getNextWriterFromIntersected = false;
-						}
-
-					}
-				}
-
-				intersectedNodes.remove(currentNode);
-			}
-
-		}
-
-		// insert writers
-		EndEvent eEvent = modelInstance.getModelElementsByType(EndEvent.class).iterator().next();
-		LinkedList<LinkedList<FlowNode>> allPathsBetweenStartAndEnd = CommonFunctionality
-				.getAllPathsBetweenNodes(modelInstance, stEvent.getId(), eEvent.getId());
-
-		HashMap<BusinessRuleTask, LinkedList<Task>> unconditionalPossibleOrigins = new HashMap<BusinessRuleTask, LinkedList<Task>>();
-
-	}
-
-	public void annotateModelWithFixedAmountOfReadersAndWriters(int amountWriters, int amountReaders, int dynamicWriter,
-			LinkedList<String> defaultSpheresForDynamicWriter) throws InterruptedException, Exception {
-		// amountWriters and amountReaders is for whole process
-		// randomly generate subAmounts for each dataObject
-		// get each dataObject -> insert a writer for it
-		// if it is needed for a decision -> writer must be on path to the brt!
-		// amountWriters must be >= dataObjects, since every dataObject will need to be
-		// written before it can get read
-
-		if (!this.dataObjects.isEmpty()) {
-			if (amountWriters < this.dataObjects.size()) {
-				throw new Exception("Amount of writers must be >= amount of DataObjects!");
-			}
-
-			if (!this.dataObjectsConnectedToBrts) {
-				throw new Exception(
-						"Method: connectDataObjectsToBrtsAndTuplesForXorSplits() needs to be called before annotating the model with readers and writers!");
-			}
-
-			System.out.println("Writers to be inserted: " + amountWriters);
-			System.out.println("Readers to be inserted: " + amountReaders);
+			HashSet<FlowNode> intersectedNodesSet = intersectionMap.get(dataORef);
+			LinkedList<FlowNode> intersectedNodes = new LinkedList<FlowNode>(intersectedNodesSet);
+			LinkedList<FlowNode> readersForDataObject = readersPerDataObject.get(dataORef);
+			LinkedList<Task> writersForDataObject = new LinkedList<Task>();
+			LinkedList<Task> allAvailableTasksAsWritersForDataObject = new LinkedList<Task>();
+			allAvailableTasksAsWritersForDataObject.addAll(modelInstance.getModelElementsByType(Task.class));
 			
-			// for large processes we can not compute each possible combination of amount of readers/writers
-			// for the data objects to be inserted
-			boolean useMaxCombs = false;
-			int maxCombs = 100000;
-			
-			if(amountWriters > 15 || amountReaders > 15) {
-				if(this.dataObjects.size() > 15) {
-					useMaxCombs = true;
-				}
-			}
-			List<LinkedList<Integer>> subAmountWritersLists = null;
-			if(useMaxCombs) {
-				subAmountWritersLists = CommonFunctionality
-						.computeRepartitionNumberWithResultBound(amountWriters, this.dataObjects.size(), 1, maxCombs);
-			} else {
-			subAmountWritersLists = CommonFunctionality
-					.computeRepartitionNumber(amountWriters, this.dataObjects.size(), 1);
-			}
-			int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
-			LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
-			
-			List<LinkedList<Integer>> subAmountReadersLists = null;
-			if(useMaxCombs) {
-				subAmountReadersLists = CommonFunctionality
-						.computeRepartitionNumberWithResultBound(amountReaders, this.dataObjects.size(), 0, maxCombs);
-			} else {
-				subAmountReadersLists = CommonFunctionality
-						.computeRepartitionNumber(amountReaders, this.dataObjects.size(), 0);
-			}
-			
-
-			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
-			LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
-
-			HashMap<BusinessRuleTask, LinkedList<Task>> unconditionalPossibleOrigins = new HashMap<BusinessRuleTask, LinkedList<Task>>();
-
-			List<Task> taskList = new LinkedList<Task>();
-			for (Task task : this.modelInstance.getModelElementsByType(Task.class)) {
-				taskList.add(task);
-				if (ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(task)) {
-					LinkedList<Task> unconditionalTasksBeforeBrt = new LinkedList<Task>();
-
-					LinkedList<LinkedList<FlowNode>> pathsBetweenStartAndBrt = CommonFunctionality
-							.getAllPathsBetweenNodes(this.modelInstance, this.modelInstance
-									.getModelElementsByType(StartEvent.class).iterator().next().getId(), task.getId());
-					for (LinkedList<FlowNode> subPath : pathsBetweenStartAndBrt) {
-						LinkedList<ExclusiveGateway> exclGtwStack = new LinkedList<ExclusiveGateway>();
-						LinkedList<ParallelGateway> paraGtwStack = new LinkedList<ParallelGateway>();
-
-						for (FlowNode f : subPath) {
-							if (f instanceof ExclusiveGateway) {
-								ExclusiveGateway ex = (ExclusiveGateway) f;
-								if (f.getOutgoing().size() == 2) {
-									exclGtwStack.push(ex);
-								} else if (f.getIncoming().size() == 2) {
-									exclGtwStack.pollLast();
-								}
-							}
-
-							if (f instanceof ParallelGateway) {
-								ParallelGateway pa = (ParallelGateway) f;
-								if (f.getOutgoing().size() == 2) {
-									paraGtwStack.push(pa);
-								} else if (f.getIncoming().size() == 2) {
-									paraGtwStack.pollLast();
-								}
-							}
-
-							if (f instanceof Task && !ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(f)) {
-								// there must be an initial origin writing the data object in front of the first
-								// reader
-
-								// if the current task is inside a parallel branch:
-								// the initial writer may be in the same branch
-								// -> if there is no reader in the other branch already!
-								// -> if there are > 1 origins to find for the data object
-								// else the initial writer has to be somewhere in front of the parallel split
-
-								// if the task is inside a xor branch:
-								// the initial writer(
-
-								// possible lastWriters must be unconditional and in front of the brt
-								// because they may get read in the other branch of the brt too
-								// if brt is inside a parallel branch -> last writer can be in the same branch
-								// before the brt
-								// since there can not be a reader/writer to same data object in the other
-								// branch (brt is a reader!)
-
-								boolean insert = true;
-								if (exclGtwStack.isEmpty() && paraGtwStack.isEmpty()) {
-									// f is unconditional and on path to brt
-									// insert = true;
-								} else if (!exclGtwStack.isEmpty()) {
-									// f is conditional -> can not be a lastWriter
-									insert = false;
-								} else if (exclGtwStack.isEmpty() && !paraGtwStack.isEmpty()) {
-									// f is unconditional and on the path to brt
-									// there are parallels in between
-									LinkedList<LinkedList<FlowNode>> pathsBetweenTaskAndBrt = CommonFunctionality
-											.getAllPathsBetweenNodes(this.modelInstance, f.getId(), task.getId());
-									if (pathsBetweenTaskAndBrt.isEmpty()) {
-										insert = false;
+			while (writersForDataObject.size() < amountWritersForDataObjectToAssign) {
+				if (getNextWriterFromIntersected) {
+					// initial origins needed
+					int randomNodeIndex = ThreadLocalRandom.current().nextInt(0, intersectedNodes.size());
+					FlowNode currentNodeToBeWriter = intersectedNodes.get(randomNodeIndex);
+					if (currentNodeToBeWriter instanceof Task) {
+						Task currTask = (Task) currentNodeToBeWriter;
+						if (!ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(currentNodeToBeWriter)) {
+							// make task an initial writer (must not be a reader!)
+							boolean toBeWriter = true;
+							for (DataInputAssociation dia : currTask.getDataInputAssociations()) {
+								for (ItemAwareElement iae : dia.getSources()) {
+									if (iae.getId().contentEquals(dataORef.getId())) {
+										toBeWriter = false;
 									}
-
 								}
+							}
 
-								if (insert && !unconditionalTasksBeforeBrt.contains(f)) {
-									unconditionalTasksBeforeBrt.add((Task) f);
+							// check for labels of readers and writers
+							// no parallel write/read or write/write possible
+							LinkedList<LabelForAnnotater> currentTaskLabel = labelForNode.get(currTask);
+							for (FlowNode reader : readersForDataObject) {
+								LinkedList<LabelForAnnotater> readerLabel = labelForNode.get(reader);
+
+								if (!checkLabels(currentTaskLabel, readerLabel)) {
+									toBeWriter = false;
 								}
+							}
+
+							for (Task writer : writersForDataObject) {
+								LinkedList<LabelForAnnotater> writerLabel = labelForNode.get(writer);
+								if (!checkLabels(currentTaskLabel, writerLabel)) {
+									toBeWriter = false;
+								}
+							}
+
+							if (toBeWriter) {
+								int randomCountSphere = ThreadLocalRandom.current().nextInt(1, 100 + 1);
+								if (randomCountSphere <= dynamicWriterProb) {
+									generateDIElementForSphereAnnotation(currTask, dataORef,
+											defaultSpheresForDynamicWriter);
+								}
+								DataOutputAssociation dao = modelInstance.newInstance(DataOutputAssociation.class);
+								dao.setTarget(dataORef);
+								currTask.addChildElement(dao);
+								generateDIElementForWriter(dao, getShape(dataORef.getId()), getShape(currTask.getId()));
+								writersForDataObject.add(currTask);
+								getNextWriterFromIntersected = false;
 							}
 
 						}
 					}
-					unconditionalPossibleOrigins.putIfAbsent((BusinessRuleTask) task, unconditionalTasksBeforeBrt);
-				}
-			}
+					intersectedNodes.remove(currentNodeToBeWriter);
+					allAvailableTasksAsWritersForDataObject.remove(currentNodeToBeWriter);
 
-			if (!unconditionalPossibleOrigins.isEmpty()) {
+				} else {
 
-				int index = 0;
-				LinkedList<DataObjectReference> alreadyMapped = new LinkedList<DataObjectReference>();
-				for (Entry<BusinessRuleTask, LinkedList<Task>> entry : unconditionalPossibleOrigins.entrySet()) {
-					// get the dataObjects connected to the brt
-					BusinessRuleTask currBrt = entry.getKey();
-					for (DataInputAssociation dia : currBrt.getDataInputAssociations()) {
-						for (ItemAwareElement iae : dia.getSources()) {
-							DataObjectReference daoR = CommonFunctionality
-									.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
-							if (daoR != null && !(alreadyMapped.contains(daoR))) {
-								// randomly choose one of the tasks as the initial origin of the data object
-								Task initialOrigin = CommonFunctionality.getRandomItem(entry.getValue());
-								this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(index),
-										subAmountReaders.get(index), dynamicWriter, daoR,
-										defaultSpheresForDynamicWriter, initialOrigin);
-								index++;
-								alreadyMapped.add(daoR);
+					int randomNodeIndexFromAvailableTasks = ThreadLocalRandom.current().nextInt(0,
+							allAvailableTasksAsWritersForDataObject.size());
+					FlowNode currentNodeToBeWriter = allAvailableTasksAsWritersForDataObject.get(randomNodeIndexFromAvailableTasks);
+					if (currentNodeToBeWriter instanceof Task) {
+						Task currTask = (Task) currentNodeToBeWriter;
+						if (!ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(currentNodeToBeWriter)) {
+							boolean toBeWriter = true;
+
+							// check for labels of readers and writers
+							// no parallel write/read or write/write possible
+							LinkedList<LabelForAnnotater> currentTaskLabel = labelForNode.get(currTask);
+							for (FlowNode reader : readersForDataObject) {
+								LinkedList<LabelForAnnotater> readerLabel = labelForNode.get(reader);
+
+								if (!checkLabels(currentTaskLabel, readerLabel)) {
+									toBeWriter = false;
+								}
+							}
+
+							for (Task writer : writersForDataObject) {
+								LinkedList<LabelForAnnotater> writerLabel = labelForNode.get(writer);
+								if (!checkLabels(currentTaskLabel, writerLabel)) {
+									toBeWriter = false;
+								}
+							}
+
+							if (toBeWriter) {
+								int randomCountSphere = ThreadLocalRandom.current().nextInt(1, 100 + 1);
+								if (randomCountSphere <= dynamicWriterProb) {
+									generateDIElementForSphereAnnotation(currTask, dataORef,
+											defaultSpheresForDynamicWriter);
+								}
+								writersForDataObject.add(currTask);
+								DataOutputAssociation dao = modelInstance.newInstance(DataOutputAssociation.class);
+								dao.setTarget(dataORef);
+								currTask.addChildElement(dao);
+								generateDIElementForWriter(dao, getShape(dataORef.getId()), getShape(currTask.getId()));
 							}
 						}
-
 					}
+					allAvailableTasksAsWritersForDataObject.remove(currentNodeToBeWriter);
+				}
 
-				}
-			} else {
-				// there is no brt inserted
-				// choose a random task
-				for (int i = 0; i < dataObjects.size(); i++) {
-					Task initialOrigin = CommonFunctionality.getRandomItem(taskList);
-					this.addReadersAndWritersForDataObjectWithFixedAmounts(subAmountWriters.get(i),
-							subAmountReaders.get(i), dynamicWriter, dataObjects.get(i), defaultSpheresForDynamicWriter,
-							initialOrigin);
-				}
 			}
-
 		}
-
 	}
 
 	private void generateDIElementForSphereAnnotation(Task writerTask, DataObjectReference daoR,
@@ -1844,5 +1749,94 @@ public class ProcessModelAnnotater implements Callable<File> {
 		}
 
 	}
+
+	private boolean checkLabels(LinkedList<LabelForAnnotater> currentTaskLabel,
+			LinkedList<LabelForAnnotater> readerOrWriterLabel) {
+
+		if(currentTaskLabel==null || readerOrWriterLabel==null) {
+			return true;
+		}
+		if(currentTaskLabel.isEmpty() || readerOrWriterLabel.isEmpty()) {
+			return true;
+		}
+		
+		// get the difference of the two lists
+		LinkedList<LabelForAnnotater> listOfDifferent = new LinkedList<LabelForAnnotater>();
+		if(currentTaskLabel.size()>=readerOrWriterLabel.size()) {
+			listOfDifferent.addAll(currentTaskLabel);
+			listOfDifferent.removeAll(readerOrWriterLabel);
+		} else {
+			listOfDifferent.addAll(readerOrWriterLabel);
+			listOfDifferent.removeAll(currentTaskLabel);
+		}		
+
+		if (listOfDifferent.size() > 0) {
+			for(LabelForAnnotater label: listOfDifferent) {
+				if(label.getSplitNode() instanceof ParallelGateway) {
+					// reader/writer and currentTask are in different parallel branches of same
+					// split
+					return false;
+				}
+			}
+		
+		}
+		return true;
+	}
+	
+	public void removeDataObjectsWithoutConnectionsToDecisionsFromModel() {
+		LinkedList<DataObjectReference> daoRList = new LinkedList<DataObjectReference>();
+		daoRList.addAll(modelInstance.getModelElementsByType(DataObjectReference.class));
+		LinkedList<BusinessRuleTask> brtList = new LinkedList<BusinessRuleTask>();
+		brtList.addAll(modelInstance.getModelElementsByType(BusinessRuleTask.class));
+		LinkedList<DataObjectReference> daoRsFound = new LinkedList<DataObjectReference>();
+
+		for (BusinessRuleTask brt : brtList) {
+			Iterator<DataInputAssociation> diaIter = brt.getDataInputAssociations().iterator();
+			while (diaIter.hasNext()) {
+				DataInputAssociation dia = diaIter.next();
+				for (ItemAwareElement iae : dia.getSources()) {
+					DataObjectReference daoR = CommonFunctionality
+							.getDataObjectReferenceForItemAwareElement(modelInstance, iae);
+					if (!daoRsFound.contains(daoR)) {
+						daoRsFound.add(daoR);
+					}
+
+				}
+			}
+
+		}
+
+		// remove all daoRs that have not been found
+		Iterator<DataObjectReference> daoRIter = daoRList.iterator();
+		while (daoRIter.hasNext()) {
+			DataObjectReference dao = daoRIter.next();
+			if (!daoRsFound.contains(dao)) {
+				String daoName = dao.getName();
+				String name = daoName.substring(daoName.indexOf('['), daoName.indexOf(']') + 1);
+				BpmnShape shape = CommonFunctionality.getShape(modelInstance, dao.getId());
+				if (shape != null) {
+					shape.getParentElement().removeChildElement(shape);
+				}
+				Iterator<TextAnnotation> txIter = modelInstance.getModelElementsByType(TextAnnotation.class).iterator();
+				while (txIter.hasNext()) {
+					TextAnnotation tx = txIter.next();
+					if (tx.getTextContent().startsWith("Default: ")) {
+						if (tx.getTextContent().contains(name)) {
+							BpmnShape shape2 = CommonFunctionality.getShape(modelInstance, tx.getId());
+							if (shape2 != null) {
+								shape2.getParentElement().removeChildElement(shape2);
+							}
+							tx.getParentElement().removeChildElement(tx);
+
+						}
+					}
+				}
+				dao.getParentElement().removeChildElement(dao);
+			}
+		}
+		this.dataObjects = daoRsFound;
+	}
+	
+
 
 }
