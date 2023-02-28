@@ -29,6 +29,7 @@ import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import org.camunda.bpm.model.bpmn.instance.Gateway;
 import org.camunda.bpm.model.bpmn.instance.ParallelGateway;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
+import org.camunda.bpm.model.bpmn.instance.StartEvent;
 import org.camunda.bpm.model.bpmn.instance.Task;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -60,11 +61,12 @@ public class ProcessGenerator implements Callable<File> {
 	private int nestingDepthFactor;
 	private HashMap<String, Integer[]> percentagesForNodesToBeDrawn;
 	private boolean testIfMinElementsInBranches;
+	private boolean taskAsFirstElementAfterStart;
 
 	public ProcessGenerator(String directoryToStore, int amountParticipants, int amountTasksToBeInserted,
 			int amountXorsToBeInserted, int amountParallelsToBeInserted, int taskProb, int xorSplitProb,
 			int parallelSplitProb, int probabilityForJoinGtw, int nestingDepthFactor,
-			boolean testIfMinElementsInBranches) throws Exception {
+			boolean testIfMinElementsInBranches, boolean taskAsFirstElementAfterStart) throws Exception {
 		// process model will have 1 StartEvent and 1 EndEvent
 		if (taskProb + xorSplitProb + parallelSplitProb > 100) {
 			throw new Exception("taskProb+xorSplitProb+parallelSplitProb!=100");
@@ -93,6 +95,9 @@ public class ProcessGenerator implements Callable<File> {
 		this.possibleNodeTypes = new LinkedList<String>();
 		this.probabilityForJoinGtw = probabilityForJoinGtw;
 		this.nestingDepthFactor = nestingDepthFactor;
+		
+		// generator will insert a task directly after start event
+		this.taskAsFirstElementAfterStart = taskAsFirstElementAfterStart;
 
 		// will check if there is at least 1 element in one xor branch
 		// will check if there is at lest 1 element in parallel branches
@@ -265,6 +270,16 @@ public class ProcessGenerator implements Callable<File> {
 			int amountParallelsLeft, FlowNode currentEntryPoint, LinkedList<FlowNode> openGtwStack) {
 		LinkedList<String> nodeList = new LinkedList<String>();
 
+		if(currentEntryPoint instanceof StartEvent) {
+			if(this.taskAsFirstElementAfterStart) {
+				// task will be inserted
+				if(amountTasksLeft > 0) {
+					nodeList.add("Task");
+					return nodeList;
+				}
+			}
+		}
+		
 		if (amountXorsLeft > 0) {
 			nodeList.add("ExclusiveGateway_split");
 		}

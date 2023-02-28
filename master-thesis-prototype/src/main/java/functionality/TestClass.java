@@ -13,7 +13,7 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel7_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel13_annotated1_annotated22lWlR_Weak-Dynamic_verifiers2.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel12_annotated1_annotated13sWsR_Private_verifiers1.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel1_annotated1_lWmR_Private_addActors3.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel43_annotated1_lWmR_Strong-Dynamic_addActors2.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel6_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorCnew.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";

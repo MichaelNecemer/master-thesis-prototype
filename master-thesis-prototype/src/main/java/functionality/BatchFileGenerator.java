@@ -34,12 +34,9 @@ public class BatchFileGenerator {
 	static String root = System.getProperty("user.home") + "/Onedrive/Desktop";
 
 	static int timeOutForProcessGeneratorInMin = 20;
-	static int timeOutForProcessModelAnnotaterInMin = 10;
+	static int timeOutForProcessModelAnnotaterInMin = 60;
 	// API is the class where the computations will be done
-	static int timeOutForApiInMin = 3;
-
-	// how often will the modelAnnotater try to annotate the model if it fails
-	static int triesForModelAnnotater = 50;
+	static int timeOutForApiInMin = 5;
 
 	// amount of solutions to be generated with naive and heuristic approaches
 	static int amountSolutionsToBeGenerated = 1;
@@ -48,6 +45,7 @@ public class BatchFileGenerator {
 
 	// bounds for ProcessModelGenerator
 	static boolean testIfMinElementsInBranches = true;
+	static boolean firstElementAfterStartIsTask = true;
 	static int probTask = 34;
 	static int probXorGtw = 33;
 	static int probParallelGtw = 33;
@@ -92,7 +90,7 @@ public class BatchFileGenerator {
 	// create random processes
 	// amountProcessesToCreatePerDecision should be a lot higher than
 	// amountProcesesToTakePerDecision, since not every model will be valid
-	static int amountProcessesToCreatePerDecision = 5;
+	static int amountProcessesToCreatePerDecision = 10;
 	static int amountProcessesToTakePerDecision = 1;
 
 	public static void main(String[] args) throws Exception {
@@ -212,8 +210,8 @@ public class BatchFileGenerator {
 			// tasksFactor is the number of additional tasks to be inserted per decision
 			int tasksFactor = 4;
 			int tasksToStartWith = 6;
-			
-			// we take the max amount of writers and readers			
+
+			// we take the max amount of writers and readers
 			double percentageOfWriters = percentageOfWritersClasses.get(2);
 			double percentageOfReaders = percentageOfReadersClasses.get(2);
 
@@ -221,7 +219,8 @@ public class BatchFileGenerator {
 					boundaryTest1_1_addActorsPerDecision, boundaryTest1_1_privateSphere, amountSolutionsToBeGenerated,
 					tasksToStartWith, tasksFactor, 0, 0, percentageOfWriters, percentageOfReaders,
 					minDataObjectsPerDecision, maxDataObjectsPerDecision, sphere, amountThreads, stopAfterDecisions,
-					pathToFolderForModelsForTest1_1, testIfMinElementsInBranches, timeOutForProcessGeneratorInMin);
+					pathToFolderForModelsForTest1_1, testIfMinElementsInBranches, firstElementAfterStartIsTask,
+					timeOutForProcessGeneratorInMin);
 
 			System.out.println("BoundartyTest1_1 finished!");
 		}
@@ -263,7 +262,6 @@ public class BatchFileGenerator {
 		}
 
 		if (methodsToRun.contains(createRandomProcesses)) {
-
 			// generate 4 classes of processes -> small, medium, large, extra large
 			// processes (without
 			// annotation)
@@ -284,7 +282,7 @@ public class BatchFileGenerator {
 					.fileWithDirectoryAssurance(pathToFolderForModelsWithoutAnnotation, "ExtraLargeProcessesFolder")
 					.getAbsolutePath();
 
-			int tasksToAddToMinAmount = 5;
+			int tasksToAddToMinAmount = 10;
 
 			// small processes: 5 participants, 1-2 xors, 0-2 parallels
 			int maxAmountDataObjectsSmallProcesses = dataObjectBoundsSmallProcesses.get(1);
@@ -295,7 +293,7 @@ public class BatchFileGenerator {
 			for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation,
 						5, 5, minAmountTasksSmallProcesses, maxAmountTasksSmallProcesses, i, i, 0, 2,
-						amountProcessesToCreatePerDecision, testIfMinElementsInBranches,
+						amountProcessesToCreatePerDecision, testIfMinElementsInBranches, firstElementAfterStartIsTask,
 						timeOutForProcessGeneratorInMin);
 			}
 
@@ -309,7 +307,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
 						pathToMediumProcessesFolderWithoutAnnotation, 5, 5, minAmountTasksMediumProcesses,
 						maxAmountTasksMediumProcesses, i, i, 0, 2, amountProcessesToCreatePerDecision,
-						testIfMinElementsInBranches, timeOutForProcessGeneratorInMin);
+						testIfMinElementsInBranches, firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin);
 			}
 
 			// large processes: 5 participants, 5-6 xors, 0-2, parallels
@@ -321,7 +319,7 @@ public class BatchFileGenerator {
 			for (int i = amountXorsLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation,
 						5, 5, minAmountTasksLargeProcesses, maxAmountTasksLargeProcesses, i, i, 0, 2,
-						amountProcessesToCreatePerDecision, testIfMinElementsInBranches,
+						amountProcessesToCreatePerDecision, testIfMinElementsInBranches, firstElementAfterStartIsTask,
 						timeOutForProcessGeneratorInMin);
 			}
 
@@ -336,7 +334,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
 						pathToExtraLargeProcessesFolderWithoutAnnotation, 5, 5, minAmountTasksExtraLargeProcesses,
 						maxAmountTasksExtraLargeProcesses, i, i, 0, 2, amountProcessesToCreatePerDecision,
-						testIfMinElementsInBranches, timeOutForProcessGeneratorInMin);
+						testIfMinElementsInBranches, firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin);
 			}
 
 			System.out.println("All random processes generated!");
@@ -384,23 +382,21 @@ public class BatchFileGenerator {
 						amountXorsSmallProcessesBounds.get(0), amountXorsSmallProcessesBounds.get(1),
 						amountProcessesToTakePerDecision, pathToSmallProcessesFolderWithoutAnnotation, 100,
 						amountThreads);
-				// BatchFileGenerator.performTradeOffTest("medium",
-				// pathToMediumProcessesForTest2WithAnnotation, dataObjectBoundsMediumProcesses,
-				// amountSolutionsToBeGenerated, amountXorsMediumProcessesBounds.get(0),
-				// amountXorsMediumProcessesBounds.get(1), amountProcessesToTakePerDecision,
-				// pathToMediumProcessesFolderWithoutAnnotation, 100, amountThreads);
-				// BatchFileGenerator.performTradeOffTest("large",
-				// pathToLargeProcessesForTest2WithAnnotation, dataObjectBoundsLargeProcesses,
-				// amountSolutionsToBeGenerated, amountXorsLargeProcessesBounds.get(0),
-				// amountXorsLargeProcessesBounds.get(1), amountProcessesToTakePerDecision,
-				// pathToLargeProcessesFolderWithoutAnnotation, 100, amountThreads);
-				// BatchFileGenerator.performTradeOffTest("extraLarge",
-				// pathToExtraLargeProcessesForTest2WithAnnotation,
-				// dataObjectBoundsSmallProcesses, amountSolutionsToBeGenerated,
-				// amountXorsExtraLargeProcessesBounds.get(0),
-				// amountXorsExtraLargeProcessesBounds.get(1), amountProcessesToTakePerDecision,
-				// pathToExtraLargeProcessesFolderWithoutAnnotation,percentageOfExtraLargeProcessesToRunExhaustiveOn,
-				// amountThreads);
+				BatchFileGenerator.performTradeOffTest("medium", pathToMediumProcessesForTest2WithAnnotation,
+						dataObjectBoundsMediumProcesses, amountSolutionsToBeGenerated,
+						amountXorsMediumProcessesBounds.get(0), amountXorsMediumProcessesBounds.get(1),
+						amountProcessesToTakePerDecision, pathToMediumProcessesFolderWithoutAnnotation, 100,
+						amountThreads);
+				BatchFileGenerator.performTradeOffTest("large", pathToLargeProcessesForTest2WithAnnotation,
+						dataObjectBoundsLargeProcesses, amountSolutionsToBeGenerated,
+						amountXorsLargeProcessesBounds.get(0), amountXorsLargeProcessesBounds.get(1),
+						amountProcessesToTakePerDecision, pathToLargeProcessesFolderWithoutAnnotation, 100,
+						amountThreads);
+				BatchFileGenerator.performTradeOffTest("extraLarge", pathToExtraLargeProcessesForTest2WithAnnotation,
+						dataObjectBoundsSmallProcesses, amountSolutionsToBeGenerated,
+						amountXorsExtraLargeProcessesBounds.get(0), amountXorsExtraLargeProcessesBounds.get(1),
+						amountProcessesToTakePerDecision, pathToExtraLargeProcessesFolderWithoutAnnotation,
+						percentageOfExtraLargeProcessesToRunExhaustiveOn, amountThreads);
 
 				System.out.println("Test 2 finished!");
 			}
@@ -711,7 +707,7 @@ public class BatchFileGenerator {
 		ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
 		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathWhereToCreateProcessesWithoutAnnotation, 2,
 				upperBoundParticipants, lowerBoundTasks, upperBoundTasks, 1, upperBoundXorGtws, 0,
-				upperBoundParallelGtws, amountProcesses, false, timeOutForProcessGeneratorInMin);
+				upperBoundParallelGtws, amountProcesses, false, false, timeOutForProcessGeneratorInMin);
 		randomProcessGeneratorService.shutdownNow();
 
 		int publicDecisionProb = 0;
@@ -919,7 +915,7 @@ public class BatchFileGenerator {
 	public static void generateRandomProcessesWithinGivenRanges(String pathToFiles, int lowerBoundParticipants,
 			int upperBoundParticipants, int lowerBoundTasks, int upperBoundTasks, int lowerBoundXorGtws,
 			int upperBoundXorGtws, int lowerBoundParallelGtws, int upperBoundParallelGtws, int amountProcesses,
-			boolean testForElementsInBranches, int timeoutForProcessGenerator) {
+			boolean testForElementsInBranches, boolean firstElementAfterStartIsTask, int timeoutForProcessGenerator) {
 
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 
@@ -936,9 +932,8 @@ public class BatchFileGenerator {
 
 			// substract the amount of max xors that will be inserted
 			// since brts will have to be inserted afterwards
-			// also substract 1, if a tasks needs to be inserted after start node
 			if (randomAmountXorSplitsWithinBounds > 0) {
-				randomAmountTasksWithinBounds = randomAmountTasksWithinBounds - randomAmountXorSplitsWithinBounds - 1;
+				randomAmountTasksWithinBounds = randomAmountTasksWithinBounds - randomAmountXorSplitsWithinBounds;
 			}
 
 			int processId = 0;
@@ -950,7 +945,7 @@ public class BatchFileGenerator {
 				ProcessGenerator pGen = new ProcessGenerator(pathToFiles, randomAmountParticipantsWithinBounds,
 						randomAmountTasksWithinBounds, randomAmountXorSplitsWithinBounds,
 						randomAmountParallelSplitsWithinBounds, probTask, probXorGtw, probParallelGtw, probJoinGtw,
-						nestingDepthFactor, testIfMinElementsInBranches);
+						nestingDepthFactor, testIfMinElementsInBranches, firstElementAfterStartIsTask);
 
 				processId = pGen.getProcessId();
 				Future<File> future = executor.submit(pGen);
@@ -1284,92 +1279,74 @@ public class BatchFileGenerator {
 					int privateSphere = CommonFunctionality.getPrivateSphere(processModel, false);
 					int amountAddActorsUpperBound = ThreadLocalRandom.current().nextInt(1, privateSphere);
 
-					boolean modelIsValid = false;
-					int triesPerModel = 100;
-					boolean skipModel = false;
-					while (modelIsValid == false && skipModel == false && triesPerModel > 0) {
-						try {
-							double percentageReaders = percentageOfReadersClasses.get(indexReaders);
-							double percentageWriters = percentageOfWritersClasses.get(indexWriters);
-							String suffix = "";
-							// additional readers and writers suffix
-							if (indexReaders == 0) {
-								suffix += "asR";
-							} else if (indexReaders == 1) {
-								suffix += "amR";
-							} else if (indexReaders == 2) {
-								suffix += "alR";
-							}
-
-							if (indexWriters == 0) {
-								suffix += "asW";
-							} else if (indexWriters == 1) {
-								suffix += "amW";
-							} else if (indexWriters == 2) {
-								suffix += "alW";
-							}
-							ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
-									pathToDestinationFolderForStoringModels, suffix);
-							amountTasks = CommonFunctionality.getAmountTasks(pModel.getModelInstance());
-
-							if (amountTasks > sumAmountUniqueDataObjects) {
-								int amountWritersNeededForDataObjects = sumAmountUniqueDataObjects;
-								int amountReadersNeededForDataObjects = sumAmountUniqueDataObjects;
-
-								// additional readers and writers to be inserted
-								int amountAdditionalWriters = CommonFunctionality.getAmountFromPercentage(amountTasks,
-										percentageWriters);
-								int amountAdditionalReaders = CommonFunctionality.getAmountFromPercentage(amountTasks,
-										percentageReaders);
-
-								int amountWritersToBeInserted = amountWritersNeededForDataObjects
-										+ amountAdditionalWriters;
-								int amountReadersToBeInserted = amountReadersNeededForDataObjects
-										+ amountAdditionalReaders;
-
-								int minDataObjectsPerDecision = sumAmountUniqueDataObjects / amountDecisions;
-								pModel.generateDataObjects(sumAmountUniqueDataObjects, sphere);
-								pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision,
-										minDataObjectsPerDecision, amountReadersNeededForDataObjects, 1,
-										amountAddActorsUpperBound, 0, true);
-
-								if (amountWritersToBeInserted <= amountTasks
-										&& amountReadersToBeInserted <= amountTasks) {
-									// add the methods to be called
-									LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
-
-									String firstMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
-									Object[] argumentsForFirstMethod = new Object[4];
-									argumentsForFirstMethod[0] = amountWritersToBeInserted;
-									argumentsForFirstMethod[1] = amountReadersToBeInserted;
-									argumentsForFirstMethod[2] = 0;
-									argumentsForFirstMethod[3] = defaultSpheres;
-									methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName,
-											argumentsForFirstMethod);
-									pModel.setMethodsToRunWithinCall(methodsToBeCalledMap);
-
-									Future<File> f = executor.submit(pModel);
-									try {
-										f.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
-										f.cancel(true);
-										modelIsValid = true;
-
-									} catch (Exception e) {
-										f.cancel(true);
-									}
-								} else {
-									skipModel = true;
-								}
-
-							} else {
-								skipModel = true;
-							}
-
-						} catch (Exception e) {
-							System.err.println(e.getMessage());
-
+					try {
+						double percentageReaders = percentageOfReadersClasses.get(indexReaders);
+						double percentageWriters = percentageOfWritersClasses.get(indexWriters);
+						String suffix = "";
+						// additional readers and writers suffix
+						if (indexReaders == 0) {
+							suffix += "asR";
+						} else if (indexReaders == 1) {
+							suffix += "amR";
+						} else if (indexReaders == 2) {
+							suffix += "alR";
 						}
-						triesPerModel--;
+
+						if (indexWriters == 0) {
+							suffix += "asW";
+						} else if (indexWriters == 1) {
+							suffix += "amW";
+						} else if (indexWriters == 2) {
+							suffix += "alW";
+						}
+						ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
+								pathToDestinationFolderForStoringModels, suffix);
+						amountTasks = CommonFunctionality.getAmountTasks(pModel.getModelInstance());
+
+						if (amountTasks > sumAmountUniqueDataObjects) {
+							int amountWritersNeededForDataObjects = sumAmountUniqueDataObjects;
+							int amountReadersNeededForDataObjects = sumAmountUniqueDataObjects;
+
+							// additional readers and writers to be inserted
+							int amountAdditionalWriters = CommonFunctionality.getAmountFromPercentage(amountTasks,
+									percentageWriters);
+							int amountAdditionalReaders = CommonFunctionality.getAmountFromPercentage(amountTasks,
+									percentageReaders);
+
+							int amountWritersToBeInserted = amountWritersNeededForDataObjects + amountAdditionalWriters;
+							int amountReadersToBeInserted = amountReadersNeededForDataObjects + amountAdditionalReaders;
+
+							int minDataObjectsPerDecision = sumAmountUniqueDataObjects / amountDecisions;
+							pModel.generateDataObjects(sumAmountUniqueDataObjects, sphere);
+							pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision,
+									minDataObjectsPerDecision, amountReadersNeededForDataObjects, 1,
+									amountAddActorsUpperBound, 0, true);
+
+							if (amountWritersToBeInserted <= amountTasks && amountReadersToBeInserted <= amountTasks) {
+								// add the methods to be called
+								LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
+
+								String firstMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
+								Object[] argumentsForFirstMethod = new Object[4];
+								argumentsForFirstMethod[0] = amountWritersToBeInserted;
+								argumentsForFirstMethod[1] = amountReadersToBeInserted;
+								argumentsForFirstMethod[2] = 0;
+								argumentsForFirstMethod[3] = defaultSpheres;
+								methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName, argumentsForFirstMethod);
+								pModel.setMethodsToRunWithinCall(methodsToBeCalledMap);
+
+								Future<File> f = executor.submit(pModel);
+								try {
+									f.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
+									f.cancel(true);
+								} catch (Exception e) {
+									f.cancel(true);
+								}
+							}
+						}
+					} catch (Exception e) {
+						System.err.println(e.getMessage());
+
 					}
 				}
 			}
@@ -1503,73 +1480,38 @@ public class BatchFileGenerator {
 				File processWithoutAnnotation = processesWithoutAnnotationIter.next();
 				String pathToRandomProcess = processWithoutAnnotation.getAbsolutePath();
 				File newModel = null;
-				boolean modelIsValid = false;
 				int amountRandomCountDataObjectsToCreate = 0;
-				int tries = 0;
-				while (modelIsValid == false && tries < triesForModelAnnotater) {
-					try {
-						ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
-								pathToDestinationFolderForStoringModels, "");
+				try {
+					ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
+							pathToDestinationFolderForStoringModels, "");
 
-						// the model must fulfill the min and max amount of readers
-						double minAmountReadersInPercent = percentageOfReadersClasses.get(0);
-						double maxAmountReadersInPercent = percentageOfReadersClasses.get(2);
-						double minAmountWritersInPercent = percentageOfWritersClasses.get(0);
-						double maxAmountWritersInPercent = percentageOfWritersClasses.get(2);
+					// the model must fulfill the min and max amount of readers
+					double minAmountReadersInPercent = percentageOfReadersClasses.get(0);
 
-						int amountTasks = pModel.getModelInstance().getModelElementsByType(Task.class).size();
+					int amountTasks = pModel.getModelInstance().getModelElementsByType(Task.class).size();
 
-						int minAmountReaders = CommonFunctionality.getAmountFromPercentage(amountTasks,
-								minAmountReadersInPercent);
-						int maxAmountReaders = CommonFunctionality.getAmountFromPercentage(amountTasks,
-								maxAmountReadersInPercent);
+					int minAmountReaders = CommonFunctionality.getAmountFromPercentage(amountTasks,
+							minAmountReadersInPercent);
 
-						int minAmountWriters = CommonFunctionality.getAmountFromPercentage(amountTasks,
-								minAmountWritersInPercent);
-						int maxAmountWriters = CommonFunctionality.getAmountFromPercentage(amountTasks,
-								maxAmountWritersInPercent);
+					// randomly generate dataObjects in the range [DataObjects, maxCountDataObjects]
+					amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(dataObjectBounds.get(0),
+							dataObjectBounds.get(1) + 1);
 
-						int amountXors = CommonFunctionality.getAmountExclusiveGtwSplits(pModel.getModelInstance());
+					// create model with amountRandomCountDataObjects dataObjects, 0 additional
+					// actors and
+					// empty string as starting sphere
+					pModel.generateDataObjects(amountRandomCountDataObjectsToCreate, emptySphere);
 
-						// check if model can be valid with given bounds
-						if (dataObjectBounds.get(0) < minAmountReaders) {
+					// connect between 1 and amountRandomCountDataObjectsToCreate per decision
+					pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(1, amountRandomCountDataObjectsToCreate,
+							minAmountReaders, 0, 0, 0, false);
 
-						}
+					CommonFunctionality
+							.removeDataObjectsWithoutConnectionsToDecisionsFromModel(pModel.getModelInstance());
 
-						if (dataObjectBounds.get(1) > maxAmountReaders) {
-
-						}
-
-						if (dataObjectBounds.get(0) < minAmountWriters) {
-
-						}
-
-						if (dataObjectBounds.get(1) > maxAmountWriters) {
-
-						}
-
-						// randomly generate dataObjects in the range [DataObjects, maxCountDataObjects]
-						amountRandomCountDataObjectsToCreate = ThreadLocalRandom.current()
-								.nextInt(dataObjectBounds.get(0), dataObjectBounds.get(1) + 1);
-
-						// create model with amountRandomCountDataObjects dataObjects, 0 additional
-						// actors and
-						// empty string as starting sphere
-						pModel.generateDataObjects(amountRandomCountDataObjectsToCreate, emptySphere);
-
-						// connect between 1 and amountRandomCountDataObjectsToCreate per decision
-						pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(1, amountRandomCountDataObjectsToCreate,
-								minAmountReaders, 0, 0, 0, false);
-
-						CommonFunctionality
-								.removeDataObjectsWithoutConnectionsToDecisionsFromModel(pModel.getModelInstance());
-
-						newModel = pModel.writeChangesToFileWithoutCorrectnessCheck();
-						modelIsValid = true;
-					} catch (Exception e) {
-						System.err.println(e.getMessage());
-					}
-					tries++;
+					newModel = pModel.writeChangesToFileWithoutCorrectnessCheck();
+				} catch (Exception e) {
+					System.err.println(e.getMessage());
 				}
 
 				if (newModel != null) {
@@ -1593,8 +1535,6 @@ public class BatchFileGenerator {
 
 						for (int readerClass = 0; readerClass < percentageOfReadersClasses.size(); readerClass++) {
 							// for each model -> annotate it with small, medium, large amount of readers
-							int triesForInsertingReadersAndWriters = 50;
-							boolean modelAnnotatedCorrectly = false;
 							Exception ex = null;
 
 							int amountReaderTasksToBeInsertedForPercentage = CommonFunctionality
@@ -1638,76 +1578,66 @@ public class BatchFileGenerator {
 							}
 
 							if (insertWriters) {
-								while (triesForInsertingReadersAndWriters > 0 && !modelAnnotatedCorrectly) {
-									ProcessModelAnnotater modelWithReadersAndWriters;
+								ProcessModelAnnotater modelWithReadersAndWriters;
+								try {
+									modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(),
+											pathToDestinationFolderForStoringModels, suffix);
+									modelWithReadersAndWriters.setDataObjectsConnectedToBrts(true);
+
+									// add the methods to be called
+									LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
+
+									String firstMethodToBeCalledName = "addNamesForOutgoingFlowsOfXorSplits";
+									Object[] argumentsForFirstMethod = new Object[1];
+									argumentsForFirstMethod[0] = defaultNamesSeqFlowsXorSplits;
+									methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName,
+											argumentsForFirstMethod);
+
+									String secondMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
+									Object[] argumentsForSecondMethod = new Object[4];
+									argumentsForSecondMethod[0] = amountWriterTasksToBeInserted;
+									argumentsForSecondMethod[1] = amountReaderTasksToInsertLeft;
+									argumentsForSecondMethod[2] = 0;
+									argumentsForSecondMethod[3] = emptySphere;
+									methodsToBeCalledMap.putIfAbsent(secondMethodToBeCalledName,
+											argumentsForSecondMethod);
+
+									modelWithReadersAndWriters.setMethodsToRunWithinCall(methodsToBeCalledMap);
+
+									Future<File> future = executor.submit(modelWithReadersAndWriters);
 									try {
-										modelWithReadersAndWriters = new ProcessModelAnnotater(
-												newModel.getAbsolutePath(), pathToDestinationFolderForStoringModels,
-												suffix);
-										modelWithReadersAndWriters.setDataObjectsConnectedToBrts(true);
-
-										// add the methods to be called
-										LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
-
-										String firstMethodToBeCalledName = "addNamesForOutgoingFlowsOfXorSplits";
-										Object[] argumentsForFirstMethod = new Object[1];
-										argumentsForFirstMethod[0] = defaultNamesSeqFlowsXorSplits;
-										methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName,
-												argumentsForFirstMethod);
-
-										String secondMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
-										Object[] argumentsForSecondMethod = new Object[4];
-										argumentsForSecondMethod[0] = amountWriterTasksToBeInserted;
-										argumentsForSecondMethod[1] = amountReaderTasksToInsertLeft;
-										argumentsForSecondMethod[2] = 0;
-										argumentsForSecondMethod[3] = emptySphere;
-										methodsToBeCalledMap.putIfAbsent(secondMethodToBeCalledName,
-												argumentsForSecondMethod);
-
-										modelWithReadersAndWriters.setMethodsToRunWithinCall(methodsToBeCalledMap);
-
-										Future<File> future = executor.submit(modelWithReadersAndWriters);
-										try {
-											File generatedFile = future.get(timeOutForProcessModelAnnotaterInMin,
-													TimeUnit.MINUTES);
-											future.cancel(true);
-											modelAnnotatedCorrectly = true;
-											modelsCombsGenerated.add(generatedFile);
-										} catch (InterruptedException e) {
-											// TODO Auto-generated catch block
-											future.cancel(true);
-											e.printStackTrace();
-											ex = e;
-										} catch (ExecutionException e) {
-											// TODO Auto-generated catch block
-											System.err.println(e.getMessage());
-											future.cancel(true);
-											ex = e;
-										} catch (TimeoutException e) {
-											// TODO Auto-generated catch block
-											future.cancel(true);
-											e.printStackTrace();
-											ex = e;
-										}
-
-									} catch (Exception e) {
+										File generatedFile = future.get(timeOutForProcessModelAnnotaterInMin,
+												TimeUnit.MINUTES);
+										future.cancel(true);
+										modelsCombsGenerated.add(generatedFile);
+									} catch (InterruptedException e) {
 										// TODO Auto-generated catch block
+										future.cancel(true);
+										e.printStackTrace();
+										ex = e;
+									} catch (ExecutionException e) {
+										// TODO Auto-generated catch block
+										System.err.println(e.getMessage());
+										future.cancel(true);
+										ex = e;
+									} catch (TimeoutException e) {
+										// TODO Auto-generated catch block
+										future.cancel(true);
 										e.printStackTrace();
 										ex = e;
 									}
-									if (ex != null) {
-										triesForInsertingReadersAndWriters--;
-										System.out.println("Tries left for annotating model: "
-												+ triesForInsertingReadersAndWriters);
-									}
 
+								} catch (Exception e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+									ex = e;
 								}
+
 							} else {
 								// model can not be annotated with the current readers/writers combination
 								// skip this combination
 								System.out.println("Readers: " + amountReaderTasksToBeInsertedForPercentage
 										+ " Writers: " + amountWriterTasksToBeInserted);
-								triesForInsertingReadersAndWriters = 0;
 								break outerloop;
 							}
 						}
@@ -1814,7 +1744,7 @@ public class BatchFileGenerator {
 			int upperBoundAmountParallelGtws, double amountWritersInPercent, double amountReadersInPercent,
 			int minDataObjectsPerDecision, int maxDataObjectsPerDecision, LinkedList<String> sphereList,
 			int amountThreads, int stopAfterDecisions, String pathToFolderForModelsForBoundaryTest,
-			boolean testIfMinElementsInBranches, int timeoutProcessGenInMin) {
+			boolean testIfMinElementsInBranches, boolean firstElementAfterStartIsTask, int timeoutProcessGenInMin) {
 
 		int amountParallelGtws = ThreadLocalRandom.current().nextInt(lowerBoundAmountParallelGtws,
 				upperBoundAmountParallelGtws + 1);
@@ -1850,13 +1780,13 @@ public class BatchFileGenerator {
 				int amountTasksWithFactor = amountTasksToStartWith + (amountDecisionsToStart * tasksFactor);
 				amountParallelGtws = ThreadLocalRandom.current().nextInt(lowerBoundAmountParallelGtws,
 						upperBoundAmountParallelGtws + 1);
-			
-				
+
 				// generate processes
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToFolderForModelsWithDecisions,
 						privateSphere, privateSphere, amountTasksWithFactor, amountTasksWithFactor,
 						amountDecisionsToStart, amountDecisionsToStart, amountParallelGtws, amountParallelGtws,
-						amountProcessesPerIteration, testIfMinElementsInBranches, timeoutProcessGenInMin);
+						amountProcessesPerIteration, testIfMinElementsInBranches, firstElementAfterStartIsTask,
+						timeoutProcessGenInMin);
 
 				// annotate the processes
 				File folder = new File(pathToFolderForModelsWithDecisions);
@@ -1871,86 +1801,80 @@ public class BatchFileGenerator {
 
 				while (modelIter.hasNext()) { // annotate the model
 					File model = modelIter.next();
-					boolean correctModel = false;
-					int tries = 0;
-					while (correctModel == false && tries < triesForModelAnnotater) {
-						File modelCopy = (File) CommonFunctionality.deepCopy(model);
-						ProcessModelAnnotater p;
-						System.out.println(model.getName() + ", tries: " + tries);
-						try {
-							p = new ProcessModelAnnotater(modelCopy.getAbsolutePath(),
-									pathToFolderForModelsWithDecisionsAnnotated, "_annotated");
-							int tasks = CommonFunctionality.getAmountTasks(p.getModelInstance());
-							
-							int amountWriters = CommonFunctionality.getAmountFromPercentageWithMinimum(tasks,
-									amountWritersInPercent, amountDataObjectsToCreate);
-							int minAmountReaders = amountDataObjectsToCreate;
-							int amountReadersPercentage = CommonFunctionality.getAmountFromPercentage(tasks, amountReadersInPercent);
-							int amoundReadersLeft = amountReadersPercentage - minAmountReaders;
-							if(amoundReadersLeft<0) {
-								amoundReadersLeft = 0;
-							}
-							
-							// add the methods to be called
-							LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
+					File modelCopy = (File) CommonFunctionality.deepCopy(model);
+					ProcessModelAnnotater p;
+					System.out.println(model.getName());
+					try {
+						p = new ProcessModelAnnotater(modelCopy.getAbsolutePath(),
+								pathToFolderForModelsWithDecisionsAnnotated, "_annotated");
+						int tasks = CommonFunctionality.getAmountTasks(p.getModelInstance());
 
-							String firstMethodToBeCalledName = "addNamesForOutgoingFlowsOfXorSplits";
-							Object[] argumentsForFirstMethod = new Object[1];
-							argumentsForFirstMethod[0] = defaultNamesSeqFlowsXorSplits;
-							methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName, argumentsForFirstMethod);
-
-							String secondMethodToBeCalledName = "generateDataObjects";
-							Object[] argumentsForSecondMethod = new Object[2];
-							argumentsForSecondMethod[0] = amountDataObjectsToCreate;
-							argumentsForSecondMethod[1] = sphereList;
-							methodsToBeCalledMap.putIfAbsent(secondMethodToBeCalledName, argumentsForSecondMethod);
-
-							String thirdMethodToBeCalledName = "connectDataObjectsToBrtsAndTuplesForXorSplits";
-							Object[] argumentsForThirdMethod = new Object[7];
-							argumentsForThirdMethod[0] = minDataObjectsPerDecision;
-							argumentsForThirdMethod[1] = maxDataObjectsPerDecision;
-							argumentsForThirdMethod[2] = minAmountReaders;
-							argumentsForThirdMethod[3] = addActorsPerDecision;
-							argumentsForThirdMethod[4] = addActorsPerDecision;
-							argumentsForThirdMethod[5] = 0;
-							argumentsForThirdMethod[6] = true;
-							methodsToBeCalledMap.putIfAbsent(thirdMethodToBeCalledName, argumentsForThirdMethod);
-
-							String fourthMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
-							Object[] argumentsForFourthMethod = new Object[4];
-							argumentsForFourthMethod[0] = amountWriters;
-							argumentsForFourthMethod[1] = amoundReadersLeft;
-							argumentsForFourthMethod[2] = 0;
-							argumentsForFourthMethod[3] = defaultSpheres;
-							methodsToBeCalledMap.putIfAbsent(fourthMethodToBeCalledName, argumentsForFourthMethod);
-
-							// set the methods that will be run within the call method
-							p.setMethodsToRunWithinCall(methodsToBeCalledMap);
-
-							Future<File> future = executor.submit(p);
-							try {
-								future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
-								System.out.println("Model annotated correctly!");
-								correctModel = true;
-								future.cancel(true);
-							} catch (Exception e) {
-								correctModel = false;
-								System.err.println("Exception in call method of ProcessModelAnnotater: ");
-								e.printStackTrace();
-								future.cancel(true);
-								// delete already generated file
-								File alreadyGenerated = new File(p.getDirectoryForNewFile());
-								if (alreadyGenerated != null && alreadyGenerated.isFile()) {
-									System.out.println(alreadyGenerated.getAbsolutePath() + " deleted - "
-											+ alreadyGenerated.delete() + "!");
-								}
-							}
-						} catch (Exception e1) {
-							// TODO Auto-generated catch block
-							System.err.println("Exception in ProcessModelAnnotater");
-							e1.printStackTrace();
+						int amountWriters = CommonFunctionality.getAmountFromPercentageWithMinimum(tasks,
+								amountWritersInPercent, amountDataObjectsToCreate);
+						int minAmountReaders = amountDataObjectsToCreate;
+						int amountReadersPercentage = CommonFunctionality.getAmountFromPercentage(tasks,
+								amountReadersInPercent);
+						int amoundReadersLeft = amountReadersPercentage - minAmountReaders;
+						if (amoundReadersLeft < 0) {
+							amoundReadersLeft = 0;
 						}
-						tries++;
+
+						// add the methods to be called
+						LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
+
+						String firstMethodToBeCalledName = "addNamesForOutgoingFlowsOfXorSplits";
+						Object[] argumentsForFirstMethod = new Object[1];
+						argumentsForFirstMethod[0] = defaultNamesSeqFlowsXorSplits;
+						methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName, argumentsForFirstMethod);
+
+						String secondMethodToBeCalledName = "generateDataObjects";
+						Object[] argumentsForSecondMethod = new Object[2];
+						argumentsForSecondMethod[0] = amountDataObjectsToCreate;
+						argumentsForSecondMethod[1] = sphereList;
+						methodsToBeCalledMap.putIfAbsent(secondMethodToBeCalledName, argumentsForSecondMethod);
+
+						String thirdMethodToBeCalledName = "connectDataObjectsToBrtsAndTuplesForXorSplits";
+						Object[] argumentsForThirdMethod = new Object[7];
+						argumentsForThirdMethod[0] = minDataObjectsPerDecision;
+						argumentsForThirdMethod[1] = maxDataObjectsPerDecision;
+						argumentsForThirdMethod[2] = minAmountReaders;
+						argumentsForThirdMethod[3] = addActorsPerDecision;
+						argumentsForThirdMethod[4] = addActorsPerDecision;
+						argumentsForThirdMethod[5] = 0;
+						argumentsForThirdMethod[6] = true;
+						methodsToBeCalledMap.putIfAbsent(thirdMethodToBeCalledName, argumentsForThirdMethod);
+
+						String fourthMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
+						Object[] argumentsForFourthMethod = new Object[4];
+						argumentsForFourthMethod[0] = amountWriters;
+						argumentsForFourthMethod[1] = amoundReadersLeft;
+						argumentsForFourthMethod[2] = 0;
+						argumentsForFourthMethod[3] = defaultSpheres;
+						methodsToBeCalledMap.putIfAbsent(fourthMethodToBeCalledName, argumentsForFourthMethod);
+
+						// set the methods that will be run within the call method
+						p.setMethodsToRunWithinCall(methodsToBeCalledMap);
+
+						Future<File> future = executor.submit(p);
+						try {
+							future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
+							System.out.println("Model annotated correctly!");
+							future.cancel(true);
+						} catch (Exception e) {
+							System.err.println("Exception in call method of ProcessModelAnnotater: ");
+							e.printStackTrace();
+							future.cancel(true);
+							// delete already generated file
+							File alreadyGenerated = new File(p.getDirectoryForNewFile());
+							if (alreadyGenerated != null && alreadyGenerated.isFile()) {
+								System.out.println(alreadyGenerated.getAbsolutePath() + " deleted - "
+										+ alreadyGenerated.delete() + "!");
+							}
+						}
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						System.err.println("Exception in ProcessModelAnnotater");
+						e1.printStackTrace();
 					}
 				}
 				// map annotated models
