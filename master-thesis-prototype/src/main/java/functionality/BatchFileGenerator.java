@@ -36,7 +36,7 @@ public class BatchFileGenerator {
 	static int timeOutForProcessGeneratorInMin = 20;
 	static int timeOutForProcessModelAnnotaterInMin = 60;
 	// API is the class where the computations will be done
-	static int timeOutForApiInMin = 5;
+	static int timeOutForApiInMin = 3;
 
 	// amount of solutions to be generated with naive and heuristic approaches
 	static int amountSolutionsToBeGenerated = 1;
@@ -241,7 +241,7 @@ public class BatchFileGenerator {
 
 				// choose a model
 				File directoryOfFiles = new File(pathToFolderForModelsForTest1_1 + File.separatorChar
-						+ "BoundaryTest_decision-4" + File.separatorChar + "annotated");
+						+ "BoundaryTest_decision-1" + File.separatorChar + "annotated");
 				List<File> listOfFiles = Arrays.asList(directoryOfFiles.listFiles());
 				File model = CommonFunctionality.getRandomItem(listOfFiles);
 				int newModelsPerIteration = 10;
