@@ -1951,39 +1951,59 @@ public class BatchFileGenerator {
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreadPools);
+		boolean runExhaustive = true;
+		boolean runNaive = true;
+		boolean runIncrementalNaive = true;
+		boolean runHeuristic = true;
+		boolean finish = false;
 
 		try {
-			CommonFunctionality.generateNewModelsUntilPrivateSphereReached(file, privateSphereLowerBound,
-					amountNewProcessesToCreatePerIteration, directoryToStore);
+			if (!finish) {
+				CommonFunctionality.generateNewModelsUntilPrivateSphereReached(file, privateSphereLowerBound,
+						amountNewProcessesToCreatePerIteration, directoryToStore);
 
-			// map annotated models
-			LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(directoryToStore, writer);
-			boolean outOfMemoryException = false;
-			// perform all algorithms and count the timeouts
-			for (API api : apiList) {
+				// map annotated models
+				LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(directoryToStore, writer);
+				boolean outOfMemoryException = false;
+				// perform all algorithms and count the timeouts
 				HashMap<Enums.AlgorithmToPerform, Integer> timeOutMap = new HashMap<Enums.AlgorithmToPerform, Integer>();
-
 				timeOutMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
 				timeOutMap.put(Enums.AlgorithmToPerform.HEURISTIC, 0);
 				timeOutMap.put(Enums.AlgorithmToPerform.NAIVE, 0);
 				timeOutMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, 0);
 
-				HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
-						.runAlgsAndWriteResults(api, 100, true, true, true, true, boundForAlgorithms, timeOutMap,
-								writer, executor);
-				if (returnMap.get(true) != null) {
-					outOfMemoryException = true;
-					timeOutMap = returnMap.get(true);
-				} else {
-					timeOutMap = returnMap.get(false);
-				}
+				for (API api : apiList) {
+					HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
+							.runAlgsAndWriteResults(api, 100, runExhaustive, runHeuristic, runNaive,
+									runIncrementalNaive, boundForAlgorithms, timeOutMap, writer, executor);
+					if (returnMap.get(true) != null) {
+						outOfMemoryException = true;
+						timeOutMap = returnMap.get(true);
+					} else {
+						timeOutMap = returnMap.get(false);
+					}
 
-				if ((timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == 1
-						&& timeOutMap.get(Enums.AlgorithmToPerform.HEURISTIC) == 1
-						&& timeOutMap.get(Enums.AlgorithmToPerform.NAIVE) == 1
-						&& timeOutMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == 1)
-						|| outOfMemoryException == true) {
-					break;
+					if (timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == apiList.size()) {
+						runExhaustive = false;
+					}
+					if (timeOutMap.get(Enums.AlgorithmToPerform.HEURISTIC) == apiList.size()) {
+						runHeuristic = false;
+					}
+					if (timeOutMap.get(Enums.AlgorithmToPerform.NAIVE) == apiList.size()) {
+						runNaive = false;
+					}
+					if (timeOutMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == apiList.size()) {
+						runIncrementalNaive = false;
+					}
+
+					if (outOfMemoryException) {
+						finish = true;
+					}
+
+					if (!runExhaustive && !runHeuristic && !runNaive && !runIncrementalNaive) {
+						finish = true;
+					}
+
 				}
 			}
 			executor.shutdownNow();
@@ -1994,6 +2014,7 @@ public class BatchFileGenerator {
 			executor.shutdownNow();
 			writer.writeRowsToCSVAndcloseWriter();
 		}
+
 	}
 
 	public static void substituteDataObjectAndWriteNewModels(BpmnModelInstance modelInstance, String modelName,

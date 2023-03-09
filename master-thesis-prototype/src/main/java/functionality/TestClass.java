@@ -13,7 +13,7 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel7_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel13_annotated1_annotated22lWlR_Weak-Dynamic_verifiers2.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel12_annotated1_annotated13sWsR_Private_verifiers1.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel43_annotated1_lWmR_Strong-Dynamic_addActors2.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel181_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel6_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorCnew.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
@@ -28,14 +28,14 @@ public class TestClass {
 		
 			
 			//LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(false, 1);
-			LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(true, 1);
+			/*LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(true, 1);
 
 			
 			for(PModelWithAdditionalActors pModel: pInstNaive) {
 				pModel.printMeasure();
 			}
 			
-			
+			/*
 			LinkedList<PModelWithAdditionalActors>pInstExhaustive = api2.exhaustiveSearch();
 			LinkedList<PModelWithAdditionalActors> cheapestExhaustive = CommonFunctionality.getCheapestPModelsWithAdditionalActors(pInstExhaustive);
 			System.out.println("Cheapest exhaustive: "+cheapestExhaustive.size());
@@ -44,7 +44,7 @@ public class TestClass {
 			for(PModelWithAdditionalActors pModel: cheapestExhaustive) {
 			pModel.printMeasure();
 			}
-			
+			*/
 			
 			
 			int bound = 1;
@@ -56,9 +56,9 @@ public class TestClass {
 			
 			// garbage collector will remove
 			//pInst = null;
-			String result = CommonFunctionality.compareCostOfCheapestSolutionsOfAlgorithms(pInstHeuristic, pInstExhaustive);
+			//String result = CommonFunctionality.compareCostOfCheapestSolutionsOfAlgorithms(pInstHeuristic, pInstExhaustive);
 			System.out.println("Cheapest heuristic: "+pInstHeuristic.size());
-			System.out.println("Result: "+result);		
+			//System.out.println("Result: "+result);		
 			System.out.println("__________________");
 			//String naiveIsCheapest = CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstNaive, pInstExhaustive, bound);
 			//System.out.println("naiveIsCheapest: "+naiveIsCheapest);

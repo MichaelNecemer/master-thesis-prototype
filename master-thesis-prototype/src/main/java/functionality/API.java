@@ -2568,20 +2568,20 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 											pModelWithAdditionalActors.getAdditionalActorsList(), brtToExclude,
 											pathsFromOriginOverDependentBrtToEnd);
 
-									HashSet<BPMNParticipant> sdSet = new HashSet<BPMNParticipant>();
+									HashSet<BPMNParticipant> sdSetWithAddActors = new HashSet<BPMNParticipant>();
 									if (participantIsSd) {
-										sdSet.add(participant);
+										sdSetWithAddActors.add(participant);
 									}
-									spheres1.putIfAbsent(dependentBrt, sdSet);
+									spheres1.putIfAbsent(dependentBrt, sdSetWithAddActors);
 
-									HashSet<BPMNParticipant> test = new HashSet<BPMNParticipant>();
+									HashSet<BPMNParticipant> sdSetWithoutAddActors = new HashSet<BPMNParticipant>();
 									if (participantIsSd2) {
-										test.add(participant);
+										sdSetWithoutAddActors.add(participant);
 									}
 									// the participant is in sd for the current configuration
-									sdSphereEntryForDependentBrt.setSdSphereWithAdditionalActors(sdSet);
+									sdSphereEntryForDependentBrt.setSdSphereWithAdditionalActors(sdSetWithAddActors);
 
-									sdSphereEntryForDependentBrt.setSdSphereWithoutAdditionalActor(test);
+									sdSphereEntryForDependentBrt.setSdSphereWithoutAdditionalActor(sdSetWithoutAddActors);
 
 								}
 
@@ -2942,6 +2942,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 						new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
 						new LinkedList<LinkedList<BPMNElement>>());
 				pathsFromOriginOverCurrBrtToEndInnerMap.putIfAbsent(currBrt, pathsFromOriginOverCurrBrtToEnd);
+				pathFromOriginOverCurrBrtToEndMap.putIfAbsent(origin, pathsFromOriginOverCurrBrtToEndInnerMap);
 			}
 		}
 
