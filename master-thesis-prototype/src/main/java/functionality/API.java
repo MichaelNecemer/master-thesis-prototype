@@ -338,7 +338,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 					}
 				}
 
-				// check if there are still voters needed
+				// check if there are still verifiers needed
 				verifiersToFind = verifiersToFind - participantsWithCurrentCost.size();
 
 				if (verifiersToFind > 0) {

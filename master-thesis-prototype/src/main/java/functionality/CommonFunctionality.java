@@ -2788,27 +2788,24 @@ public class CommonFunctionality {
 				Iterator<Task> taskIter = tasksToChooseFrom.iterator();
 				LinkedList<String> participantsNeededToBeChosen = new LinkedList<String>();
 				participantsNeededToBeChosen.addAll(participantNames);
+				Iterator<String> participantIter = participantsNeededToBeChosen.iterator();
 
 				while (taskIter.hasNext()) {
 					Task currTask = taskIter.next();
 					String currTaskName = currTask.getName();
 
-					Iterator<String> participantIter = participantsNeededToBeChosen.iterator();
 					if (participantIter.hasNext()) {
 						// first assign the participant once to a task to match the
 						// privateSphereLowerBound
 						String newParticipant = participantIter.next();
 						String newTaskName = currTaskName.replaceAll("(?<=\\[).*?(?=\\])", newParticipant);
 						currTask.setName(newTaskName);
-
 						participantIter.remove();
-
 					} else {
 						// choose a random participant
 						String newParticipant = CommonFunctionality.getRandomItem(participantNames);
 						String newTaskName = currTaskName.replaceAll("(?<=\\[).*?(?=\\])", newParticipant);
 						currTask.setName(newTaskName);
-
 					}
 
 				}
@@ -2828,9 +2825,8 @@ public class CommonFunctionality {
 				}
 
 			}
-
 			privateSphereLowerBound++;
-
+			System.gc();
 		}
 
 	}

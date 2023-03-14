@@ -376,7 +376,7 @@ public class BatchFileGenerator {
 				// extra large processes will run into timeout for exhaustive search
 				// in most cases, therefore only run exhaustive search in some instances
 				int percentageOfExtraLargeProcessesToRunExhaustiveOn = 10;
-
+				
 				BatchFileGenerator.performTradeOffTest("small", pathToSmallProcessesForTest2WithAnnotation,
 						dataObjectBoundsSmallProcesses, amountSolutionsToBeGenerated,
 						amountXorsSmallProcessesBounds.get(0), amountXorsSmallProcessesBounds.get(1),
@@ -397,7 +397,7 @@ public class BatchFileGenerator {
 						amountXorsExtraLargeProcessesBounds.get(0), amountXorsExtraLargeProcessesBounds.get(1),
 						amountProcessesToTakePerDecision, pathToExtraLargeProcessesFolderWithoutAnnotation,
 						percentageOfExtraLargeProcessesToRunExhaustiveOn, amountThreads);
-
+			
 				System.out.println("Test 2 finished!");
 			}
 		}
