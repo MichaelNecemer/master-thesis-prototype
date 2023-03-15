@@ -2772,7 +2772,7 @@ public class CommonFunctionality {
 			// amountNewProcessesToCreatePerIteration new Models where all tasks of the
 			// model have one of the 3 participants connected
 			String folderName = "lb" + privateSphereLowerBound;
-			CommonFunctionality.createFileWithinDirectory(directoryToStore, folderName);
+			File folder = CommonFunctionality.createFileWithinDirectory(directoryToStore, folderName);
 						
 			for (int iteration = 0; iteration < amountNewProcessesToCreatePerIteration; iteration++) {
 				String suffix = "lb" + privateSphereLowerBound + "ub" + privateSphereUpperBound + "iter" + iteration;
@@ -2813,7 +2813,7 @@ public class CommonFunctionality {
 				}
 
 				try {
-					CommonFunctionality.writeChangesToFile(cloneModel, fileNameWithoutExtension, folderName,
+					CommonFunctionality.writeChangesToFile(cloneModel, fileNameWithoutExtension, folder.getAbsolutePath(),
 							suffix);
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
