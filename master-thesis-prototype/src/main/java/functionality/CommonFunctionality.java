@@ -2765,13 +2765,15 @@ public class CommonFunctionality {
 		String fileNameWithoutExtension = model.getName().replace(".bpmn", "").trim();
 		BpmnModelInstance modelInstance = Bpmn.readModelFromFile(model);
 		int privateSphereUpperBound = modelInstance.getModelElementsByType(Task.class).size();
-
+		
 		while (privateSphereLowerBound <= privateSphereUpperBound) {
 			// privateSphereLowerBound = amount of different participants for this model
 			// privateSphereLowerBound e.g. 3 -> create
 			// amountNewProcessesToCreatePerIteration new Models where all tasks of the
 			// model have one of the 3 participants connected
-
+			String folderName = "lb" + privateSphereLowerBound;
+			CommonFunctionality.createFileWithinDirectory(directoryToStore, folderName);
+						
 			for (int iteration = 0; iteration < amountNewProcessesToCreatePerIteration; iteration++) {
 				String suffix = "lb" + privateSphereLowerBound + "ub" + privateSphereUpperBound + "iter" + iteration;
 				LinkedList<String> participantNames = new LinkedList<String>();
@@ -2811,7 +2813,7 @@ public class CommonFunctionality {
 				}
 
 				try {
-					CommonFunctionality.writeChangesToFile(cloneModel, fileNameWithoutExtension, directoryToStore,
+					CommonFunctionality.writeChangesToFile(cloneModel, fileNameWithoutExtension, folderName,
 							suffix);
 				} catch (IOException e) {
 					// TODO Auto-generated catch block

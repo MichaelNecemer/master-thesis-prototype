@@ -376,7 +376,7 @@ public class BatchFileGenerator {
 				// extra large processes will run into timeout for exhaustive search
 				// in most cases, therefore only run exhaustive search in some instances
 				int percentageOfExtraLargeProcessesToRunExhaustiveOn = 10;
-				
+
 				BatchFileGenerator.performTradeOffTest("small", pathToSmallProcessesForTest2WithAnnotation,
 						dataObjectBoundsSmallProcesses, amountSolutionsToBeGenerated,
 						amountXorsSmallProcessesBounds.get(0), amountXorsSmallProcessesBounds.get(1),
@@ -397,7 +397,7 @@ public class BatchFileGenerator {
 						amountXorsExtraLargeProcessesBounds.get(0), amountXorsExtraLargeProcessesBounds.get(1),
 						amountProcessesToTakePerDecision, pathToExtraLargeProcessesFolderWithoutAnnotation,
 						percentageOfExtraLargeProcessesToRunExhaustiveOn, amountThreads);
-			
+
 				System.out.println("Test 2 finished!");
 			}
 		}
@@ -1962,48 +1962,53 @@ public class BatchFileGenerator {
 				CommonFunctionality.generateNewModelsUntilPrivateSphereReached(file, privateSphereLowerBound,
 						amountNewProcessesToCreatePerIteration, directoryToStore);
 
-				// map annotated models
-				LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(directoryToStore, writer);
-				boolean outOfMemoryException = false;
-				// perform all algorithms and count the timeouts
-				HashMap<Enums.AlgorithmToPerform, Integer> timeOutMap = new HashMap<Enums.AlgorithmToPerform, Integer>();
-				timeOutMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
-				timeOutMap.put(Enums.AlgorithmToPerform.HEURISTIC, 0);
-				timeOutMap.put(Enums.AlgorithmToPerform.NAIVE, 0);
-				timeOutMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, 0);
+				File[] directories = new File(directoryToStore).listFiles(File::isDirectory);
 
-				for (API api : apiList) {
-					HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
-							.runAlgsAndWriteResults(api, 100, runExhaustive, runHeuristic, runNaive,
-									runIncrementalNaive, boundForAlgorithms, timeOutMap, writer, executor);
-					if (returnMap.get(true) != null) {
-						outOfMemoryException = true;
-						timeOutMap = returnMap.get(true);
-					} else {
-						timeOutMap = returnMap.get(false);
-					}
+				for (File directory : directories) {
+					String directoryPath = directory.getAbsolutePath();
+					// map annotated models
+					LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(directoryPath, writer);
+					boolean outOfMemoryException = false;
+					// perform all algorithms and count the timeouts
+					HashMap<Enums.AlgorithmToPerform, Integer> timeOutMap = new HashMap<Enums.AlgorithmToPerform, Integer>();
+					timeOutMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
+					timeOutMap.put(Enums.AlgorithmToPerform.HEURISTIC, 0);
+					timeOutMap.put(Enums.AlgorithmToPerform.NAIVE, 0);
+					timeOutMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, 0);
 
-					if (timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == apiList.size()) {
-						runExhaustive = false;
-					}
-					if (timeOutMap.get(Enums.AlgorithmToPerform.HEURISTIC) == apiList.size()) {
-						runHeuristic = false;
-					}
-					if (timeOutMap.get(Enums.AlgorithmToPerform.NAIVE) == apiList.size()) {
-						runNaive = false;
-					}
-					if (timeOutMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == apiList.size()) {
-						runIncrementalNaive = false;
-					}
+					for (API api : apiList) {
+						HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
+								.runAlgsAndWriteResults(api, 100, runExhaustive, runHeuristic, runNaive,
+										runIncrementalNaive, boundForAlgorithms, timeOutMap, writer, executor);
+						if (returnMap.get(true) != null) {
+							outOfMemoryException = true;
+							timeOutMap = returnMap.get(true);
+						} else {
+							timeOutMap = returnMap.get(false);
+						}
 
-					if (outOfMemoryException) {
-						finish = true;
-					}
+						if (timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == apiList.size()) {
+							runExhaustive = false;
+						}
+						if (timeOutMap.get(Enums.AlgorithmToPerform.HEURISTIC) == apiList.size()) {
+							runHeuristic = false;
+						}
+						if (timeOutMap.get(Enums.AlgorithmToPerform.NAIVE) == apiList.size()) {
+							runNaive = false;
+						}
+						if (timeOutMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == apiList.size()) {
+							runIncrementalNaive = false;
+						}
 
-					if (!runExhaustive && !runHeuristic && !runNaive && !runIncrementalNaive) {
-						finish = true;
-					}
+						if (outOfMemoryException) {
+							// happens for exhaustive search first
+							runExhaustive = false;
+						}
 
+						if (!runExhaustive && !runHeuristic && !runNaive && !runIncrementalNaive) {
+							finish = true;
+						}
+					}
 				}
 			}
 			executor.shutdownNow();
