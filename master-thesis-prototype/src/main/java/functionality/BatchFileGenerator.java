@@ -241,7 +241,7 @@ public class BatchFileGenerator {
 
 				// choose a model
 				File directoryOfFiles = new File(pathToFolderForModelsForTest1_1 + File.separatorChar
-						+ "BoundaryTest_decision-1" + File.separatorChar + "annotated");
+						+ "BoundaryTest_decision-10" + File.separatorChar + "annotated");
 				List<File> listOfFiles = Arrays.asList(directoryOfFiles.listFiles());
 				File model = CommonFunctionality.getRandomItem(listOfFiles);
 				int newModelsPerIteration = 10;
