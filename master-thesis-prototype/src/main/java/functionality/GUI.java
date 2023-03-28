@@ -416,7 +416,7 @@ public class GUI {
 						leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.PAGE_AXIS));
 
 						try {
-							api = new API(pathToInputFile, costMeasureWeightingParameters);
+							api = new API(pathToInputFile, costMeasureWeightingParameters, true, true);
 							leftPanel.add(new JLabel("Troubleshooter: " + api.getTroubleShooter().getName()));
 							leftPanel.add(
 									new JLabel("Paths through process: " + api.getAllPathsThroughProcess().size()));

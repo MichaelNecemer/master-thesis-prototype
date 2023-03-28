@@ -87,7 +87,8 @@ import mapping.BPMNTask;
 
 public class CommonFunctionality {
 
-	public static synchronized void isCorrectModel(BpmnModelInstance modelInstance) throws Exception {
+	public static synchronized void isCorrectModel(BpmnModelInstance modelInstance, boolean testIfModelIsValid)
+			throws Exception {
 		// does correctness checking of the process model
 		// e.g. 1 Start and 1 End Event
 
@@ -95,7 +96,12 @@ public class CommonFunctionality {
 			throw new Exception("Model must have exactly 1 Start and 1 End Event");
 		}
 
-		CommonFunctionality.isModelValid(modelInstance);
+		if (testIfModelIsValid) {
+			// intensive calculations
+			// e.g. each reader has an origin
+			// parallel read/write dependencies
+			CommonFunctionality.isModelValid(modelInstance);
+		}
 
 		if (!CommonFunctionality.isModelBlockStructured(modelInstance)) {
 			throw new Exception("Model must be block structured!");
@@ -504,169 +510,192 @@ public class CommonFunctionality {
 		// model can not have a reader/writer in a parallel branch when there is a
 		// writer in the other one
 		// readers in both branches are allowed if there is no writer in any branch
+		HashMap<DataObjectReference, LinkedList<FlowNode>> readersPerDataObject = CommonFunctionality
+				.getReadersForDataObjects(modelInstance);
+		HashMap<DataObjectReference, LinkedList<FlowNode>> writersPerDataObject = CommonFunctionality
+				.getWritersForDataObjects(modelInstance);
 
-		LinkedList<LinkedList<FlowNode>> allProcessPaths = CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
-				modelInstance.getModelElementsByType(StartEvent.class).iterator().next().getId(),
-				modelInstance.getModelElementsByType(EndEvent.class).iterator().next().getId());
+		for (Entry<DataObjectReference, LinkedList<FlowNode>> readersEntry : readersPerDataObject.entrySet()) {
+			DataObjectReference currDataObject = readersEntry.getKey();
 
-		for (LinkedList<FlowNode> path : allProcessPaths) {
-			for (int i = 0; i < path.size(); i++) {
-				FlowNode f = path.get(i);
+			for (FlowNode reader : readersEntry.getValue()) {
+				LinkedList<LinkedList<FlowNode>> pathsToReader = CommonFunctionality.getAllPathsBetweenNodes(
+						modelInstance, modelInstance.getModelElementsByType(StartEvent.class).iterator().next().getId(),
+						reader.getId());
 
-				if (f instanceof Task) {
-					Task currTask = (Task) f;
-					if (f.getIncoming().size() > 1) {
-						throw new Exception(f.getName() + " can not have > 1 incoming edges!");
-					}
-					if (!currTask.getDataInputAssociations().isEmpty()) {
-						// task is a reader
-						for (DataInputAssociation dia : currTask.getDataInputAssociations()) {
-							for (ItemAwareElement iae : dia.getSources()) {
-								// check if there is a writer to the dataObject on the pathsToReader
-								boolean writersOnPaths = true;
-								LinkedList<LinkedList<FlowNode>> pathsToReader = CommonFunctionality
-										.getAllPathsBetweenNodes(modelInstance, modelInstance
-												.getModelElementsByType(StartEvent.class).iterator().next().getId(),
-												currTask.getId());
-
-								HashMap<FlowNode, LinkedList<ParallelGateway>> writerInBranch = new HashMap<FlowNode, LinkedList<ParallelGateway>>();
-
-								for (LinkedList<FlowNode> pathToReader : pathsToReader) {
-									boolean writerOnPath = false;
-									HashMap<ParallelGateway, FlowNode> branchOfCurrTask = new HashMap<ParallelGateway, FlowNode>();
-									LinkedList<ParallelGateway> openParallelSplits = new LinkedList<ParallelGateway>();
-
-									for (int index = 0; index < pathToReader.size(); index++) {
-										FlowNode nodeOnPathToReader = pathToReader.get(index);
-										// when there is a parallel gateway on the path to the reader
-										// check other branch for a writer too
-										if (nodeOnPathToReader instanceof ParallelGateway
-												&& nodeOnPathToReader.getOutgoing().size() >= 2) {
-											// parallel Split found on path
-											openParallelSplits.add((ParallelGateway) nodeOnPathToReader);
-											branchOfCurrTask.putIfAbsent((ParallelGateway) nodeOnPathToReader,
-													pathToReader.get(index + 1));
-										}
-
-										if (nodeOnPathToReader instanceof ParallelGateway
-												&& nodeOnPathToReader.getIncoming().size() >= 2) {
-											// parallel Join found on path
-											openParallelSplits.pollLast();
-										}
-
-										if (nodeOnPathToReader instanceof Task) {
-											if (CommonFunctionality.isWriterForDataObject((Task) nodeOnPathToReader,
-													iae)) {
-												writerOnPath = true;
-											}
-										}
-									}
-									if (!writerOnPath) {
-										// check other branches of parallel splits on the path
-										// the writer may be writing in one parallel branch if the reader reads after
-										// the join
-										if (!openParallelSplits.isEmpty()) {
-
-										}
-
-										writersOnPaths = false;
-									}
-								}
-
-								if (writersOnPaths == false) {
-									throw new Exception("Not a writer before every reader!");
-								}
-
-							}
-
+				boolean writersOnPaths = true;
+				
+				
+				for (LinkedList<FlowNode> pathToReader : pathsToReader) {
+					boolean writerOnPath = false;
+					HashMap<ParallelGateway, FlowNode> branchOfCurrTask = new HashMap<ParallelGateway, FlowNode>();
+					LinkedList<ParallelGateway> openParallelSplits = new LinkedList<ParallelGateway>();
+					LinkedList<ParallelGateway> pGtwOnPath = new LinkedList<ParallelGateway>();
+					
+					for (int index = 0; index < pathToReader.size(); index++) {
+						FlowNode nodeOnPathToReader = pathToReader.get(index);
+						// when there is a parallel gateway on the path to the reader
+						// check other branch for a writer too
+						if (nodeOnPathToReader instanceof ParallelGateway
+								&& nodeOnPathToReader.getOutgoing().size() >= 2) {
+							// parallel Split found on path
+							openParallelSplits.add((ParallelGateway) nodeOnPathToReader);
+							branchOfCurrTask.putIfAbsent((ParallelGateway) nodeOnPathToReader,
+									pathToReader.get(index + 1));
+							pGtwOnPath.add((ParallelGateway) nodeOnPathToReader);
 						}
 
+						if (nodeOnPathToReader instanceof ParallelGateway
+								&& nodeOnPathToReader.getIncoming().size() >= 2) {
+							// parallel Join found on path
+							openParallelSplits.pollLast();
+						}
+
+						if (nodeOnPathToReader instanceof Task) {
+							if (writersPerDataObject.get(currDataObject).contains(nodeOnPathToReader)) {
+								writerOnPath = true;
+							}
+						}
 					}
-					if (!currTask.getDataOutputAssociations().isEmpty()) {
-						// currTask is a writer
-						// check if currTask is inside a parallel Branch
-						// if yes, check if there is a reader/writer in the other branch
-						LinkedList<LinkedList<FlowNode>> pathsToWriter = CommonFunctionality.getAllPathsBetweenNodes(
-								modelInstance,
-								modelInstance.getModelElementsByType(StartEvent.class).iterator().next().getId(),
-								currTask.getId());
+					if (!writerOnPath) {
+						// check other branches of parallel splits on the path
+						// the writer may be writing in one parallel branch if the reader reads after
+						// the join
+						if(!pGtwOnPath.isEmpty()) {
+							for(ParallelGateway split: pGtwOnPath) {
+							FlowNode successorOfOtherBranch = null;
+							for (SequenceFlow outgoingSeq : split.getOutgoing()) {
+								FlowNode successor = outgoingSeq.getTarget();
+								for (Entry<ParallelGateway, FlowNode> entry : branchOfCurrTask.entrySet()) {
+									if (entry.getKey().equals(split)) {
+										if (!successor.equals(entry.getValue())) {
+											// first node in other branch found
+											successorOfOtherBranch = successor;
+										}
+									}
 
-						for (LinkedList<FlowNode> pathToWriter : pathsToWriter) {
-							HashMap<ParallelGateway, FlowNode> branchOfCurrTask = new HashMap<ParallelGateway, FlowNode>();
-							LinkedList<ParallelGateway> openParallelSplits = new LinkedList<ParallelGateway>();
-							for (int index = 0; index < pathToWriter.size(); index++) {
-								FlowNode nodeOnPathToWriter = pathToWriter.get(index);
-
-								if (nodeOnPathToWriter instanceof ParallelGateway
-										&& nodeOnPathToWriter.getOutgoing().size() >= 2) {
-									// parallel Split found on path
-									openParallelSplits.add((ParallelGateway) nodeOnPathToWriter);
-									branchOfCurrTask.putIfAbsent((ParallelGateway) nodeOnPathToWriter,
-											pathToWriter.get(index + 1));
 								}
-								if (nodeOnPathToWriter instanceof ParallelGateway
-										&& nodeOnPathToWriter.getIncoming().size() >= 2) {
-									// parallel Join found on path
-									openParallelSplits.pollLast();
+
+							}
+							
+							LinkedList<LinkedList<FlowNode>> branchOfSuccessorPaths = CommonFunctionality
+									.getAllPathsBetweenNodes(modelInstance, successorOfOtherBranch.getId(),
+											CommonFunctionality.getCorrespondingGtw(modelInstance, split).getId());
+							boolean writerFoundInOnePBranch = false;
+							outerloop: for (LinkedList<FlowNode> branch : branchOfSuccessorPaths) {
+								for (int nodeIndex = 0; nodeIndex < branch.size(); nodeIndex++) {
+									FlowNode nodeInsideBranch = branch.get(nodeIndex);
+
+									if (nodeInsideBranch instanceof Task) {
+										if (writersPerDataObject.get(currDataObject).contains(nodeInsideBranch)) {
+											//writer found in parallel branch to reader 
+											writerFoundInOnePBranch = true;
+											break outerloop;
+										}
+
+									}
 								}
 							}
+							if(!writerFoundInOnePBranch) {
+								writersOnPaths = false;
+							}
 
-							if (!openParallelSplits.isEmpty()) {
-								// writer is inside parallel branch
-								// check other branches for readers/writers to same data object
-								for (ParallelGateway openPSplit : openParallelSplits) {
-									FlowNode successorOfOtherBranch = null;
-									for (SequenceFlow outgoingSeq : openPSplit.getOutgoing()) {
-										FlowNode successor = outgoingSeq.getTarget();
-										for (Entry<ParallelGateway, FlowNode> entry : branchOfCurrTask.entrySet()) {
-											if (entry.getKey().equals(openPSplit)) {
-												if (!successor.equals(entry.getValue())) {
-													// first node in other branch found
-													successorOfOtherBranch = successor;
-												}
-											}
+							}
+							
+							
+							
+						} else {
+							writersOnPaths = false;	
+						}
+					}
+				}
 
+				if (writersOnPaths == false) {
+					throw new Exception("Not a writer before every reader!");
+				}
+
+			}
+
+		}
+		for (Entry<DataObjectReference, LinkedList<FlowNode>> writersEntry : writersPerDataObject.entrySet()) {
+			DataObjectReference currDataObject = writersEntry.getKey();
+
+			for (FlowNode writer : writersEntry.getValue()) {
+				// currTask is a writer
+				// check if currTask is inside a parallel Branch
+				// if yes, check if there is a reader/writer in the other branch
+				LinkedList<FlowNode> writersEntryWithoutCurrWriter = new LinkedList<FlowNode>();
+				writersEntryWithoutCurrWriter.addAll(writersEntry.getValue());
+				writersEntryWithoutCurrWriter.remove(writer);
+
+				LinkedList<LinkedList<FlowNode>> pathsToWriter = CommonFunctionality.getAllPathsBetweenNodes(
+						modelInstance, modelInstance.getModelElementsByType(StartEvent.class).iterator().next().getId(),
+						writer.getId());
+
+				for (LinkedList<FlowNode> pathToWriter : pathsToWriter) {
+					HashMap<ParallelGateway, FlowNode> branchOfCurrTask = new HashMap<ParallelGateway, FlowNode>();
+					LinkedList<ParallelGateway> openParallelSplits = new LinkedList<ParallelGateway>();
+					for (int index = 0; index < pathToWriter.size(); index++) {
+						FlowNode nodeOnPathToWriter = pathToWriter.get(index);
+
+						if (nodeOnPathToWriter instanceof ParallelGateway
+								&& nodeOnPathToWriter.getOutgoing().size() >= 2) {
+							// parallel Split found on path
+							openParallelSplits.add((ParallelGateway) nodeOnPathToWriter);
+							branchOfCurrTask.putIfAbsent((ParallelGateway) nodeOnPathToWriter,
+									pathToWriter.get(index + 1));
+						}
+						if (nodeOnPathToWriter instanceof ParallelGateway
+								&& nodeOnPathToWriter.getIncoming().size() >= 2) {
+							// parallel Join found on path
+							openParallelSplits.pollLast();
+						}
+					}
+
+					if (!openParallelSplits.isEmpty()) {
+						// writer is inside parallel branch
+						// check other branches for readers/writers to same data object
+						for (ParallelGateway openPSplit : openParallelSplits) {
+							FlowNode successorOfOtherBranch = null;
+							for (SequenceFlow outgoingSeq : openPSplit.getOutgoing()) {
+								FlowNode successor = outgoingSeq.getTarget();
+								for (Entry<ParallelGateway, FlowNode> entry : branchOfCurrTask.entrySet()) {
+									if (entry.getKey().equals(openPSplit)) {
+										if (!successor.equals(entry.getValue())) {
+											// first node in other branch found
+											successorOfOtherBranch = successor;
+										}
+									}
+
+								}
+
+							}
+
+							LinkedList<LinkedList<FlowNode>> branchOfSuccessorPaths = CommonFunctionality
+									.getAllPathsBetweenNodes(modelInstance, successorOfOtherBranch.getId(),
+											CommonFunctionality.getCorrespondingGtw(modelInstance, openPSplit).getId());
+							for (LinkedList<FlowNode> branch : branchOfSuccessorPaths) {
+								for (int nodeIndex = 0; nodeIndex < branch.size(); nodeIndex++) {
+									FlowNode nodeInsideBranch = branch.get(nodeIndex);
+
+									if (nodeInsideBranch instanceof Task) {
+										if (readersPerDataObject.get(currDataObject).contains(nodeInsideBranch)) {
+											// subPathNode is reader in other parallel branch than
+											// currTask
+											throw new Exception("Invalid reader: " + nodeInsideBranch.getName()
+													+ "and writer " + writer.getName()
+													+ " dependencies due to parallel branching!");
+										}
+
+										if (writersEntryWithoutCurrWriter.contains(nodeInsideBranch)) {
+											// subPathNode is writer in other parallel branch than
+											// currTask
+											throw new Exception("Invalid writer: " + nodeInsideBranch.getName()
+													+ "and writer " + writer.getName()
+													+ " dependencies due to parallel branching!");
 										}
 
 									}
-
-									LinkedList<LinkedList<FlowNode>> branchOfSuccessorPaths = CommonFunctionality
-											.getAllPathsBetweenNodes(modelInstance, successorOfOtherBranch.getId(),
-													CommonFunctionality.getCorrespondingGtw(modelInstance, openPSplit)
-															.getId());
-									for (LinkedList<FlowNode> branch : branchOfSuccessorPaths) {
-										for (int nodeIndex = 0; nodeIndex < branch.size(); nodeIndex++) {
-											FlowNode nodeInsideBranch = branch.get(nodeIndex);
-
-											if (nodeInsideBranch instanceof Task) {
-												for (DataOutputAssociation dao : currTask.getDataOutputAssociations()) {
-													ItemAwareElement iae = dao.getTarget();
-													if (CommonFunctionality.isReaderForDataObject(
-															(Task) nodeInsideBranch, iae) == true) {
-														// subPathNode is reader in other parallel branch than
-														// currTask
-														throw new Exception(
-																"Invalid reader: " + nodeInsideBranch.getName()
-																		+ "and writer " + currTask.getName()
-																		+ " dependencies due to parallel branching!");
-													}
-													if (CommonFunctionality.isWriterForDataObject(
-															(Task) nodeInsideBranch, iae) == true) {
-														// subPathNode is writer in other parallel branch than
-														// currTask
-														throw new Exception(
-																"Invalid writer: " + nodeInsideBranch.getName()
-																		+ "and writer " + currTask.getName()
-																		+ " dependencies due to parallel branching!");
-													}
-
-												}
-
-											}
-										}
-
-									}
-
 								}
 
 							}
@@ -678,8 +707,12 @@ public class CommonFunctionality {
 				}
 
 			}
+
 		}
+
 	}
+
+	
 
 	public static LinkedList<LinkedList<FlowNode>> getAllPathsForCamundaElements(BpmnModelInstance modelInstance,
 			FlowNode startNode, FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<FlowNode> openSplits,
@@ -993,7 +1026,7 @@ public class CommonFunctionality {
 				for (Gateway gateway : modelInstance.getModelElementsByType(Gateway.class)) {
 					if (gateway.getName().trim().contentEquals(gtw.getName().trim())) {
 						if (gateway.getIncoming().size() == 1 && gateway.getOutgoing().size() >= 2) {
-							splitGtwId.append(gateway.getId());
+							splitGtwId.append(gateway.getId().trim());
 							break;
 						}
 					}
@@ -2765,7 +2798,7 @@ public class CommonFunctionality {
 		String fileNameWithoutExtension = model.getName().replace(".bpmn", "").trim();
 		BpmnModelInstance modelInstance = Bpmn.readModelFromFile(model);
 		int privateSphereUpperBound = modelInstance.getModelElementsByType(Task.class).size();
-		
+
 		while (privateSphereLowerBound <= privateSphereUpperBound) {
 			// privateSphereLowerBound = amount of different participants for this model
 			// privateSphereLowerBound e.g. 3 -> create
@@ -2773,7 +2806,7 @@ public class CommonFunctionality {
 			// model have one of the 3 participants connected
 			String folderName = "lb" + privateSphereLowerBound;
 			File folder = CommonFunctionality.createFileWithinDirectory(directoryToStore, folderName);
-						
+
 			for (int iteration = 0; iteration < amountNewProcessesToCreatePerIteration; iteration++) {
 				String suffix = "lb" + privateSphereLowerBound + "ub" + privateSphereUpperBound + "iter" + iteration;
 				LinkedList<String> participantNames = new LinkedList<String>();
@@ -2813,8 +2846,8 @@ public class CommonFunctionality {
 				}
 
 				try {
-					CommonFunctionality.writeChangesToFile(cloneModel, fileNameWithoutExtension, folder.getAbsolutePath(),
-							suffix);
+					CommonFunctionality.writeChangesToFile(cloneModel, fileNameWithoutExtension,
+							folder.getAbsolutePath(), suffix);
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -3772,6 +3805,5 @@ public class CommonFunctionality {
 		 */
 		return "";
 	}
-	
 
 }

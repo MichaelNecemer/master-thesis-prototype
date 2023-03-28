@@ -81,7 +81,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 	private int bound;
 	private int amountParallelsBeforePreprocessing;
 
-	public API(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters) throws Exception {
+	public API(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters, boolean testIfModelValid, boolean calculateAmountOfPaths) throws Exception {
 		if (weightingParameters.size() != 3) {
 			throw new Exception("Not exactly 3 weighting cost parameters (Alpha, Beta, Gamma) in the list!");
 		}
@@ -98,7 +98,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		System.out.println("API for: " + this.processModelFile.getName());
 		boolean correctModel = true;
 		try {
-			CommonFunctionality.isCorrectModel(this.modelInstance);
+			CommonFunctionality.isCorrectModel(this.modelInstance, testIfModelValid);
 		} catch (Exception e) {
 			correctModel = false;
 			System.out.println("Model correct: " + correctModel);
@@ -124,9 +124,12 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		this.strongDynamicSphereKey = "Strong-Dynamic";
 		this.bound = 0;
 		// map all the elements from camunda
-		this.mapCamundaElements();
+		this.mapCamundaElements();		
+		// expensive calculations when a lot of xors in process
+		if(calculateAmountOfPaths) {
 		this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance,
 				this.startEvent.getId(), this.endEvent.getId());
+		}
 	}
 
 	public LinkedList<PModelWithAdditionalActors> exhaustiveSearch() throws Exception {

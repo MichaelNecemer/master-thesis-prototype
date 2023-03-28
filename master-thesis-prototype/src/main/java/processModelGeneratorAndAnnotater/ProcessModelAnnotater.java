@@ -115,7 +115,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 	public void connectDataObjectsToBrtsAndTuplesForXorSplits(int minDataObjectsPerDecision,
 			int maxDataObjectsPerDecision, int maxAmountReadersThroughDataObjectConnection,
 			int amountParticipantsPerDecisionLowerBound, int amountParticipantsPerDecisionUpperBound,
-			int probPublicDecision, boolean allDataObjectsUniquePerGtw) throws Exception {
+			int probPublicDecision, boolean allDataObjectsUniquePerGtw, boolean tupleOnlyOneElement) throws Exception {
 		if (!this.dataObjects.isEmpty()) {
 			LinkedList<DataObjectReference> dataObjectsToChoseFrom = new LinkedList<DataObjectReference>();
 			dataObjectsToChoseFrom.addAll(this.dataObjects);
@@ -159,7 +159,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 					this.addRandomDataObjectsForBrt(task, amountDataObjectsToConnect);
 				}
 				this.addTuplesForXorSplits(task, probPublicDecision, amountParticipantsPerDecisionLowerBound,
-						amountParticipantsPerDecisionUpperBound);
+						amountParticipantsPerDecisionUpperBound, tupleOnlyOneElement);
 
 			}
 
@@ -171,7 +171,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	public File checkCorrectnessAndWriteChangesToFile() throws Exception {
 		File newFile = null;
-		CommonFunctionality.isCorrectModel(this.modelInstance);
+		CommonFunctionality.isCorrectModel(this.modelInstance, true);
 		newFile = this.writeChangesToFile();
 		if (newFile == null) {
 			throw new Exception("Model not valid - try another readers/writers assertion!");
@@ -843,7 +843,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 	}
 
 	private void addTuplesForXorSplits(Task brtTask, int probPublicDecision,
-			int lowerBoundAmountParticipantsPerDecision, int upperBoundAmountParticipantsPerDecision) {
+			int lowerBoundAmountParticipantsPerDecision, int upperBoundAmountParticipantsPerDecision, boolean tupleOnlyOneElement) {
 
 		if (taskIsBrtFollowedByXorSplit(brtTask)) {
 			BusinessRuleTask brt = (BusinessRuleTask) brtTask;
@@ -858,7 +858,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 			for (TextAnnotation tx : this.modelInstance.getModelElementsByType(TextAnnotation.class)) {
 				for (Association assoc : this.modelInstance.getModelElementsByType(Association.class)) {
 					if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-						if (tx.getTextContent().startsWith("[Voters]")) {
+						if (tx.getTextContent().startsWith("[AdditionalActors]")) {
 							insert = false;
 						}
 					}
@@ -882,7 +882,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 				} else {
 					int randomCountAdditionalActorsNeeded = ThreadLocalRandom.current().nextInt(
 							lowerBoundAmountParticipantsPerDecision, upperBoundAmountParticipantsPerDecision + 1);
-
+					if(tupleOnlyOneElement) {
+						textContentBuilder.append(randomCountAdditionalActorsNeeded);
+					} else {					
 					// second argument -> additional actors that need to decide the same
 					// must be bigger than the additional actors needed divided by 2 and rounded up
 					// to next int
@@ -897,7 +899,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 					// generate TextAnnotations for xor-splits
 					textContentBuilder.append(randomCountAdditionalActorsNeeded + "," + randomCountAddActorsSameDecision
 							+ "," + randomCountIterations);
-
+					}
 				}
 				textContentBuilder.append("}");
 

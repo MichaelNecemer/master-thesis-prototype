@@ -3,14 +3,14 @@ package processModelGeneratorAndAnnotater;
 public class ProcessGeneratorMain {
 	
 	public static void main(String[]args) {
-	String pathWhereToCreateModels = "C:\\Users\\Micha\\OneDrive\\Desktop\\PGen2.bpmn";
-	int amountParticipants = 3;
-	int amountTasksToBeInserted = 15;
+	String pathWhereToCreateModels = "C:\\Users\\Micha\\OneDrive\\Desktop\\PGen2";
+	int amountParticipants = 4;
+	int amountTasksToBeInserted = 10;
 	int amountXorsToBeInserted = 2;
 	int amountParallelsToBeInserted = 1;
-	int probabilityForJoinGtw = 0;
-	int nestingDepthFactor = 20;
-	int amountModelsToCreate = 5;
+	int probabilityForJoinGtw = 20;
+	int nestingDepthFactor = 10;
+	int amountModelsToCreate = 1;
 	int probTask = 33;
 	int probXorGtw = 33;
 	int probParallelGtw = 33;

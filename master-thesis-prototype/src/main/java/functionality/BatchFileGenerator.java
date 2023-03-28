@@ -38,6 +38,11 @@ public class BatchFileGenerator {
 	// API is the class where the computations will be done
 	static int timeOutForApiInMin = 3;
 
+	// for very large processes it is a good choice to set those parameters to false
+	// in order to avoid very long execution time until the actual algorithms start
+	static boolean testIfModelValid = true;	
+	static boolean calculateAmountOfPaths = true;
+
 	// amount of solutions to be generated with naive and heuristic approaches
 	static int amountSolutionsToBeGenerated = 1;
 
@@ -220,7 +225,7 @@ public class BatchFileGenerator {
 					tasksToStartWith, tasksFactor, 0, 0, percentageOfWriters, percentageOfReaders,
 					minDataObjectsPerDecision, maxDataObjectsPerDecision, sphere, amountThreads, stopAfterDecisions,
 					pathToFolderForModelsForTest1_1, testIfMinElementsInBranches, firstElementAfterStartIsTask,
-					timeOutForProcessGeneratorInMin);
+					timeOutForProcessGeneratorInMin, testIfModelValid, calculateAmountOfPaths);
 
 			System.out.println("BoundartyTest1_1 finished!");
 		}
@@ -239,9 +244,12 @@ public class BatchFileGenerator {
 				String pathToFolderForModelsForTest1_2 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test1_2-BoundaryTest2").getAbsolutePath();
 
+				boolean testIfModelValid = false;
+				boolean calculateAmountPaths = false;
+
 				// choose a model
 				File directoryOfFiles = new File(pathToFolderForModelsForTest1_1 + File.separatorChar
-						+ "BoundaryTest_decision-10" + File.separatorChar + "annotated");
+						+ "BoundaryTest_decision-22" + File.separatorChar + "annotated");
 				List<File> listOfFiles = Arrays.asList(directoryOfFiles.listFiles());
 				File model = CommonFunctionality.getRandomItem(listOfFiles);
 				int newModelsPerIteration = 10;
@@ -254,7 +262,8 @@ public class BatchFileGenerator {
 				int privateSphereLowerBound = boundaryTest1_1_addActorsPerDecision + 1;
 
 				BatchFileGenerator.performBoundaryTest1_2(model, privateSphereLowerBound, newModelsPerIteration,
-						amountSolutionsToBeGenerated, amountThreads, pathToFolderForModelsForTest1_2);
+						amountSolutionsToBeGenerated, amountThreads, pathToFolderForModelsForTest1_2, testIfModelValid,
+						calculateAmountPaths);
 				System.out.println("BoundartyTest1_2 finished!");
 			} else {
 				System.out.println(test1_2ToRun + " not performed! Run Test1_1 first!");
@@ -381,22 +390,22 @@ public class BatchFileGenerator {
 						dataObjectBoundsSmallProcesses, amountSolutionsToBeGenerated,
 						amountXorsSmallProcessesBounds.get(0), amountXorsSmallProcessesBounds.get(1),
 						amountProcessesToTakePerDecision, pathToSmallProcessesFolderWithoutAnnotation, 100,
-						amountThreads);
+						amountThreads, testIfModelValid, calculateAmountOfPaths);
 				BatchFileGenerator.performTradeOffTest("medium", pathToMediumProcessesForTest2WithAnnotation,
 						dataObjectBoundsMediumProcesses, amountSolutionsToBeGenerated,
 						amountXorsMediumProcessesBounds.get(0), amountXorsMediumProcessesBounds.get(1),
 						amountProcessesToTakePerDecision, pathToMediumProcessesFolderWithoutAnnotation, 100,
-						amountThreads);
+						amountThreads, testIfModelValid, calculateAmountOfPaths);
 				BatchFileGenerator.performTradeOffTest("large", pathToLargeProcessesForTest2WithAnnotation,
 						dataObjectBoundsLargeProcesses, amountSolutionsToBeGenerated,
 						amountXorsLargeProcessesBounds.get(0), amountXorsLargeProcessesBounds.get(1),
 						amountProcessesToTakePerDecision, pathToLargeProcessesFolderWithoutAnnotation, 100,
-						amountThreads);
+						amountThreads, testIfModelValid, calculateAmountOfPaths);
 				BatchFileGenerator.performTradeOffTest("extraLarge", pathToExtraLargeProcessesForTest2WithAnnotation,
 						dataObjectBoundsSmallProcesses, amountSolutionsToBeGenerated,
 						amountXorsExtraLargeProcessesBounds.get(0), amountXorsExtraLargeProcessesBounds.get(1),
 						amountProcessesToTakePerDecision, pathToExtraLargeProcessesFolderWithoutAnnotation,
-						percentageOfExtraLargeProcessesToRunExhaustiveOn, amountThreads);
+						percentageOfExtraLargeProcessesToRunExhaustiveOn, amountThreads, false, false);
 
 				System.out.println("Test 2 finished!");
 			}
@@ -521,17 +530,20 @@ public class BatchFileGenerator {
 				String pathToFolderForSmallModelsForTest4_1 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "SmallModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(smallProcessesFromTradeOffTest, false,
-						pathToFolderForSmallModelsForTest4_1, amountSolutionsToBeGenerated, "small", amountThreads);
+						pathToFolderForSmallModelsForTest4_1, amountSolutionsToBeGenerated, "small", amountThreads,
+						testIfModelValid, calculateAmountOfPaths);
 
 				String pathToFolderForMediumModelsForTest4_1 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "MediumModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(mediumProcessesFromTradeOffTest, false,
-						pathToFolderForMediumModelsForTest4_1, amountSolutionsToBeGenerated, "medium", amountThreads);
+						pathToFolderForMediumModelsForTest4_1, amountSolutionsToBeGenerated, "medium", amountThreads,
+						testIfModelValid, calculateAmountOfPaths);
 
 				String pathToFolderForLargeModelsForTest4_1 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "LargeModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(largeProcessesFromTradeOffTest, false,
-						pathToFolderForLargeModelsForTest4_1, amountSolutionsToBeGenerated, "large", amountThreads);
+						pathToFolderForLargeModelsForTest4_1, amountSolutionsToBeGenerated, "large", amountThreads,
+						testIfModelValid, calculateAmountOfPaths);
 
 				System.out.println("Test 4_1 finished!");
 			}
@@ -539,7 +551,6 @@ public class BatchFileGenerator {
 
 		if (methodsToRun.contains(test4_2ToRun)) {
 			// Test 4_2 -> Processes with probability to have exclude constraints
-			// performed on small and medium processes
 			if (pathToSmallProcessesForTest2WithAnnotation.isEmpty()
 					&& pathToMediumProcessesForTest2WithAnnotation.isEmpty()
 					&& pathToLargeProcessesForTest2WithAnnotation.isEmpty()
@@ -570,19 +581,20 @@ public class BatchFileGenerator {
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2, "SmallModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithExcludeConstraintsProbability(smallProcessesFromTradeOffTest, false,
 						probabilityForGatewayToHaveConstraint, pathToFolderForSmallModelsForTest4_2,
-						amountSolutionsToBeGenerated, "small", amountThreads);
+						amountSolutionsToBeGenerated, "small", amountThreads, testIfModelValid, calculateAmountOfPaths);
 
 				String pathToFolderForMediumModelsForTest4_2 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2, "MediumModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithExcludeConstraintsProbability(mediumProcessesFromTradeOffTest, false,
 						probabilityForGatewayToHaveConstraint, pathToFolderForMediumModelsForTest4_2,
-						amountSolutionsToBeGenerated, "medium", amountThreads);
+						amountSolutionsToBeGenerated, "medium", amountThreads, testIfModelValid,
+						calculateAmountOfPaths);
 
 				String pathToFolderForLargeModelsForTest4_2 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2, "LargeModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithExcludeConstraintsProbability(largeProcessesFromTradeOffTest, false,
 						probabilityForGatewayToHaveConstraint, pathToFolderForLargeModelsForTest4_2,
-						amountSolutionsToBeGenerated, "large", amountThreads);
+						amountSolutionsToBeGenerated, "large", amountThreads, testIfModelValid, calculateAmountOfPaths);
 
 				System.out.println("Test 4_2 finished!");
 			}
@@ -625,16 +637,18 @@ public class BatchFileGenerator {
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "LargeModels").getAbsolutePath();
 
 				BatchFileGenerator.performTestWithMandatoryConstraints(smallProcessesFromTradeOffTest, false,
-						pathToFolderForSmallModelsForTest5, amountSolutionsToBeGenerated, "small", amountThreads);
+						pathToFolderForSmallModelsForTest5, amountSolutionsToBeGenerated, "small", amountThreads,
+						testIfModelValid, calculateAmountOfPaths);
 
 				BatchFileGenerator.performTestWithMandatoryConstraints(mediumProcessesFromTradeOffTest, false,
-						pathToFolderForMediumModelsForTest5, amountSolutionsToBeGenerated, "medium", amountThreads);
+						pathToFolderForMediumModelsForTest5, amountSolutionsToBeGenerated, "medium", amountThreads,
+						testIfModelValid, calculateAmountOfPaths);
 
 				BatchFileGenerator.performTestWithMandatoryConstraints(largeProcessesFromTradeOffTest, false,
-						pathToFolderForLargeModelsForTest5, amountSolutionsToBeGenerated, "large", amountThreads);
+						pathToFolderForLargeModelsForTest5, amountSolutionsToBeGenerated, "large", amountThreads,
+						testIfModelValid, calculateAmountOfPaths);
 
 				System.out.println("Test 5 finished!");
-
 			}
 		}
 
@@ -983,7 +997,8 @@ public class BatchFileGenerator {
 		executor.shutdownNow();
 	}
 
-	public static LinkedList<API> mapFilesToAPI(String pathToFiles, ResultsToCSVWriter writer) {
+	public static LinkedList<API> mapFilesToAPI(String pathToFiles, ResultsToCSVWriter writer, boolean testIfModelValid,
+			boolean calculateAmountOfPaths) {
 		// iterate through all files in the directory and run algorithms on annotated
 		// models
 		LinkedList<API> apiList = new LinkedList<API>();
@@ -1005,7 +1020,7 @@ public class BatchFileGenerator {
 		for (String pathToFile : paths) {
 			File f = new File(pathToFile);
 			try {
-				API api = new API(pathToFile, costParameters);
+				API api = new API(pathToFile, costParameters, testIfModelValid, calculateAmountOfPaths);
 				apiList.add(api);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
@@ -1018,7 +1033,8 @@ public class BatchFileGenerator {
 		return apiList;
 	}
 
-	public static LinkedList<API> mapFilesToAPI(LinkedList<File> files, ResultsToCSVWriter writer) {
+	public static LinkedList<API> mapFilesToAPI(LinkedList<File> files, ResultsToCSVWriter writer,
+			boolean testIfModelValid, boolean calculateAmountOfPaths) {
 		// iterate through all files in the directory and run algorithms on annotated
 		// models
 		LinkedList<API> apiList = new LinkedList<API>();
@@ -1034,7 +1050,7 @@ public class BatchFileGenerator {
 
 		for (String pathToFile : paths) {
 			try {
-				API api = new API(pathToFile, costParameters);
+				API api = new API(pathToFile, costParameters, testIfModelValid, calculateAmountOfPaths);
 				apiList.add(api);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
@@ -1216,8 +1232,9 @@ public class BatchFileGenerator {
 	public static void runAlgorithmsAndWriteResultsToCSV(LinkedList<File> files,
 			int percentageOfProcessesToRunExhaustiveOn, boolean runExhaustiveSearch, boolean runHeuristicSearch,
 			boolean runNaiveSearch, boolean runIncrementalNaiveSearch, int boundForSolutions, ResultsToCSVWriter writer,
-			ExecutorService service) {
-		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(files, writer);
+			ExecutorService service, boolean testIfModelValid, boolean calculateAmountOfPaths) {
+		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(files, writer, testIfModelValid,
+				calculateAmountOfPaths);
 		if (!apiList.isEmpty()) {
 			for (API api : apiList) {
 				BatchFileGenerator.runAlgsAndWriteResults(api, percentageOfProcessesToRunExhaustiveOn,
@@ -1234,7 +1251,7 @@ public class BatchFileGenerator {
 			int percentageOfExtraLargeProcessesToRunExhaustiveOn, boolean runExhaustiveSearch,
 			boolean runHeuristicSearch, boolean runHeuristicSearchWithBound, boolean runNaiveSearch,
 			int boundForHeuristicSearchWithBound, ResultsToCSVWriter writer, ExecutorService service) {
-		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithAnnotatedModels, writer);
+		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithAnnotatedModels, writer, true, true);
 		if (!apiList.isEmpty()) {
 			for (API api : apiList) {
 				BatchFileGenerator.runAlgsAndWriteResults(api, percentageOfExtraLargeProcessesToRunExhaustiveOn,
@@ -1320,7 +1337,7 @@ public class BatchFileGenerator {
 							pModel.generateDataObjects(sumAmountUniqueDataObjects, sphere);
 							pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(minDataObjectsPerDecision,
 									minDataObjectsPerDecision, amountReadersNeededForDataObjects, 1,
-									amountAddActorsUpperBound, 0, true);
+									amountAddActorsUpperBound, 0, true, true);
 
 							if (amountWritersToBeInserted <= amountTasks && amountReadersToBeInserted <= amountTasks) {
 								// add the methods to be called
@@ -1373,7 +1390,7 @@ public class BatchFileGenerator {
 				.getAllModelsFromFolder(pathToDestinationFolderForStoringModels);
 		executor = Executors.newFixedThreadPool(amountThreads);
 		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, 100, true, true, true, true,
-				boundForGeneratingSolutions, writer, executor);
+				boundForGeneratingSolutions, writer, executor, true, true);
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 	}
@@ -1461,7 +1478,8 @@ public class BatchFileGenerator {
 	public static void performTradeOffTest(String processType, String pathToDestinationFolderForStoringModels,
 			List<Integer> dataObjectBounds, int upperBoundSolutionsForLocalMinWithBound, int amountXorsLowerBound,
 			int amountXorsUpperBound, int modelsToTakePerDecision, String pathToProcessesFolderWithoutAnnotation,
-			int percentageOfProcessesToRunExhaustiveOn, int amountThreadPools) {
+			int percentageOfProcessesToRunExhaustiveOn, int amountThreadPools, boolean testIfModelValid,
+			boolean calculateAmountOfPaths) {
 
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreadPools);
 		LinkedList<String> emptySphere = new LinkedList<String>();
@@ -1504,7 +1522,7 @@ public class BatchFileGenerator {
 
 					// connect between 1 and amountRandomCountDataObjectsToCreate per decision
 					pModel.connectDataObjectsToBrtsAndTuplesForXorSplits(1, amountRandomCountDataObjectsToCreate,
-							minAmountReaders, 0, 0, 0, false);
+							minAmountReaders, 0, 0, 0, false, true);
 
 					CommonFunctionality
 							.removeDataObjectsWithoutConnectionsToDecisionsFromModel(pModel.getModelInstance());
@@ -1732,7 +1750,8 @@ public class BatchFileGenerator {
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(file);
 		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, percentageOfProcessesToRunExhaustiveOn,
-				true, true, true, true, upperBoundSolutionsForLocalMinWithBound, writer, service);
+				true, true, true, true, upperBoundSolutionsForLocalMinWithBound, writer, service, testIfModelValid,
+				calculateAmountOfPaths);
 		service.shutdownNow();
 		writer.writeRowsToCSVAndcloseWriter();
 
@@ -1744,7 +1763,8 @@ public class BatchFileGenerator {
 			int upperBoundAmountParallelGtws, double amountWritersInPercent, double amountReadersInPercent,
 			int minDataObjectsPerDecision, int maxDataObjectsPerDecision, LinkedList<String> sphereList,
 			int amountThreads, int stopAfterDecisions, String pathToFolderForModelsForBoundaryTest,
-			boolean testIfMinElementsInBranches, boolean firstElementAfterStartIsTask, int timeoutProcessGenInMin) {
+			boolean testIfMinElementsInBranches, boolean firstElementAfterStartIsTask, int timeoutProcessGenInMin,
+			boolean testIfModelValid, boolean calculateAmountOfPaths) {
 
 		int amountParallelGtws = ThreadLocalRandom.current().nextInt(lowerBoundAmountParallelGtws,
 				upperBoundAmountParallelGtws + 1);
@@ -1879,7 +1899,7 @@ public class BatchFileGenerator {
 				}
 				// map annotated models
 				LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderForModelsWithDecisionsAnnotated,
-						writer);
+						writer, testIfModelValid, calculateAmountOfPaths);
 
 				// perform all algorithms and count the timeouts
 				for (API api : apiList) {
@@ -1945,7 +1965,7 @@ public class BatchFileGenerator {
 
 	public static void performBoundaryTest1_2(File file, int privateSphereLowerBound,
 			int amountNewProcessesToCreatePerIteration, int boundForAlgorithms, int amountThreadPools,
-			String directoryToStore) {
+			String directoryToStore, boolean testIfModelValid, boolean calculateAmountOfPaths) {
 
 		File csvFile = BatchFileGenerator.createNewCSVFile(directoryToStore, "test1_2-results");
 
@@ -1963,11 +1983,13 @@ public class BatchFileGenerator {
 						amountNewProcessesToCreatePerIteration, directoryToStore);
 
 				File[] directories = new File(directoryToStore).listFiles(File::isDirectory);
+				Arrays.sort(directories, Comparator.comparingLong(File::lastModified));
 
 				for (File directory : directories) {
 					String directoryPath = directory.getAbsolutePath();
 					// map annotated models
-					LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(directoryPath, writer);
+					LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(directoryPath, writer, testIfModelValid,
+							calculateAmountOfPaths);
 					boolean outOfMemoryException = false;
 					// perform all algorithms and count the timeouts
 					HashMap<Enums.AlgorithmToPerform, Integer> timeOutMap = new HashMap<Enums.AlgorithmToPerform, Integer>();
@@ -2035,7 +2057,8 @@ public class BatchFileGenerator {
 	}
 
 	public static void performTestWithMandatoryConstraints(LinkedList<File> models, boolean modelWithLanes,
-			String directoryToStoreNewModels, int boundSolutions, String suffixCSV, int amountThreads) {
+			String directoryToStoreNewModels, int boundSolutions, String suffixCSV, int amountThreads,
+			boolean testIfModelValid, boolean calculateAmountOfPaths) {
 
 		// each brt will have mandatory participants
 		int probabilityForGatwayToHaveMandPartConst = 100;
@@ -2061,7 +2084,7 @@ public class BatchFileGenerator {
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, 100, true, true, true, true,
-				boundSolutions, writer, executor);
+				boundSolutions, writer, executor, testIfModelValid, calculateAmountOfPaths);
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 
@@ -2069,7 +2092,7 @@ public class BatchFileGenerator {
 
 	public static void performTestWithMaxPossibleExcludeConstraints(LinkedList<File> models, boolean modelWithLanes,
 			String directoryToStoreNewModels, int upperBoundHeuristicSearchWithBound, String suffixCSV,
-			int amountThreads) {
+			int amountThreads, boolean testIfModelValid, boolean calculateAmountOfPaths) {
 		int probabilityForGatewayToHaveConstraint = 100;
 		int lowerBoundAmountParticipantsToExcludePerGtw = 1;
 
@@ -2095,7 +2118,7 @@ public class BatchFileGenerator {
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, 100, true, true, true, true,
-				upperBoundHeuristicSearchWithBound, writer, executor);
+				upperBoundHeuristicSearchWithBound, writer, executor, testIfModelValid, calculateAmountOfPaths);
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 
@@ -2103,7 +2126,8 @@ public class BatchFileGenerator {
 
 	public static void performTestWithExcludeConstraintsProbability(LinkedList<File> models, boolean modelWithLanes,
 			int probabilityForGatewayToHaveConstraint, String directoryToStoreNewModels,
-			int upperBoundHeuristicSearchWithBound, String suffixCSV, int amountThreads) {
+			int upperBoundHeuristicSearchWithBound, String suffixCSV, int amountThreads, boolean testIfModelValid,
+			boolean calculateAmountOfPaths) {
 		int lowerBoundAmountParticipantsToExcludePerGtw = 1;
 
 		for (File file : models) {
@@ -2129,7 +2153,7 @@ public class BatchFileGenerator {
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, 100, true, true, true, true,
-				upperBoundHeuristicSearchWithBound, writer, executor);
+				upperBoundHeuristicSearchWithBound, writer, executor, testIfModelValid, calculateAmountOfPaths);
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 

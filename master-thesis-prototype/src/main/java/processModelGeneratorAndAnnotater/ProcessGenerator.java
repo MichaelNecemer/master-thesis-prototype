@@ -368,13 +368,13 @@ public class ProcessGenerator implements Callable<File> {
 			String joinId = joinName + "_join";
 			nextNode = new InsertionConstruct(joinId, joinName, "ExclusiveGateway_join");
 		} else if (nodeType.contentEquals("ExclusiveGateway_split")) {
-			String name = "exclusiveGateway_" + this.xorGtwId;
-			String uniqueXorGtwIdSplit = "exclusiveGateway_" + this.xorGtwId + "_split";
+			String name = "exclusiveGtw_" + this.xorGtwId;
+			String uniqueXorGtwIdSplit = "exclusiveGtw_" + this.xorGtwId + "_split";
 			nextNode = new InsertionConstruct(uniqueXorGtwIdSplit, name, "ExclusiveGateway_split");
 			this.xorGtwId++;
 		} else if (nodeType.contentEquals("ParallelGateway_split")) {
-			String name = "parallelGateway_" + parallelGtwId;
-			String uniqueParallelGtwIdSplit = "parallelGateway_" + this.parallelGtwId + "_split";
+			String name = "parallelGtw_" + parallelGtwId;
+			String uniqueParallelGtwIdSplit = "parallelGtw_" + this.parallelGtwId + "_split";
 			nextNode = new InsertionConstruct(uniqueParallelGtwIdSplit, name, "ParallelGateway_split");
 			this.parallelGtwId++;
 		} else if (nodeType.contentEquals("Task")) {
