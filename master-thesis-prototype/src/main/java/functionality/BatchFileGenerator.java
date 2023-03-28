@@ -86,7 +86,7 @@ public class BatchFileGenerator {
 
 	// bounds for nestingDepthFactor and probJoinGtw
 	static ArrayList<Integer> nestingDepthFactorBounds = new ArrayList<>(Arrays.asList(1, 10));
-	static ArrayList<Integer> probJoinGtwBounds = new ArrayList<>(Arrays.asList(1, 10));
+	static ArrayList<Integer> probJoinGtwBounds = new ArrayList<>(Arrays.asList(1, 40));
 
 	// boundary tests shared bounds
 	static int boundaryTest1_1_privateSphere = 6;

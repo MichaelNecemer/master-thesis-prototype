@@ -125,11 +125,12 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		this.bound = 0;
 		// map all the elements from camunda
 		this.mapCamundaElements();		
+		this.pathsThroughProcess = new LinkedList<LinkedList<FlowNode>>();
 		// expensive calculations when a lot of xors in process
 		if(calculateAmountOfPaths) {
 		this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance,
 				this.startEvent.getId(), this.endEvent.getId());
-		}
+		} 
 	}
 
 	public LinkedList<PModelWithAdditionalActors> exhaustiveSearch() throws Exception {
