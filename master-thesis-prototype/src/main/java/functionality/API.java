@@ -1163,6 +1163,12 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
+						} else if (split.length==1) {
+							try {
+								gtw.setAmountAddActors(Integer.parseInt(split[0]));
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
 						}
 
 					} else if (CommonFunctionality.containsIgnoreCase(str, "[Sphere]")) {
