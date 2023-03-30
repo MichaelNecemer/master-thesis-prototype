@@ -85,8 +85,8 @@ public class BatchFileGenerator {
 	static ArrayList<Integer> amountXorsExtraLargeProcessesBounds = new ArrayList<>(Arrays.asList(7, 8));
 
 	// bounds for nestingDepthFactor and probJoinGtw
-	static ArrayList<Integer> nestingDepthFactorBounds = new ArrayList<>(Arrays.asList(1, 10));
-	static ArrayList<Integer> probJoinGtwBounds = new ArrayList<>(Arrays.asList(1, 40));
+	static ArrayList<Integer> nestingDepthFactorBounds = new ArrayList<>(Arrays.asList(1, 50));
+	static ArrayList<Integer> probJoinGtwBounds = new ArrayList<>(Arrays.asList(1, 50));
 
 	// boundary tests shared bounds
 	static int boundaryTest1_1_privateSphere = 6;
@@ -114,14 +114,14 @@ public class BatchFileGenerator {
 		String test6ToRun = "Test6ToRun";
 
 		methodsToRun.add(test1_1ToRun);
-		methodsToRun.add(test1_2ToRun);
+		/*methodsToRun.add(test1_2ToRun);
 		methodsToRun.add(createRandomProcesses);
 		methodsToRun.add(test2ToRun);
 		methodsToRun.add(test3ToRun);
 		methodsToRun.add(test4_1ToRun);
 		methodsToRun.add(test4_2ToRun);
 		methodsToRun.add(test5ToRun);
-		methodsToRun.add(test6ToRun);
+		methodsToRun.add(test6ToRun);*/
 
 		String pathToFolderForModelsForTest1_1 = "";
 		String pathToSmallProcessesFolderWithoutAnnotation = "";
@@ -1854,7 +1854,7 @@ public class BatchFileGenerator {
 						methodsToBeCalledMap.putIfAbsent(secondMethodToBeCalledName, argumentsForSecondMethod);
 
 						String thirdMethodToBeCalledName = "connectDataObjectsToBrtsAndTuplesForXorSplits";
-						Object[] argumentsForThirdMethod = new Object[7];
+						Object[] argumentsForThirdMethod = new Object[8];
 						argumentsForThirdMethod[0] = minDataObjectsPerDecision;
 						argumentsForThirdMethod[1] = maxDataObjectsPerDecision;
 						argumentsForThirdMethod[2] = minAmountReaders;
@@ -1862,6 +1862,7 @@ public class BatchFileGenerator {
 						argumentsForThirdMethod[4] = addActorsPerDecision;
 						argumentsForThirdMethod[5] = 0;
 						argumentsForThirdMethod[6] = true;
+						argumentsForThirdMethod[7] = true;
 						methodsToBeCalledMap.putIfAbsent(thirdMethodToBeCalledName, argumentsForThirdMethod);
 
 						String fourthMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
@@ -1947,10 +1948,11 @@ public class BatchFileGenerator {
 					finishTest = true;
 				}
 
-				i++;
 				if (i == stopAfterDecisions) {
 					finishTest = true;
 				}
+				i++;
+				
 			} while ((!finishTest) && (!outOfMemoryError));
 
 			executor.shutdownNow();

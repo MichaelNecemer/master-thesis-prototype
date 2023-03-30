@@ -2289,7 +2289,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 					BPMNTask nextWriter = (BPMNTask) pathEl;
 					if (dataO.getWriters().contains(nextWriter) && !nextWriter.equals(writer)) {
 						// other writer found
-						j = path.size();
+						break;
 					}
 				}
 
@@ -2375,6 +2375,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 			LinkedList<LinkedList<BPMNBusinessRuleTask>> brtSubLists = Combination.getPermutations(currAvailable, i);
 
+			int skipped = 0;
 			for (LinkedList<BPMNBusinessRuleTask> brtSubList : brtSubLists) {
 				boolean skip = false;
 				// skip combinations where proper subsets exist
@@ -2391,6 +2392,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 					HashMap<BPMNBusinessRuleTask, HashSet<BPMNParticipant>> spheres2 = new HashMap<BPMNBusinessRuleTask, HashSet<BPMNParticipant>>();
 
+					boolean sameSpheres = true;
 					for (BPMNBusinessRuleTask dependentBrt : depT) {
 						// compute sd*, TE = depT \ brtSubList
 						LinkedList<LinkedList<BPMNElement>> pathsFromOriginOverDependentBrtToEnd = pathsFromOriginOverCurrBrtToEndMap
@@ -2405,20 +2407,33 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 						}
 
 						spheres2.putIfAbsent(dependentBrt, sdSet);
+						if(!spheres1.get(dependentBrt).equals(spheres2.get(dependentBrt))) {
+							// spheres for dependentBrt are not the same!
+							sameSpheres=false;
+							break;
+						}
+						
 					}
 
 					// check if the impact on the spheres are the same
-					if (spheres1.equals(spheres2)) {
+					if (sameSpheres) {
 						cheapestSubSets.add(brtSubList);
 						if (brtSubList.size() == 1) {
 							// if the list contains exactly 1 brt: this brt will be ignored for generating
 							// new combinations containing that brt
 							toRemove.addAll(brtSubList);
 						}
-
 					}
 
+				} else {
+					skipped++;
 				}
+			}
+			
+			if(skipped == brtSubLists.size()) {
+				// each sub list has a proper subset already
+				// no need to generate new sets
+				i = depT.size();				
 			}
 
 		}

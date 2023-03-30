@@ -6,15 +6,15 @@ public class ProcessGeneratorMain {
 	String pathWhereToCreateModels = "C:\\Users\\Micha\\OneDrive\\Desktop\\PGen2";
 	int amountParticipants = 4;
 	int amountTasksToBeInserted = 10;
-	int amountXorsToBeInserted = 2;
-	int amountParallelsToBeInserted = 1;
-	int probabilityForJoinGtw = 20;
-	int nestingDepthFactor = 10;
-	int amountModelsToCreate = 1;
+	int amountXorsToBeInserted = 4;
+	int amountParallelsToBeInserted = 0;
+	int probabilityForJoinGtw = 50;
+	int nestingDepthFactor = 50;
+	int amountModelsToCreate = 5;
 	int probTask = 33;
 	int probXorGtw = 33;
 	int probParallelGtw = 33;
-	boolean testIfElementsInBranches = true;
+	boolean testIfElementsInBranches = false;
 	boolean firstElementAfterStartIsTask = true;
 	
 	while(amountModelsToCreate>0) {
