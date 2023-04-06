@@ -253,7 +253,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 		// readers/writers
 		// for the data objects to be inserted
 		boolean useMaxCombs = false;
-		int maxCombs = 100000;
+		int maxCombs = 1000;
 
 		if (amountWriters > 15 || amountReaders > 15) {
 			if (this.dataObjects.size() > 15) {

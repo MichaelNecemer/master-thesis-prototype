@@ -220,7 +220,7 @@ public class BatchFileGenerator {
 			double percentageOfWriters = percentageOfWritersClasses.get(2);
 			double percentageOfReaders = percentageOfReadersClasses.get(2);
 
-			BatchFileGenerator.performBoundaryTest1_1(amountProcessesPerIteration, 0,
+			BatchFileGenerator.performBoundaryTest1_1(amountProcessesPerIteration, 1,
 					boundaryTest1_1_addActorsPerDecision, boundaryTest1_1_privateSphere, amountSolutionsToBeGenerated,
 					tasksToStartWith, tasksFactor, 0, 0, percentageOfWriters, percentageOfReaders,
 					minDataObjectsPerDecision, maxDataObjectsPerDecision, sphere, amountThreads, stopAfterDecisions,
@@ -1931,6 +1931,8 @@ public class BatchFileGenerator {
 							.size()) {
 						runIncrementalNaiveSearch = false;
 					}
+				} else {
+					finishTest = true;
 				}
 
 				System.out.println("Iteration" + amountDecisionsToStart + " end - timeOutsExhaustiveSearch: "
