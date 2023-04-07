@@ -139,7 +139,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 				maxAmountReadersThroughDataObjectConnection = maxReaderThroughDataObjectConnection;
 			}
 
-			int maxCombs = 100000;
+			int maxCombs = 10000;
 			List<LinkedList<Integer>> subAmountDataObjectsToConnectToBrtsLists = CommonFunctionality
 					.computeRepartitionNumberWithResultBound(maxAmountReadersThroughDataObjectConnection, brts.size(),
 							minDataObjectsPerDecision, maxCombs);
@@ -292,7 +292,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 		allAvailableTasksAsReaders.remove(firstNodeAfterStart);
 
 		HashMap<DataObjectReference, LinkedList<FlowNode>> readersPerDataObject = CommonFunctionality.getReadersForDataObjects(modelInstance);
-		
 		// randomly assign readers per data objects
 		for (int i = 0; i < this.dataObjects.size(); i++) {
 			DataObjectReference dataORef = this.dataObjects.get(i);
@@ -302,7 +301,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 			// remove all tasks that are already readers for the data object
 			allAvailableTasksAsReadersForDataObject.removeAll(readersPerDataObject.get(dataORef));
 			
-			while(amountReadersForDataObjectToInsert > 0) {
+			while(amountReadersForDataObjectToInsert > 0 && !allAvailableTasksAsReadersForDataObject.isEmpty()) {
 				// get a random task that is not a brt (since they are connected already)
 				// and not the first task in the process (reserved as potential needed initial
 				// origin)
@@ -326,18 +325,19 @@ public class ProcessModelAnnotater implements Callable<File> {
 			} 
 
 		}
-
+		
+		
 		// get all paths from start to a reader to get potential initial origins
 		HashMap<Task, LinkedList<LinkedList<FlowNode>>> pathsToReader = new HashMap<Task, LinkedList<LinkedList<FlowNode>>>();
 
 		HashMap<DataObjectReference, HashSet<FlowNode>> intersectionMap = new HashMap<DataObjectReference, HashSet<FlowNode>>();
 
 		StartEvent stEvent = modelInstance.getModelElementsByType(StartEvent.class).iterator().next();
-
+		
 		for (Entry<DataObjectReference, LinkedList<FlowNode>> readersEntry : readersPerDataObject.entrySet()) {
 			HashSet<FlowNode> intersection = new HashSet<FlowNode>();
 			boolean initialRun = true;
-
+			
 			for (FlowNode reader : readersEntry.getValue()) {
 				LinkedList<LinkedList<FlowNode>> allPathsBetweenStartAndReader = pathsToReader.get(reader);
 				if (allPathsBetweenStartAndReader == null) {
@@ -345,9 +345,19 @@ public class ProcessModelAnnotater implements Callable<File> {
 							stEvent.getId(), reader.getId());
 					pathsToReader.put((Task)reader, allPathsBetweenStartAndReader);
 				}
-
+				LinkedList<FlowNode>otherReaders = new LinkedList<FlowNode>();
+				otherReaders.addAll(readersEntry.getValue());
+				otherReaders.remove(reader);
+				
 				// intersection
 				for (LinkedList<FlowNode> pathBetweenStartAndReader : allPathsBetweenStartAndReader) {
+					
+					for(FlowNode otherReader: otherReaders) {
+						if(pathBetweenStartAndReader.contains(otherReader)) {
+							// other reader is on path
+						}
+					}
+					
 					if (initialRun) {
 						intersection.addAll(pathBetweenStartAndReader);
 						initialRun = false;
@@ -359,8 +369,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 			intersectionMap.putIfAbsent(readersEntry.getKey(), intersection);
 		}
-
-		
 
 		// randomly assign the writers per data objects
 		for (int i = 0; i < this.dataObjects.size(); i++) {

@@ -10,11 +10,11 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorB.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorC.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel11_annotated1.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_1_without_annotation.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel13_annotated1_annotated22lWlR_Weak-Dynamic_verifiers2.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel208_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel6_annotated1.bpmn";
-		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorCnew.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorCnew.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_clustering.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel10_annotated1_annotated15lWmR_Strong-Dynamic_addActors3_mand_constrained.bpmn";
@@ -23,17 +23,17 @@ public class TestClass {
 		LinkedList<Double> costForUpgradingSpheres = new LinkedList<>(Arrays.asList(1.0, 1.0, 1.0));
 
 		try {
-			API api2 = new API(pathToFile, costForUpgradingSpheres, true, true);			
+			API api2 = new API(pathToFile, costForUpgradingSpheres, false, true);			
 		
 			
 			//LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(false, 1);
-			/*LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(true, 1);
+			//LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(true, 1);
 
-			
+			/*
 			for(PModelWithAdditionalActors pModel: pInstNaive) {
 				pModel.printMeasure();
-			}
-			*/
+			}*/
+			
 			
 			LinkedList<PModelWithAdditionalActors>pInstExhaustive = api2.exhaustiveSearch();
 			LinkedList<PModelWithAdditionalActors> cheapestExhaustive = CommonFunctionality.getCheapestPModelsWithAdditionalActors(pInstExhaustive);

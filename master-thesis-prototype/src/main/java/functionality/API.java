@@ -88,9 +88,9 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		this.weightingParameters = weightingParameters;
 		this.processModelFile = new File(pathToBpmnCamundaFile);
 		// preprocess the model, i.e. remove parallel branches
-		BpmnModelInstance modelInst = Bpmn.readModelFromFile(this.processModelFile);
-		this.amountParallelsBeforePreprocessing = CommonFunctionality.getAmountParallelGtwSplits(modelInst);
-		this.modelInstance = CommonFunctionality.doPreprocessing(modelInst);
+		BpmnModelInstance model = Bpmn.readModelFromFile(this.processModelFile);
+		this.amountParallelsBeforePreprocessing = CommonFunctionality.getAmountParallelGtwSplits(model);
+		this.modelInstance = CommonFunctionality.doPreprocessing(model);
 		int amountParallelSplitsAfterPreprocessing = CommonFunctionality.getAmountParallelGtwSplits(this.modelInstance);
 		if (amountParallelSplitsAfterPreprocessing > 0) {
 			throw new Exception("Still parallel splits in the model after preprocessing!");

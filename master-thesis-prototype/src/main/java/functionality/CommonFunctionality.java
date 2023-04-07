@@ -81,6 +81,7 @@ import mapping.BPMNBusinessRuleTask;
 import mapping.BPMNDataObject;
 import mapping.BPMNElement;
 import mapping.BPMNExclusiveGateway;
+import mapping.BPMNGateway;
 import mapping.BPMNParallelGateway;
 import mapping.BPMNParticipant;
 import mapping.BPMNTask;
@@ -340,33 +341,18 @@ public class CommonFunctionality {
 
 	public static boolean isSubPath(LinkedList<FlowNode> currentPath, LinkedList<FlowNode> subPath) {
 		boolean isSubPath = false;
-		if (currentPath.containsAll(subPath)) {
-			isSubPath = true;
-			for (int i = 0; i < subPath.size(); i++) {
+		if(subPath.size() == currentPath.size()) {
+		for (int i = 0; i < subPath.size(); i++) {
 				if (!subPath.get(i).equals(currentPath.get(i))) {
 					isSubPath = false;
 					return isSubPath;
-				}
-			}
-			return isSubPath;
+				}			
+		}
 		}
 		return isSubPath;
 	}
 
-	public static boolean isSubPathBPMNElements(LinkedList<BPMNElement> currentPath, LinkedList<BPMNElement> subPath) {
-		boolean isSubPath = false;
-		if (currentPath.containsAll(subPath)) {
-			isSubPath = true;
-			for (int i = 0; i < subPath.size(); i++) {
-				if (!subPath.get(i).equals(currentPath.get(i))) {
-					isSubPath = false;
-					return isSubPath;
-				}
-			}
-			return isSubPath;
-		}
-		return isSubPath;
-	}
+	
 
 	public static <T> T getRandomItem(List<T> list) {
 		Random random = new Random();
@@ -456,53 +442,12 @@ public class CommonFunctionality {
 	public static LinkedList<LinkedList<FlowNode>> getAllPathsBetweenNodes(BpmnModelInstance modelInstance,
 			String startNodeId, String endNodeId) throws NullPointerException, InterruptedException, Exception {
 
-		LinkedList<FlowNode> queue = new LinkedList<FlowNode>();
-		LinkedList<FlowNode> openSplits = new LinkedList<FlowNode>();
-		LinkedList<FlowNode> currentPath = new LinkedList<FlowNode>();
-		LinkedList<LinkedList<FlowNode>> paths = new LinkedList<LinkedList<FlowNode>>();
-		LinkedList<LinkedList<FlowNode>> parallelBranches = new LinkedList<LinkedList<FlowNode>>();
 		FlowNode startNode = modelInstance.getModelElementById(startNodeId);
 		FlowNode endNode = modelInstance.getModelElementById(endNodeId);
 
-		LinkedList<LinkedList<FlowNode>> subPaths = CommonFunctionality.getAllPathsForCamundaElements(modelInstance,
-				startNode, endNode, queue, openSplits, currentPath, paths, parallelBranches, endNode);
-		// filter out subpaths that do not have the endNode as target
-
-		Iterator<LinkedList<FlowNode>> subPathsIter = subPaths.iterator();
-		while (subPathsIter.hasNext()) {
-			if (Thread.currentThread().isInterrupted()) {
-				System.err.println("Interrupted! " + Thread.currentThread().getName());
-				throw new InterruptedException();
-			}
-			LinkedList<FlowNode> subPath = subPathsIter.next();
-			if ((!subPath.getLast().equals(endNode)) && (!subPath.contains(endNode))) {
-				subPathsIter.remove();
-			}
-
-			else if ((!subPath.getLast().equals(endNode)) && subPath.contains(endNode)) {
-				Iterator<FlowNode> subPathNodeIter = subPath.iterator();
-				boolean remove = false;
-				while (subPathNodeIter.hasNext()) {
-					FlowNode currNode = subPathNodeIter.next();
-					if (remove) {
-						subPathNodeIter.remove();
-
-					}
-
-					if (currNode.equals(endNode)) {
-						remove = true;
-					}
-
-				}
-
-			}
-
-		}
-
-		Set<LinkedList<FlowNode>> set = new HashSet<LinkedList<FlowNode>>(subPaths);
-		LinkedList<LinkedList<FlowNode>> noDups = new LinkedList<LinkedList<FlowNode>>(set);
-
-		return noDups;
+		LinkedList<LinkedList<FlowNode>> paths = CommonFunctionality.goDfs(modelInstance, startNode, endNode, new LinkedList<SequenceFlow>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>());
+	
+		return paths;		
 	}
 
 	public static void isModelValid(BpmnModelInstance modelInstance) throws Exception {
@@ -713,8 +658,7 @@ public class CommonFunctionality {
 	}
 
 	
-
-	public static LinkedList<LinkedList<FlowNode>> getAllPathsForCamundaElements(BpmnModelInstance modelInstance,
+	public static LinkedList<LinkedList<FlowNode>> getAllPathsForCamundaElements2 (BpmnModelInstance modelInstance,
 			FlowNode startNode, FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<FlowNode> openSplits,
 			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths,
 			LinkedList<LinkedList<FlowNode>> parallelBranches, FlowNode endPointOfSearch)
@@ -724,61 +668,22 @@ public class CommonFunctionality {
 
 		while (!(queue.isEmpty())) {
 			FlowNode element = queue.poll();
-
+			System.out.println(element.getId()+", "+element.getName());
+			currentPath.add(element);
+			
 			if (Thread.currentThread().isInterrupted()) {
 				System.err.println("Interrupted! " + Thread.currentThread().getName());
 				throw new InterruptedException();
 			}
 
-			currentPath.add(element);
-
-			if ((element.getId().contentEquals(endPointOfSearch.getId()) && endPointOfSearch instanceof Task)) {
-
-				Iterator<LinkedList<FlowNode>> subPathsIter = paths.iterator();
-				while (subPathsIter.hasNext()) {
-					LinkedList<FlowNode> subPath = subPathsIter.next();
-					boolean isSubPath = CommonFunctionality.isSubPath(currentPath, subPath);
-
-					if (isSubPath) {
-						subPathsIter.remove();
-					}
-
-				}
+			if(element.getId().equals(endPointOfSearch.getId())) {
 				paths.add(currentPath);
-
-				element = queue.poll();
-				if (element == null && queue.isEmpty()) {
-
-					return paths;
-				}
-
 			}
-
+			
+			
 			if (element.getId().equals(endNode.getId())) {
 
-				Iterator<LinkedList<FlowNode>> subPathIter = paths.iterator();
-				while (subPathIter.hasNext()) {
-					LinkedList<FlowNode> subPath = subPathIter.next();
-
-					boolean isSubPath = CommonFunctionality.isSubPath(currentPath, subPath);
-
-					if (isSubPath) {
-						subPathIter.remove();
-
-					}
-				}
-
-				paths.add(currentPath);
-
-				if (endNode instanceof ParallelGateway) {
-					// currentPath is part of a parallel branch
-					parallelBranches.add(currentPath);
-				}
-
 				if (endNode instanceof Gateway && endNode.getIncoming().size() == 2) {
-
-					Gateway joinGtw = (Gateway) element;
-
 					// when a join is found - poll the last opened gateway from the stack
 					Gateway lastOpenedSplitGtw = (Gateway) openSplits.pollLast();
 
@@ -787,183 +692,62 @@ public class CommonFunctionality {
 						// branches to the joinGtw have been visited
 						// go from joinGtw to the Join of the last opened split in the stack, if there
 						// is any
-
-						// if lastOpenedSplit was a parallelGtw -> get possible combinations of paths
-						// within the branches
-						if (lastOpenedSplitGtw instanceof ParallelGateway) {
-							// -> check if each path containing the corresponding split of the
-							// parallelJoinGtw has the joinGtw as last element!
-							// else there are paths inside the branch that are not a fully built yet
-							FlowNode correspondingSplit = CommonFunctionality.getCorrespondingGtw(modelInstance,
-									joinGtw);
-
-							LinkedList<LinkedList<FlowNode>> pathsToCombine = new LinkedList<LinkedList<FlowNode>>();
-							LinkedList<LinkedList<FlowNode>> pathsNotFullyBuilt = new LinkedList<LinkedList<FlowNode>>();
-
-							for (LinkedList<FlowNode> path : paths) {
-								if (path.contains(correspondingSplit) && path.getLast().equals(joinGtw)) {
-									pathsToCombine.add(path);
-								} else if (path.contains(correspondingSplit) && !path.getLast().equals(joinGtw)) {
-									pathsNotFullyBuilt.add(path);
-								}
-
-							}
-
-							if (pathsToCombine.size() >= 2) {
-								// all paths to joinGtw are fully built
-								LinkedList<LinkedList<FlowNode>> combinedPaths = CommonFunctionality
-										.combineParallelBranches(modelInstance, pathsToCombine,
-												(ParallelGateway) lastOpenedSplitGtw);
-
-								Iterator<LinkedList<FlowNode>> pathsIter = paths.iterator();
-
-								while (pathsIter.hasNext()) {
-									LinkedList<FlowNode> currPath = pathsIter.next();
-									boolean isSubList = false;
-									for (LinkedList<FlowNode> combPath : combinedPaths) {
-										if (CommonFunctionality.isSubListOfList2(currPath, combPath)) {
-											isSubList = true;
-											break;
-										}
-									}
-									if (isSubList) {
-										pathsIter.remove();
-									}
-
-								}
-								paths.addAll(combinedPaths);
-
-								Iterator<LinkedList<FlowNode>> pBranchIter = parallelBranches.iterator();
-
-								while (pBranchIter.hasNext()) {
-									LinkedList<FlowNode> pBranch = pBranchIter.next();
-									boolean isSubList = false;
-									for (LinkedList<FlowNode> combPath : combinedPaths) {
-										if (CommonFunctionality.isSubListOfList2(pBranch, combPath)) {
-											isSubList = true;
-											break;
-										}
-									}
-									if (isSubList) {
-										pBranchIter.remove();
-									}
-								}
-
-								if (!parallelBranches.isEmpty()) {
-									parallelBranches.addAll(combinedPaths);
-								}
-
-							}
-						}
+						FlowNode successor = element.getOutgoing().iterator().next().getTarget();
 
 						if (!openSplits.isEmpty()) {
 							// still inside a branch
 							Gateway lastOpenedSplit = (Gateway) openSplits.getLast();
-
-							FlowNode correspondingJoin = CommonFunctionality.getCorrespondingGtw(modelInstance,
-									lastOpenedSplit);
-
-							// go to next join node with all paths
-							LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
-
-							Iterator<LinkedList<FlowNode>> pathsIter = paths.iterator();
-							while (pathsIter.hasNext()) {
-								LinkedList<FlowNode> path = pathsIter.next();
-								if (path.getLast().equals(element)) {
-									LinkedList<FlowNode> newPathAfterJoin = new LinkedList<FlowNode>();
-									newPathAfterJoin.addAll(path);
-									newPaths.add(newPathAfterJoin);
-									// pathsIter.remove();
-								}
-							}
-
+							Gateway correspondingJoin = CommonFunctionality.getCorrespondingGtw(modelInstance, lastOpenedSplit);
+												
 							// need to add the lastOpenedSplit, since one path has gone dfs till the join
 							// already
-
-							for (int i = 0; i < newPaths.size() - 1; i++) {
-								openSplits.add(lastOpenedSplit);
-							}
-
-							Iterator<LinkedList<FlowNode>> newPathIter = newPaths.iterator();
-							while (newPathIter.hasNext()) {
-								LinkedList<FlowNode> newPath = newPathIter.next();
-								if (!newPathIter.hasNext()) {
-
-								}
-								getAllPathsForCamundaElements(modelInstance,
-										element.getOutgoing().iterator().next().getTarget(), correspondingJoin, queue,
-										openSplits, newPath, paths, parallelBranches, endPointOfSearch);
-							}
-
+							getAllPathsForCamundaElements2(modelInstance,
+							successor, correspondingJoin, queue,  openSplits, currentPath, paths,
+							parallelBranches,  endPointOfSearch);
+						
 						} else {
 							// when there are no open splits gtws
 							// go from the successor of the element to endPointOfSearch since the
-							// currentElement has
-							// already been added to the path
-							LinkedList<LinkedList<FlowNode>> newPaths = new LinkedList<LinkedList<FlowNode>>();
-
-							Iterator<LinkedList<FlowNode>> pathsIter = paths.iterator();
-							while (pathsIter.hasNext()) {
-								LinkedList<FlowNode> path = pathsIter.next();
-								if (path.getLast().equals(element)) {
-									LinkedList<FlowNode> newPathAfterJoin = new LinkedList<FlowNode>();
-									newPathAfterJoin.addAll(path);
-									newPaths.add(newPathAfterJoin);
-									// pathsIter.remove();
-								}
-							}
-
-							for (LinkedList<FlowNode> newPath : newPaths) {
-								getAllPathsForCamundaElements(modelInstance,
-										element.getOutgoing().iterator().next().getTarget(), endPointOfSearch, queue,
-										openSplits, newPath, paths, parallelBranches, endPointOfSearch);
-							}
-
+							// currentElement has already been added to the path
+							getAllPathsForCamundaElements2(modelInstance,
+									successor, endPointOfSearch, queue,  openSplits, currentPath, paths,
+									parallelBranches,  endPointOfSearch);
 						}
-					}
-
+					} 
 				}
-
-				element = queue.poll();
-				if (element == null && queue.isEmpty()) {
-
-					return paths;
-				}
-
+				
 			}
 
 			if (element instanceof Gateway && element.getOutgoing().size() == 2) {
 				// add the split to the openSplitStack 1 times for each outgoing paths
-				int amountOfOutgoingPaths = element.getOutgoing().size();
 				int i = 0;
-				while (i < amountOfOutgoingPaths) {
+				while (i < element.getOutgoing().size()) {
 					openSplits.add((Gateway) element);
 					i++;
 				}
 
 			}
 
-			Iterator<SequenceFlow> seqFlowIter = element.getOutgoing().iterator();
-			while (seqFlowIter.hasNext()) {
-				FlowNode successor = seqFlowIter.next().getTarget();
+			for (SequenceFlow successorFlow : element.getOutgoing()) {
+				FlowNode successor = successorFlow.getTarget();
 				if (element instanceof Gateway && element.getOutgoing().size() == 2) {
 					// when a split is found - go dfs till the corresponding join is found
-					FlowNode correspondingJoinGtw = null;
+					Gateway correspondingJoinGtw = null;
 					try {
-						correspondingJoinGtw = CommonFunctionality.getCorrespondingGtw(modelInstance,
-								(Gateway) element);
+						correspondingJoinGtw = CommonFunctionality.getCorrespondingGtw(modelInstance, (Gateway)element);
+								
 					} catch (Exception ex) {
 						throw ex;
 					}
-
 					LinkedList<FlowNode> newPath = new LinkedList<FlowNode>();
 					newPath.addAll(currentPath);
-					getAllPathsForCamundaElements(modelInstance, successor, correspondingJoinGtw, queue, openSplits,
-							newPath, paths, parallelBranches, endPointOfSearch);
+					
+					getAllPathsForCamundaElements2(modelInstance,
+							successor, correspondingJoinGtw, queue,  openSplits, newPath, paths,
+							parallelBranches,  endPointOfSearch);
+				
 				} else {
-
 					queue.add(successor);
-
 				}
 
 			}
@@ -973,6 +757,7 @@ public class CommonFunctionality {
 		return paths;
 
 	}
+	
 
 	public static <T> boolean isSubListOfEachList(LinkedList<T> list1, LinkedList<LinkedList<FlowNode>> listOfLists) {
 		boolean isSubListOfEachList = true;
@@ -3598,7 +3383,6 @@ public class CommonFunctionality {
 
 			FlowNode element = queue.pollLast();
 			currentPath.add(element);
-			System.out.println(element.getName() + ", " + element.getId());
 
 			if (element.getId().contentEquals(endPointOfSearch.getId())) {
 				// endEvent found
@@ -3668,11 +3452,16 @@ public class CommonFunctionality {
 	public static LinkedList<LinkedList<FlowNode>> goDfs(BpmnModelInstance modelInstance, FlowNode currentNode,
 			FlowNode endNode, LinkedList<SequenceFlow> stack, LinkedList<FlowNode> path,
 			LinkedList<LinkedList<FlowNode>> paths) throws Exception {
-		// route depth first through the process and add the successors and predecessors
-		// to the nodes
+		
+		if (Thread.currentThread().isInterrupted()) {
+			System.err.println("Interrupted! " + Thread.currentThread().getName());
+			throw new InterruptedException();
+		}
 
-		if (!currentNode.getId().contentEquals(endNode.getId())) {
-			stack.addAll(currentNode.getOutgoing());
+		stack.addAll(currentNode.getOutgoing());		
+		
+		if (path.isEmpty()) {
+			path.add(currentNode);
 		}
 
 		if (stack.isEmpty()) {
