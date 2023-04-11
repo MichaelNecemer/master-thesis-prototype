@@ -341,18 +341,16 @@ public class CommonFunctionality {
 
 	public static boolean isSubPath(LinkedList<FlowNode> currentPath, LinkedList<FlowNode> subPath) {
 		boolean isSubPath = false;
-		if(subPath.size() == currentPath.size()) {
-		for (int i = 0; i < subPath.size(); i++) {
+		if (subPath.size() == currentPath.size()) {
+			for (int i = 0; i < subPath.size(); i++) {
 				if (!subPath.get(i).equals(currentPath.get(i))) {
 					isSubPath = false;
 					return isSubPath;
-				}			
-		}
+				}
+			}
 		}
 		return isSubPath;
 	}
-
-	
 
 	public static <T> T getRandomItem(List<T> list) {
 		Random random = new Random();
@@ -445,9 +443,10 @@ public class CommonFunctionality {
 		FlowNode startNode = modelInstance.getModelElementById(startNodeId);
 		FlowNode endNode = modelInstance.getModelElementById(endNodeId);
 
-		LinkedList<LinkedList<FlowNode>> paths = CommonFunctionality.goDfs(modelInstance, startNode, endNode, new LinkedList<SequenceFlow>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>());
-	
-		return paths;		
+		LinkedList<LinkedList<FlowNode>> paths = CommonFunctionality.goDfs(modelInstance, startNode, endNode,
+				new LinkedList<SequenceFlow>(), new LinkedList<FlowNode>(), new LinkedList<LinkedList<FlowNode>>());
+
+		return paths;
 	}
 
 	public static void isModelValid(BpmnModelInstance modelInstance) throws Exception {
@@ -469,14 +468,13 @@ public class CommonFunctionality {
 						reader.getId());
 
 				boolean writersOnPaths = true;
-				
-				
+
 				for (LinkedList<FlowNode> pathToReader : pathsToReader) {
 					boolean writerOnPath = false;
 					HashMap<ParallelGateway, FlowNode> branchOfCurrTask = new HashMap<ParallelGateway, FlowNode>();
 					LinkedList<ParallelGateway> openParallelSplits = new LinkedList<ParallelGateway>();
 					LinkedList<ParallelGateway> pGtwOnPath = new LinkedList<ParallelGateway>();
-					
+
 					for (int index = 0; index < pathToReader.size(); index++) {
 						FlowNode nodeOnPathToReader = pathToReader.get(index);
 						// when there is a parallel gateway on the path to the reader
@@ -506,51 +504,49 @@ public class CommonFunctionality {
 						// check other branches of parallel splits on the path
 						// the writer may be writing in one parallel branch if the reader reads after
 						// the join
-						if(!pGtwOnPath.isEmpty()) {
-							for(ParallelGateway split: pGtwOnPath) {
-							FlowNode successorOfOtherBranch = null;
-							for (SequenceFlow outgoingSeq : split.getOutgoing()) {
-								FlowNode successor = outgoingSeq.getTarget();
-								for (Entry<ParallelGateway, FlowNode> entry : branchOfCurrTask.entrySet()) {
-									if (entry.getKey().equals(split)) {
-										if (!successor.equals(entry.getValue())) {
-											// first node in other branch found
-											successorOfOtherBranch = successor;
+						if (!pGtwOnPath.isEmpty()) {
+							for (ParallelGateway split : pGtwOnPath) {
+								FlowNode successorOfOtherBranch = null;
+								for (SequenceFlow outgoingSeq : split.getOutgoing()) {
+									FlowNode successor = outgoingSeq.getTarget();
+									for (Entry<ParallelGateway, FlowNode> entry : branchOfCurrTask.entrySet()) {
+										if (entry.getKey().equals(split)) {
+											if (!successor.equals(entry.getValue())) {
+												// first node in other branch found
+												successorOfOtherBranch = successor;
+											}
 										}
+
 									}
 
 								}
 
-							}
-							
-							LinkedList<LinkedList<FlowNode>> branchOfSuccessorPaths = CommonFunctionality
-									.getAllPathsBetweenNodes(modelInstance, successorOfOtherBranch.getId(),
-											CommonFunctionality.getCorrespondingGtw(modelInstance, split).getId());
-							boolean writerFoundInOnePBranch = false;
-							outerloop: for (LinkedList<FlowNode> branch : branchOfSuccessorPaths) {
-								for (int nodeIndex = 0; nodeIndex < branch.size(); nodeIndex++) {
-									FlowNode nodeInsideBranch = branch.get(nodeIndex);
+								LinkedList<LinkedList<FlowNode>> branchOfSuccessorPaths = CommonFunctionality
+										.getAllPathsBetweenNodes(modelInstance, successorOfOtherBranch.getId(),
+												CommonFunctionality.getCorrespondingGtw(modelInstance, split).getId());
+								boolean writerFoundInOnePBranch = false;
+								outerloop: for (LinkedList<FlowNode> branch : branchOfSuccessorPaths) {
+									for (int nodeIndex = 0; nodeIndex < branch.size(); nodeIndex++) {
+										FlowNode nodeInsideBranch = branch.get(nodeIndex);
 
-									if (nodeInsideBranch instanceof Task) {
-										if (writersPerDataObject.get(currDataObject).contains(nodeInsideBranch)) {
-											//writer found in parallel branch to reader 
-											writerFoundInOnePBranch = true;
-											break outerloop;
+										if (nodeInsideBranch instanceof Task) {
+											if (writersPerDataObject.get(currDataObject).contains(nodeInsideBranch)) {
+												// writer found in parallel branch to reader
+												writerFoundInOnePBranch = true;
+												break outerloop;
+											}
+
 										}
-
 									}
 								}
-							}
-							if(!writerFoundInOnePBranch) {
-								writersOnPaths = false;
-							}
+								if (!writerFoundInOnePBranch) {
+									writersOnPaths = false;
+								}
 
 							}
-							
-							
-							
+
 						} else {
-							writersOnPaths = false;	
+							writersOnPaths = false;
 						}
 					}
 				}
@@ -657,8 +653,7 @@ public class CommonFunctionality {
 
 	}
 
-	
-	public static LinkedList<LinkedList<FlowNode>> getAllPathsForCamundaElements2 (BpmnModelInstance modelInstance,
+	public static LinkedList<LinkedList<FlowNode>> getAllPathsForCamundaElements2(BpmnModelInstance modelInstance,
 			FlowNode startNode, FlowNode endNode, LinkedList<FlowNode> queue, LinkedList<FlowNode> openSplits,
 			LinkedList<FlowNode> currentPath, LinkedList<LinkedList<FlowNode>> paths,
 			LinkedList<LinkedList<FlowNode>> parallelBranches, FlowNode endPointOfSearch)
@@ -668,19 +663,18 @@ public class CommonFunctionality {
 
 		while (!(queue.isEmpty())) {
 			FlowNode element = queue.poll();
-			System.out.println(element.getId()+", "+element.getName());
+			System.out.println(element.getId() + ", " + element.getName());
 			currentPath.add(element);
-			
+
 			if (Thread.currentThread().isInterrupted()) {
 				System.err.println("Interrupted! " + Thread.currentThread().getName());
 				throw new InterruptedException();
 			}
 
-			if(element.getId().equals(endPointOfSearch.getId())) {
+			if (element.getId().equals(endPointOfSearch.getId())) {
 				paths.add(currentPath);
 			}
-			
-			
+
 			if (element.getId().equals(endNode.getId())) {
 
 				if (endNode instanceof Gateway && endNode.getIncoming().size() == 2) {
@@ -697,25 +691,24 @@ public class CommonFunctionality {
 						if (!openSplits.isEmpty()) {
 							// still inside a branch
 							Gateway lastOpenedSplit = (Gateway) openSplits.getLast();
-							Gateway correspondingJoin = CommonFunctionality.getCorrespondingGtw(modelInstance, lastOpenedSplit);
-												
+							Gateway correspondingJoin = CommonFunctionality.getCorrespondingGtw(modelInstance,
+									lastOpenedSplit);
+
 							// need to add the lastOpenedSplit, since one path has gone dfs till the join
 							// already
-							getAllPathsForCamundaElements2(modelInstance,
-							successor, correspondingJoin, queue,  openSplits, currentPath, paths,
-							parallelBranches,  endPointOfSearch);
-						
+							getAllPathsForCamundaElements2(modelInstance, successor, correspondingJoin, queue,
+									openSplits, currentPath, paths, parallelBranches, endPointOfSearch);
+
 						} else {
 							// when there are no open splits gtws
 							// go from the successor of the element to endPointOfSearch since the
 							// currentElement has already been added to the path
-							getAllPathsForCamundaElements2(modelInstance,
-									successor, endPointOfSearch, queue,  openSplits, currentPath, paths,
-									parallelBranches,  endPointOfSearch);
+							getAllPathsForCamundaElements2(modelInstance, successor, endPointOfSearch, queue,
+									openSplits, currentPath, paths, parallelBranches, endPointOfSearch);
 						}
-					} 
+					}
 				}
-				
+
 			}
 
 			if (element instanceof Gateway && element.getOutgoing().size() == 2) {
@@ -734,18 +727,18 @@ public class CommonFunctionality {
 					// when a split is found - go dfs till the corresponding join is found
 					Gateway correspondingJoinGtw = null;
 					try {
-						correspondingJoinGtw = CommonFunctionality.getCorrespondingGtw(modelInstance, (Gateway)element);
-								
+						correspondingJoinGtw = CommonFunctionality.getCorrespondingGtw(modelInstance,
+								(Gateway) element);
+
 					} catch (Exception ex) {
 						throw ex;
 					}
 					LinkedList<FlowNode> newPath = new LinkedList<FlowNode>();
 					newPath.addAll(currentPath);
-					
-					getAllPathsForCamundaElements2(modelInstance,
-							successor, correspondingJoinGtw, queue,  openSplits, newPath, paths,
-							parallelBranches,  endPointOfSearch);
-				
+
+					getAllPathsForCamundaElements2(modelInstance, successor, correspondingJoinGtw, queue, openSplits,
+							newPath, paths, parallelBranches, endPointOfSearch);
+
 				} else {
 					queue.add(successor);
 				}
@@ -757,7 +750,6 @@ public class CommonFunctionality {
 		return paths;
 
 	}
-	
 
 	public static <T> boolean isSubListOfEachList(LinkedList<T> list1, LinkedList<LinkedList<FlowNode>> listOfLists) {
 		boolean isSubListOfEachList = true;
@@ -1411,70 +1403,44 @@ public class CommonFunctionality {
 		return file;
 	}
 
-	public static List<LinkedList<Integer>> computeRepartitionNumberWithResultBound(int maxAmount, int subParts,
-			int threshold_number, int amountResults) throws Exception, InterruptedException {
-
+	public static LinkedList<Integer> repartition(int numToPartition, int subParts, int threshold) throws Exception {
+		LinkedList<Integer> resultList = new LinkedList<Integer>();
 		if (Thread.currentThread().isInterrupted()) {
 			System.err.println("Interrupted! " + Thread.currentThread().getName());
 			throw new InterruptedException();
 		}
 
-		List<LinkedList<Integer>> resultRec = new LinkedList<LinkedList<Integer>>();
-
-		if (resultRec.size() == amountResults) {
-			return resultRec;
+		int num = threshold * subParts;
+		if (num > numToPartition) {
+			throw new Exception("No partition possible!");
 		}
 
-		if (subParts == 1) {
-			List<LinkedList<Integer>> resultEnd = new LinkedList<LinkedList<Integer>>();
-			LinkedList<Integer> unitary = new LinkedList<>();
-			resultEnd.add(unitary);
-			unitary.add(maxAmount);
-			return resultEnd;
+		// num to partition = 3
+		// threshold = 1
+		// subparts = 3
+		
+		int alreadyAssigned = 0;
+		for (int i = 0; i < subParts; i++) {
+			int remain = numToPartition - alreadyAssigned - num;
+			int randomInt = threshold;
+			if(i == subParts - 1) {
+				randomInt = numToPartition - alreadyAssigned; 
+			} else {
+				if(threshold < remain) {
+					randomInt = ThreadLocalRandom.current().nextInt(threshold, remain+1);
+
+				}
+			}			
+			resultList.add(randomInt);
+			alreadyAssigned+=randomInt;
+		}
+		
+		if(alreadyAssigned!=numToPartition) {
+			throw new Exception("NumToPartition: "+numToPartition+ " != assigned: "+alreadyAssigned);
 		}
 
-		for (int i = threshold_number; i <= maxAmount - threshold_number; i++) {
-			int remain = maxAmount - i;
-			List<LinkedList<Integer>> partialRec = computeRepartitionNumberWithResultBound(remain, subParts - 1,
-					threshold_number, amountResults);
-			for (List<Integer> subList : partialRec) {
-				subList.add(i);
-			}
-			resultRec.addAll(partialRec);
-			if (resultRec.size() == amountResults) {
-				return resultRec;
-			}
-		}
-		return resultRec;
-
-	}
-
-	public static List<LinkedList<Integer>> computeRepartitionNumber(int maxAmount, int subParts, int threshold_number)
-			throws Exception, InterruptedException {
-
-		if (Thread.currentThread().isInterrupted()) {
-			System.err.println("Interrupted! " + Thread.currentThread().getName());
-			throw new InterruptedException();
-		}
-
-		List<LinkedList<Integer>> resultRec = new LinkedList<LinkedList<Integer>>();
-		if (subParts == 1) {
-			List<LinkedList<Integer>> resultEnd = new LinkedList<LinkedList<Integer>>();
-			LinkedList<Integer> unitary = new LinkedList<>();
-			resultEnd.add(unitary);
-			unitary.add(maxAmount);
-			return resultEnd;
-		}
-
-		for (int i = threshold_number; i <= maxAmount - threshold_number; i++) {
-			int remain = maxAmount - i;
-			List<LinkedList<Integer>> partialRec = computeRepartitionNumber(remain, subParts - 1, threshold_number);
-			for (List<Integer> subList : partialRec) {
-				subList.add(i);
-			}
-			resultRec.addAll(partialRec);
-		}
-		return resultRec;
+		Collections.shuffle(resultList);
+		return resultList;
 
 	}
 
@@ -3452,14 +3418,14 @@ public class CommonFunctionality {
 	public static LinkedList<LinkedList<FlowNode>> goDfs(BpmnModelInstance modelInstance, FlowNode currentNode,
 			FlowNode endNode, LinkedList<SequenceFlow> stack, LinkedList<FlowNode> path,
 			LinkedList<LinkedList<FlowNode>> paths) throws Exception {
-		
+
 		if (Thread.currentThread().isInterrupted()) {
 			System.err.println("Interrupted! " + Thread.currentThread().getName());
 			throw new InterruptedException();
 		}
 
-		stack.addAll(currentNode.getOutgoing());		
-		
+		stack.addAll(currentNode.getOutgoing());
+
 		if (path.isEmpty()) {
 			path.add(currentNode);
 		}

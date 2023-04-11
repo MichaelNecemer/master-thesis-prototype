@@ -139,13 +139,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 				maxAmountReadersThroughDataObjectConnection = maxReaderThroughDataObjectConnection;
 			}
 
-			int maxCombs = 10000;
-			List<LinkedList<Integer>> subAmountDataObjectsToConnectToBrtsLists = CommonFunctionality
-					.computeRepartitionNumberWithResultBound(maxAmountReadersThroughDataObjectConnection, brts.size(),
-							minDataObjectsPerDecision, maxCombs);
-			int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountDataObjectsToConnectToBrtsLists.size());
-			LinkedList<Integer> subAmountDataObjectsToConnectToBrts = subAmountDataObjectsToConnectToBrtsLists
-					.get(randomNum2);
+			LinkedList<Integer> subAmountDataObjectsToConnectToBrts = CommonFunctionality
+					.repartition(maxAmountReadersThroughDataObjectConnection, brts.size(), minDataObjectsPerDecision);
 
 			int index = 0;
 			for (Task task : brts) {
@@ -249,39 +244,11 @@ public class ProcessModelAnnotater implements Callable<File> {
 		}
 		System.out.println("Writers to be inserted: " + amountWriters);
 		System.out.println("Readers to be inserted: " + amountReaders);
-		// for large processes we can not compute each possible combination of amount of
-		// readers/writers
-		// for the data objects to be inserted
-		boolean useMaxCombs = false;
-		int maxCombs = 1000;
 
-		if (amountWriters > 15 || amountReaders > 15) {
-			if (this.dataObjects.size() > 15) {
-				useMaxCombs = true;
-			}
-		}
-		List<LinkedList<Integer>> subAmountWritersLists = null;
-		if (useMaxCombs) {
-			subAmountWritersLists = CommonFunctionality.computeRepartitionNumberWithResultBound(amountWriters,
-					this.dataObjects.size(), 1, maxCombs);
-		} else {
-			subAmountWritersLists = CommonFunctionality.computeRepartitionNumber(amountWriters, this.dataObjects.size(),
-					1);
-		}
-		int randomNum = ThreadLocalRandom.current().nextInt(0, subAmountWritersLists.size());
-		LinkedList<Integer> subAmountWriters = subAmountWritersLists.get(randomNum);
-
-		List<LinkedList<Integer>> subAmountReadersLists = null;
-		if (useMaxCombs) {
-			subAmountReadersLists = CommonFunctionality.computeRepartitionNumberWithResultBound(amountReaders,
-					this.dataObjects.size(), 0, maxCombs);
-		} else {
-			subAmountReadersLists = CommonFunctionality.computeRepartitionNumber(amountReaders, this.dataObjects.size(),
-					0);
-		}
-
-		int randomNum2 = ThreadLocalRandom.current().nextInt(0, subAmountReadersLists.size());
-		LinkedList<Integer> subAmountReaders = subAmountReadersLists.get(randomNum2);
+		LinkedList<Integer> subAmountWriters = CommonFunctionality.repartition(amountWriters, this.dataObjects.size(),
+				1);
+		LinkedList<Integer> subAmountReaders = CommonFunctionality.repartition(amountReaders, this.dataObjects.size(),
+				0);
 
 		// first insert the readers randomly
 		// there must be an initial origin (without read)
@@ -291,7 +258,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 				.getOutgoing().iterator().next().getTarget();
 		allAvailableTasksAsReaders.remove(firstNodeAfterStart);
 
-		HashMap<DataObjectReference, LinkedList<FlowNode>> readersPerDataObject = CommonFunctionality.getReadersForDataObjects(modelInstance);
+		HashMap<DataObjectReference, LinkedList<FlowNode>> readersPerDataObject = CommonFunctionality
+				.getReadersForDataObjects(modelInstance);
 		// randomly assign readers per data objects
 		for (int i = 0; i < this.dataObjects.size(); i++) {
 			DataObjectReference dataORef = this.dataObjects.get(i);
@@ -300,8 +268,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 			allAvailableTasksAsReadersForDataObject.addAll(allAvailableTasksAsReaders);
 			// remove all tasks that are already readers for the data object
 			allAvailableTasksAsReadersForDataObject.removeAll(readersPerDataObject.get(dataORef));
-			
-			while(amountReadersForDataObjectToInsert > 0 && !allAvailableTasksAsReadersForDataObject.isEmpty()) {
+
+			while (amountReadersForDataObjectToInsert > 0 && !allAvailableTasksAsReadersForDataObject.isEmpty()) {
 				// get a random task that is not a brt (since they are connected already)
 				// and not the first task in the process (reserved as potential needed initial
 				// origin)
@@ -322,42 +290,41 @@ public class ProcessModelAnnotater implements Callable<File> {
 					readersPerDataObject.computeIfAbsent(dataORef, k -> new LinkedList<FlowNode>()).add(currentTask);
 				}
 
-			} 
+			}
 
 		}
-		
-		
+
 		// get all paths from start to a reader to get potential initial origins
 		HashMap<Task, LinkedList<LinkedList<FlowNode>>> pathsToReader = new HashMap<Task, LinkedList<LinkedList<FlowNode>>>();
 
 		HashMap<DataObjectReference, HashSet<FlowNode>> intersectionMap = new HashMap<DataObjectReference, HashSet<FlowNode>>();
 
 		StartEvent stEvent = modelInstance.getModelElementsByType(StartEvent.class).iterator().next();
-		
+
 		for (Entry<DataObjectReference, LinkedList<FlowNode>> readersEntry : readersPerDataObject.entrySet()) {
 			HashSet<FlowNode> intersection = new HashSet<FlowNode>();
 			boolean initialRun = true;
-			
+
 			for (FlowNode reader : readersEntry.getValue()) {
 				LinkedList<LinkedList<FlowNode>> allPathsBetweenStartAndReader = pathsToReader.get(reader);
 				if (allPathsBetweenStartAndReader == null) {
 					allPathsBetweenStartAndReader = CommonFunctionality.getAllPathsBetweenNodes(modelInstance,
 							stEvent.getId(), reader.getId());
-					pathsToReader.put((Task)reader, allPathsBetweenStartAndReader);
+					pathsToReader.put((Task) reader, allPathsBetweenStartAndReader);
 				}
-				LinkedList<FlowNode>otherReaders = new LinkedList<FlowNode>();
+				LinkedList<FlowNode> otherReaders = new LinkedList<FlowNode>();
 				otherReaders.addAll(readersEntry.getValue());
 				otherReaders.remove(reader);
-				
+
 				// intersection
 				for (LinkedList<FlowNode> pathBetweenStartAndReader : allPathsBetweenStartAndReader) {
-					
-					for(FlowNode otherReader: otherReaders) {
-						if(pathBetweenStartAndReader.contains(otherReader)) {
+
+					for (FlowNode otherReader : otherReaders) {
+						if (pathBetweenStartAndReader.contains(otherReader)) {
 							// other reader is on path
 						}
 					}
-					
+
 					if (initialRun) {
 						intersection.addAll(pathBetweenStartAndReader);
 						initialRun = false;
@@ -381,7 +348,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 			LinkedList<Task> writersForDataObject = new LinkedList<Task>();
 			LinkedList<Task> allAvailableTasksAsWritersForDataObject = new LinkedList<Task>();
 			allAvailableTasksAsWritersForDataObject.addAll(modelInstance.getModelElementsByType(Task.class));
-			
+
 			while (writersForDataObject.size() < amountWritersForDataObjectToAssign) {
 				if (getNextWriterFromIntersected) {
 					// initial origins needed
@@ -441,7 +408,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 					int randomNodeIndexFromAvailableTasks = ThreadLocalRandom.current().nextInt(0,
 							allAvailableTasksAsWritersForDataObject.size());
-					FlowNode currentNodeToBeWriter = allAvailableTasksAsWritersForDataObject.get(randomNodeIndexFromAvailableTasks);
+					FlowNode currentNodeToBeWriter = allAvailableTasksAsWritersForDataObject
+							.get(randomNodeIndexFromAvailableTasks);
 					if (currentNodeToBeWriter instanceof Task) {
 						Task currTask = (Task) currentNodeToBeWriter;
 						if (!ProcessModelAnnotater.taskIsBrtFollowedByXorSplit(currentNodeToBeWriter)) {
@@ -851,7 +819,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 	}
 
 	private void addTuplesForXorSplits(Task brtTask, int probPublicDecision,
-			int lowerBoundAmountParticipantsPerDecision, int upperBoundAmountParticipantsPerDecision, boolean tupleOnlyOneElement) {
+			int lowerBoundAmountParticipantsPerDecision, int upperBoundAmountParticipantsPerDecision,
+			boolean tupleOnlyOneElement) {
 
 		if (taskIsBrtFollowedByXorSplit(brtTask)) {
 			BusinessRuleTask brt = (BusinessRuleTask) brtTask;
@@ -890,23 +859,23 @@ public class ProcessModelAnnotater implements Callable<File> {
 				} else {
 					int randomCountAdditionalActorsNeeded = ThreadLocalRandom.current().nextInt(
 							lowerBoundAmountParticipantsPerDecision, upperBoundAmountParticipantsPerDecision + 1);
-					if(tupleOnlyOneElement) {
+					if (tupleOnlyOneElement) {
 						textContentBuilder.append(randomCountAdditionalActorsNeeded);
-					} else {					
-					// second argument -> additional actors that need to decide the same
-					// must be bigger than the additional actors needed divided by 2 and rounded up
-					// to next int
-					// e.g. if 3 additional actors are needed -> 2 or 3 must decide the same
-					// e.g. if 5 additional actors are needed -> 3,4 or 5 must decide the same
-					int lowerBound = (int) Math.ceil((double) randomCountAdditionalActorsNeeded / 2);
+					} else {
+						// second argument -> additional actors that need to decide the same
+						// must be bigger than the additional actors needed divided by 2 and rounded up
+						// to next int
+						// e.g. if 3 additional actors are needed -> 2 or 3 must decide the same
+						// e.g. if 5 additional actors are needed -> 3,4 or 5 must decide the same
+						int lowerBound = (int) Math.ceil((double) randomCountAdditionalActorsNeeded / 2);
 
-					int randomCountAddActorsSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
-							randomCountAdditionalActorsNeeded + 1);
-					int randomCountIterations = ThreadLocalRandom.current().nextInt(1, 10 + 1);
+						int randomCountAddActorsSameDecision = ThreadLocalRandom.current().nextInt(lowerBound,
+								randomCountAdditionalActorsNeeded + 1);
+						int randomCountIterations = ThreadLocalRandom.current().nextInt(1, 10 + 1);
 
-					// generate TextAnnotations for xor-splits
-					textContentBuilder.append(randomCountAdditionalActorsNeeded + "," + randomCountAddActorsSameDecision
-							+ "," + randomCountIterations);
+						// generate TextAnnotations for xor-splits
+						textContentBuilder.append(randomCountAdditionalActorsNeeded + ","
+								+ randomCountAddActorsSameDecision + "," + randomCountIterations);
 					}
 				}
 				textContentBuilder.append("}");
@@ -1763,36 +1732,36 @@ public class ProcessModelAnnotater implements Callable<File> {
 	private boolean checkLabels(LinkedList<LabelForAnnotater> currentTaskLabel,
 			LinkedList<LabelForAnnotater> readerOrWriterLabel) {
 
-		if(currentTaskLabel==null || readerOrWriterLabel==null) {
+		if (currentTaskLabel == null || readerOrWriterLabel == null) {
 			return true;
 		}
-		if(currentTaskLabel.isEmpty() || readerOrWriterLabel.isEmpty()) {
+		if (currentTaskLabel.isEmpty() || readerOrWriterLabel.isEmpty()) {
 			return true;
 		}
-		
+
 		// get the difference of the two lists
 		LinkedList<LabelForAnnotater> listOfDifferent = new LinkedList<LabelForAnnotater>();
-		if(currentTaskLabel.size()>=readerOrWriterLabel.size()) {
+		if (currentTaskLabel.size() >= readerOrWriterLabel.size()) {
 			listOfDifferent.addAll(currentTaskLabel);
 			listOfDifferent.removeAll(readerOrWriterLabel);
 		} else {
 			listOfDifferent.addAll(readerOrWriterLabel);
 			listOfDifferent.removeAll(currentTaskLabel);
-		}		
+		}
 
 		if (listOfDifferent.size() > 0) {
-			for(LabelForAnnotater label: listOfDifferent) {
-				if(label.getSplitNode() instanceof ParallelGateway) {
+			for (LabelForAnnotater label : listOfDifferent) {
+				if (label.getSplitNode() instanceof ParallelGateway) {
 					// reader/writer and currentTask are in different parallel branches of same
 					// split
 					return false;
 				}
 			}
-		
+
 		}
 		return true;
 	}
-	
+
 	public void removeDataObjectsWithoutConnectionsToDecisionsFromModel() {
 		LinkedList<DataObjectReference> daoRList = new LinkedList<DataObjectReference>();
 		daoRList.addAll(modelInstance.getModelElementsByType(DataObjectReference.class));
@@ -1846,7 +1815,5 @@ public class ProcessModelAnnotater implements Callable<File> {
 		}
 		this.dataObjects = daoRsFound;
 	}
-	
-
 
 }

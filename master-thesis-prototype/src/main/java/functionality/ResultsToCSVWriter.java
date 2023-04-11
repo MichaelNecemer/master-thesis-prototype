@@ -29,21 +29,20 @@ public class ResultsToCSVWriter {
 			rows = new ArrayList<>();
 			String[] header = new String[] { "fileName", "pathToFile", "logging", "exceptionExhaustive",
 					"exceptionHeuristic", "exceptionNaive", "exceptionIncrementalNaive",
-					"totalAmountSolutionsExhaustive", "totalAmountSolutionsHeuristic",
-					"totalAmountSolutionsNaive", "totalAmountSolutionsIncrementalNaive",
-					"amountCheapestSolutionsExhaustive", "amountCheapestSolutionsHeuristic",
-					"amountCheapestSolutionsNaive", "amountSolutionsIncrementalNaive",
-					"costCheapestSolutionExhaustive", "costCheapestSolutionHeuristic", "costCheapestSolutionNaive",
-					"costCheapestSolutionIncrementalNaive", "exhaustiveCombsGenInSec",
-					"exhaustiveCalcMeasureInSec", "exhaustiveExecutionTimeInSec", "heuristicCombsGenInSec",
-					"heuristicCalcMeasureInSec", "heuristicExecutionTimeInSec", "naiveCombsGenInSec",
-					"naiveCalcMeasureInSec", "naiveExecutionTimeInSec", "incrementalNaiveCombsGenInSec",
-					"incrementalNaiveCalcMeasureInSec", "incrementalNaiveExecutionTimeInSec", "amountReaders",
-					"amountWriters", "amountDataObjects", "averageAmountDataObjectsPerDecision",
-					"amountReadersPerDataObject", "amountWritersPerDataObject", "amountExclusiveGateways",
-					"amountParallelGateways", "amountTasks", "amountElements", "amountSumAddActors",
-					"averageAmountAddActors", "privateSphereSize", "averageSphereSum", "pathsThroughProcess",
-					"amountMandConst", "amountExclConst" };
+					"totalAmountSolutionsExhaustive", "totalAmountSolutionsHeuristic", "totalAmountSolutionsNaive",
+					"totalAmountSolutionsIncrementalNaive", "amountCheapestSolutionsExhaustive",
+					"amountCheapestSolutionsHeuristic", "amountCheapestSolutionsNaive",
+					"amountSolutionsIncrementalNaive", "costCheapestSolutionExhaustive",
+					"costCheapestSolutionHeuristic", "costCheapestSolutionNaive",
+					"costCheapestSolutionIncrementalNaive", "exhaustiveCombsGenInSec", "exhaustiveCalcMeasureInSec",
+					"exhaustiveExecutionTimeInSec", "heuristicCombsGenInSec", "heuristicCalcMeasureInSec",
+					"heuristicExecutionTimeInSec", "naiveCombsGenInSec", "naiveCalcMeasureInSec",
+					"naiveExecutionTimeInSec", "incrementalNaiveCombsGenInSec", "incrementalNaiveCalcMeasureInSec",
+					"incrementalNaiveExecutionTimeInSec", "amountReaders", "amountWriters", "amountDataObjects",
+					"averageAmountDataObjectsPerDecision", "amountReadersPerDataObject", "amountWritersPerDataObject",
+					"amountExclusiveGateways", "amountParallelGateways", "amountTasks", "amountElements",
+					"amountSumAddActors", "averageAmountAddActors", "privateSphereSize", "averageSphereSum",
+					"pathsThroughProcess", "amountMandConst", "amountExclConst" };
 			this.rows.add(header);
 
 		} catch (IOException e) {
@@ -83,21 +82,46 @@ public class ResultsToCSVWriter {
 		String amountCheapestSolutionsIncrementalNaiveSearch = "null";
 		String costCheapestSolutionIncrementalNaiveSearch = "null";
 
-		String exhaustiveSearchExecutionTime = "null";
+		LinkedList<String> timeListExhaustive = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.EXHAUSTIVE);
 		String exhaustiveSearchGenCombsTime = "null";
 		String exhaustiveSearchCalcMeasureTime = "null";
+		String exhaustiveSearchExecutionTime = "null";
+		if (timeListExhaustive != null) {
+			exhaustiveSearchGenCombsTime = timeListExhaustive.get(0);
+			exhaustiveSearchCalcMeasureTime = timeListExhaustive.get(1);
+			exhaustiveSearchExecutionTime = timeListExhaustive.get(2);
+		}
 
-		String heuristicSearchExecutionTime = "null";
+		LinkedList<String> timeListHeuristic = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.HEURISTIC);
 		String heuristicSearchGenCombsTime = "null";
 		String heuristicSearchCalcMeasureTime = "null";
+		String heuristicSearchExecutionTime = "null";
+		if (timeListHeuristic != null) {
+			heuristicSearchGenCombsTime = timeListHeuristic.get(0);
+			heuristicSearchCalcMeasureTime = timeListHeuristic.get(1);
+			heuristicSearchExecutionTime = timeListHeuristic.get(2);
+		}
 
-		String naiveSearchExecutionTime = "null";
+		LinkedList<String> timeListNaive = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.NAIVE);
 		String naiveSearchGenCombsTime = "null";
 		String naiveSearchCalcMeasureTime = "null";
+		String naiveSearchExecutionTime = "null";
+		if (timeListNaive != null) {
+			naiveSearchGenCombsTime = timeListNaive.get(0);
+			naiveSearchCalcMeasureTime = timeListNaive.get(1);
+			naiveSearchExecutionTime = timeListNaive.get(2);
+		}
 
-		String incrementalNaiveSearchExecutionTime = "null";
+		LinkedList<String> timeListIncrementalNaive = api.getExecutionTimeMap()
+				.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE);
 		String incrementalNaiveSearchGenCombsTime = "null";
 		String incrementalNaiveSearchCalcMeasureTime = "null";
+		String incrementalNaiveSearchExecutionTime = "null";
+		if (timeListIncrementalNaive != null) {
+			incrementalNaiveSearchGenCombsTime = timeListIncrementalNaive.get(0);
+			incrementalNaiveSearchCalcMeasureTime = timeListIncrementalNaive.get(1);
+			incrementalNaiveSearchExecutionTime = timeListIncrementalNaive.get(2);
+		}
 
 		String amountMandConst = api.getMandatoryParticipantConstraints().size() + "";
 		String amountExclConst = api.getExcludeParticipantConstraints().size() + "";
@@ -122,30 +146,18 @@ public class ResultsToCSVWriter {
 			totalAmountSolutionsExhaustiveSearch = totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE)
 					+ "";
 			amountCheapestSolutionsExhaustive = cheapestSolutionsMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) + "";
-			LinkedList<Double> timeList = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.EXHAUSTIVE);
-			exhaustiveSearchGenCombsTime = timeList.get(0) + "";
-			exhaustiveSearchCalcMeasureTime = timeList.get(1) + "";
-			exhaustiveSearchExecutionTime = timeList.get(2) + "";
 			logging = loggingMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE);
 		}
 
 		if (totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.HEURISTIC) != null) {
 			totalAmountSolutionsHeuristicSearch = totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.HEURISTIC) + "";
 			amountCheapestSolutionsHeuristic = cheapestSolutionsMap.get(Enums.AlgorithmToPerform.HEURISTIC) + "";
-			LinkedList<Double> timeList = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.HEURISTIC);
-			heuristicSearchGenCombsTime = timeList.get(0) + "";
-			heuristicSearchCalcMeasureTime = timeList.get(1) + "";
-			heuristicSearchExecutionTime = timeList.get(2) + "";
 			logging = loggingMap.get(Enums.AlgorithmToPerform.HEURISTIC);
 		}
 
 		if (totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.NAIVE) != null) {
 			totalAmountSolutionsNaiveSearch = totalAmountSolutionsMap.get(Enums.AlgorithmToPerform.NAIVE) + "";
 			amountCheapestSolutionsNaiveSearch = cheapestSolutionsMap.get(Enums.AlgorithmToPerform.NAIVE) + "";
-			LinkedList<Double> timeList = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.NAIVE);
-			naiveSearchGenCombsTime = timeList.get(0) + "";
-			naiveSearchCalcMeasureTime = timeList.get(1) + "";
-			naiveSearchExecutionTime = timeList.get(2) + "";
 			logging = loggingMap.get(Enums.AlgorithmToPerform.NAIVE);
 		}
 
@@ -154,10 +166,6 @@ public class ResultsToCSVWriter {
 					.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
 			amountCheapestSolutionsIncrementalNaiveSearch = cheapestSolutionsMap
 					.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) + "";
-			LinkedList<Double> timeList = api.getExecutionTimeMap().get(Enums.AlgorithmToPerform.INCREMENTALNAIVE);
-			incrementalNaiveSearchGenCombsTime = timeList.get(0) + "";
-			incrementalNaiveSearchCalcMeasureTime = timeList.get(1) + "";
-			incrementalNaiveSearchExecutionTime = timeList.get(2) + "";
 			logging = loggingMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE);
 		}
 
@@ -191,8 +199,7 @@ public class ResultsToCSVWriter {
 			amountParallelGtwSplitsBeforePreprocessing = api.getAmountParallelsBeforePreprocessing() + "";
 			amountTasks = CommonFunctionality.getAmountTasks(api.getModelInstance()) + "";
 			amountElements = CommonFunctionality.getAmountElements(api.getModelInstance()) + "";
-			sumAmountAddActorsOfModel = CommonFunctionality.getSumAmountAddActorsOfModel(api.getModelInstance())
-					+ "";
+			sumAmountAddActorsOfModel = CommonFunctionality.getSumAmountAddActorsOfModel(api.getModelInstance()) + "";
 			averageAmountAddActorsOfModel = CommonFunctionality
 					.getAverageAmountAdditionalActorsOfModel(api.getModelInstance()) + "";
 			privateSphereSize = CommonFunctionality.getPrivateSphere(api.getModelInstance(), false) + "";
@@ -252,14 +259,14 @@ public class ResultsToCSVWriter {
 				amountCheapestSolutionsIncrementalNaiveSearch, costCheapestSolutionExhaustive,
 				costCheapestSolutionHeuristic, costCheapestSolutionNaiveSearch,
 				costCheapestSolutionIncrementalNaiveSearch, exhaustiveSearchGenCombsTime,
-				exhaustiveSearchCalcMeasureTime, exhaustiveSearchExecutionTime,  heuristicSearchGenCombsTime,
-				heuristicSearchCalcMeasureTime, heuristicSearchExecutionTime,naiveSearchGenCombsTime,
-				naiveSearchCalcMeasureTime,naiveSearchExecutionTime,  incrementalNaiveSearchGenCombsTime,
-				incrementalNaiveSearchCalcMeasureTime, incrementalNaiveSearchExecutionTime, amountReaders, amountWriters, amountDataObjects,
-				averageAmountDataObjectsPerDecision, readersPerDataObject, writersPerDataObject,
-				amountExclusiveGtwSplits, amountParallelGtwSplitsBeforePreprocessing, amountTasks, amountElements,
-				sumAmountAddActorsOfModel, averageAmountAddActorsOfModel, privateSphereSize, sphereSumOfModel,
-				allPathsThroughProcess, amountMandConst, amountExclConst };
+				exhaustiveSearchCalcMeasureTime, exhaustiveSearchExecutionTime, heuristicSearchGenCombsTime,
+				heuristicSearchCalcMeasureTime, heuristicSearchExecutionTime, naiveSearchGenCombsTime,
+				naiveSearchCalcMeasureTime, naiveSearchExecutionTime, incrementalNaiveSearchGenCombsTime,
+				incrementalNaiveSearchCalcMeasureTime, incrementalNaiveSearchExecutionTime, amountReaders,
+				amountWriters, amountDataObjects, averageAmountDataObjectsPerDecision, readersPerDataObject,
+				writersPerDataObject, amountExclusiveGtwSplits, amountParallelGtwSplitsBeforePreprocessing, amountTasks,
+				amountElements, sumAmountAddActorsOfModel, averageAmountAddActorsOfModel, privateSphereSize,
+				sphereSumOfModel, allPathsThroughProcess, amountMandConst, amountExclConst };
 
 		this.rows.add(row);
 

@@ -44,8 +44,7 @@ public class TestClass {
 			pModel.printMeasure();
 			}
 			
-			
-			
+						
 			int bound = 1;
 			LinkedList<PModelWithAdditionalActors>pInstHeuristic = api2.heuristicSearch(bound);
 			for(PModelWithAdditionalActors pModel: pInstHeuristic) {

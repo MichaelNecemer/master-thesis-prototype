@@ -77,11 +77,12 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 	private String weakDynamicSphereKey;
 	private String strongDynamicSphereKey;
 	private LinkedList<Double> weightingParameters;
-	private HashMap<Enums.AlgorithmToPerform, LinkedList<Double>> executionTimeMap;
+	private HashMap<Enums.AlgorithmToPerform, LinkedList<String>> executionTimeMap;
 	private int bound;
 	private int amountParallelsBeforePreprocessing;
 
-	public API(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters, boolean testIfModelValid, boolean calculateAmountOfPaths) throws Exception {
+	public API(String pathToBpmnCamundaFile, LinkedList<Double> weightingParameters, boolean testIfModelValid,
+			boolean calculateAmountOfPaths) throws Exception {
 		if (weightingParameters.size() != 3) {
 			throw new Exception("Not exactly 3 weighting cost parameters (Alpha, Beta, Gamma) in the list!");
 		}
@@ -113,7 +114,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		// set the default algorithm to perform
 		this.setAlgorithmToPerform(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
 		// set the default cluster condition
-		this.executionTimeMap = new HashMap<Enums.AlgorithmToPerform, LinkedList<Double>>();
+		this.executionTimeMap = new HashMap<Enums.AlgorithmToPerform, LinkedList<String>>();
 		this.mandatoryParticipantConstraints = new LinkedList<MandatoryParticipantConstraint>();
 		this.excludeParticipantConstraints = new LinkedList<ExcludeParticipantConstraint>();
 		this.modelWithLanes = false;
@@ -124,197 +125,236 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		this.strongDynamicSphereKey = "Strong-Dynamic";
 		this.bound = 0;
 		// map all the elements from camunda
-		this.mapCamundaElements();		
+		this.mapCamundaElements();
 		this.pathsThroughProcess = new LinkedList<LinkedList<FlowNode>>();
 		// expensive calculations when a lot of xors in process
-		if(calculateAmountOfPaths) {
-		this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance,
-				this.startEvent.getId(), this.endEvent.getId());
-		} 
+		if (calculateAmountOfPaths) {
+			this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance,
+					this.startEvent.getId(), this.endEvent.getId());
+		}
 	}
 
 	public LinkedList<PModelWithAdditionalActors> exhaustiveSearch() throws Exception {
+
 		this.bound = 0;
 		long startTime = System.nanoTime();
+		long endTimeGeneratingCombs = -1L;
+		long endTimeExhaustiveSearch = -1L;
+		LinkedList<String> timeList = new LinkedList<String>();
+		timeList.add("null");
+		timeList.add("null");
+		timeList.add("null");
 
-		// compute static sphere per data object without add actors
-		HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
-				.computeStaticSpherePerDataObject();
+		try {
+			// compute static sphere per data object without add actors
+			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
+					.computeStaticSpherePerDataObject();
 
-		// compute wd sphere for origins without additional actors
-		// only for origins of data objects (may be the same for different brts!)
-		HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
+			// compute wd sphere for origins without additional actors
+			// only for origins of data objects (may be the same for different brts!)
+			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
 
-		LinkedList<PModelWithAdditionalActors> additionalActorsCombs = new LinkedList<PModelWithAdditionalActors>();
+			LinkedList<PModelWithAdditionalActors> additionalActorsCombs = new LinkedList<PModelWithAdditionalActors>();
 
-		// generate all possible combinations of additional readers
-		additionalActorsCombs = this.generatePossibleCombinationsOfAdditionalActorsWithBound(this.bound);
-		long endTimeGeneratingCombs = System.nanoTime();
+			// generate all possible combinations of additional readers
+			additionalActorsCombs = this.generatePossibleCombinationsOfAdditionalActorsWithBound(this.bound);
+			endTimeGeneratingCombs = System.nanoTime();
+			
+			long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
+			timeList.set(0, (double) timeForGeneratingCombs / 1000000000+"");
 
-		// calculate the cost measure for all possible additional actors combinations
-		this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject,
-				new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>(),
-				new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
+			// calculate the cost measure for all possible additional actors combinations
+			this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject,
+					new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>(),
+					new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
 
-		long endTimeExhaustiveSearch = System.nanoTime();
+			endTimeExhaustiveSearch = System.nanoTime();
+			
+			long timeForCalculatingMeasure = endTimeExhaustiveSearch - endTimeGeneratingCombs;
+			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000+"");
 
-		long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
-		long timeForCalculatingMeasure = endTimeExhaustiveSearch - endTimeGeneratingCombs;
-		long executionTimeExhaustive = endTimeExhaustiveSearch - startTime;
+			long executionTimeExhaustive = endTimeExhaustiveSearch - startTime;
+			timeList.set(2, (double) executionTimeExhaustive / 1000000000+"");			
+		
+			return additionalActorsCombs;
 
-		LinkedList<Double> timeList = new LinkedList<Double>();
-		timeList.add((double) timeForGeneratingCombs / 1000000000);
-		timeList.add((double) timeForCalculatingMeasure / 1000000000);
-		timeList.add((double) executionTimeExhaustive / 1000000000);
-		System.out.println("Exhaustive search generated solutions: " + additionalActorsCombs.size());
-		System.out.println("Exhaustive search execution time in sec: " + timeList.get(2));
-		this.executionTimeMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, timeList);
-		return additionalActorsCombs;
+		} catch (Exception ex) {			
+			throw ex;
+		} finally {
+			this.executionTimeMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, timeList);
+			System.out.println("Exhaustive search execution time in sec: " + timeList.get(2));
+		}
 	}
 
 	public LinkedList<PModelWithAdditionalActors> heuristicSearch(int bound) throws Exception {
 
-		long startTimeHeuristicSearch = System.nanoTime();
+		long startTime = System.nanoTime();
+		long endTimeGeneratingCombs = -1L;
+		long endTimeHeuristicSearch = -1L;		
+		LinkedList<String> timeList = new LinkedList<String>();
+		timeList.add("null");
+		timeList.add("null");
+		timeList.add("null");
 
-		// compute static sphere per data object without add actors
-		HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
-				.computeStaticSpherePerDataObject();
+		try {
+			// compute static sphere per data object without add actors
+			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
+					.computeStaticSpherePerDataObject();
 
-		LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
-		LinkedList<PModelWithAdditionalActors> pModelAddActors = new LinkedList<PModelWithAdditionalActors>();
+			LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
+			LinkedList<PModelWithAdditionalActors> pModelAddActors = new LinkedList<PModelWithAdditionalActors>();
 
-		long endTimeGeneratingCombsHeuristicSearch = 0;
+			endTimeGeneratingCombs = 0;
 
-		HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
+			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
 
-		// the following maps will contain paths from origins ongoing to avoid
-		// redundant calculations
-		HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
-		HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap = new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>();
+			// the following maps will contain paths from origins ongoing to avoid
+			// redundant calculations
+			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
+			HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap = new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>();
 
-		if (!staticSpherePerDataObject.isEmpty()) {
-			// compute wd sphere for origins without additional actors
+			if (!staticSpherePerDataObject.isEmpty()) {
+				// compute wd sphere for origins without additional actors
 
-			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
-			HashMap<BPMNParticipant, Double> amountParticipantChosenAsAddActorsMap = new HashMap<BPMNParticipant, Double>();
-			allCheapestAddActorsLists = this.queryBrtsInTopologicalOrderAndAssignAdditionalActorsForHeuristicSearch(
-					this.startEvent, this.endEvent, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-					this.endEvent, pathsFromOriginToEndMap, alreadyChosenAdditionalActors,
-					amountParticipantChosenAsAddActorsMap, staticSpherePerDataObject, wdSpherePerDataObject,
-					new LinkedList<LinkedList<AdditionalActors>>(), bound);
+				HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
+				HashMap<BPMNParticipant, Double> amountParticipantChosenAsAddActorsMap = new HashMap<BPMNParticipant, Double>();
+				allCheapestAddActorsLists = this.queryBrtsInTopologicalOrderAndAssignAdditionalActorsForHeuristicSearch(
+						this.startEvent, this.endEvent, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+						this.endEvent, pathsFromOriginToEndMap, alreadyChosenAdditionalActors,
+						amountParticipantChosenAsAddActorsMap, staticSpherePerDataObject, wdSpherePerDataObject,
+						new LinkedList<LinkedList<AdditionalActors>>(), bound);
 
-			for (LinkedList<AdditionalActors> additionalActorsList : allCheapestAddActorsLists) {
-				PModelWithAdditionalActors newModel = new PModelWithAdditionalActors(additionalActorsList,
-						this.weightingParameters);
-				pModelAddActors.add(newModel);
+				for (LinkedList<AdditionalActors> additionalActorsList : allCheapestAddActorsLists) {
+					PModelWithAdditionalActors newModel = new PModelWithAdditionalActors(additionalActorsList,
+							this.weightingParameters);
+					pModelAddActors.add(newModel);
+				}
+
+				endTimeGeneratingCombs = System.nanoTime();
+				// calculate the cost measure for the all additional actors combinations found
+				// with the heuristic search
+				this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
+						pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
+
+			} else {
+				// any combination satisfying the constraints is a cheapest one
+				// the measure is only calculated for evaluating the execution time
+				pModelAddActors = this.generatePossibleCombinationsOfAdditionalActorsWithBound(bound);
+				endTimeGeneratingCombs = System.nanoTime();
+
+				this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
+						pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
 			}
 
-			endTimeGeneratingCombsHeuristicSearch = System.nanoTime();
-			// calculate the cost measure for the all additional actors combinations found
-			// with the heuristic search
-			this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
-					pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
+			endTimeHeuristicSearch = System.nanoTime();
+			
+			long timeForCalculatingMeasure = endTimeHeuristicSearch - endTimeGeneratingCombs;
+			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000+"");
 
-		} else {
-			// any combination satisfying the constraints is a cheapest one
-			// the measure is only calculated for evaluating the execution time
-			pModelAddActors = this.generatePossibleCombinationsOfAdditionalActorsWithBound(bound);
-			endTimeGeneratingCombsHeuristicSearch = System.nanoTime();
+			long executionTimeExhaustive = endTimeHeuristicSearch - startTime;
+			timeList.set(2, (double) executionTimeExhaustive / 1000000000+"");				
+			
+			System.out.println("Heuristic search generated solutions: " + pModelAddActors.size());
 
-			this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
-					pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
+			return pModelAddActors;
+
+		} catch (Exception ex) {
+			throw ex;
+		} finally {		
+			this.executionTimeMap.put(Enums.AlgorithmToPerform.HEURISTIC, timeList);
+			System.out.println("Heuristic search execution time in sec: " + timeList.get(2));
 		}
 
-		long endTimeHeuristicSearch = System.nanoTime();
-
-		long timeForGeneratingCombsHeuristic = endTimeGeneratingCombsHeuristicSearch - startTimeHeuristicSearch;
-		long timeForCalculatingMeasureHeuristic = endTimeHeuristicSearch - endTimeGeneratingCombsHeuristicSearch;
-		long executionTimeHeuristic = endTimeHeuristicSearch - startTimeHeuristicSearch;
-
-		LinkedList<Double> timeList = new LinkedList<Double>();
-		timeList.add((double) timeForGeneratingCombsHeuristic / 1000000000);
-		timeList.add((double) timeForCalculatingMeasureHeuristic / 1000000000);
-		timeList.add((double) executionTimeHeuristic / 1000000000);
-		System.out.println("Heuristic search generated solutions: " + pModelAddActors.size());
-		System.out.println("Heuristic search execution time in sec: " + timeList.get(2));
-		this.executionTimeMap.put(Enums.AlgorithmToPerform.HEURISTIC, timeList);
-		return pModelAddActors;
 	}
 
 	public LinkedList<PModelWithAdditionalActors> naiveSearch(boolean incremental, int bound)
 			throws NullPointerException, InterruptedException, NotEnoughAddActorsException, Exception {
-		long startTimeNaiveSearch = System.nanoTime();
+		long startTime = System.nanoTime();
+		long endTimeGeneratingCombs = -1L;
+		long endTimeNaiveSearch = -1L;
+		LinkedList<String> timeList = new LinkedList<String>();
+		timeList.add("null");
+		timeList.add("null");
+		timeList.add("null");
 
-		// compute static sphere per data object without add actors
-		HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
-				.computeStaticSpherePerDataObject();
+		try {
+			// compute static sphere per data object without add actors
+			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
+					.computeStaticSpherePerDataObject();
 
-		// compute wd sphere for origins without additional actors
-		// only for origins of data objects (may be the same for different brts!)
-		HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
+			// compute wd sphere for origins without additional actors
+			// only for origins of data objects (may be the same for different brts!)
+			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
 
-		HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
-		HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
-		LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
+			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
+			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
+			LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
 
-		if (incremental) {
-			// query brts in topological order
-			// consider already generated additional actors
-			allCheapestAddActorsLists = queryBrtsInTopologicalOrderAndAssignAdditionalActorsForIncrementalNaive(
-					this.startEvent, this.endEvent, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-					this.endEvent, pathsFromOriginToEndMap, alreadyChosenAdditionalActors, staticSpherePerDataObject,
-					wdSpherePerDataObject, allCheapestAddActorsLists, bound);
-		} else {
-			// query brts in any order
-			// do not consider already generated additional actors
-			// shuffle brts first, else they may be in same order as incremental naive
-			// search already
-			Collections.shuffle(this.businessRuleTasks);
-			for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
-				LinkedList<AdditionalActors> addActorsForBrt = this.getCheapestAdditionalActorsForBrtNaive(false, brt,
-						pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject, null, bound);
-				alreadyChosenAdditionalActors.putIfAbsent(brt, addActorsForBrt);
-				LinkedList<LinkedList<AdditionalActors>> currLists = this.computeAllAddActorsLists(addActorsForBrt,
-						allCheapestAddActorsLists);
-				allCheapestAddActorsLists.clear();
-				allCheapestAddActorsLists.addAll(currLists);
+			if (incremental) {
+				// query brts in topological order
+				// consider already generated additional actors
+				allCheapestAddActorsLists = queryBrtsInTopologicalOrderAndAssignAdditionalActorsForIncrementalNaive(
+						this.startEvent, this.endEvent, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+						this.endEvent, pathsFromOriginToEndMap, alreadyChosenAdditionalActors,
+						staticSpherePerDataObject, wdSpherePerDataObject, allCheapestAddActorsLists, bound);
+			} else {
+				// query brts in any order
+				// do not consider already generated additional actors
+				// shuffle brts first, else they may be in same order as incremental naive
+				// search already
+				Collections.shuffle(this.businessRuleTasks);
+				for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
+					LinkedList<AdditionalActors> addActorsForBrt = this.getCheapestAdditionalActorsForBrtNaive(false,
+							brt, pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject, null,
+							bound);
+					alreadyChosenAdditionalActors.putIfAbsent(brt, addActorsForBrt);
+					LinkedList<LinkedList<AdditionalActors>> currLists = this.computeAllAddActorsLists(addActorsForBrt,
+							allCheapestAddActorsLists);
+					allCheapestAddActorsLists.clear();
+					allCheapestAddActorsLists.addAll(currLists);
+				}
+			}
+
+			LinkedList<PModelWithAdditionalActors> additionalActorsCombs = new LinkedList<PModelWithAdditionalActors>();
+			for (LinkedList<AdditionalActors> additionalActorsList : allCheapestAddActorsLists) {
+				PModelWithAdditionalActors newModel = new PModelWithAdditionalActors(additionalActorsList,
+						this.weightingParameters);
+				additionalActorsCombs.add(newModel);
+			}
+
+			endTimeGeneratingCombs = System.nanoTime();
+			// calculate the cost measure for all possible additional actors combinations
+			this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject,
+					pathsFromOriginToEndMap,
+					new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
+
+			endTimeNaiveSearch = System.nanoTime();
+			
+			long timeForCalculatingMeasure = endTimeNaiveSearch - endTimeGeneratingCombs;
+			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000+"");
+
+			long executionTimeExhaustive = endTimeNaiveSearch - startTime;
+			timeList.set(2, (double) executionTimeExhaustive / 1000000000+"");				
+
+			if (incremental) {
+				System.out.println("Naive search generated solutions: " + additionalActorsCombs.size());
+			} else {
+				System.out.println("Incremental naive search generated solutions: " + additionalActorsCombs.size());
+			}
+			return additionalActorsCombs;
+
+		} catch (Exception ex) {
+			throw ex;
+		} finally {
+			if (incremental) {
+				this.executionTimeMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, timeList);
+				System.out.println("Naive search execution time in sec: " + timeList.get(2));
+			} else {
+				this.executionTimeMap.put(Enums.AlgorithmToPerform.NAIVE, timeList);
+				System.out.println("Incremental naive search execution time in sec: " + timeList.get(2));
 			}
 		}
 
-		LinkedList<PModelWithAdditionalActors> additionalActorsCombs = new LinkedList<PModelWithAdditionalActors>();
-		for (LinkedList<AdditionalActors> additionalActorsList : allCheapestAddActorsLists) {
-			PModelWithAdditionalActors newModel = new PModelWithAdditionalActors(additionalActorsList,
-					this.weightingParameters);
-			additionalActorsCombs.add(newModel);
-		}
-
-		long endTimeGeneratingCombsNaive = System.nanoTime();
-		// calculate the cost measure for all possible additional actors combinations
-		this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject,
-				pathsFromOriginToEndMap,
-				new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
-
-		long endTimeNaiveSearch = System.nanoTime();
-
-		long timeForGeneratingCombsNaive = endTimeGeneratingCombsNaive - startTimeNaiveSearch;
-		long timeForCalculatingMeasureNaive = endTimeNaiveSearch - endTimeGeneratingCombsNaive;
-		long executionTimeNaive = endTimeNaiveSearch - startTimeNaiveSearch;
-
-		LinkedList<Double> timeList = new LinkedList<Double>();
-		timeList.add((double) timeForGeneratingCombsNaive / 1000000000);
-		timeList.add((double) timeForCalculatingMeasureNaive / 1000000000);
-		timeList.add((double) executionTimeNaive / 1000000000);
-
-		if (incremental) {
-			System.out.println("Naive search generated solutions: " + additionalActorsCombs.size());
-			System.out.println("Naive search execution time in sec: " + timeList.get(2));
-			this.executionTimeMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, timeList);
-		} else {
-			System.out.println("Incremental naive search generated solutions: " + additionalActorsCombs.size());
-			System.out.println("Incremental naive search execution time in sec: " + timeList.get(2));
-			this.executionTimeMap.put(Enums.AlgorithmToPerform.NAIVE, timeList);
-		}
-		return additionalActorsCombs;
 	}
 
 	public LinkedList<AdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(
@@ -1163,7 +1203,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
-						} else if (split.length==1) {
+						} else if (split.length == 1) {
 							try {
 								gtw.setAmountAddActors(Integer.parseInt(split[0]));
 							} catch (Exception e) {
@@ -2133,11 +2173,11 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		this.bound = bound;
 	}
 
-	public HashMap<Enums.AlgorithmToPerform, LinkedList<Double>> getExecutionTimeMap() {
+	public HashMap<Enums.AlgorithmToPerform, LinkedList<String>> getExecutionTimeMap() {
 		return executionTimeMap;
 	}
 
-	public void setExecutionTimeMap(HashMap<Enums.AlgorithmToPerform, LinkedList<Double>> executionTimeMap) {
+	public void setExecutionTimeMap(HashMap<Enums.AlgorithmToPerform, LinkedList<String>> executionTimeMap) {
 		this.executionTimeMap = executionTimeMap;
 	}
 
@@ -2413,12 +2453,12 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 						}
 
 						spheres2.putIfAbsent(dependentBrt, sdSet);
-						if(!spheres1.get(dependentBrt).equals(spheres2.get(dependentBrt))) {
+						if (!spheres1.get(dependentBrt).equals(spheres2.get(dependentBrt))) {
 							// spheres for dependentBrt are not the same!
-							sameSpheres=false;
+							sameSpheres = false;
 							break;
 						}
-						
+
 					}
 
 					// check if the impact on the spheres are the same
@@ -2435,11 +2475,11 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 					skipped++;
 				}
 			}
-			
-			if(skipped == brtSubLists.size()) {
+
+			if (skipped == brtSubLists.size()) {
 				// each sub list has a proper subset already
 				// no need to generate new sets
-				i = depT.size();				
+				i = depT.size();
 			}
 
 		}
@@ -2606,7 +2646,8 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 									// the participant is in sd for the current configuration
 									sdSphereEntryForDependentBrt.setSdSphereWithAdditionalActors(sdSetWithAddActors);
 
-									sdSphereEntryForDependentBrt.setSdSphereWithoutAdditionalActor(sdSetWithoutAddActors);
+									sdSphereEntryForDependentBrt
+											.setSdSphereWithoutAdditionalActor(sdSetWithoutAddActors);
 
 								}
 
