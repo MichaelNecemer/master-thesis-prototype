@@ -132,14 +132,13 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance,
 					this.startEvent.getId(), this.endEvent.getId());
 		}
+		System.out.println("Paths: "+this.pathsThroughProcess.size());
 	}
 
 	public LinkedList<PModelWithAdditionalActors> exhaustiveSearch() throws Exception {
 
 		this.bound = 0;
 		long startTime = System.nanoTime();
-		long endTimeGeneratingCombs = -1L;
-		long endTimeExhaustiveSearch = -1L;
 		LinkedList<String> timeList = new LinkedList<String>();
 		timeList.add("null");
 		timeList.add("null");
@@ -158,7 +157,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 			// generate all possible combinations of additional readers
 			additionalActorsCombs = this.generatePossibleCombinationsOfAdditionalActorsWithBound(this.bound);
-			endTimeGeneratingCombs = System.nanoTime();
+			long endTimeGeneratingCombs = System.nanoTime();
 			
 			long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
 			timeList.set(0, (double) timeForGeneratingCombs / 1000000000+"");
@@ -168,7 +167,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 					new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>(),
 					new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
 
-			endTimeExhaustiveSearch = System.nanoTime();
+			long endTimeExhaustiveSearch = System.nanoTime();
 			
 			long timeForCalculatingMeasure = endTimeExhaustiveSearch - endTimeGeneratingCombs;
 			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000+"");
@@ -189,8 +188,6 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 	public LinkedList<PModelWithAdditionalActors> heuristicSearch(int bound) throws Exception {
 
 		long startTime = System.nanoTime();
-		long endTimeGeneratingCombs = -1L;
-		long endTimeHeuristicSearch = -1L;		
 		LinkedList<String> timeList = new LinkedList<String>();
 		timeList.add("null");
 		timeList.add("null");
@@ -204,7 +201,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
 			LinkedList<PModelWithAdditionalActors> pModelAddActors = new LinkedList<PModelWithAdditionalActors>();
 
-			endTimeGeneratingCombs = 0;
+			long endTimeGeneratingCombs = 0;
 
 			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
 
@@ -231,6 +228,8 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 				}
 
 				endTimeGeneratingCombs = System.nanoTime();
+				long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
+				timeList.set(0, (double) timeForGeneratingCombs / 1000000000+"");
 				// calculate the cost measure for the all additional actors combinations found
 				// with the heuristic search
 				this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
@@ -241,18 +240,20 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 				// the measure is only calculated for evaluating the execution time
 				pModelAddActors = this.generatePossibleCombinationsOfAdditionalActorsWithBound(bound);
 				endTimeGeneratingCombs = System.nanoTime();
-
+				long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
+				timeList.set(0, (double) timeForGeneratingCombs / 1000000000+"");
+				
 				this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
 						pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
 			}
 
-			endTimeHeuristicSearch = System.nanoTime();
+			long endTimeHeuristicSearch = System.nanoTime();
 			
 			long timeForCalculatingMeasure = endTimeHeuristicSearch - endTimeGeneratingCombs;
 			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000+"");
 
-			long executionTimeExhaustive = endTimeHeuristicSearch - startTime;
-			timeList.set(2, (double) executionTimeExhaustive / 1000000000+"");				
+			long executionTimeHeuristic = endTimeHeuristicSearch - startTime;
+			timeList.set(2, (double) executionTimeHeuristic / 1000000000+"");				
 			
 			System.out.println("Heuristic search generated solutions: " + pModelAddActors.size());
 
@@ -270,8 +271,6 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 	public LinkedList<PModelWithAdditionalActors> naiveSearch(boolean incremental, int bound)
 			throws NullPointerException, InterruptedException, NotEnoughAddActorsException, Exception {
 		long startTime = System.nanoTime();
-		long endTimeGeneratingCombs = -1L;
-		long endTimeNaiveSearch = -1L;
 		LinkedList<String> timeList = new LinkedList<String>();
 		timeList.add("null");
 		timeList.add("null");
@@ -322,19 +321,22 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 				additionalActorsCombs.add(newModel);
 			}
 
-			endTimeGeneratingCombs = System.nanoTime();
+			long endTimeGeneratingCombs = System.nanoTime();
+			long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
+			timeList.set(0, (double) timeForGeneratingCombs / 1000000000+"");
+			
 			// calculate the cost measure for all possible additional actors combinations
 			this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject,
 					pathsFromOriginToEndMap,
 					new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
 
-			endTimeNaiveSearch = System.nanoTime();
+			long endTimeNaiveSearch = System.nanoTime();
 			
 			long timeForCalculatingMeasure = endTimeNaiveSearch - endTimeGeneratingCombs;
 			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000+"");
 
-			long executionTimeExhaustive = endTimeNaiveSearch - startTime;
-			timeList.set(2, (double) executionTimeExhaustive / 1000000000+"");				
+			long executionTimeNaive = endTimeNaiveSearch - startTime;
+			timeList.set(2, (double) executionTimeNaive / 1000000000+"");				
 
 			if (incremental) {
 				System.out.println("Naive search generated solutions: " + additionalActorsCombs.size());

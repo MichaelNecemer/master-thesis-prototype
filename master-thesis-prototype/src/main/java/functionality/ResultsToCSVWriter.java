@@ -86,7 +86,7 @@ public class ResultsToCSVWriter {
 		String exhaustiveSearchGenCombsTime = "null";
 		String exhaustiveSearchCalcMeasureTime = "null";
 		String exhaustiveSearchExecutionTime = "null";
-		if (timeListExhaustive != null) {
+		if (timeListExhaustive != null && !timeListExhaustive.isEmpty()) {
 			exhaustiveSearchGenCombsTime = timeListExhaustive.get(0);
 			exhaustiveSearchCalcMeasureTime = timeListExhaustive.get(1);
 			exhaustiveSearchExecutionTime = timeListExhaustive.get(2);
@@ -96,7 +96,7 @@ public class ResultsToCSVWriter {
 		String heuristicSearchGenCombsTime = "null";
 		String heuristicSearchCalcMeasureTime = "null";
 		String heuristicSearchExecutionTime = "null";
-		if (timeListHeuristic != null) {
+		if (timeListHeuristic != null && !timeListHeuristic.isEmpty()) {
 			heuristicSearchGenCombsTime = timeListHeuristic.get(0);
 			heuristicSearchCalcMeasureTime = timeListHeuristic.get(1);
 			heuristicSearchExecutionTime = timeListHeuristic.get(2);
@@ -106,7 +106,7 @@ public class ResultsToCSVWriter {
 		String naiveSearchGenCombsTime = "null";
 		String naiveSearchCalcMeasureTime = "null";
 		String naiveSearchExecutionTime = "null";
-		if (timeListNaive != null) {
+		if (timeListNaive != null && !timeListNaive.isEmpty()) {
 			naiveSearchGenCombsTime = timeListNaive.get(0);
 			naiveSearchCalcMeasureTime = timeListNaive.get(1);
 			naiveSearchExecutionTime = timeListNaive.get(2);
@@ -117,7 +117,7 @@ public class ResultsToCSVWriter {
 		String incrementalNaiveSearchGenCombsTime = "null";
 		String incrementalNaiveSearchCalcMeasureTime = "null";
 		String incrementalNaiveSearchExecutionTime = "null";
-		if (timeListIncrementalNaive != null) {
+		if (timeListIncrementalNaive != null && !timeListIncrementalNaive.isEmpty()) {
 			incrementalNaiveSearchGenCombsTime = timeListIncrementalNaive.get(0);
 			incrementalNaiveSearchCalcMeasureTime = timeListIncrementalNaive.get(1);
 			incrementalNaiveSearchExecutionTime = timeListIncrementalNaive.get(2);

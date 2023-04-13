@@ -12,9 +12,9 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorC.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_1_without_annotation.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel13_annotated1_annotated22lWlR_Weak-Dynamic_verifiers2.bpmn";
-		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel208_annotated1.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel49_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel6_annotated1.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorCnew.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorCnew.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_clustering.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel10_annotated1_annotated15lWmR_Strong-Dynamic_addActors3_mand_constrained.bpmn";

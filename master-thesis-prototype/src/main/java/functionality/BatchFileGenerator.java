@@ -36,7 +36,7 @@ public class BatchFileGenerator {
 	static int timeOutForProcessGeneratorInMin = 20;
 	static int timeOutForProcessModelAnnotaterInMin = 60;
 	// API is the class where the computations will be done
-	static int timeOutForApiInMin = 1;
+	static int timeOutForApiInMin = 3;
 
 	// for very large processes it is a good choice to set those parameters to false
 	// in order to avoid very long execution time until the actual algorithms start
