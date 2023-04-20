@@ -24,6 +24,7 @@ import org.camunda.bpm.model.bpmn.instance.DataInputAssociation;
 import org.camunda.bpm.model.bpmn.instance.DataObjectReference;
 import org.camunda.bpm.model.bpmn.instance.Task;
 
+import functionality.Enums.AlgorithmToPerform;
 import processModelGeneratorAndAnnotater.ProcessGenerator;
 import processModelGeneratorAndAnnotater.ProcessModelAnnotater;
 
@@ -33,8 +34,8 @@ public class BatchFileGenerator {
 	// static String root = System.getProperty("user.home") + "/Desktop";
 	static String root = System.getProperty("user.home") + "/Onedrive/Desktop";
 
-	static int timeOutForProcessGeneratorInMin = 20;
-	static int timeOutForProcessModelAnnotaterInMin = 60;
+	static int timeOutForProcessGeneratorInMin = 5;
+	static int timeOutForProcessModelAnnotaterInMin = 5;
 	// API is the class where the computations will be done
 	static int timeOutForApiInMin = 3;
 
@@ -43,13 +44,12 @@ public class BatchFileGenerator {
 	static boolean testIfModelValid = true;	
 	static boolean calculateAmountOfPaths = true;
 
-	// amount of solutions to be generated with naive and heuristic approaches
+	// amount of solutions to be generated with naive approaches
 	static int amountSolutionsToBeGenerated = 1;
 
 	static int amountThreads = 1;
 
 	// bounds for ProcessModelGenerator
-	static boolean testIfMinElementsInBranches = true;
 	static boolean firstElementAfterStartIsTask = true;
 	static int probTask = 34;
 	static int probXorGtw = 33;
@@ -85,8 +85,8 @@ public class BatchFileGenerator {
 	static ArrayList<Integer> amountXorsExtraLargeProcessesBounds = new ArrayList<>(Arrays.asList(7, 8));
 
 	// bounds for nestingDepthFactor and probJoinGtw
-	static ArrayList<Integer> nestingDepthFactorBounds = new ArrayList<>(Arrays.asList(1, 50));
-	static ArrayList<Integer> probJoinGtwBounds = new ArrayList<>(Arrays.asList(1, 50));
+	static ArrayList<Integer> nestingDepthFactorBounds = new ArrayList<>(Arrays.asList(0, 50));
+	static ArrayList<Integer> probJoinGtwBounds = new ArrayList<>(Arrays.asList(0, 50));
 
 	// boundary tests shared bounds
 	static int boundaryTest1_1_privateSphere = 6;
@@ -187,8 +187,6 @@ public class BatchFileGenerator {
 			// count amount of timeouts
 			// do that while there are not timeouts on all processes for the algorithms
 
-			boolean testIfMinElementsInBranches = false;
-
 			int minDataObjectsPerDecision = 1;
 			int maxDataObjectsPerDecision = 1;
 
@@ -224,7 +222,7 @@ public class BatchFileGenerator {
 					boundaryTest1_1_addActorsPerDecision, boundaryTest1_1_privateSphere, amountSolutionsToBeGenerated,
 					tasksToStartWith, tasksFactor, 0, 0, percentageOfWriters, percentageOfReaders,
 					minDataObjectsPerDecision, maxDataObjectsPerDecision, sphere, amountThreads, stopAfterDecisions,
-					pathToFolderForModelsForTest1_1, testIfMinElementsInBranches, firstElementAfterStartIsTask,
+					pathToFolderForModelsForTest1_1, firstElementAfterStartIsTask,
 					timeOutForProcessGeneratorInMin, testIfModelValid, calculateAmountOfPaths);
 
 			System.out.println("BoundartyTest1_1 finished!");
@@ -302,7 +300,7 @@ public class BatchFileGenerator {
 			for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation,
 						5, 5, minAmountTasksSmallProcesses, maxAmountTasksSmallProcesses, i, i, 0, 2,
-						amountProcessesToCreatePerDecision, testIfMinElementsInBranches, firstElementAfterStartIsTask,
+						amountProcessesToCreatePerDecision, firstElementAfterStartIsTask,
 						timeOutForProcessGeneratorInMin);
 			}
 
@@ -316,7 +314,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
 						pathToMediumProcessesFolderWithoutAnnotation, 5, 5, minAmountTasksMediumProcesses,
 						maxAmountTasksMediumProcesses, i, i, 0, 2, amountProcessesToCreatePerDecision,
-						testIfMinElementsInBranches, firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin);
+						 firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin);
 			}
 
 			// large processes: 5 participants, 5-6 xors, 0-2, parallels
@@ -328,7 +326,7 @@ public class BatchFileGenerator {
 			for (int i = amountXorsLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation,
 						5, 5, minAmountTasksLargeProcesses, maxAmountTasksLargeProcesses, i, i, 0, 2,
-						amountProcessesToCreatePerDecision, testIfMinElementsInBranches, firstElementAfterStartIsTask,
+						amountProcessesToCreatePerDecision,  firstElementAfterStartIsTask,
 						timeOutForProcessGeneratorInMin);
 			}
 
@@ -343,7 +341,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
 						pathToExtraLargeProcessesFolderWithoutAnnotation, 5, 5, minAmountTasksExtraLargeProcesses,
 						maxAmountTasksExtraLargeProcesses, i, i, 0, 2, amountProcessesToCreatePerDecision,
-						testIfMinElementsInBranches, firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin);
+						firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin);
 			}
 
 			System.out.println("All random processes generated!");
@@ -721,7 +719,7 @@ public class BatchFileGenerator {
 		ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
 		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathWhereToCreateProcessesWithoutAnnotation, 2,
 				upperBoundParticipants, lowerBoundTasks, upperBoundTasks, 1, upperBoundXorGtws, 0,
-				upperBoundParallelGtws, amountProcesses, false, false, timeOutForProcessGeneratorInMin);
+				upperBoundParallelGtws, amountProcesses, false, timeOutForProcessGeneratorInMin);
 		randomProcessGeneratorService.shutdownNow();
 
 		int publicDecisionProb = 0;
@@ -929,7 +927,7 @@ public class BatchFileGenerator {
 	public static void generateRandomProcessesWithinGivenRanges(String pathToFiles, int lowerBoundParticipants,
 			int upperBoundParticipants, int lowerBoundTasks, int upperBoundTasks, int lowerBoundXorGtws,
 			int upperBoundXorGtws, int lowerBoundParallelGtws, int upperBoundParallelGtws, int amountProcesses,
-			boolean testForElementsInBranches, boolean firstElementAfterStartIsTask, int timeoutForProcessGenerator) {
+			boolean firstElementAfterStartIsTask, int timeoutForProcessGenerator) {
 
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 
@@ -951,15 +949,19 @@ public class BatchFileGenerator {
 			}
 
 			int processId = 0;
-			try {
+			try {				
+				boolean allowNestedXors = ThreadLocalRandom.current().nextBoolean(); 
+				boolean found = false;
+				while(!found) {				
 				int nestingDepthFactor = ThreadLocalRandom.current().nextInt(nestingDepthFactorBounds.get(0),
 						nestingDepthFactorBounds.get(1) + 1);
 				int probJoinGtw = ThreadLocalRandom.current().nextInt(probJoinGtwBounds.get(0),
 						probJoinGtwBounds.get(1) + 1);
+								
 				ProcessGenerator pGen = new ProcessGenerator(pathToFiles, randomAmountParticipantsWithinBounds,
 						randomAmountTasksWithinBounds, randomAmountXorSplitsWithinBounds,
 						randomAmountParallelSplitsWithinBounds, probTask, probXorGtw, probParallelGtw, probJoinGtw,
-						nestingDepthFactor, testIfMinElementsInBranches, firstElementAfterStartIsTask);
+						nestingDepthFactor, firstElementAfterStartIsTask, allowNestedXors);
 
 				processId = pGen.getProcessId();
 				Future<File> future = executor.submit(pGen);
@@ -969,8 +971,8 @@ public class BatchFileGenerator {
 					// all variables of the generated file must be within the bounds
 					if (f != null && f.isFile()) {
 						System.out.println("randomProcess" + processId + " deployed in " + pathToFiles);
+						found = true;
 					} else if (f == null) {
-						i--;
 						ProcessGenerator.decreaseProcessGeneratorId();
 					}
 				} catch (InterruptedException e) {
@@ -987,12 +989,13 @@ public class BatchFileGenerator {
 					e.printStackTrace();
 					future.cancel(true);
 				}
+				}
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 				i--;
 			}
-
+			
 		}
 		executor.shutdownNow();
 	}
@@ -1089,10 +1092,10 @@ public class BatchFileGenerator {
 		return csvFile;
 	}
 
-	public static HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> runAlgsAndWriteResults(API api,
-			int percentageOfProcessesToRunExhaustiveOn, boolean runExhaustiveSearch, boolean runHeuristicSearch,
-			boolean runNaiveSearch, boolean runIncrementalNaiveSearch,
-			int amountSolutionsToGenerateWithNaiveAndHeuristic,
+	public static synchronized HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> runAlgsAndWriteResults(API api,
+			int percentageOfProcessesToRunExhaustiveOn, boolean runExhaustiveSearch, 
+			boolean runNaiveSearch, boolean runIncrementalNaiveSearch, boolean runAdvancedNaiveSearch,
+			int amountSolutionsToGeneratedWithNaive,
 			HashMap<Enums.AlgorithmToPerform, Integer> timeOutOrHeapSpaceExceptionMap, ResultsToCSVWriter writer,
 			ExecutorService service) {
 
@@ -1106,6 +1109,7 @@ public class BatchFileGenerator {
 		HashMap<Enums.AlgorithmToPerform, Integer> totalAmountSolutionsMap = new HashMap<Enums.AlgorithmToPerform, Integer>();
 		HashMap<Enums.AlgorithmToPerform, Double> cheapestSolutionCostMap = new HashMap<Enums.AlgorithmToPerform, Double>();
 		HashMap<Enums.AlgorithmToPerform, String> loggingMap = new HashMap<Enums.AlgorithmToPerform, String>();
+		HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = new HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>>();
 
 		boolean heapSpaceError = false;
 		try {
@@ -1116,38 +1120,38 @@ public class BatchFileGenerator {
 							cheapestSolutionsMap, totalAmountSolutionsMap, cheapestSolutionCostMap, loggingMap,
 							timeOutOrHeapSpaceExceptionMap, service);
 				}
-			}
-
-			if (runHeuristicSearch) {
-				heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.HEURISTIC,
-						amountSolutionsToGenerateWithNaiveAndHeuristic, exceptionPerAlgorithm, cheapestSolutionsMap,
-						totalAmountSolutionsMap, cheapestSolutionCostMap, loggingMap, timeOutOrHeapSpaceExceptionMap,
-						service);
-			}
-
+			}	
+	
 			if (runNaiveSearch) {
 				heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.NAIVE,
-						amountSolutionsToGenerateWithNaiveAndHeuristic, exceptionPerAlgorithm, cheapestSolutionsMap,
+						amountSolutionsToGeneratedWithNaive, exceptionPerAlgorithm, cheapestSolutionsMap,
 						totalAmountSolutionsMap, cheapestSolutionCostMap, loggingMap, timeOutOrHeapSpaceExceptionMap,
 						service);
-			}
-
+			}		
+			
 			if (runIncrementalNaiveSearch) {
 				heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.INCREMENTALNAIVE,
-						amountSolutionsToGenerateWithNaiveAndHeuristic, exceptionPerAlgorithm, cheapestSolutionsMap,
+						amountSolutionsToGeneratedWithNaive, exceptionPerAlgorithm, cheapestSolutionsMap,
+						totalAmountSolutionsMap, cheapestSolutionCostMap, loggingMap, timeOutOrHeapSpaceExceptionMap,
+						service);
+			}	
+			
+			if (runAdvancedNaiveSearch) {
+				heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.ADVANCEDNAIVE,
+						amountSolutionsToGeneratedWithNaive, exceptionPerAlgorithm, cheapestSolutionsMap,
 						totalAmountSolutionsMap, cheapestSolutionCostMap, loggingMap, timeOutOrHeapSpaceExceptionMap,
 						service);
 			}
+	
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
 			writer.writeResultsOfAlgorithmsToCSVFile(api, cheapestSolutionCostMap, totalAmountSolutionsMap,
 					cheapestSolutionsMap, loggingMap, exceptionPerAlgorithm);
 		}
-
-		HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = new HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>>();
+		
 		returnMap.putIfAbsent(heapSpaceError, timeOutOrHeapSpaceExceptionMap);
-		return returnMap;
+		return returnMap;			
 	}
 
 	public static synchronized boolean runAlgorithm(API api, Enums.AlgorithmToPerform algToPerform,
@@ -1158,19 +1162,19 @@ public class BatchFileGenerator {
 			HashMap<Enums.AlgorithmToPerform, String> loggingMap,
 			HashMap<Enums.AlgorithmToPerform, Integer> timeOutOrHeapSpaceExceptionMap, ExecutorService service) {
 
-		HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>> currentSolutionsMap = null;
-
+		
 		boolean heapSpaceError = false;
 		String logging = "null";
 
-		api.setAlgorithmToPerform(algToPerform, amountSolutionsToGenerate);
-
-		Future<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> futureAlgSearch = service
-				.submit(api);
+		int bound = 1;
+		if(algToPerform.equals(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
+			bound = 0;
+		}
+		Future<LinkedList<PModelWithAdditionalActors>> futureAlgSearch = api.executeCallable(service, algToPerform, bound);
+		
 		Exception exception = null;
 		try {
-			currentSolutionsMap = futureAlgSearch.get(timeOutForApiInMin, TimeUnit.MINUTES);
-			LinkedList<PModelWithAdditionalActors> solutions = currentSolutionsMap.get(algToPerform);
+			LinkedList<PModelWithAdditionalActors> solutions = futureAlgSearch.get(timeOutForApiInMin, TimeUnit.MINUTES);
 			// get the total amount of solutions
 			totalAmountSolutionsMap.putIfAbsent(algToPerform, solutions.size());
 			// get the amount of cheapest solutions
@@ -1186,6 +1190,7 @@ public class BatchFileGenerator {
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			exception = (InterruptedException) e;
+			System.err.println("Interrupted here!");
 			e.printStackTrace();
 			futureAlgSearch.cancel(true);
 		} catch (ExecutionException e) {
@@ -1219,8 +1224,8 @@ public class BatchFileGenerator {
 				heapSpaceError = true;
 			}
 			futureAlgSearch.cancel(true);
-		} finally {
-			futureAlgSearch.cancel(true);
+		}finally {
+			//futureAlgSearch.cancel(true);
 			exceptionPerAlgorithm.putIfAbsent(algToPerform, exception);
 			loggingMap.putIfAbsent(algToPerform, logging);
 		}
@@ -1230,15 +1235,15 @@ public class BatchFileGenerator {
 	}
 
 	public static void runAlgorithmsAndWriteResultsToCSV(LinkedList<File> files,
-			int percentageOfProcessesToRunExhaustiveOn, boolean runExhaustiveSearch, boolean runHeuristicSearch,
-			boolean runNaiveSearch, boolean runIncrementalNaiveSearch, int boundForSolutions, ResultsToCSVWriter writer,
+			int percentageOfProcessesToRunExhaustiveOn, boolean runExhaustiveSearch, 
+			boolean runNaiveSearch, boolean runIncrementalNaiveSearch, boolean runAdvancedNaiveSearch, int boundForSolutions, ResultsToCSVWriter writer,
 			ExecutorService service, boolean testIfModelValid, boolean calculateAmountOfPaths) {
 		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(files, writer, testIfModelValid,
 				calculateAmountOfPaths);
 		if (!apiList.isEmpty()) {
 			for (API api : apiList) {
 				BatchFileGenerator.runAlgsAndWriteResults(api, percentageOfProcessesToRunExhaustiveOn,
-						runExhaustiveSearch, runHeuristicSearch, runIncrementalNaiveSearch, runIncrementalNaiveSearch,
+						runExhaustiveSearch, runIncrementalNaiveSearch, runIncrementalNaiveSearch, runAdvancedNaiveSearch,
 						boundForSolutions, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, service);
 			}
 		} else {
@@ -1249,14 +1254,14 @@ public class BatchFileGenerator {
 
 	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels,
 			int percentageOfExtraLargeProcessesToRunExhaustiveOn, boolean runExhaustiveSearch,
-			boolean runHeuristicSearch, boolean runHeuristicSearchWithBound, boolean runNaiveSearch,
-			int boundForHeuristicSearchWithBound, ResultsToCSVWriter writer, ExecutorService service) {
+			 boolean runIncrementalNaiveSearch, boolean runNaiveSearch,boolean runAdvancedNaiveSearch,
+			int boundForSearchWithBound, ResultsToCSVWriter writer, ExecutorService service) {
 		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithAnnotatedModels, writer, true, true);
 		if (!apiList.isEmpty()) {
 			for (API api : apiList) {
 				BatchFileGenerator.runAlgsAndWriteResults(api, percentageOfExtraLargeProcessesToRunExhaustiveOn,
-						runExhaustiveSearch, runHeuristicSearch, runHeuristicSearchWithBound, runNaiveSearch,
-						boundForHeuristicSearchWithBound, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer,
+						runExhaustiveSearch, runNaiveSearch, runIncrementalNaiveSearch, runAdvancedNaiveSearch, 
+						boundForSearchWithBound, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer,
 						service);
 			}
 		} else {
@@ -1763,7 +1768,7 @@ public class BatchFileGenerator {
 			int upperBoundAmountParallelGtws, double amountWritersInPercent, double amountReadersInPercent,
 			int minDataObjectsPerDecision, int maxDataObjectsPerDecision, LinkedList<String> sphereList,
 			int amountThreads, int stopAfterDecisions, String pathToFolderForModelsForBoundaryTest,
-			boolean testIfMinElementsInBranches, boolean firstElementAfterStartIsTask, int timeoutProcessGenInMin,
+			boolean firstElementAfterStartIsTask, int timeoutProcessGenInMin,
 			boolean testIfModelValid, boolean calculateAmountOfPaths) {
 
 		int amountParallelGtws = ThreadLocalRandom.current().nextInt(lowerBoundAmountParallelGtws,
@@ -1777,18 +1782,18 @@ public class BatchFileGenerator {
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 		boolean outOfMemoryError = false;
 		boolean runExhaustiveSearch = true;
-		boolean runHeuristicSearch = true;
 		boolean runNaiveSearch = true;
 		boolean runIncrementalNaiveSearch = true;
+		boolean runAdvancedNaiveSearch = true;
 		boolean finishTest = false;
 		try {
 			int i = 0;
 			do {
 				timeOutOrHeapSpaceExceptionMap.clear();
 				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
-				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.HEURISTIC, 0);
 				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.NAIVE, 0);
 				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, 0);
+				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.ADVANCEDNAIVE, 0);
 
 				int amountDataObjectsToCreate = amountDecisionsToStart;
 				System.out.println("Generate models with " + amountDecisionsToStart + " decisions!");
@@ -1805,7 +1810,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToFolderForModelsWithDecisions,
 						privateSphere, privateSphere, amountTasksWithFactor, amountTasksWithFactor,
 						amountDecisionsToStart, amountDecisionsToStart, amountParallelGtws, amountParallelGtws,
-						amountProcessesPerIteration, testIfMinElementsInBranches, firstElementAfterStartIsTask,
+						amountProcessesPerIteration, firstElementAfterStartIsTask,
 						timeoutProcessGenInMin);
 
 				// annotate the processes
@@ -1905,8 +1910,8 @@ public class BatchFileGenerator {
 				// perform all algorithms and count the timeouts
 				for (API api : apiList) {
 					HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
-							.runAlgsAndWriteResults(api, 100, runExhaustiveSearch, runHeuristicSearch, runNaiveSearch,
-									runIncrementalNaiveSearch, upperBoundSolutionsForLocalMinWithBound,
+							.runAlgsAndWriteResults(api, 100, runExhaustiveSearch, runNaiveSearch,
+									runIncrementalNaiveSearch, runAdvancedNaiveSearch, upperBoundSolutionsForLocalMinWithBound,
 									timeOutOrHeapSpaceExceptionMap, writer, executor);
 					if (returnMap.get(true) != null) {
 						outOfMemoryError = true;
@@ -1920,10 +1925,7 @@ public class BatchFileGenerator {
 				if (!apiList.isEmpty()) {
 					if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == apiList.size()) {
 						runExhaustiveSearch = false;
-					}
-					if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.HEURISTIC) == apiList.size()) {
-						runHeuristicSearch = false;
-					}
+					}					
 					if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.NAIVE) == apiList.size()) {
 						runNaiveSearch = false;
 					}
@@ -1931,21 +1933,24 @@ public class BatchFileGenerator {
 							.size()) {
 						runIncrementalNaiveSearch = false;
 					}
+					if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.ADVANCEDNAIVE) == apiList.size()) {
+						runAdvancedNaiveSearch = false;
+					}
 				} else {
 					finishTest = true;
 				}
 
 				System.out.println("Iteration" + amountDecisionsToStart + " end - timeOutsExhaustiveSearch: "
 						+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE)
-						+ ", timeOutsHeuristicSearch: "
-						+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.HEURISTIC)
 						+ ", timeOutsNaiveSearch: " + timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.NAIVE)
+						+ ", timeOutsAdvancedNaiveSearch: "
+						+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.ADVANCEDNAIVE)
 						+ ", timeOutsIncrementalNaiveSearch: "
 						+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE));
 
 				amountDecisionsToStart++;
 
-				if (runExhaustiveSearch == false && runHeuristicSearch == false && runNaiveSearch == false
+				if (runExhaustiveSearch == false && runAdvancedNaiveSearch == false && runNaiveSearch == false
 						&& runIncrementalNaiveSearch == false) {
 					finishTest = true;
 				}
@@ -1978,7 +1983,7 @@ public class BatchFileGenerator {
 		boolean runExhaustive = true;
 		boolean runNaive = true;
 		boolean runIncrementalNaive = true;
-		boolean runHeuristic = true;
+		boolean run = true;
 		boolean finish = false;
 
 		try {
@@ -1998,13 +2003,14 @@ public class BatchFileGenerator {
 					// perform all algorithms and count the timeouts
 					HashMap<Enums.AlgorithmToPerform, Integer> timeOutMap = new HashMap<Enums.AlgorithmToPerform, Integer>();
 					timeOutMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
-					timeOutMap.put(Enums.AlgorithmToPerform.HEURISTIC, 0);
 					timeOutMap.put(Enums.AlgorithmToPerform.NAIVE, 0);
 					timeOutMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, 0);
+					timeOutMap.put(Enums.AlgorithmToPerform.ADVANCEDNAIVE, 0);
+
 
 					for (API api : apiList) {
 						HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
-								.runAlgsAndWriteResults(api, 100, runExhaustive, runHeuristic, runNaive,
+								.runAlgsAndWriteResults(api, 100, runExhaustive, run, runNaive,
 										runIncrementalNaive, boundForAlgorithms, timeOutMap, writer, executor);
 						if (returnMap.get(true) != null) {
 							outOfMemoryException = true;
@@ -2015,15 +2021,15 @@ public class BatchFileGenerator {
 
 						if (timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == apiList.size()) {
 							runExhaustive = false;
-						}
-						if (timeOutMap.get(Enums.AlgorithmToPerform.HEURISTIC) == apiList.size()) {
-							runHeuristic = false;
-						}
+						}					
 						if (timeOutMap.get(Enums.AlgorithmToPerform.NAIVE) == apiList.size()) {
 							runNaive = false;
 						}
 						if (timeOutMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == apiList.size()) {
 							runIncrementalNaive = false;
+						}
+						if (timeOutMap.get(Enums.AlgorithmToPerform.ADVANCEDNAIVE) == apiList.size()) {
+							run = false;
 						}
 
 						if (outOfMemoryException) {
@@ -2031,7 +2037,7 @@ public class BatchFileGenerator {
 							runExhaustive = false;
 						}
 
-						if (!runExhaustive && !runHeuristic && !runNaive && !runIncrementalNaive) {
+						if (!runExhaustive && !run && !runNaive && !runIncrementalNaive) {
 							finish = true;
 						}
 					}
@@ -2095,7 +2101,7 @@ public class BatchFileGenerator {
 	}
 
 	public static void performTestWithMaxPossibleExcludeConstraints(LinkedList<File> models, boolean modelWithLanes,
-			String directoryToStoreNewModels, int upperBoundHeuristicSearchWithBound, String suffixCSV,
+			String directoryToStoreNewModels, int upperBoundSearchWithBound, String suffixCSV,
 			int amountThreads, boolean testIfModelValid, boolean calculateAmountOfPaths) {
 		int probabilityForGatewayToHaveConstraint = 100;
 		int lowerBoundAmountParticipantsToExcludePerGtw = 1;
@@ -2122,7 +2128,7 @@ public class BatchFileGenerator {
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, 100, true, true, true, true,
-				upperBoundHeuristicSearchWithBound, writer, executor, testIfModelValid, calculateAmountOfPaths);
+				upperBoundSearchWithBound, writer, executor, testIfModelValid, calculateAmountOfPaths);
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 
@@ -2130,7 +2136,7 @@ public class BatchFileGenerator {
 
 	public static void performTestWithExcludeConstraintsProbability(LinkedList<File> models, boolean modelWithLanes,
 			int probabilityForGatewayToHaveConstraint, String directoryToStoreNewModels,
-			int upperBoundHeuristicSearchWithBound, String suffixCSV, int amountThreads, boolean testIfModelValid,
+			int upperBoundSearchWithBound, String suffixCSV, int amountThreads, boolean testIfModelValid,
 			boolean calculateAmountOfPaths) {
 		int lowerBoundAmountParticipantsToExcludePerGtw = 1;
 
@@ -2157,7 +2163,7 @@ public class BatchFileGenerator {
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, 100, true, true, true, true,
-				upperBoundHeuristicSearchWithBound, writer, executor, testIfModelValid, calculateAmountOfPaths);
+				upperBoundSearchWithBound, writer, executor, testIfModelValid, calculateAmountOfPaths);
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 

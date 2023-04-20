@@ -12,7 +12,7 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorC.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_1_without_annotation.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel13_annotated1_annotated22lWlR_Weak-Dynamic_verifiers2.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel49_annotated1.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel1_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel6_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorCnew.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
@@ -26,15 +26,14 @@ public class TestClass {
 			API api2 = new API(pathToFile, costForUpgradingSpheres, false, true);			
 		
 			
-			//LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(false, 1);
-			//LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(true, 1);
-
-			/*
+			//LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(1);
+			LinkedList<PModelWithAdditionalActors> pInstNaive = api2.incrementalNaiveSearch(1);
+			
 			for(PModelWithAdditionalActors pModel: pInstNaive) {
 				pModel.printMeasure();
-			}*/
+			}
 			
-			
+			/*
 			LinkedList<PModelWithAdditionalActors>pInstExhaustive = api2.exhaustiveSearch();
 			LinkedList<PModelWithAdditionalActors> cheapestExhaustive = CommonFunctionality.getCheapestPModelsWithAdditionalActors(pInstExhaustive);
 			System.out.println("Cheapest exhaustive: "+cheapestExhaustive.size());
@@ -43,10 +42,10 @@ public class TestClass {
 			for(PModelWithAdditionalActors pModel: cheapestExhaustive) {
 			pModel.printMeasure();
 			}
-			
+			*/
 						
 			int bound = 1;
-			LinkedList<PModelWithAdditionalActors>pInstHeuristic = api2.heuristicSearch(bound);
+			LinkedList<PModelWithAdditionalActors>pInstHeuristic = api2.advancedNaive(bound);
 			for(PModelWithAdditionalActors pModel: pInstHeuristic) {
 				pModel.printMeasure();
 			}

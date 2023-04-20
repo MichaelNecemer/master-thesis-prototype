@@ -50,10 +50,10 @@ public class GUI {
 	// optimal solutions
 	static API api = null;
 	static BPMNExclusiveGateway bpmnEx = null;
-	static int sumVotes = 0;
-	static JCheckBox compareResultsAgainstExhaustiveSearch;
 	static JCheckBox jrbExhaustiveSearch;
-	static JCheckBox jrbLocalMinimum;
+	static JCheckBox jrbNaiveSearch;
+	static JCheckBox jrbIncrementalNaiveSearch;
+	static JCheckBox jrbAdvancedNaiveSearch;
 	static JLabel openingModelsLabel;
 	static JLabel saveModelsLabel;
 	static JLabel boundLabel;
@@ -61,13 +61,12 @@ public class GUI {
 	static JFormattedTextField jFormattedTextField1;
 	static JFormattedTextField jFormattedTextField2;
 	static JFormattedTextField jFormattedTextField3;
-	static JFormattedTextField jFormattedTextField4;
 	static Dimension dimension = new Dimension(Integer.MAX_VALUE, 20);
 	static JButton runButton;
-	static JCheckBox votingAsConstructBox;
+	static JCheckBox addActorsAsBPMNElementsBox;
 	static JCheckBox subProcessBox;
 	static JCheckBox mapModelBox;
-	static JCheckBox votingAsAnnotationBox;
+	static JCheckBox addActorsAsAnnotationBox;
 	static JCheckBox boundBox;
 	static JButton saveButton;
 	static Dimension verticalSpacingBetweenComponents = new Dimension(0, 10);
@@ -103,32 +102,31 @@ public class GUI {
 		frame.setJMenuBar(mb);
 		frame.pack();
 
-		if(!configFile.exists()) {
+		if (!configFile.exists()) {
 			configFile.createNewFile();
-		}		
-	
+		}
+
 		try {
 			reader = new FileReader(configFile);
 			props.load(reader);
 			reader.close();
-		
+
 			boolean storeConfigFile = false;
-			
-			if(!props.containsKey("costMeasureWeightingParameters")) {
+
+			if (!props.containsKey("costMeasureWeightingParameters")) {
 				props.setProperty("costMeasureWeightingParameters", defaultCostMeasureParameters);
 				storeConfigFile = true;
 			}
-			if(!props.containsKey("defaultDirectoryForOpeningModels")) {
+			if (!props.containsKey("defaultDirectoryForOpeningModels")) {
 				props.setProperty("defaultDirectoryForOpeningModels", "");
 				storeConfigFile = true;
 			}
-			if(!props.containsKey("defaultDirectoryForStoringModels")) {
+			if (!props.containsKey("defaultDirectoryForStoringModels")) {
 				props.setProperty("defaultDirectoryForStoringModels", "");
 				storeConfigFile = true;
 			}
-			
-			
-			if(storeConfigFile) {
+
+			if (storeConfigFile) {
 				props.store(new FileOutputStream(configFile), null);
 				frame.pack();
 			}
@@ -155,7 +153,7 @@ public class GUI {
 					leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.PAGE_AXIS));
 
 					// display the default settings
-					leftPanel.add(new JLabel("Cost for upgrading spheres: "));
+					leftPanel.add(new JLabel("Weighting parameters (Alpha,Beta,Gamma): "));
 					jFormattedTextFieldCost = new JFormattedTextField();
 					String costMeasureWeightingParametersAsString = props.getProperty("costMeasureWeightingParameters");
 					boolean askUserForValues = false;
@@ -432,39 +430,22 @@ public class GUI {
 
 							// create buttons for choosing the algorithm to perform
 							leftPanel.add(new JLabel("Algorithms: "));
-							compareResultsAgainstExhaustiveSearch = new JCheckBox("compare results against Exhaustive Search");
-							compareResultsAgainstExhaustiveSearch.setEnabled(false);
-							jrbExhaustiveSearch = new JCheckBox("Exhaustive Search", true);
-							jrbExhaustiveSearch.addItemListener(new ItemListener() {
+							jrbExhaustiveSearch = new JCheckBox("Exhaustive Search", false);
+							jrbNaiveSearch = new JCheckBox("Naive Search", false);
+							jrbIncrementalNaiveSearch = new JCheckBox("Incremental Naive Search", false);
+							jrbAdvancedNaiveSearch = new JCheckBox("Advanced Naive Search", true);
+
+							jrbNaiveSearch.addItemListener(new ItemListener() {
 
 								@Override
 								public void itemStateChanged(ItemEvent e) {
 									// TODO Auto-generated method stub
 									if (e.getStateChange() == ItemEvent.SELECTED) {
-										compareResultsAgainstExhaustiveSearch.setSelected(false);
-										compareResultsAgainstExhaustiveSearch.setEnabled(false);
-									}
-
-								}
-
-							});
-
-							jrbLocalMinimum = new JCheckBox("Heuristic search", false);
-
-							jrbLocalMinimum.addItemListener(new ItemListener() {
-
-								@Override
-								public void itemStateChanged(ItemEvent e) {
-									// TODO Auto-generated method stub
-									if (e.getStateChange() == ItemEvent.SELECTED) {
-										compareResultsAgainstExhaustiveSearch.setEnabled(true);
-										compareResultsAgainstExhaustiveSearch.setSelected(true);
 										boundLabel.setVisible(true);
 										jFormattedTextField1.setVisible(true);
 										jFormattedTextField1.setEnabled(true);
 										frame.pack();
 									} else if (e.getStateChange() == ItemEvent.DESELECTED) {
-										compareResultsAgainstExhaustiveSearch.setSelected(false);
 										boundLabel.setVisible(false);
 										jFormattedTextField1.setEnabled(false);
 										jFormattedTextField1.setVisible(false);
@@ -475,6 +456,47 @@ public class GUI {
 
 							});
 
+							jrbIncrementalNaiveSearch.addItemListener(new ItemListener() {
+
+								@Override
+								public void itemStateChanged(ItemEvent e) {
+									// TODO Auto-generated method stub
+									if (e.getStateChange() == ItemEvent.SELECTED) {
+										boundLabel.setVisible(true);
+										jFormattedTextField1.setVisible(true);
+										jFormattedTextField1.setEnabled(true);
+										frame.pack();
+									} else if (e.getStateChange() == ItemEvent.DESELECTED) {
+										boundLabel.setVisible(false);
+										jFormattedTextField1.setEnabled(false);
+										jFormattedTextField1.setVisible(false);
+										frame.pack();
+									}
+
+								}
+
+							});
+
+							jrbAdvancedNaiveSearch.addItemListener(new ItemListener() {
+
+								@Override
+								public void itemStateChanged(ItemEvent e) {
+									// TODO Auto-generated method stub
+									if (e.getStateChange() == ItemEvent.SELECTED) {
+										boundLabel.setVisible(true);
+										jFormattedTextField1.setVisible(true);
+										jFormattedTextField1.setEnabled(true);
+										frame.pack();
+									} else if (e.getStateChange() == ItemEvent.DESELECTED) {
+										boundLabel.setVisible(false);
+										jFormattedTextField1.setEnabled(false);
+										jFormattedTextField1.setVisible(false);
+										frame.pack();
+									}
+
+								}
+
+							});
 
 							NumberFormat format = NumberFormat.getIntegerInstance();
 							format.setGroupingUsed(false);
@@ -500,33 +522,23 @@ public class GUI {
 							jFormattedTextField1.setMaximumSize(dimension);
 							jFormattedTextField1.setEnabled(false);
 
-							compareResultsAgainstExhaustiveSearch.addItemListener(new ItemListener() {
-
-								@Override
-								public void itemStateChanged(ItemEvent e) {
-									// TODO Auto-generated method stub
-									if (e.getStateChange() == ItemEvent.SELECTED) {
-										if (jrbExhaustiveSearch.isSelected()) {
-											compareResultsAgainstExhaustiveSearch.setSelected(false);
-										}
-									}
-
-								}
-
-							});
-
 							ButtonGroup jCheckBoxGroup = new ButtonGroup();
 							jCheckBoxGroup.add(jrbExhaustiveSearch);
-							jCheckBoxGroup.add(jrbLocalMinimum);
+							jCheckBoxGroup.add(jrbNaiveSearch);
+							jCheckBoxGroup.add(jrbIncrementalNaiveSearch);
+							jCheckBoxGroup.add(jrbAdvancedNaiveSearch);
 
 							leftPanel.add(jrbExhaustiveSearch);
-							leftPanel.add(jrbLocalMinimum);
+							leftPanel.add(jrbNaiveSearch);
+							leftPanel.add(jrbIncrementalNaiveSearch);
+							leftPanel.add(jrbAdvancedNaiveSearch);
 							boundLabel = new JLabel("Enter bound (0... unbounded): ");
 							leftPanel.add(boundLabel);
-							boundLabel.setVisible(false);
+							boundLabel.setVisible(true);
+							jFormattedTextField1.setEnabled(true);
 
 							leftPanel.add(jFormattedTextField1);
-							jFormattedTextField1.setVisible(false);
+							jFormattedTextField1.setVisible(true);
 
 							frame.add(leftPanel);
 
@@ -541,8 +553,44 @@ public class GUI {
 							jFormattedTextField2.setMaximumSize(dimension);
 							rightPanel.add(jFormattedTextField2);
 
-							votingAsConstructBox = new JCheckBox("VotingAsConstruct", false);
-							votingAsConstructBox.addActionListener(new ActionListener() {
+							subProcessBox = new JCheckBox("AsSubProcess", false);
+							subProcessBox.setEnabled(false);
+							subProcessBox.setBorder(new EmptyBorder(0, 20, 0, 0));
+
+							subProcessBox.addActionListener(new ActionListener() {
+
+								@Override
+								public void actionPerformed(ActionEvent e) {
+									// TODO Auto-generated method stub
+									if (subProcessBox.isSelected()) {
+										mapModelBox.setSelected(false);
+									}
+
+								}
+
+							});
+
+							mapModelBox = new JCheckBox("MapModel", false);
+							mapModelBox.setEnabled(false);
+
+							mapModelBox.addActionListener(new ActionListener() {
+
+								@Override
+								public void actionPerformed(ActionEvent e) {
+									// TODO Auto-generated method stub
+									if (mapModelBox.isSelected()) {
+										subProcessBox.setSelected(false);
+									}
+
+								}
+
+							});
+
+							rightPanel.add(Box.createRigidArea(verticalSpacingBetweenComponents));
+							mapModelBox.setBorder(new EmptyBorder(0, 20, 0, 0));
+
+							addActorsAsBPMNElementsBox = new JCheckBox("AddActorsAsBPMNElements", false);
+							addActorsAsBPMNElementsBox.addActionListener(new ActionListener() {
 
 								@Override
 								public void actionPerformed(ActionEvent e) {
@@ -554,13 +602,14 @@ public class GUI {
 								}
 
 							});
-							votingAsAnnotationBox = new JCheckBox("VotingAsAnnotation", true);
-							votingAsAnnotationBox.addActionListener(new ActionListener() {
+
+							addActorsAsAnnotationBox = new JCheckBox("AddActorsAsTextAnnotation", true);
+							addActorsAsAnnotationBox.addActionListener(new ActionListener() {
 
 								@Override
 								public void actionPerformed(ActionEvent arg0) {
 									// TODO Auto-generated method stub
-									if (votingAsAnnotationBox.isSelected()) {
+									if (addActorsAsAnnotationBox.isSelected()) {
 										subProcessBox.setSelected(false);
 										subProcessBox.setEnabled(false);
 										mapModelBox.setSelected(false);
@@ -569,23 +618,17 @@ public class GUI {
 								}
 
 							});
-							subProcessBox = new JCheckBox("VotingAsSubProcess", false);
-							subProcessBox.setBorder(new EmptyBorder(0, 20, 0, 0));
-							mapModelBox = new JCheckBox("MapModel", false);
-							rightPanel.add(Box.createRigidArea(verticalSpacingBetweenComponents));
-							mapModelBox.setBorder(new EmptyBorder(0, 20, 0, 0));
 
-							ButtonGroup jCheckBoxGroupSettings = new ButtonGroup();
-							jCheckBoxGroupSettings.add(votingAsAnnotationBox);
-							jCheckBoxGroupSettings.add(votingAsConstructBox);
+							ButtonGroup jCheckBoxGroupSettings2 = new ButtonGroup();
+							jCheckBoxGroupSettings2.add(addActorsAsAnnotationBox);
+							jCheckBoxGroupSettings2.add(addActorsAsBPMNElementsBox);
 
-							rightPanel.add(compareResultsAgainstExhaustiveSearch);
-							rightPanel.add(votingAsConstructBox);
+							rightPanel.add(addActorsAsBPMNElementsBox);
 
 							rightPanel.add(subProcessBox);
 							rightPanel.add(mapModelBox);
 
-							rightPanel.add(votingAsAnnotationBox);
+							rightPanel.add(addActorsAsAnnotationBox);
 
 							rightPanel.add(new JLabel("Enter timeout for algorithms in seconds:"));
 
@@ -597,12 +640,6 @@ public class GUI {
 
 							rightPanel.add(new JLabel("Enter amount of threads used for computing solutions:"));
 
-							jFormattedTextField4 = new JFormattedTextField(numberFormatter1);
-							jFormattedTextField4.setText("1");
-							jFormattedTextField4.setMaximumSize(dimension);
-
-							rightPanel.add(jFormattedTextField4);
-
 							rightPanel.add(Box.createRigidArea(verticalSpacingBetweenComponents));
 
 							runButton = new JButton("RUN");
@@ -611,8 +648,6 @@ public class GUI {
 								@Override
 								public void actionPerformed(ActionEvent ae) {
 									// TODO Auto-generated method stub
-									// check if results need to be compared against exhaustiveSearch algorithm
-									
 
 									// read amount of models to create
 									int amountModelsToCreate = Integer.parseInt(jFormattedTextField2.getText());
@@ -621,22 +656,26 @@ public class GUI {
 									int timeout = Integer.parseInt(jFormattedTextField3.getText());
 
 									// read number of threads value (must not be <= 0)
-									int threads = Integer.parseInt(jFormattedTextField4.getText());
-									ExecutorService executor = Executors.newFixedThreadPool(threads);
+									ExecutorService executor = Executors.newSingleThreadExecutor();
 
 									AlgorithmToPerform selectedAlgorithm = Enums.AlgorithmToPerform.EXHAUSTIVE;
-									int bound = 0;
-									HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>> pModelSolutions = null;
+									LinkedList<PModelWithAdditionalActors> pModelSolutions = null;
+									HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>> pModelsPerAlg = new HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>();
 
-									Future<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> future = executor
-											.submit(api);
 									Exception exception = null;
-
+									int bound = 0;
 									if (jrbExhaustiveSearch.isSelected()) {
 										selectedAlgorithm = Enums.AlgorithmToPerform.EXHAUSTIVE;
-
-									} else if (jrbLocalMinimum.isSelected()) {
-										selectedAlgorithm = Enums.AlgorithmToPerform.HEURISTIC;
+									} else if (jrbNaiveSearch.isSelected()) {
+										selectedAlgorithm = Enums.AlgorithmToPerform.NAIVE;
+										// read the bound value
+										bound = Integer.parseInt(jFormattedTextField1.getText());
+									} else if (jrbIncrementalNaiveSearch.isSelected()) {
+										selectedAlgorithm = Enums.AlgorithmToPerform.INCREMENTALNAIVE;
+										// read the bound value
+										bound = Integer.parseInt(jFormattedTextField1.getText());
+									} else if (jrbAdvancedNaiveSearch.isSelected()) {
+										selectedAlgorithm = Enums.AlgorithmToPerform.ADVANCEDNAIVE;
 										// read the bound value
 										bound = Integer.parseInt(jFormattedTextField1.getText());
 									} else {
@@ -644,9 +683,12 @@ public class GUI {
 										frame.add(leftPanel);
 									}
 
+									Future<LinkedList<PModelWithAdditionalActors>> future = api
+											.executeCallable(executor, selectedAlgorithm, bound);
+
 									try {
-										api.setAlgorithmToPerform(selectedAlgorithm, bound);
 										pModelSolutions = future.get(timeout, TimeUnit.SECONDS);
+										pModelsPerAlg.put(selectedAlgorithm, pModelSolutions);
 										future.cancel(true);
 									} catch (InterruptedException e) {
 										// TODO Auto-generated catch block
@@ -660,97 +702,45 @@ public class GUI {
 										// TODO Auto-generated catch block
 										exception = (TimeoutException) e;
 										future.cancel(true);
-									} catch(Exception e) {
+									} catch (Exception e) {
 										exception = e;
 										future.cancel(true);
 									}
-									
-									if(exception == null) {
 
-										if (pModelSolutions.get(selectedAlgorithm) != null) {
+									if (exception == null) {
+
+										if (pModelsPerAlg.get(selectedAlgorithm) != null) {
 											leftPanel.add(new JLabel("RESULTS: "));
 											LinkedList<PModelWithAdditionalActors> cheapestInst = null;
 											if (selectedAlgorithm.equals(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
-												cheapestInst = CommonFunctionality.getCheapestPModelsWithAdditionalActors(pModelSolutions.get(selectedAlgorithm));
+												cheapestInst = CommonFunctionality
+														.getCheapestPModelsWithAdditionalActors(
+																pModelsPerAlg.get(selectedAlgorithm));
 												leftPanel.add(new JLabel("Exhaustive search sum amount solution(s): "
-														+ pModelSolutions.get(selectedAlgorithm).size()));
+														+ pModelSolutions.size()));
 											} else {
-												cheapestInst = pModelSolutions.get(selectedAlgorithm);
+												cheapestInst = pModelsPerAlg.get(selectedAlgorithm);
 											}
 											if (cheapestInst != null) {
-												leftPanel.add(new JLabel(selectedAlgorithm.name() + ": " + cheapestInst.size()
-														+ " cheapest solutions"));
+												leftPanel.add(new JLabel(selectedAlgorithm.name() + ": "
+														+ cheapestInst.size() + " cheapest solutions"));
 												leftPanel.add(new JLabel("Cost of cheapest solution(s): "
 														+ cheapestInst.getFirst().getSumMeasure()));
 											} else {
 												leftPanel.add(new JLabel("No solutions found!!!"));
 											}
 										}
-										
-										if (selectedAlgorithm.equals(Enums.AlgorithmToPerform.HEURISTIC)
-												) {
-											if (compareResultsAgainstExhaustiveSearch.isSelected() && api != null) {
-												
-												HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>> pInstancesExhaustive = null;
-												Future<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> futureexhaustiveSearch = executor
-														.submit(api);
-												Exception exceptionexhaustiveSearch = null;
 
-												try {
-													api.setAlgorithmToPerform(Enums.AlgorithmToPerform.EXHAUSTIVE, bound);
-													pInstancesExhaustive = futureexhaustiveSearch.get(timeout, TimeUnit.SECONDS);
-													futureexhaustiveSearch.cancel(true);
-												} catch (InterruptedException e) {
-													// TODO Auto-generated catch block
-													exceptionexhaustiveSearch = (InterruptedException) e;
-													futureexhaustiveSearch.cancel(true);
-												} catch (ExecutionException e) {
-													// TODO Auto-generated catch block
-													exceptionexhaustiveSearch = (ExecutionException) e;
-													futureexhaustiveSearch.cancel(true);
-												} catch (TimeoutException e) {
-													// TODO Auto-generated catch block
-													exceptionexhaustiveSearch = (TimeoutException) e;
-													futureexhaustiveSearch.cancel(true);
-												}
-
-												if (exceptionexhaustiveSearch != null) {
-													leftPanel.add(
-															new JLabel("Exception: " + exceptionexhaustiveSearch.getMessage()));
-													leftPanel.add(new JLabel("Comparison against Exhaustive Search not possible!"));
-												} else {
-													LinkedList<PModelWithAdditionalActors> exhaustiveSearchSolutions = pInstancesExhaustive.get(Enums.AlgorithmToPerform.EXHAUSTIVE);
-													LinkedList<PModelWithAdditionalActors> heuristicSearchSolutions = pModelSolutions.get(selectedAlgorithm);
-
-													String comparison = CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(heuristicSearchSolutions, exhaustiveSearchSolutions, 100000);
-										
-													leftPanel.add(new JLabel("Exhaustive Search: "
-															+ pInstancesExhaustive.get(Enums.AlgorithmToPerform.EXHAUSTIVE).size() + " solution(s)"));
-													LinkedList<PModelWithAdditionalActors> cheapestExhaustiveSearchSolutions = CommonFunctionality.getCheapestPModelsWithAdditionalActors(exhaustiveSearchSolutions);
-															
-													leftPanel.add(new JLabel(
-															"Cost of cheapest solution(s): " + cheapestExhaustiveSearchSolutions
-																	.getFirst().getSumMeasure()));
-													leftPanel.add(new JLabel("Cheapest solution(s) found:  " + comparison));
-												
-												
-												}
-
-											}
-											executor.shutdownNow();
-										}
-
-										
 										leftPanel.add(new JLabel("Model(s) stored in: "
 												+ props.getProperty("defaultDirectoryForStoringModels")));
 
-										// check whether voting as construct or as annotation is selected
-										if (votingAsConstructBox.isSelected()) {
+										// check whether additional actors as construct or as annotation is selected
+										if (addActorsAsBPMNElementsBox.isSelected()) {
 											try {
-												// check whether or not voting should be inside subprocess and whether or
+												// check whether or not should be inside subprocess and whether or
 												// not it should be mapped
 												CommonFunctionality.generateNewModelsWithAddActorsAsBpmnConstruct(api,
-														pModelSolutions.get(selectedAlgorithm), amountModelsToCreate,
+														pModelsPerAlg.get(selectedAlgorithm), amountModelsToCreate,
 														props.getProperty("defaultDirectoryForStoringModels"),
 														subProcessBox.isSelected(), mapModelBox.isSelected());
 											} catch (IOException e) {
@@ -760,14 +750,13 @@ public class GUI {
 												leftPanel.add(new JLabel("Exception: " + e.getMessage()));
 
 											}
-										} else if (votingAsAnnotationBox.isSelected()) {
+										} else if (addActorsAsAnnotationBox.isSelected()) {
 											CommonFunctionality.generateNewModelsWithAnnotatedChosenParticipants(api,
-													pModelSolutions.get(selectedAlgorithm), amountModelsToCreate,
+													pModelsPerAlg.get(selectedAlgorithm), amountModelsToCreate,
 													props.getProperty("defaultDirectoryForStoringModels"));
 										}
 
-									}
-									else  {
+									} else {
 										leftPanel.add(new JLabel("Exception: " + exception.getClass().getName()));
 										frame.pack();
 									}

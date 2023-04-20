@@ -14,6 +14,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,12 +58,11 @@ import mapping.DecisionEvaluation;
 import mapping.InfixToPostfix;
 import mapping.Label;
 
-public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>> {
+public class API {
 
 	private BpmnModelInstance modelInstance;
 	private File processModelFile;
 	private LinkedList<BPMNParticipant> privateSphere;
-	private Enums.AlgorithmToPerform algorithmToPerform;
 	private LinkedList<MandatoryParticipantConstraint> mandatoryParticipantConstraints;
 	private LinkedList<ExcludeParticipantConstraint> excludeParticipantConstraints;
 	private boolean modelWithLanes;
@@ -111,8 +113,6 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		this.dataObjects = new LinkedList<BPMNDataObject>();
 		this.labelList = new ArrayList<Label>();
 		this.privateSphere = new LinkedList<BPMNParticipant>();
-		// set the default algorithm to perform
-		this.setAlgorithmToPerform(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
 		// set the default cluster condition
 		this.executionTimeMap = new HashMap<Enums.AlgorithmToPerform, LinkedList<String>>();
 		this.mandatoryParticipantConstraints = new LinkedList<MandatoryParticipantConstraint>();
@@ -132,17 +132,20 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			this.pathsThroughProcess = CommonFunctionality.getAllPathsBetweenNodes(this.modelInstance,
 					this.startEvent.getId(), this.endEvent.getId());
 		}
-		System.out.println("Paths: "+this.pathsThroughProcess.size());
+		System.out.println("Paths: " + this.pathsThroughProcess.size());
 	}
 
-	public LinkedList<PModelWithAdditionalActors> exhaustiveSearch() throws Exception {
+	public synchronized LinkedList<PModelWithAdditionalActors> exhaustiveSearch(int bound) throws Exception {
 
-		this.bound = 0;
+		if(bound!=0) {
+			bound = 0;
+		}
 		long startTime = System.nanoTime();
 		LinkedList<String> timeList = new LinkedList<String>();
 		timeList.add("null");
 		timeList.add("null");
 		timeList.add("null");
+		this.executionTimeMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, timeList);
 
 		try {
 			// compute static sphere per data object without add actors
@@ -158,9 +161,9 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 			// generate all possible combinations of additional readers
 			additionalActorsCombs = this.generatePossibleCombinationsOfAdditionalActorsWithBound(this.bound);
 			long endTimeGeneratingCombs = System.nanoTime();
-			
+
 			long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
-			timeList.set(0, (double) timeForGeneratingCombs / 1000000000+"");
+			timeList.set(0, (double) timeForGeneratingCombs / 1000000000 + "");
 
 			// calculate the cost measure for all possible additional actors combinations
 			this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject,
@@ -168,16 +171,16 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 					new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
 
 			long endTimeExhaustiveSearch = System.nanoTime();
-			
+
 			long timeForCalculatingMeasure = endTimeExhaustiveSearch - endTimeGeneratingCombs;
-			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000+"");
+			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000 + "");
 
 			long executionTimeExhaustive = endTimeExhaustiveSearch - startTime;
-			timeList.set(2, (double) executionTimeExhaustive / 1000000000+"");			
-		
+			timeList.set(2, (double) executionTimeExhaustive / 1000000000 + "");
+
 			return additionalActorsCombs;
 
-		} catch (Exception ex) {			
+		} catch (Exception ex) {
 			throw ex;
 		} finally {
 			this.executionTimeMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, timeList);
@@ -185,13 +188,158 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		}
 	}
 
-	public LinkedList<PModelWithAdditionalActors> heuristicSearch(int bound) throws Exception {
+	public synchronized LinkedList<PModelWithAdditionalActors> naiveSearch(int bound)
+			throws NullPointerException, InterruptedException, NotEnoughAddActorsException, Exception {
+		long startTime = System.nanoTime();
+		LinkedList<String> timeList = new LinkedList<String>();
+		timeList.add("null");
+		timeList.add("null");
+		timeList.add("null");
+		this.executionTimeMap.put(Enums.AlgorithmToPerform.NAIVE, timeList);
+
+		try {
+			// compute static sphere per data object without add actors
+			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
+					.computeStaticSpherePerDataObject();
+
+			// compute wd sphere for origins without additional actors
+			// only for origins of data objects (may be the same for different brts!)
+			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
+
+			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
+			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
+			LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
+
+			// query brts in any order
+			// do not consider already generated additional actors
+			// shuffle brts first, else they may be in same order as incremental naive
+			// search already
+			Collections.shuffle(this.businessRuleTasks);
+			for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
+				LinkedList<AdditionalActors> addActorsForBrt = this.getCheapestAdditionalActorsForBrtNaive(false, brt,
+						pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject, null, bound);
+				alreadyChosenAdditionalActors.putIfAbsent(brt, addActorsForBrt);
+				LinkedList<LinkedList<AdditionalActors>> currLists = this.computeAllAddActorsLists(addActorsForBrt,
+						allCheapestAddActorsLists);
+				allCheapestAddActorsLists.clear();
+				allCheapestAddActorsLists.addAll(currLists);
+			}
+
+			LinkedList<PModelWithAdditionalActors> additionalActorsCombs = new LinkedList<PModelWithAdditionalActors>();
+			for (LinkedList<AdditionalActors> additionalActorsList : allCheapestAddActorsLists) {
+				PModelWithAdditionalActors newModel = new PModelWithAdditionalActors(additionalActorsList,
+						this.weightingParameters);
+				additionalActorsCombs.add(newModel);
+			}
+
+			long endTimeGeneratingCombs = System.nanoTime();
+			long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
+			timeList.set(0, (double) timeForGeneratingCombs / 1000000000 + "");
+
+			// calculate the cost measure for all possible additional actors combinations
+			this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject,
+					pathsFromOriginToEndMap,
+					new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
+
+			long endTimeNaiveSearch = System.nanoTime();
+
+			long timeForCalculatingMeasure = endTimeNaiveSearch - endTimeGeneratingCombs;
+			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000 + "");
+
+			long executionTimeNaive = endTimeNaiveSearch - startTime;
+			timeList.set(2, (double) executionTimeNaive / 1000000000 + "");
+
+			System.out.println("Naive search generated solutions: " + additionalActorsCombs.size());
+
+			return additionalActorsCombs;
+
+		} catch (Exception ex) {
+			throw ex;
+		} finally {
+			this.executionTimeMap.put(Enums.AlgorithmToPerform.NAIVE, timeList);
+			System.out.println("Naive search combsGen time in sec: " + timeList.get(0));
+			System.out.println("Naive search calcMeasure time in sec: " + timeList.get(1));
+			System.out.println("Naive search execution time in sec: " + timeList.get(2));
+		}
+
+	}
+
+	public synchronized LinkedList<PModelWithAdditionalActors> incrementalNaiveSearch(int bound)
+			throws NullPointerException, InterruptedException, NotEnoughAddActorsException, Exception {
+		long startTime = System.nanoTime();
+		LinkedList<String> timeList = new LinkedList<String>();
+		timeList.add("null");
+		timeList.add("null");
+		timeList.add("null");
+		this.executionTimeMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, timeList);
+
+		try {
+			// compute static sphere per data object without add actors
+			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
+					.computeStaticSpherePerDataObject();
+
+			// compute wd sphere for origins without additional actors
+			// only for origins of data objects (may be the same for different brts!)
+			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
+
+			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
+			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
+			LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
+
+			// query brts in topological order
+			// consider already generated additional actors
+			allCheapestAddActorsLists = queryBrtsInTopologicalOrderAndAssignAdditionalActorsForIncrementalNaive(
+					this.startEvent, this.endEvent, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
+					this.endEvent, pathsFromOriginToEndMap, alreadyChosenAdditionalActors, staticSpherePerDataObject,
+					wdSpherePerDataObject, allCheapestAddActorsLists, bound);
+
+			LinkedList<PModelWithAdditionalActors> additionalActorsCombs = new LinkedList<PModelWithAdditionalActors>();
+			for (LinkedList<AdditionalActors> additionalActorsList : allCheapestAddActorsLists) {
+				PModelWithAdditionalActors newModel = new PModelWithAdditionalActors(additionalActorsList,
+						this.weightingParameters);
+				additionalActorsCombs.add(newModel);
+			}
+
+			long endTimeGeneratingCombs = System.nanoTime();
+			long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
+			timeList.set(0, (double) timeForGeneratingCombs / 1000000000 + "");
+
+			// calculate the cost measure for all possible additional actors combinations
+			this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject,
+					pathsFromOriginToEndMap,
+					new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
+
+			long endTimeIncrementalNaiveSearch = System.nanoTime();
+
+			long timeForCalculatingMeasure = endTimeIncrementalNaiveSearch - endTimeGeneratingCombs;
+			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000 + "");
+
+			long executionTimeIncrementalNaive = endTimeIncrementalNaiveSearch - startTime;
+			timeList.set(2, (double) executionTimeIncrementalNaive / 1000000000 + "");
+
+			System.out.println("Incremental naive search generated solutions: " + additionalActorsCombs.size());
+
+			return additionalActorsCombs;
+
+		} catch (Exception ex) {
+			throw ex;
+		} finally {
+			this.executionTimeMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, timeList);
+			System.out.println("Incremental naive search combsGen time in sec: " + timeList.get(0));
+			System.out.println("Incremental naive search calcMeasure time in sec: " + timeList.get(1));
+			System.out.println("Incremental naive search execution time in sec: " + timeList.get(2));
+		}
+
+	}
+
+	public synchronized LinkedList<PModelWithAdditionalActors> advancedNaive(int bound) throws Exception {
 
 		long startTime = System.nanoTime();
 		LinkedList<String> timeList = new LinkedList<String>();
 		timeList.add("null");
 		timeList.add("null");
 		timeList.add("null");
+		this.executionTimeMap.put(Enums.AlgorithmToPerform.ADVANCEDNAIVE, timeList);
 
 		try {
 			// compute static sphere per data object without add actors
@@ -215,10 +363,10 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 				HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
 				HashMap<BPMNParticipant, Double> amountParticipantChosenAsAddActorsMap = new HashMap<BPMNParticipant, Double>();
-				allCheapestAddActorsLists = this.queryBrtsInTopologicalOrderAndAssignAdditionalActorsForHeuristicSearch(
-						this.startEvent, this.endEvent, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-						this.endEvent, pathsFromOriginToEndMap, alreadyChosenAdditionalActors,
-						amountParticipantChosenAsAddActorsMap, staticSpherePerDataObject, wdSpherePerDataObject,
+				allCheapestAddActorsLists = this.queryBrtsTopolgicalAdvancedNaiveSearch(this.startEvent, this.endEvent,
+						new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), this.endEvent,
+						pathsFromOriginToEndMap, alreadyChosenAdditionalActors, amountParticipantChosenAsAddActorsMap,
+						staticSpherePerDataObject, wdSpherePerDataObject,
 						new LinkedList<LinkedList<AdditionalActors>>(), bound);
 
 				for (LinkedList<AdditionalActors> additionalActorsList : allCheapestAddActorsLists) {
@@ -229,9 +377,10 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 
 				endTimeGeneratingCombs = System.nanoTime();
 				long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
-				timeList.set(0, (double) timeForGeneratingCombs / 1000000000+"");
+				timeList.set(0, (double) timeForGeneratingCombs / 1000000000 + "");
+
 				// calculate the cost measure for the all additional actors combinations found
-				// with the heuristic search
+				// with the advanced naive search
 				this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
 						pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
 
@@ -241,120 +390,31 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 				pModelAddActors = this.generatePossibleCombinationsOfAdditionalActorsWithBound(bound);
 				endTimeGeneratingCombs = System.nanoTime();
 				long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
-				timeList.set(0, (double) timeForGeneratingCombs / 1000000000+"");
-				
+				timeList.set(0, (double) timeForGeneratingCombs / 1000000000 + "");
+
 				this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
 						pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
 			}
 
-			long endTimeHeuristicSearch = System.nanoTime();
-			
-			long timeForCalculatingMeasure = endTimeHeuristicSearch - endTimeGeneratingCombs;
-			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000+"");
+			long endTimeAdvancedNaiveSearch = System.nanoTime();
 
-			long executionTimeHeuristic = endTimeHeuristicSearch - startTime;
-			timeList.set(2, (double) executionTimeHeuristic / 1000000000+"");				
-			
-			System.out.println("Heuristic search generated solutions: " + pModelAddActors.size());
+			long timeForCalculatingMeasure = endTimeAdvancedNaiveSearch - endTimeGeneratingCombs;
+			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000 + "");
+
+			long executionTimeAdvancedNaive = endTimeAdvancedNaiveSearch - startTime;
+			timeList.set(2, (double) executionTimeAdvancedNaive / 1000000000 + "");
+
+			System.out.println("Advanced naive search generated solutions: " + pModelAddActors.size());
 
 			return pModelAddActors;
 
 		} catch (Exception ex) {
 			throw ex;
-		} finally {		
-			this.executionTimeMap.put(Enums.AlgorithmToPerform.HEURISTIC, timeList);
-			System.out.println("Heuristic search execution time in sec: " + timeList.get(2));
-		}
-
-	}
-
-	public LinkedList<PModelWithAdditionalActors> naiveSearch(boolean incremental, int bound)
-			throws NullPointerException, InterruptedException, NotEnoughAddActorsException, Exception {
-		long startTime = System.nanoTime();
-		LinkedList<String> timeList = new LinkedList<String>();
-		timeList.add("null");
-		timeList.add("null");
-		timeList.add("null");
-
-		try {
-			// compute static sphere per data object without add actors
-			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
-					.computeStaticSpherePerDataObject();
-
-			// compute wd sphere for origins without additional actors
-			// only for origins of data objects (may be the same for different brts!)
-			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
-
-			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
-			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
-			LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
-
-			if (incremental) {
-				// query brts in topological order
-				// consider already generated additional actors
-				allCheapestAddActorsLists = queryBrtsInTopologicalOrderAndAssignAdditionalActorsForIncrementalNaive(
-						this.startEvent, this.endEvent, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(),
-						this.endEvent, pathsFromOriginToEndMap, alreadyChosenAdditionalActors,
-						staticSpherePerDataObject, wdSpherePerDataObject, allCheapestAddActorsLists, bound);
-			} else {
-				// query brts in any order
-				// do not consider already generated additional actors
-				// shuffle brts first, else they may be in same order as incremental naive
-				// search already
-				Collections.shuffle(this.businessRuleTasks);
-				for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
-					LinkedList<AdditionalActors> addActorsForBrt = this.getCheapestAdditionalActorsForBrtNaive(false,
-							brt, pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject, null,
-							bound);
-					alreadyChosenAdditionalActors.putIfAbsent(brt, addActorsForBrt);
-					LinkedList<LinkedList<AdditionalActors>> currLists = this.computeAllAddActorsLists(addActorsForBrt,
-							allCheapestAddActorsLists);
-					allCheapestAddActorsLists.clear();
-					allCheapestAddActorsLists.addAll(currLists);
-				}
-			}
-
-			LinkedList<PModelWithAdditionalActors> additionalActorsCombs = new LinkedList<PModelWithAdditionalActors>();
-			for (LinkedList<AdditionalActors> additionalActorsList : allCheapestAddActorsLists) {
-				PModelWithAdditionalActors newModel = new PModelWithAdditionalActors(additionalActorsList,
-						this.weightingParameters);
-				additionalActorsCombs.add(newModel);
-			}
-
-			long endTimeGeneratingCombs = System.nanoTime();
-			long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
-			timeList.set(0, (double) timeForGeneratingCombs / 1000000000+"");
-			
-			// calculate the cost measure for all possible additional actors combinations
-			this.calculateMeasure(additionalActorsCombs, staticSpherePerDataObject, wdSpherePerDataObject,
-					pathsFromOriginToEndMap,
-					new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
-
-			long endTimeNaiveSearch = System.nanoTime();
-			
-			long timeForCalculatingMeasure = endTimeNaiveSearch - endTimeGeneratingCombs;
-			timeList.set(1, (double) timeForCalculatingMeasure / 1000000000+"");
-
-			long executionTimeNaive = endTimeNaiveSearch - startTime;
-			timeList.set(2, (double) executionTimeNaive / 1000000000+"");				
-
-			if (incremental) {
-				System.out.println("Naive search generated solutions: " + additionalActorsCombs.size());
-			} else {
-				System.out.println("Incremental naive search generated solutions: " + additionalActorsCombs.size());
-			}
-			return additionalActorsCombs;
-
-		} catch (Exception ex) {
-			throw ex;
 		} finally {
-			if (incremental) {
-				this.executionTimeMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, timeList);
-				System.out.println("Naive search execution time in sec: " + timeList.get(2));
-			} else {
-				this.executionTimeMap.put(Enums.AlgorithmToPerform.NAIVE, timeList);
-				System.out.println("Incremental naive search execution time in sec: " + timeList.get(2));
-			}
+			this.executionTimeMap.put(Enums.AlgorithmToPerform.ADVANCEDNAIVE, timeList);
+			System.out.println("Advanced naive search combsGen time in sec: " + timeList.get(0));
+			System.out.println("Advanced naive search calcMeasure time in sec: " + timeList.get(1));
+			System.out.println("Advanced naive search execution time in sec: " + timeList.get(2));
 		}
 
 	}
@@ -1810,7 +1870,7 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		return wdList;
 	}
 
-	public LinkedList<LinkedList<BPMNElement>> goDfs(BPMNElement currentNode, BPMNElement targetNode1,
+	public synchronized LinkedList<LinkedList<BPMNElement>> goDfs(BPMNElement currentNode, BPMNElement targetNode1,
 			BPMNElement targetNode2, LinkedList<BPMNElement> stack, LinkedList<BPMNElement> path,
 			LinkedList<LinkedList<BPMNElement>> paths) throws Exception {
 		// route depth first through the process
@@ -2145,35 +2205,6 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		return mapToReturn;
 	}
 
-	public synchronized HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>> call()
-			throws Exception {
-		// TODO Auto-generated method stub
-		HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>> mapToReturn = new HashMap<Enums.AlgorithmToPerform, LinkedList<PModelWithAdditionalActors>>();
-
-		System.out.println("Start algorithm " + this.algorithmToPerform.name() + " for: "
-				+ this.processModelFile.getAbsolutePath());
-
-		if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
-			LinkedList<PModelWithAdditionalActors> solutionsExhaustiveSearch = this.exhaustiveSearch();
-			mapToReturn.putIfAbsent(this.algorithmToPerform, solutionsExhaustiveSearch);
-		} else if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.HEURISTIC)) {
-			LinkedList<PModelWithAdditionalActors> solutionsHeuristicSearch = this.heuristicSearch(this.bound);
-			mapToReturn.putIfAbsent(this.algorithmToPerform, solutionsHeuristicSearch);
-		} else if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.NAIVE)) {
-			LinkedList<PModelWithAdditionalActors> solutionsNaiveSearch = this.naiveSearch(false, this.bound);
-			mapToReturn.putIfAbsent(this.algorithmToPerform, solutionsNaiveSearch);
-		} else if (this.algorithmToPerform.equals(Enums.AlgorithmToPerform.INCREMENTALNAIVE)) {
-			LinkedList<PModelWithAdditionalActors> solutionsIncrementalNaiveSearch = this.naiveSearch(true, this.bound);
-			mapToReturn.putIfAbsent(this.algorithmToPerform, solutionsIncrementalNaiveSearch);
-		}
-
-		return mapToReturn;
-	}
-
-	public void setAlgorithmToPerform(Enums.AlgorithmToPerform algToPerform, int bound) {
-		this.algorithmToPerform = algToPerform;
-		this.bound = bound;
-	}
 
 	public HashMap<Enums.AlgorithmToPerform, LinkedList<String>> getExecutionTimeMap() {
 		return executionTimeMap;
@@ -3082,9 +3113,9 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		return this.businessRuleTasks;
 	}
 
-	public LinkedList<LinkedList<AdditionalActors>> queryBrtsInTopologicalOrderAndAssignAdditionalActorsForHeuristicSearch(
-			BPMNElement startNode, BPMNElement endNode, LinkedList<BPMNElement> queue,
-			LinkedList<BPMNElement> openSplits, BPMNElement endPointOfSearch,
+	public LinkedList<LinkedList<AdditionalActors>> queryBrtsTopolgicalAdvancedNaiveSearch(BPMNElement startNode,
+			BPMNElement endNode, LinkedList<BPMNElement> queue, LinkedList<BPMNElement> openSplits,
+			BPMNElement endPointOfSearch,
 			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap,
 			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors,
 			HashMap<BPMNParticipant, Double> amountParticipantChosenAsAddActor,
@@ -3120,21 +3151,19 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 							BPMNGateway correspondingJoin = this.getCorrespondingGtw(lastOpenedSplit);
 							// need to add the lastOpenedSplit, since one path has gone dfs till the join
 							// already
-							queryBrtsInTopologicalOrderAndAssignAdditionalActorsForHeuristicSearch(
-									element.getSuccessors().iterator().next(), correspondingJoin, queue, openSplits,
-									endPointOfSearch, pathsFromOriginToEndMap, alreadyChosenAdditionalActors,
-									amountParticipantChosenAsAddActor, staticSpherePerDataObject, wdSpherePerDataObject,
-									allCheapestAddActorsLists, bound);
+							queryBrtsTopolgicalAdvancedNaiveSearch(element.getSuccessors().iterator().next(),
+									correspondingJoin, queue, openSplits, endPointOfSearch, pathsFromOriginToEndMap,
+									alreadyChosenAdditionalActors, amountParticipantChosenAsAddActor,
+									staticSpherePerDataObject, wdSpherePerDataObject, allCheapestAddActorsLists, bound);
 						} else {
 							// when there are no open splits gtws
 							// go from the successor of the element to endPointOfSearch since the
 							// currentElement has
 							// already been added to the path
-							queryBrtsInTopologicalOrderAndAssignAdditionalActorsForHeuristicSearch(
-									element.getSuccessors().iterator().next(), endPointOfSearch, queue, openSplits,
-									endPointOfSearch, pathsFromOriginToEndMap, alreadyChosenAdditionalActors,
-									amountParticipantChosenAsAddActor, staticSpherePerDataObject, wdSpherePerDataObject,
-									allCheapestAddActorsLists, bound);
+							queryBrtsTopolgicalAdvancedNaiveSearch(element.getSuccessors().iterator().next(),
+									endPointOfSearch, queue, openSplits, endPointOfSearch, pathsFromOriginToEndMap,
+									alreadyChosenAdditionalActors, amountParticipantChosenAsAddActor,
+									staticSpherePerDataObject, wdSpherePerDataObject, allCheapestAddActorsLists, bound);
 						}
 					}
 
@@ -3254,10 +3283,10 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 					} catch (Exception ex) {
 						throw ex;
 					}
-					queryBrtsInTopologicalOrderAndAssignAdditionalActorsForHeuristicSearch(successor,
-							correspondingJoinGtw, queue, openSplits, endPointOfSearch, pathsFromOriginToEndMap,
-							alreadyChosenAdditionalActors, amountParticipantChosenAsAddActor, staticSpherePerDataObject,
-							wdSpherePerDataObject, allCheapestAddActorsLists, bound);
+					queryBrtsTopolgicalAdvancedNaiveSearch(successor, correspondingJoinGtw, queue, openSplits,
+							endPointOfSearch, pathsFromOriginToEndMap, alreadyChosenAdditionalActors,
+							amountParticipantChosenAsAddActor, staticSpherePerDataObject, wdSpherePerDataObject,
+							allCheapestAddActorsLists, bound);
 				} else {
 					queue.add(successor);
 				}
@@ -3773,4 +3802,22 @@ public class API implements Callable<HashMap<Enums.AlgorithmToPerform, LinkedLis
 		this.excludeParticipantConstraints = excludeParticipantConstraints;
 	}
 
+	
+	public synchronized Future<LinkedList<PModelWithAdditionalActors>> executeCallable(ExecutorService executor, Enums.AlgorithmToPerform algToPerform, int bound) {
+        Callable<LinkedList<PModelWithAdditionalActors>> callable = null;
+        
+        if (algToPerform.equals(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
+            callable = () -> this.exhaustiveSearch(bound);
+        } else if(algToPerform.equals(Enums.AlgorithmToPerform.NAIVE)){
+            callable = () -> this.naiveSearch(bound);
+        } else if(algToPerform.equals(Enums.AlgorithmToPerform.INCREMENTALNAIVE)) {
+        	callable = () -> this.incrementalNaiveSearch(bound);
+        } else if (algToPerform.equals(Enums.AlgorithmToPerform.ADVANCEDNAIVE)) {
+        	callable = () -> this.advancedNaive(bound);
+        }
+        
+        return executor.submit(callable);
+    }
+	
+	
 }
