@@ -43,6 +43,8 @@ public class BatchFileGenerator {
 	// in order to avoid very long execution time until the actual algorithms start
 	static boolean testIfModelValid = true;	
 	static boolean calculateAmountOfPaths = true;
+	// generates processes where xors can not be nested
+	static boolean modelXorsAlwaysAsSequence = false;
 
 	// amount of solutions to be generated with naive approaches
 	static int amountSolutionsToBeGenerated = 1;
@@ -191,6 +193,9 @@ public class BatchFileGenerator {
 			int maxDataObjectsPerDecision = 1;
 
 			int amountProcessesPerIteration = 10;
+			
+			// xors will not be nested, to get the maximum amount of paths
+			boolean modelXorsAlwaysInSequences = true;
 
 			pathToFolderForModelsForTest1_1 = CommonFunctionality
 					.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1").getAbsolutePath();
@@ -223,7 +228,7 @@ public class BatchFileGenerator {
 					tasksToStartWith, tasksFactor, 0, 0, percentageOfWriters, percentageOfReaders,
 					minDataObjectsPerDecision, maxDataObjectsPerDecision, sphere, amountThreads, stopAfterDecisions,
 					pathToFolderForModelsForTest1_1, firstElementAfterStartIsTask,
-					timeOutForProcessGeneratorInMin, testIfModelValid, calculateAmountOfPaths);
+					timeOutForProcessGeneratorInMin, testIfModelValid, calculateAmountOfPaths, modelXorsAlwaysInSequences);
 
 			System.out.println("BoundartyTest1_1 finished!");
 		}
@@ -301,7 +306,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation,
 						5, 5, minAmountTasksSmallProcesses, maxAmountTasksSmallProcesses, i, i, 0, 2,
 						amountProcessesToCreatePerDecision, firstElementAfterStartIsTask,
-						timeOutForProcessGeneratorInMin);
+						timeOutForProcessGeneratorInMin, modelXorsAlwaysAsSequence);
 			}
 
 			// medium processes: 5 participants, 3-4 xors, 0-2 parallels
@@ -314,7 +319,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
 						pathToMediumProcessesFolderWithoutAnnotation, 5, 5, minAmountTasksMediumProcesses,
 						maxAmountTasksMediumProcesses, i, i, 0, 2, amountProcessesToCreatePerDecision,
-						 firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin);
+						 firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin, modelXorsAlwaysAsSequence);
 			}
 
 			// large processes: 5 participants, 5-6 xors, 0-2, parallels
@@ -327,7 +332,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation,
 						5, 5, minAmountTasksLargeProcesses, maxAmountTasksLargeProcesses, i, i, 0, 2,
 						amountProcessesToCreatePerDecision,  firstElementAfterStartIsTask,
-						timeOutForProcessGeneratorInMin);
+						timeOutForProcessGeneratorInMin, modelXorsAlwaysAsSequence);
 			}
 
 			// xl processes
@@ -341,7 +346,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
 						pathToExtraLargeProcessesFolderWithoutAnnotation, 5, 5, minAmountTasksExtraLargeProcesses,
 						maxAmountTasksExtraLargeProcesses, i, i, 0, 2, amountProcessesToCreatePerDecision,
-						firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin);
+						firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin, modelXorsAlwaysAsSequence);
 			}
 
 			System.out.println("All random processes generated!");
@@ -493,7 +498,7 @@ public class BatchFileGenerator {
 					if (performTest) {
 						BatchFileGenerator.performDataObjectTest(allProcessesWithoutAnnotationTest3,
 								pathToFolderForModelsForDataObjectTest, maxAmountUniqueDataObjects,
-								amountSolutionsToBeGenerated, amountThreads);
+								amountSolutionsToBeGenerated, amountThreads, testIfModelValid);
 						System.out.println("Test 3 finished!");
 					}
 				}
@@ -719,7 +724,7 @@ public class BatchFileGenerator {
 		ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
 		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathWhereToCreateProcessesWithoutAnnotation, 2,
 				upperBoundParticipants, lowerBoundTasks, upperBoundTasks, 1, upperBoundXorGtws, 0,
-				upperBoundParallelGtws, amountProcesses, false, timeOutForProcessGeneratorInMin);
+				upperBoundParallelGtws, amountProcesses, false, timeOutForProcessGeneratorInMin, modelXorsAlwaysAsSequence);
 		randomProcessGeneratorService.shutdownNow();
 
 		int publicDecisionProb = 0;
@@ -731,7 +736,7 @@ public class BatchFileGenerator {
 				probabilityForGatewayToHaveExclConstraint, lowerBoundAmountParticipantsToExclude,
 				lowerBoundAmountParticipantsToExclude, alwaysMaxExclConstrained,
 				probabilityForGatewayToHaveMandConstraint, lowerBoundAmountParticipantsToBeMandatory,
-				upperBoundAmountParticipantsToBeMandatory, alwaysMaxMandConstrained);
+				upperBoundAmountParticipantsToBeMandatory, alwaysMaxMandConstrained, testIfModelValid);
 
 		ExecutorService service = Executors.newFixedThreadPool(amountThreads);
 		File csv = BatchFileGenerator.createNewCSVFile(pathWhereToCreateAnnotatedProcesses, "test6_results");
@@ -752,7 +757,7 @@ public class BatchFileGenerator {
 			int lowerBoundAmountParticipantsToExclude, int upperBoundAmountParticipantsToExclude,
 			boolean alwaysMaxExclConstrained, int probabilityForGatewayToHaveMandConstraint,
 			int lowerBoundAmountParticipantsToBeMandatory, int upperBoundAmountParticipantsToBeMandatory,
-			boolean alwaysMaxMandConstrained) {
+			boolean alwaysMaxMandConstrained, boolean testIfModelValid) {
 		// iterate through all files in the directory and annotate them
 
 		File dir = new File(pathToFolderWithFilesWithoutAnnotation);
@@ -819,7 +824,7 @@ public class BatchFileGenerator {
 			ProcessModelAnnotater p = null;
 
 			try {
-				p = new ProcessModelAnnotater(pathToFile, pathToFolderForStoringAnnotatedModelsFolder, "_annotated");
+				p = new ProcessModelAnnotater(pathToFile, pathToFolderForStoringAnnotatedModelsFolder, "_annotated", testIfModelValid);
 
 				// add the methods to be called
 				LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
@@ -927,7 +932,7 @@ public class BatchFileGenerator {
 	public static void generateRandomProcessesWithinGivenRanges(String pathToFiles, int lowerBoundParticipants,
 			int upperBoundParticipants, int lowerBoundTasks, int upperBoundTasks, int lowerBoundXorGtws,
 			int upperBoundXorGtws, int lowerBoundParallelGtws, int upperBoundParallelGtws, int amountProcesses,
-			boolean firstElementAfterStartIsTask, int timeoutForProcessGenerator) {
+			boolean firstElementAfterStartIsTask, int timeoutForProcessGenerator, boolean modelXorsAlwaysInSequences) {
 
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 
@@ -949,8 +954,11 @@ public class BatchFileGenerator {
 			}
 
 			int processId = 0;
-			try {				
-				boolean allowNestedXors = ThreadLocalRandom.current().nextBoolean(); 
+			try {		
+				boolean allowNestedXors = false;
+				if(!modelXorsAlwaysInSequences) {
+				allowNestedXors = ThreadLocalRandom.current().nextBoolean(); 
+				}
 				boolean found = false;
 				while(!found) {				
 				int nestingDepthFactor = ThreadLocalRandom.current().nextInt(nestingDepthFactorBounds.get(0),
@@ -1271,7 +1279,7 @@ public class BatchFileGenerator {
 	}
 
 	public static void performDataObjectTest(LinkedList<File> processes, String pathToDestinationFolderForStoringModels,
-			int sumAmountUniqueDataObjects, int boundForGeneratingSolutions, int amountThreadPools) throws IOException {
+			int sumAmountUniqueDataObjects, int boundForGeneratingSolutions, int amountThreadPools, boolean testIfModelsValid) throws IOException {
 		// each decision has unique dataObject sets of same size
 		// e.g. model has 3 decisions -> and maxAmountUniqueDataObjects = 12 -> each
 		// decision will have 4 unique dataObjects
@@ -1322,7 +1330,7 @@ public class BatchFileGenerator {
 							suffix += "alW";
 						}
 						ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
-								pathToDestinationFolderForStoringModels, suffix);
+								pathToDestinationFolderForStoringModels, suffix, testIfModelsValid);
 						amountTasks = CommonFunctionality.getAmountTasks(pModel.getModelInstance());
 
 						if (amountTasks > sumAmountUniqueDataObjects) {
@@ -1506,7 +1514,7 @@ public class BatchFileGenerator {
 				int amountRandomCountDataObjectsToCreate = 0;
 				try {
 					ProcessModelAnnotater pModel = new ProcessModelAnnotater(pathToRandomProcess,
-							pathToDestinationFolderForStoringModels, "");
+							pathToDestinationFolderForStoringModels, "", testIfModelValid);
 
 					// the model must fulfill the min and max amount of readers
 					double minAmountReadersInPercent = percentageOfReadersClasses.get(0);
@@ -1604,7 +1612,7 @@ public class BatchFileGenerator {
 								ProcessModelAnnotater modelWithReadersAndWriters;
 								try {
 									modelWithReadersAndWriters = new ProcessModelAnnotater(newModel.getAbsolutePath(),
-											pathToDestinationFolderForStoringModels, suffix);
+											pathToDestinationFolderForStoringModels, suffix, testIfModelValid);
 									modelWithReadersAndWriters.setDataObjectsConnectedToBrts(true);
 
 									// add the methods to be called
@@ -1769,7 +1777,7 @@ public class BatchFileGenerator {
 			int minDataObjectsPerDecision, int maxDataObjectsPerDecision, LinkedList<String> sphereList,
 			int amountThreads, int stopAfterDecisions, String pathToFolderForModelsForBoundaryTest,
 			boolean firstElementAfterStartIsTask, int timeoutProcessGenInMin,
-			boolean testIfModelValid, boolean calculateAmountOfPaths) {
+			boolean testIfModelValid, boolean calculateAmountOfPaths, boolean modelXorsAlwaysInSequences) {
 
 		int amountParallelGtws = ThreadLocalRandom.current().nextInt(lowerBoundAmountParallelGtws,
 				upperBoundAmountParallelGtws + 1);
@@ -1789,6 +1797,9 @@ public class BatchFileGenerator {
 		try {
 			int i = 0;
 			do {
+				if(i > 15) {
+					testIfModelValid = false;
+				}
 				timeOutOrHeapSpaceExceptionMap.clear();
 				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
 				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.NAIVE, 0);
@@ -1811,7 +1822,7 @@ public class BatchFileGenerator {
 						privateSphere, privateSphere, amountTasksWithFactor, amountTasksWithFactor,
 						amountDecisionsToStart, amountDecisionsToStart, amountParallelGtws, amountParallelGtws,
 						amountProcessesPerIteration, firstElementAfterStartIsTask,
-						timeoutProcessGenInMin);
+						timeoutProcessGenInMin, modelXorsAlwaysInSequences);
 
 				// annotate the processes
 				File folder = new File(pathToFolderForModelsWithDecisions);
@@ -1829,9 +1840,9 @@ public class BatchFileGenerator {
 					File modelCopy = (File) CommonFunctionality.deepCopy(model);
 					ProcessModelAnnotater p;
 					System.out.println(model.getName());
-					try {
+					try {						
 						p = new ProcessModelAnnotater(modelCopy.getAbsolutePath(),
-								pathToFolderForModelsWithDecisionsAnnotated, "_annotated");
+								pathToFolderForModelsWithDecisionsAnnotated, "_annotated", testIfModelValid);
 						int tasks = CommonFunctionality.getAmountTasks(p.getModelInstance());
 
 						int amountWriters = CommonFunctionality.getAmountFromPercentageWithMinimum(tasks,

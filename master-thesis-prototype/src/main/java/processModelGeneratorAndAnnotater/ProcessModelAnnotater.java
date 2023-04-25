@@ -84,8 +84,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 	private String directoryForNewFile;
 	private LinkedHashMap<String, Object[]> methodsToRunWithinCall;
 	private HashMap<FlowNode, LinkedList<LabelForAnnotater>> labelForNode;
+	private boolean testIfModelValid;
 
-	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix)
+	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix, boolean testIfModelValid)
 			throws Exception {
 		this.process = new File(pathToFile);
 		this.modelInstance = Bpmn.readModelFromFile(process);
@@ -101,6 +102,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 				fileNameSuffix);
 		this.directoryForNewFile = pathWhereToCreateAnnotatedFile + File.separatorChar + fileNameForNewFile;
 		this.methodsToRunWithinCall = new LinkedHashMap<String, Object[]>();
+		this.testIfModelValid = testIfModelValid;
 		this.setDifferentParticipants();
 		this.addFlowNodesIfNecessary();
 		this.labelForNode = generateLabels();
@@ -164,15 +166,14 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	}
 
-	public File checkCorrectnessAndWriteChangesToFile() throws Exception {
+	public File checkCorrectnessAndWriteChangesToFile(boolean checkIfModelValid) throws Exception {
 		File newFile = null;
-		CommonFunctionality.isCorrectModel(this.modelInstance, true);
+		CommonFunctionality.isCorrectModel(this.modelInstance, checkIfModelValid);
 		newFile = this.writeChangesToFile();
 		if (newFile == null) {
 			throw new Exception("Model not valid - try another readers/writers assertion!");
 		}
 		return newFile;
-
 	}
 
 	public File writeChangesToFileWithoutCorrectnessCheck()
@@ -1638,7 +1639,7 @@ public class ProcessModelAnnotater implements Callable<File> {
 					}
 
 				}
-				File f = this.checkCorrectnessAndWriteChangesToFile();
+				File f = this.checkCorrectnessAndWriteChangesToFile(this.testIfModelValid);
 				return f;
 			} catch (Exception ex) {
 				throw ex;
