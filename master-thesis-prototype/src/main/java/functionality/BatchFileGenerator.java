@@ -193,7 +193,7 @@ public class BatchFileGenerator {
 			int minDataObjectsPerDecision = 1;
 			int maxDataObjectsPerDecision = 1;
 
-			int amountProcessesPerIteration = 1;
+			int amountProcessesPerIteration = 10;
 
 			// xors will not be nested, to get the maximum amount of paths
 			boolean modelXorsAlwaysInSequences = true;
@@ -744,7 +744,7 @@ public class BatchFileGenerator {
 		File csv = BatchFileGenerator.createNewCSVFile(pathWhereToCreateAnnotatedProcesses, "test6_results");
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csv);
 		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(pathWhereToCreateAnnotatedProcesses, 100, true, true, true,
-				true, boundForSolutionsToBeGenerated, writer, service);
+				true, boundForSolutionsToBeGenerated, writer, service, testIfModelValid, calculateAmountOfPaths);
 		writer.writeRowsToCSVAndcloseWriter();
 		service.shutdownNow();
 
@@ -1010,12 +1010,8 @@ public class BatchFileGenerator {
 		}
 		executor.shutdownNow();
 	}
-
-	public static LinkedList<API> mapFilesToAPI(String pathToFiles, ResultsToCSVWriter writer, boolean testIfModelValid,
-			boolean calculateAmountOfPaths) {
-		// iterate through all files in the directory and run algorithms on annotated
-		// models
-		LinkedList<API> apiList = new LinkedList<API>();
+	
+	public static LinkedList<String> pathsForFiles(String pathToFiles) {
 		File dir = new File(pathToFiles);
 		File[] directoryListing = dir.listFiles();
 		Arrays.sort(directoryListing, Comparator.comparingLong(File::lastModified));
@@ -1030,55 +1026,25 @@ public class BatchFileGenerator {
 		} else {
 			System.out.println("No annotated process models found in " + dir.getAbsolutePath());
 		}
+		return paths;
+	}
 
-		for (String pathToFile : paths) {
+	
+	public static API mapFileToAPI(String pathToFile, ResultsToCSVWriter writer,boolean testIfModelValid, boolean calculateAmountOfPaths) {
+		API api = null;
+		try {
+		  api = new API(pathToFile, costParameters, testIfModelValid, calculateAmountOfPaths);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 			File f = new File(pathToFile);
-			try {
-				API api = new API(pathToFile, costParameters, testIfModelValid, calculateAmountOfPaths);
-				apiList.add(api);
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				writer.addNullValueRowForModel(f.getName(), f.getAbsolutePath(), e.getMessage());
-				System.err.println(f.getAbsolutePath() + " could not be mapped to api: " + e.getMessage());
-			}
-
+			writer.addNullValueRowForModel(f.getName(), f.getAbsolutePath(), e.getMessage());
+			System.err.println(f.getAbsolutePath() + " could not be mapped to api: " + e.getMessage());
 		}
-
-		return apiList;
+		return api;
 	}
-
-	public static LinkedList<API> mapFilesToAPI(LinkedList<File> files, ResultsToCSVWriter writer,
-			boolean testIfModelValid, boolean calculateAmountOfPaths) {
-		// iterate through all files in the directory and run algorithms on annotated
-		// models
-		LinkedList<API> apiList = new LinkedList<API>();
-
-		LinkedList<String> paths = new LinkedList<String>();
-		if (files != null) {
-			for (File model : files) {
-				if (model.getName().contains(".bpmn") && model.getName().contains("_annotated")) {
-					paths.add(model.getAbsolutePath());
-				}
-			}
-		}
-
-		for (String pathToFile : paths) {
-			try {
-				API api = new API(pathToFile, costParameters, testIfModelValid, calculateAmountOfPaths);
-				apiList.add(api);
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				File f = new File(pathToFile);
-				writer.addNullValueRowForModel(f.getName(), f.getAbsolutePath(), e.getMessage());
-				System.err.println(f.getAbsolutePath() + " could not be mapped to api: " + e.getMessage());
-			}
-
-		}
-
-		return apiList;
-	}
-
+	
+	
 	static File createNewCSVFile(String directoryForFile, String nameOfCSVFile) {
 		String fileNameForResults = nameOfCSVFile + "_" + idCSVFile + ".csv";
 		File csvFile = new File(directoryForFile, fileNameForResults);
@@ -1252,33 +1218,36 @@ public class BatchFileGenerator {
 
 	}
 
-	public static void runAlgorithmsAndWriteResultsToCSV(LinkedList<File> files,
-			int percentageOfProcessesToRunExhaustiveOn, boolean runExhaustiveSearch, boolean runNaiveSearch,
-			boolean runIncrementalNaiveSearch, boolean runAdvancedNaiveSearch, int boundForSolutions,
-			ResultsToCSVWriter writer, ExecutorService service, boolean testIfModelValid,
+
+	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels,
+			int percentageOfExtraLargeProcessesToRunExhaustiveOn, boolean runExhaustiveSearch,
+			boolean runIncrementalNaiveSearch, boolean runNaiveSearch, boolean runAdvancedNaiveSearch,
+			int boundForSearchWithBound, ResultsToCSVWriter writer, ExecutorService service, boolean testIfModelValid,
 			boolean calculateAmountOfPaths) {
-		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(files, writer, testIfModelValid,
-				calculateAmountOfPaths);
-		if (!apiList.isEmpty()) {
-			for (API api : apiList) {
-				BatchFileGenerator.runAlgsAndWriteResults(api, percentageOfProcessesToRunExhaustiveOn,
-						runExhaustiveSearch, runIncrementalNaiveSearch, runIncrementalNaiveSearch,
-						runAdvancedNaiveSearch, boundForSolutions, new HashMap<Enums.AlgorithmToPerform, Integer>(),
-						writer, service);
+		LinkedList<String> pathsForFiles = pathsForFiles(pathToFolderWithAnnotatedModels);
+		if (!pathsForFiles.isEmpty()) {
+			for (String pathToFile : pathsForFiles) {
+				API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
+				BatchFileGenerator.runAlgsAndWriteResults(api, percentageOfExtraLargeProcessesToRunExhaustiveOn,
+						runExhaustiveSearch, runNaiveSearch, runIncrementalNaiveSearch, runAdvancedNaiveSearch,
+						boundForSearchWithBound, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, service);
 			}
 		} else {
 			System.out.println("No Algorithms have been run successfully on annotated models");
 		}
 
 	}
-
-	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels,
+	
+	public static void runAlgorithmsAndWriteResultsToCSV(LinkedList<File> files,
 			int percentageOfExtraLargeProcessesToRunExhaustiveOn, boolean runExhaustiveSearch,
 			boolean runIncrementalNaiveSearch, boolean runNaiveSearch, boolean runAdvancedNaiveSearch,
-			int boundForSearchWithBound, ResultsToCSVWriter writer, ExecutorService service) {
-		LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderWithAnnotatedModels, writer, true, true);
-		if (!apiList.isEmpty()) {
-			for (API api : apiList) {
+			int boundForSearchWithBound, ResultsToCSVWriter writer, ExecutorService service, boolean testIfModelValid,
+			boolean calculateAmountOfPaths) {		
+		
+		if (!files.isEmpty()) {
+			for (File file : files) {
+				String pathToFile = file.getAbsolutePath();
+				API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
 				BatchFileGenerator.runAlgsAndWriteResults(api, percentageOfExtraLargeProcessesToRunExhaustiveOn,
 						runExhaustiveSearch, runNaiveSearch, runIncrementalNaiveSearch, runAdvancedNaiveSearch,
 						boundForSearchWithBound, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, service);
@@ -1925,12 +1894,12 @@ public class BatchFileGenerator {
 						e1.printStackTrace();
 					}
 				}
-				// map annotated models
-				LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(pathToFolderForModelsWithDecisionsAnnotated,
-						writer, testIfModelValid, calculateAmountOfPaths);
-
+			
+				LinkedList<String> pathForFiles = pathsForFiles(pathToFolderForModelsWithDecisionsAnnotated);
+				
 				// perform all algorithms and count the timeouts
-				for (API api : apiList) {
+				for (String pathToFile : pathForFiles) {
+					API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
 					HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
 							.runAlgsAndWriteResults(api, 100, runExhaustiveSearch, runNaiveSearch,
 									runIncrementalNaiveSearch, runAdvancedNaiveSearch,
@@ -1958,28 +1927,28 @@ public class BatchFileGenerator {
 					timeOutOrHeapSpaceExceptionMap = returnMap.get(false);
 				}
 
-				if (!apiList.isEmpty()) {
+				if (!pathForFiles.isEmpty()) {
 					if (timeOutOrHeapSpaceExceptionMap.containsKey(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
-						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == apiList.size()) {
+						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == pathForFiles.size()) {
 							runExhaustiveSearch = false;
 						}
 					}
 
 					if (timeOutOrHeapSpaceExceptionMap.containsKey(Enums.AlgorithmToPerform.NAIVE)) {
-						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.NAIVE) == apiList.size()) {
+						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.NAIVE) == pathForFiles.size()) {
 							runNaiveSearch = false;
 						}
 					}
 
 					if (timeOutOrHeapSpaceExceptionMap.containsKey(Enums.AlgorithmToPerform.INCREMENTALNAIVE)) {
-						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == apiList
+						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == pathForFiles
 								.size()) {
 							runIncrementalNaiveSearch = false;
 						}
 					}
 
 					if (timeOutOrHeapSpaceExceptionMap.containsKey(Enums.AlgorithmToPerform.ADVANCEDNAIVE)) {
-						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.ADVANCEDNAIVE) == apiList
+						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.ADVANCEDNAIVE) == pathForFiles
 								.size()) {
 							runAdvancedNaiveSearch = false;
 						}
@@ -2045,8 +2014,9 @@ public class BatchFileGenerator {
 				for (File directory : directories) {
 					String directoryPath = directory.getAbsolutePath();
 					// map annotated models
-					LinkedList<API> apiList = BatchFileGenerator.mapFilesToAPI(directoryPath, writer, testIfModelValid,
-							calculateAmountOfPaths);
+					
+					LinkedList<String> pathForFiles = pathsForFiles(directoryPath);
+
 					// perform all algorithms and count the timeouts
 					HashMap<Enums.AlgorithmToPerform, Integer> timeOutMap = new HashMap<Enums.AlgorithmToPerform, Integer>();
 					timeOutMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
@@ -2054,7 +2024,8 @@ public class BatchFileGenerator {
 					timeOutMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, 0);
 					timeOutMap.put(Enums.AlgorithmToPerform.ADVANCEDNAIVE, 0);
 
-					for (API api : apiList) {
+					for (String pathToFile : pathForFiles) {
+						API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
 						HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
 								.runAlgsAndWriteResults(api, 100, runExhaustive, runAdvancedNaive, runNaive,
 										runIncrementalNaive, boundForAlgorithms, timeOutMap, writer, executor);
@@ -2081,25 +2052,25 @@ public class BatchFileGenerator {
 						timeOutMap = returnMap.get(false);
 
 						if (timeOutMap.containsKey(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
-							if (timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == apiList.size()) {
+							if (timeOutMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) == pathForFiles.size()) {
 								runExhaustive = false;
 							}
 						}
 
 						if (timeOutMap.containsKey(Enums.AlgorithmToPerform.NAIVE)) {
-							if (timeOutMap.get(Enums.AlgorithmToPerform.NAIVE) == apiList.size()) {
+							if (timeOutMap.get(Enums.AlgorithmToPerform.NAIVE) == pathForFiles.size()) {
 								runNaive = false;
 							}
 						}
 
 						if (timeOutMap.containsKey(Enums.AlgorithmToPerform.INCREMENTALNAIVE)) {
-							if (timeOutMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == apiList.size()) {
+							if (timeOutMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == pathForFiles.size()) {
 								runIncrementalNaive = false;
 							}
 						}
 
 						if (timeOutMap.containsKey(Enums.AlgorithmToPerform.ADVANCEDNAIVE)) {
-							if (timeOutMap.get(Enums.AlgorithmToPerform.ADVANCEDNAIVE) == apiList.size()) {
+							if (timeOutMap.get(Enums.AlgorithmToPerform.ADVANCEDNAIVE) == pathForFiles.size()) {
 								runAdvancedNaive = false;
 							}
 						}
