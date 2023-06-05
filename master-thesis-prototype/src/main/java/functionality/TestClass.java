@@ -12,10 +12,10 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorC.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_1_without_annotation.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel13_annotated1_annotated22lWlR_Weak-Dynamic_verifiers2.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel1_annotated1.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel1_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel6_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorCnew.bpmn";
-		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_clustering.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel10_annotated1_annotated15lWmR_Strong-Dynamic_addActors3_mand_constrained.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\brtsIn2branches1.bpmn";
@@ -27,14 +27,14 @@ public class TestClass {
 		
 			
 			//LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(1);
-			LinkedList<PModelWithAdditionalActors> pInstNaive = api2.incrementalNaiveSearch(1);
+		//	LinkedList<PModelWithAdditionalActors> pInstNaive = api2.incrementalNaiveSearch(1);
 			
-			for(PModelWithAdditionalActors pModel: pInstNaive) {
+			/*for(PModelWithAdditionalActors pModel: pInstNaive) {
 				pModel.printMeasure();
-			}
+			}*/
 			
-			/*
-			LinkedList<PModelWithAdditionalActors>pInstExhaustive = api2.exhaustiveSearch();
+			
+			LinkedList<PModelWithAdditionalActors>pInstExhaustive = api2.exhaustiveSearch(0);
 			LinkedList<PModelWithAdditionalActors> cheapestExhaustive = CommonFunctionality.getCheapestPModelsWithAdditionalActors(pInstExhaustive);
 			System.out.println("Cheapest exhaustive: "+cheapestExhaustive.size());
 			
@@ -42,20 +42,20 @@ public class TestClass {
 			for(PModelWithAdditionalActors pModel: cheapestExhaustive) {
 			pModel.printMeasure();
 			}
-			*/
+			
 						
-			int bound = 1;
+			/*int bound = 1;
 			LinkedList<PModelWithAdditionalActors>pInstHeuristic = api2.advancedNaive(bound);
 			for(PModelWithAdditionalActors pModel: pInstHeuristic) {
 				pModel.printMeasure();
 			}
 			
-	
+	*/
 			
 			// garbage collector will remove
 			//pInst = null;
 			//String result = CommonFunctionality.compareCostOfCheapestSolutionsOfAlgorithms(pInstHeuristic, pInstExhaustive);
-			System.out.println("Cheapest heuristic: "+pInstHeuristic.size());
+			//System.out.println("Cheapest heuristic: "+pInstHeuristic.size());
 			//System.out.println("Result: "+result);		
 			System.out.println("__________________");
 			//String naiveIsCheapest = CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstNaive, pInstExhaustive, bound);

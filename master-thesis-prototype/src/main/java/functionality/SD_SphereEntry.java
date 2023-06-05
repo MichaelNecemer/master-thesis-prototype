@@ -13,8 +13,8 @@ public class SD_SphereEntry {
 	private BPMNTask origin;
 	private BPMNTask currBrt;
 	private BPMNParticipant additionalActor;
-	private HashSet<BPMNParticipant> sdSphereWithoutAdditionalActor;
-	private HashSet<BPMNParticipant> sdSphereWithAdditionalActor;
+	private HashSet<BPMNParticipant> sdSphereWithoutExcludedAddActors;
+	private HashSet<BPMNParticipant> sdSphereWithExcludedAddActors;
 	private HashSet<BPMNParticipant> lambdaSdSphere;
 	private HashSet<BPMNTask> sdReaderBrts;
 	private double amountPathsWhereOriginWritesForCurrBrt;
@@ -30,9 +30,9 @@ public class SD_SphereEntry {
 		this.currBrt = currBrt;
 		this.additionalActor = additionalActor;
 		this.sdReaderBrts = new HashSet<BPMNTask>();
-		this.sdSphereWithoutAdditionalActor = new HashSet<BPMNParticipant>();
+		this.sdSphereWithoutExcludedAddActors = new HashSet<BPMNParticipant>();
 		this.lambdaSdSphere = new HashSet<BPMNParticipant>();
-		this.sdSphereWithAdditionalActor = new HashSet<BPMNParticipant>();
+		this.sdSphereWithExcludedAddActors = new HashSet<BPMNParticipant>();
 		this.amountPathsWhereOriginWritesForCurrBrt = 0;
 		this.weightOfOriginForCurrBrt = 0;
 		this.weightOfOrigin = Math.pow(2, -origin.getLabels().size());
@@ -72,20 +72,21 @@ public class SD_SphereEntry {
 		this.additionalActor = additionalActor;
 	}
 
-	public HashSet<BPMNParticipant> getSdSphereWithoutAdditionalActor() {
-		return sdSphereWithoutAdditionalActor;
+
+	public HashSet<BPMNParticipant> getSdSphereWithoutExcludedAddActors() {
+		return sdSphereWithoutExcludedAddActors;
 	}
 
-	public void setSdSphereWithoutAdditionalActor(HashSet<BPMNParticipant> sdSphereWithoutAdditionalActors) {
-		this.sdSphereWithoutAdditionalActor = sdSphereWithoutAdditionalActors;
+	public void setSdSphereWithoutExcludedAddActors(HashSet<BPMNParticipant> sdSphereWithoutExcludedAddActors) {
+		this.sdSphereWithoutExcludedAddActors = sdSphereWithoutExcludedAddActors;
 	}
 
-	public HashSet<BPMNParticipant> getSdSphereWithAdditionalActor() {
-		return sdSphereWithAdditionalActor;
+	public HashSet<BPMNParticipant> getSdSphereWithExcludedAddActors() {
+		return sdSphereWithExcludedAddActors;
 	}
 
-	public void setSdSphereWithAdditionalActors(HashSet<BPMNParticipant> sdSphereWithAdditionalActors) {
-		this.sdSphereWithAdditionalActor = sdSphereWithAdditionalActors;
+	public void setSdSphereWithExcludedAddActors(HashSet<BPMNParticipant> sdSphereWithExcludedAddActors) {
+		this.sdSphereWithExcludedAddActors = sdSphereWithExcludedAddActors;
 	}
 
 	public HashSet<BPMNParticipant> getLambdaSdSphere() {

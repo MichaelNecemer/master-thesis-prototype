@@ -315,7 +315,7 @@ public class PModelWithAdditionalActors {
 
 				if(sdEntry.isContributingToGammaMin()) {
 				sb.append("with additional actor "+additionalActor.getName()+" for the brts (TE = {}): {");
-				HashSet<BPMNParticipant>sdEntryParticipants = sdEntry.getSdSphereWithAdditionalActor();
+				HashSet<BPMNParticipant>sdEntryParticipants = sdEntry.getSdSphereWithoutExcludedAddActors();
 				Iterator<BPMNParticipant>partIter = sdEntryParticipants.iterator();
 				while(partIter.hasNext()) {
 					BPMNParticipant nextPart = partIter.next();
@@ -328,7 +328,7 @@ public class PModelWithAdditionalActors {
 				sb.append(System.lineSeparator());	
 				
 				sb.append("without additional actor "+additionalActor.getName()+ ":  {");
-				HashSet<BPMNParticipant>sdEntryParticipantsAddActors = sdEntry.getSdSphereWithoutAdditionalActor();
+				HashSet<BPMNParticipant>sdEntryParticipantsAddActors = sdEntry.getSdSphereWithExcludedAddActors();
 				Iterator<BPMNParticipant>partIter2 = sdEntryParticipantsAddActors.iterator();
 				while(partIter2.hasNext()) {
 					BPMNParticipant nextPart = partIter2.next();

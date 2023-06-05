@@ -44,8 +44,9 @@ public class BatchFileGenerator {
 	// in order to avoid very long execution time until the actual algorithms start
 	static boolean testIfModelValid = true;
 	static boolean calculateAmountOfPaths = true;
+	
 	// generates processes where xors can not be nested
-	static boolean modelXorsAlwaysAsSequence = false;
+	static int percentageOfXorsAsSeq = 0;
 
 	// amount of solutions to be generated with naive approaches
 	static int amountSolutionsToBeGenerated = 1;
@@ -195,9 +196,10 @@ public class BatchFileGenerator {
 
 			int amountProcessesPerIteration = 10;
 
-			// xors will not be nested, to get the maximum amount of paths
-			boolean modelXorsAlwaysInSequences = true;
+			// set the percentage of processes that will have the xors always in sequence
+			int percentageProcessesWithXorsAlwaysInSeq = 100;
 
+			
 			pathToFolderForModelsForTest1_1 = CommonFunctionality
 					.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1").getAbsolutePath();
 
@@ -229,7 +231,7 @@ public class BatchFileGenerator {
 					tasksToStartWith, tasksFactor, 0, 0, percentageOfWriters, percentageOfReaders,
 					minDataObjectsPerDecision, maxDataObjectsPerDecision, sphere, amountThreads, stopAfterDecisions,
 					pathToFolderForModelsForTest1_1, firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin,
-					testIfModelValid, calculateAmountOfPaths, modelXorsAlwaysInSequences);
+					testIfModelValid, calculateAmountOfPaths, percentageProcessesWithXorsAlwaysInSeq);
 			
 			System.out.println("BoundartyTest1_1 finished!");
 		}
@@ -307,7 +309,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation,
 						5, 5, minAmountTasksSmallProcesses, maxAmountTasksSmallProcesses, i, i, 0, 2,
 						amountProcessesToCreatePerDecision, firstElementAfterStartIsTask,
-						timeOutForProcessGeneratorInMin, modelXorsAlwaysAsSequence);
+						timeOutForProcessGeneratorInMin, percentageOfXorsAsSeq);
 			}
 
 			// medium processes: 5 participants, 3-4 xors, 0-2 parallels
@@ -320,7 +322,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
 						pathToMediumProcessesFolderWithoutAnnotation, 5, 5, minAmountTasksMediumProcesses,
 						maxAmountTasksMediumProcesses, i, i, 0, 2, amountProcessesToCreatePerDecision,
-						firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin, modelXorsAlwaysAsSequence);
+						firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin, percentageOfXorsAsSeq);
 			}
 
 			// large processes: 5 participants, 5-6 xors, 0-2, parallels
@@ -333,7 +335,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation,
 						5, 5, minAmountTasksLargeProcesses, maxAmountTasksLargeProcesses, i, i, 0, 2,
 						amountProcessesToCreatePerDecision, firstElementAfterStartIsTask,
-						timeOutForProcessGeneratorInMin, modelXorsAlwaysAsSequence);
+						timeOutForProcessGeneratorInMin, percentageOfXorsAsSeq);
 			}
 
 			// xl processes
@@ -347,7 +349,7 @@ public class BatchFileGenerator {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
 						pathToExtraLargeProcessesFolderWithoutAnnotation, 5, 5, minAmountTasksExtraLargeProcesses,
 						maxAmountTasksExtraLargeProcesses, i, i, 0, 2, amountProcessesToCreatePerDecision,
-						firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin, modelXorsAlwaysAsSequence);
+						firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin, percentageOfXorsAsSeq);
 			}
 
 			System.out.println("All random processes generated!");
@@ -726,7 +728,7 @@ public class BatchFileGenerator {
 		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathWhereToCreateProcessesWithoutAnnotation, 2,
 				upperBoundParticipants, lowerBoundTasks, upperBoundTasks, 1, upperBoundXorGtws, 0,
 				upperBoundParallelGtws, amountProcesses, false, timeOutForProcessGeneratorInMin,
-				modelXorsAlwaysAsSequence);
+				percentageOfXorsAsSeq);
 		randomProcessGeneratorService.shutdownNow();
 
 		int publicDecisionProb = 0;
@@ -935,10 +937,12 @@ public class BatchFileGenerator {
 	public static void generateRandomProcessesWithinGivenRanges(String pathToFiles, int lowerBoundParticipants,
 			int upperBoundParticipants, int lowerBoundTasks, int upperBoundTasks, int lowerBoundXorGtws,
 			int upperBoundXorGtws, int lowerBoundParallelGtws, int upperBoundParallelGtws, int amountProcesses,
-			boolean firstElementAfterStartIsTask, int timeoutForProcessGenerator, boolean modelXorsAlwaysInSequences) {
+			boolean firstElementAfterStartIsTask, int timeoutForProcessGenerator, int percentageProcessesWithXorsAlwaysInSeq) {
 
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 
+		int amountProcessesWithSeqXors = Math.round(amountProcesses * percentageProcessesWithXorsAlwaysInSeq / 100);
+		
 		for (int i = 1; i <= amountProcesses; i++) {
 
 			int randomAmountParticipantsWithinBounds = ThreadLocalRandom.current().nextInt(lowerBoundParticipants,
@@ -959,9 +963,12 @@ public class BatchFileGenerator {
 			int processId = 0;
 			try {
 				boolean allowNestedXors = false;
-				if (!modelXorsAlwaysInSequences) {
-					allowNestedXors = ThreadLocalRandom.current().nextBoolean();
-				}
+				
+				if(amountProcessesWithSeqXors>0) {
+					allowNestedXors = true;
+					amountProcessesWithSeqXors--;
+				}			
+			
 				boolean found = false;
 				while (!found) {
 					int nestingDepthFactor = ThreadLocalRandom.current().nextInt(nestingDepthFactorBounds.get(0),
@@ -1758,7 +1765,7 @@ public class BatchFileGenerator {
 			int minDataObjectsPerDecision, int maxDataObjectsPerDecision, LinkedList<String> sphereList,
 			int amountThreads, int stopAfterDecisions, String pathToFolderForModelsForBoundaryTest,
 			boolean firstElementAfterStartIsTask, int timeoutProcessGenInMin, boolean testIfModelValid,
-			boolean calculateAmountOfPaths, boolean modelXorsAlwaysInSequences) {
+			boolean calculateAmountOfPaths, int percentageProcessesWithXorsAlwaysInSeq) {
 
 		int amountParallelGtws = ThreadLocalRandom.current().nextInt(lowerBoundAmountParallelGtws,
 				upperBoundAmountParallelGtws + 1);
@@ -1802,7 +1809,7 @@ public class BatchFileGenerator {
 						privateSphere, privateSphere, amountTasksWithFactor, amountTasksWithFactor,
 						amountDecisionsToStart, amountDecisionsToStart, amountParallelGtws, amountParallelGtws,
 						amountProcessesPerIteration, firstElementAfterStartIsTask, timeoutProcessGenInMin,
-						modelXorsAlwaysInSequences);
+						percentageProcessesWithXorsAlwaysInSeq);
 
 				// annotate the processes
 				File folder = new File(pathToFolderForModelsWithDecisions);

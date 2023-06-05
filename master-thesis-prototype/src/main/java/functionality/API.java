@@ -1400,6 +1400,7 @@ public class API {
 		}
 		return null;
 	}
+	
 
 	private void mapSphereAnnotations(Task task) throws Exception {
 		BPMNTask element = (BPMNTask) this.getBPMNNodeById(task.getId());
@@ -1436,9 +1437,9 @@ public class API {
 					if (a.getAttributeValue("sourceRef").equals(element.getId())
 							&& a.getAttributeValue("targetRef").equals(text.getId())) {
 						String str = text.getTextContent().trim();
-						// First 4 characters specify the Data object e.g. [D1]
+						// characters  within square brackets specify the Data object e.g. [D1]
 						String s = str.substring(str.indexOf('[') + 1, str.indexOf(']'));
-						// The Sphere for the data object is between {}
+						// The Sphere for the data object is between curly brackets
 						String s2 = str.substring(str.indexOf('{') + 1, str.indexOf('}'));
 
 						// Check if it is the right data object
@@ -1579,10 +1580,11 @@ public class API {
 
 		boolean participantIsSd = true;
 
+		// only look at those paths where origin writes the data for the currPositionBrt
+		
 		for (LinkedList<BPMNElement> path : pathFromOriginOverCurrPositionBrtToEnd) {
 			HashSet<BPMNParticipant> foundOnPathWithAddActors = new HashSet<BPMNParticipant>();
-			boolean otherWriterFoundOnPath = false;
-			boolean pastCurrBrt = false;
+			boolean pastCurrPositionBrt = false;			
 			for (int i = 0; i < path.size(); i++) {
 				BPMNElement el = path.get(i);
 				if (el instanceof BPMNTask) {
@@ -1591,6 +1593,11 @@ public class API {
 						// currTask is a reader of the dataO
 						foundOnPathWithAddActors.add(currTask.getParticipant());
 						if (currTask instanceof BPMNBusinessRuleTask) {
+							
+							if(currTask.equals(currPositionBrt)) {
+								pastCurrPositionBrt = true;
+							}
+							
 							if (brtsToExcludeAddActors != null && !brtsToExcludeAddActors.isEmpty()) {
 								if (!brtsToExcludeAddActors.contains(currTask)) {
 									for (AdditionalActors addActor : addActors) {
@@ -1614,9 +1621,6 @@ public class API {
 								}
 							}
 
-							if (currPositionBrt.equals(currTask)) {
-								pastCurrBrt = true;
-							}
 						}
 					}
 
@@ -1627,10 +1631,9 @@ public class API {
 							// origin is always in SD
 							foundOnPathWithAddActors.add(currTask.getParticipant());
 						} else {
-							otherWriterFoundOnPath = true;
-							// another writer found on some path
+							// another writer found on path
 							// stop here
-							// actors after that writer will not read dataO from origin
+							// actors after that writer will not read dataO from inspected origin
 							i = path.size();
 						}
 
@@ -1639,12 +1642,17 @@ public class API {
 				}
 
 			}
-
-			if (!foundOnPathWithAddActors.contains(participant)) {
-				// participant is not sd for the path!
-				return false;
-
+			
+			if(pastCurrPositionBrt) {
+				// make sure to only inspect paths that contain the currPositionBrt and no other origin writes the data object in between
+				if(!foundOnPathWithAddActors.contains(participant)) {
+					// participant is not sd for the path!
+					return false;
+				}
+				
 			}
+		
+			
 		}
 
 		return participantIsSd;
@@ -2438,12 +2446,7 @@ public class API {
 		LinkedList<LinkedList<BPMNBusinessRuleTask>> cheapestSubSets = new LinkedList<LinkedList<BPMNBusinessRuleTask>>();
 		LinkedList<BPMNBusinessRuleTask> toRemove = new LinkedList<BPMNBusinessRuleTask>();
 
-		if (depT.size() == 1) {
-			LinkedList<BPMNBusinessRuleTask> currBrtList = new LinkedList<BPMNBusinessRuleTask>(depT);
-			cheapestSubSets.add(currBrtList);
-			return cheapestSubSets;
-		}
-
+		
 		for (int i = 1; i <= depT.size(); i++) {
 			if (Thread.currentThread().isInterrupted()) {
 				System.err.println("Interrupted! " + Thread.currentThread().getName());
@@ -2484,7 +2487,8 @@ public class API {
 						if (participantIsSd) {
 							sdSet.add(participant);
 						}
-
+						
+						
 						spheres2.putIfAbsent(dependentBrt, sdSet);
 						if (!spheres1.get(dependentBrt).equals(spheres2.get(dependentBrt))) {
 							// spheres for dependentBrt are not the same!
@@ -2609,6 +2613,7 @@ public class API {
 								.getOrComputePathsFromOriginToEnd(pathsFromOriginToEndMap, origin);
 
 						for (BPMNParticipant participant : addActors.getAdditionalActors()) {
+							
 							if (Thread.currentThread().isInterrupted()) {
 								System.err.println("Interrupted! " + Thread.currentThread().getName());
 								throw new InterruptedException();
@@ -2654,46 +2659,60 @@ public class API {
 											.getOrComputePathsFromOriginOverCurrBrtToEnd(
 													pathFromOriginOverCurrBrtToEndMap, origin, dependentBrt);
 
-									boolean participantIsSd = isParticipantInSDForOriginWithExcludedTasks(participant,
+									boolean participantIsSdWithoutExcludedAddActors = isParticipantInSDForOriginWithExcludedTasks(participant,
 											dataO, origin, dependentBrt,
 											pModelWithAdditionalActors.getAdditionalActorsList(), null,
 											pathsFromOriginOverDependentBrtToEnd);
 
-									LinkedList<BPMNBusinessRuleTask> brtToExclude = new LinkedList<BPMNBusinessRuleTask>();
-									brtToExclude.addAll(businessRuleTasks);
-									boolean participantIsSd2 = isParticipantInSDForOriginWithExcludedTasks(participant,
+
+									HashSet<BPMNParticipant> sdSetWithoutExcludedAddActors = new HashSet<BPMNParticipant>();
+									if (participantIsSdWithoutExcludedAddActors) {
+										sdSetWithoutExcludedAddActors.add(participant);
+									}
+									spheres1.putIfAbsent(dependentBrt, sdSetWithoutExcludedAddActors);
+									
+																
+									// is the participant strong-dynamic for the current configuration where TE = {}
+									// i.e. no additional actors are excluded
+									sdSphereEntryForDependentBrt.setSdSphereWithoutExcludedAddActors(sdSetWithoutExcludedAddActors);
+								
+									// exclude all brts with additional actors 									
+									boolean participantIsSdWithExcludedAddActors = isParticipantInSDForOriginWithExcludedTasks(participant,
 											dataO, origin, dependentBrt,
-											pModelWithAdditionalActors.getAdditionalActorsList(), brtToExclude,
+											pModelWithAdditionalActors.getAdditionalActorsList(), this.businessRuleTasks,
 											pathsFromOriginOverDependentBrtToEnd);
-
-									HashSet<BPMNParticipant> sdSetWithAddActors = new HashSet<BPMNParticipant>();
-									if (participantIsSd) {
-										sdSetWithAddActors.add(participant);
+									
+									HashSet<BPMNParticipant> sdSetWithExcludedAddActors = new HashSet<BPMNParticipant>();
+									if (participantIsSdWithExcludedAddActors) {
+										sdSetWithExcludedAddActors.add(participant);
 									}
-									spheres1.putIfAbsent(dependentBrt, sdSetWithAddActors);
-
-									HashSet<BPMNParticipant> sdSetWithoutAddActors = new HashSet<BPMNParticipant>();
-									if (participantIsSd2) {
-										sdSetWithoutAddActors.add(participant);
-									}
-									// the participant is in sd for the current configuration
-									sdSphereEntryForDependentBrt.setSdSphereWithAdditionalActors(sdSetWithAddActors);
-
-									sdSphereEntryForDependentBrt
-											.setSdSphereWithoutAdditionalActor(sdSetWithoutAddActors);
-
+									
+									// is the participant strong-dynamic for the current configuration where TE = {all business-rule-tasks}
+									// i.e. all additional actors are excluded
+									sdSphereEntryForDependentBrt.setSdSphereWithExcludedAddActors(sdSetWithExcludedAddActors);
+																
 								}
-
+								
 								// calculate depTMin
-								LinkedList<LinkedList<BPMNBusinessRuleTask>> cheapestSubLists = this
+								LinkedList<LinkedList<BPMNBusinessRuleTask>> depTMin = new LinkedList<LinkedList<BPMNBusinessRuleTask>>();
+								if(depT.size()==1) {
+									// no need to calculate subsets
+									// spheres will be the same, since there cannot be a subset 									
+									LinkedList<BPMNBusinessRuleTask> depTMinList = new LinkedList<BPMNBusinessRuleTask>();
+									depTMinList.addAll(depT);
+									depTMin.add(depTMinList);									
+								} else {								
+								depTMin = this
 										.getMinimalSubSetsWithSameSpheres(participant, depT, spheres1, dataO, origin,
 												null, pModelWithAdditionalActors.getAdditionalActorsList(),
 												pathFromOriginOverCurrBrtToEndMap);
+								}
+							
 
 								// compute gamma min for each list in depTMin
 								LinkedList<LinkedList<BPMNBusinessRuleTask>> gammaMinLists = new LinkedList<LinkedList<BPMNBusinessRuleTask>>();
 								double gammaMinScore = 0;
-								for (LinkedList<BPMNBusinessRuleTask> cheapestSubList : cheapestSubLists) {
+								for (LinkedList<BPMNBusinessRuleTask> cheapestSubList : depTMin) {
 									double scorePerBrtList = 0;
 									for (BPMNBusinessRuleTask brt : cheapestSubList) {
 										if (Thread.currentThread().isInterrupted()) {
@@ -2727,8 +2746,8 @@ public class API {
 
 										// compute lambda and set score
 										HashSet<BPMNParticipant> lambdaActors = this.computeLambdaActors(
-												sdSphereEntryForDependentBrt.getSdSphereWithAdditionalActor(),
-												sdSphereEntryForDependentBrt.getSdSphereWithoutAdditionalActor());
+												sdSphereEntryForDependentBrt.getSdSphereWithoutExcludedAddActors(),
+												sdSphereEntryForDependentBrt.getSdSphereWithExcludedAddActors());
 
 										sdSphereEntryForDependentBrt.setLambdaSdSphere(lambdaActors);
 										double lambda = lambdaActors.size();
