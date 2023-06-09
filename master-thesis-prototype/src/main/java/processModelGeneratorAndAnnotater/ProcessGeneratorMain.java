@@ -8,10 +8,10 @@ public class ProcessGeneratorMain {
 	public static void main(String[]args) {
 	String pathWhereToCreateModels = "C:\\Users\\Micha\\OneDrive\\Desktop\\PGen2";
 	int amountParticipants = 6;
-	int amountTasksToBeInserted = 12;
-	int amountXorsToBeInserted = 2;
-	int amountParallelsToBeInserted = 2;	
-	int amountModelsToCreate = 1;
+	int amountTasksToBeInserted = 20;
+	int amountXorsToBeInserted = 4;
+	int amountParallelsToBeInserted = 0;	
+	int amountModelsToCreate = 5;
 	int probTask = 33;
 	int probXorGtw = 33;
 	int probParallelGtw = 33;

@@ -45,7 +45,7 @@ public class BatchFileGenerator {
 	static boolean testIfModelValid = true;
 	static boolean calculateAmountOfPaths = true;
 	
-	// generates processes where xors can not be nested
+	// how many percent of the processes will have all xors as sequences instead of nested
 	static int percentageOfXorsAsSeq = 0;
 
 	// amount of solutions to be generated with naive approaches
@@ -63,7 +63,7 @@ public class BatchFileGenerator {
 	static LinkedList<Integer> dataObjectBoundsSmallProcesses = new LinkedList<Integer>(Arrays.asList(1, 2));
 	static LinkedList<Integer> dataObjectBoundsMediumProcesses = new LinkedList<Integer>(Arrays.asList(1, 4));
 	static LinkedList<Integer> dataObjectBoundsLargeProcesses = new LinkedList<Integer>(Arrays.asList(1, 6));
-	static LinkedList<Integer> dataObjectBoundsExtraLargeProcesses = new LinkedList<Integer>(Arrays.asList(1, 8));
+	static LinkedList<Integer> dataObjectBoundsExtraLargeProcesses = new LinkedList<Integer>(Arrays.asList(1, 12));
 
 	static LinkedList<String> defaultSpheres = new LinkedList<String>(
 			Arrays.asList("Private", "Static", "Weak-Dynamic", "Strong-Dynamic"));
@@ -86,7 +86,7 @@ public class BatchFileGenerator {
 	static ArrayList<Integer> amountXorsSmallProcessesBounds = new ArrayList<>(Arrays.asList(1, 2));
 	static ArrayList<Integer> amountXorsMediumProcessesBounds = new ArrayList<>(Arrays.asList(3, 4));
 	static ArrayList<Integer> amountXorsLargeProcessesBounds = new ArrayList<>(Arrays.asList(5, 6));
-	static ArrayList<Integer> amountXorsExtraLargeProcessesBounds = new ArrayList<>(Arrays.asList(7, 8));
+	static ArrayList<Integer> amountXorsExtraLargeProcessesBounds = new ArrayList<>(Arrays.asList(11, 12));
 
 	// bounds for nestingDepthFactor and probJoinGtw
 	static ArrayList<Integer> nestingDepthFactorBounds = new ArrayList<>(Arrays.asList(0, 50));
@@ -204,7 +204,7 @@ public class BatchFileGenerator {
 					.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1").getAbsolutePath();
 
 			LinkedList<String> sphere = new LinkedList<String>();
-			sphere.add("Strong-Dynamic");
+			sphere.add("Static");
 
 			int stopAfterDecisions = 50;
 
@@ -255,7 +255,7 @@ public class BatchFileGenerator {
 
 				// choose a model
 				File directoryOfFiles = new File(pathToFolderForModelsForTest1_1 + File.separatorChar
-						+ "BoundaryTest_decision-22" + File.separatorChar + "annotated");
+						+ "BoundaryTest_decision-12" + File.separatorChar + "annotated");
 				List<File> listOfFiles = Arrays.asList(directoryOfFiles.listFiles());
 				File model = CommonFunctionality.getRandomItem(listOfFiles);
 				int newModelsPerIteration = 10;
@@ -298,21 +298,22 @@ public class BatchFileGenerator {
 					.getAbsolutePath();
 
 			int tasksToAddToMinAmount = 10;
+			int privateSphere = 6;
 
-			// small processes: 5 participants, 1-2 xors, 0-2 parallels
 			int maxAmountDataObjectsSmallProcesses = dataObjectBoundsSmallProcesses.get(1);
 			int minAmountTasksSmallProcesses = getMinAmountTasksForMaxAmountDataObjects(percentageOfReadersClasses,
 					percentageOfWritersClasses, maxAmountDataObjectsSmallProcesses);
 			int maxAmountTasksSmallProcesses = minAmountTasksSmallProcesses + tasksToAddToMinAmount;
 
+			// small processes: 6 participants, 1-2 xors, 0-2 parallels
 			for (int i = amountXorsSmallProcessesBounds.get(0); i <= amountXorsSmallProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToSmallProcessesFolderWithoutAnnotation,
-						5, 5, minAmountTasksSmallProcesses, maxAmountTasksSmallProcesses, i, i, 0, 2,
+						privateSphere, privateSphere, minAmountTasksSmallProcesses, maxAmountTasksSmallProcesses, i, i, 0, 2,
 						amountProcessesToCreatePerDecision, firstElementAfterStartIsTask,
 						timeOutForProcessGeneratorInMin, percentageOfXorsAsSeq);
 			}
 
-			// medium processes: 5 participants, 3-4 xors, 0-2 parallels
+			// medium processes: 6 participants, 3-4 xors, 0-2 parallels
 			int maxAmountDataObjectsMediumProcesses = dataObjectBoundsMediumProcesses.get(1);
 			int minAmountTasksMediumProcesses = getMinAmountTasksForMaxAmountDataObjects(percentageOfReadersClasses,
 					percentageOfWritersClasses, maxAmountDataObjectsMediumProcesses);
@@ -320,12 +321,12 @@ public class BatchFileGenerator {
 
 			for (int i = amountXorsMediumProcessesBounds.get(0); i <= amountXorsMediumProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
-						pathToMediumProcessesFolderWithoutAnnotation, 5, 5, minAmountTasksMediumProcesses,
+						pathToMediumProcessesFolderWithoutAnnotation, privateSphere, privateSphere, minAmountTasksMediumProcesses,
 						maxAmountTasksMediumProcesses, i, i, 0, 2, amountProcessesToCreatePerDecision,
 						firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin, percentageOfXorsAsSeq);
 			}
 
-			// large processes: 5 participants, 5-6 xors, 0-2, parallels
+			// large processes: 6 participants, 5-6 xors, 0-2, parallels
 			int maxAmountDataObjectsLargeProcesses = dataObjectBoundsLargeProcesses.get(1);
 			int minAmountTasksLargeProcesses = getMinAmountTasksForMaxAmountDataObjects(percentageOfReadersClasses,
 					percentageOfWritersClasses, maxAmountDataObjectsLargeProcesses);
@@ -333,13 +334,13 @@ public class BatchFileGenerator {
 
 			for (int i = amountXorsLargeProcessesBounds.get(0); i <= amountXorsLargeProcessesBounds.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathToLargeProcessesFolderWithoutAnnotation,
-						5, 5, minAmountTasksLargeProcesses, maxAmountTasksLargeProcesses, i, i, 0, 2,
+						privateSphere, privateSphere, minAmountTasksLargeProcesses, maxAmountTasksLargeProcesses, i, i, 0, 2,
 						amountProcessesToCreatePerDecision, firstElementAfterStartIsTask,
 						timeOutForProcessGeneratorInMin, percentageOfXorsAsSeq);
 			}
 
-			// xl processes
-			int maxAmountDataObjectsExtraLargeProcesses = dataObjectBoundsLargeProcesses.get(1);
+			// extra-large processes: 6 participants, 11-12 xors, 0-2 parallels
+			int maxAmountDataObjectsExtraLargeProcesses = dataObjectBoundsExtraLargeProcesses.get(1);
 			int minAmountTasksExtraLargeProcesses = getMinAmountTasksForMaxAmountDataObjects(percentageOfReadersClasses,
 					percentageOfWritersClasses, maxAmountDataObjectsExtraLargeProcesses);
 			int maxAmountTasksExtraLargeProcesses = minAmountTasksExtraLargeProcesses + tasksToAddToMinAmount;
@@ -347,7 +348,7 @@ public class BatchFileGenerator {
 			for (int i = amountXorsExtraLargeProcessesBounds.get(0); i <= amountXorsExtraLargeProcessesBounds
 					.get(1); i++) {
 				BatchFileGenerator.generateRandomProcessesWithinGivenRanges(
-						pathToExtraLargeProcessesFolderWithoutAnnotation, 5, 5, minAmountTasksExtraLargeProcesses,
+						pathToExtraLargeProcessesFolderWithoutAnnotation, privateSphere, privateSphere, minAmountTasksExtraLargeProcesses,
 						maxAmountTasksExtraLargeProcesses, i, i, 0, 2, amountProcessesToCreatePerDecision,
 						firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin, percentageOfXorsAsSeq);
 			}
@@ -962,10 +963,10 @@ public class BatchFileGenerator {
 
 			int processId = 0;
 			try {
-				boolean allowNestedXors = false;
+				boolean allowNestedXors = true;
 				
 				if(amountProcessesWithSeqXors>0) {
-					allowNestedXors = true;
+					allowNestedXors = false;
 					amountProcessesWithSeqXors--;
 				}			
 			
@@ -2034,8 +2035,8 @@ public class BatchFileGenerator {
 					for (String pathToFile : pathForFiles) {
 						API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
 						HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
-								.runAlgsAndWriteResults(api, 100, runExhaustive, runAdvancedNaive, runNaive,
-										runIncrementalNaive, boundForAlgorithms, timeOutMap, writer, executor);
+								.runAlgsAndWriteResults(api, 100, runExhaustive, runNaive, runIncrementalNaive,
+										runAdvancedNaive, boundForAlgorithms, timeOutMap, writer, executor);
 
 						if (returnMap.get(true) != null) {
 							// algorithms have led to heap space exception
