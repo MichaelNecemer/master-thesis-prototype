@@ -204,9 +204,9 @@ public class BatchFileGenerator {
 					.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1").getAbsolutePath();
 
 			LinkedList<String> sphere = new LinkedList<String>();
-			sphere.add("Static");
+			sphere.add("Strong-Dynamic");
 
-			int stopAfterDecisions = 50;
+			int stopAfterDecisions = 4;
 
 			// the amount of possible combinations of additional actors for the process will
 			// be increased by
@@ -1980,10 +1980,11 @@ public class BatchFileGenerator {
 					finishTest = true;
 				}
 
-				i++;
+				
 				if (i == stopAfterDecisions) {
 					finishTest = true;
 				}
+				i++;
 
 			} while ((!finishTest));
 

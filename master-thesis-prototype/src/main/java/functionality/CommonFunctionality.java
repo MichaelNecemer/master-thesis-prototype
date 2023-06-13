@@ -1181,7 +1181,7 @@ public class CommonFunctionality {
 			modelWithLanes = false;
 		}
 
-		int maxParticipants = CommonFunctionality.getPrivateSphere(modelInstance, modelWithLanes);
+		int maxParticipants = CommonFunctionality.getPrivateSphere(modelInstance, modelWithLanes) - 1;
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getIncoming().size() == 1 && gtw.getOutgoing().size() >= 2) {
@@ -1193,11 +1193,16 @@ public class CommonFunctionality {
 								String subString = tx.getTextContent().substring(tx.getTextContent().indexOf('{') + 1,
 										tx.getTextContent().indexOf('}'));
 								String[] values = subString.split(",");
+								StringBuilder sb = new StringBuilder();
 
 								int currAmountAddActors = Integer.parseInt(values[0]);
 								if (currAmountAddActors <= maxParticipants && currValue <= maxParticipants) {
 									int amountAfterIncreasing = currValue;
 
+									if(values.length==1) {
+										sb.append("[AdditionalActors]{"+amountAfterIncreasing+"}");
+									}
+									else if(values.length==3) {
 									int lowerBound = (int) Math.ceil((double) amountAfterIncreasing / 2) + 1;
 									int randomCountAddActorssSameDecision = 0;
 									if (lowerBound < currValue) {
@@ -1206,16 +1211,13 @@ public class CommonFunctionality {
 									} else {
 										randomCountAddActorssSameDecision = currValue;
 									}
-									StringBuilder sb = new StringBuilder();
 									sb.append("[AdditionalActors]{" + amountAfterIncreasing + ","
 											+ randomCountAddActorssSameDecision + "," + values[2] + "}");
-
+									} 
 									Text text = modelInstance.newInstance(Text.class);
 									text.setTextContent(sb.toString());
 									tx.setText(text);
-
 								}
-
 							}
 						}
 
