@@ -86,8 +86,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 	private HashMap<FlowNode, LinkedList<LabelForAnnotater>> labelForNode;
 	private boolean testIfModelValid;
 
-	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix, boolean testIfModelValid)
-			throws Exception {
+	public ProcessModelAnnotater(String pathToFile, String pathWhereToCreateAnnotatedFile, String fileNameSuffix,
+			boolean testIfModelValid) throws Exception {
 		this.process = new File(pathToFile);
 		this.modelInstance = Bpmn.readModelFromFile(process);
 		this.pathWhereToCreateAnnotatedFile = pathWhereToCreateAnnotatedFile;
@@ -168,11 +168,16 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	public File checkCorrectnessAndWriteChangesToFile(boolean checkIfModelValid) throws Exception {
 		File newFile = null;
-		CommonFunctionality.isCorrectModel(this.modelInstance, checkIfModelValid);
-		newFile = this.writeChangesToFile();
-		if (newFile == null) {
-			throw new Exception("Model not valid - try another readers/writers assertion!");
+		try {
+			CommonFunctionality.isCorrectModel(this.modelInstance, checkIfModelValid);
+			newFile = this.writeChangesToFile();
+			if (newFile == null) {
+				throw new Exception("Model not valid - try another readers/writers assertion!");
+			}
+		} catch (Exception ex) {
+			throw ex;
 		}
+
 		return newFile;
 	}
 

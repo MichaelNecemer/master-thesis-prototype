@@ -1094,7 +1094,7 @@ public class CommonFunctionality {
 			modelWithLanes = false;
 		}
 
-		int maxParticipants = CommonFunctionality.getPrivateSphere(modelInstance, modelWithLanes);
+		int maxParticipants = CommonFunctionality.getPrivateSphere(modelInstance, modelWithLanes)-1;
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getIncoming().size() == 1 && gtw.getOutgoing().size() >= 2) {
@@ -1196,7 +1196,7 @@ public class CommonFunctionality {
 								StringBuilder sb = new StringBuilder();
 
 								int currAmountAddActors = Integer.parseInt(values[0]);
-								if (currAmountAddActors <= maxParticipants && currValue <= maxParticipants) {
+								if (currAmountAddActors < maxParticipants && currValue < maxParticipants) {
 									int amountAfterIncreasing = currValue;
 
 									if(values.length==1) {
@@ -1241,7 +1241,7 @@ public class CommonFunctionality {
 			modelWithLanes = false;
 		}
 
-		int maxParticipants = CommonFunctionality.getPrivateSphere(modelInstance, modelWithLanes);
+		int maxParticipants = CommonFunctionality.getPrivateSphere(modelInstance, modelWithLanes)-1;
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getIncoming().size() == 1 && gtw.getOutgoing().size() >= 2) {

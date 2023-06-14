@@ -15,15 +15,15 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel1_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel6_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorCnew.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
-		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test_clustering.bpmn";
-		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel10_annotated1_annotated15lWmR_Strong-Dynamic_addActors3_mand_constrained.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel24_annotated27asRamW_substituteIter1.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel24_annotated27asRamW.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\brtsIn2branches1.bpmn";
 		
 		LinkedList<Double> costForUpgradingSpheres = new LinkedList<>(Arrays.asList(1.0, 1.0, 1.0));
 
 		try {
-			API api2 = new API(pathToFile, costForUpgradingSpheres, false, true);			
+			API api2 = new API(pathToFile, costForUpgradingSpheres, true, true);			
 		
 			
 			//LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(1);
