@@ -144,7 +144,8 @@ public class ProcessModelAnnotater implements Callable<File> {
 			LinkedList<Integer> subAmountDataObjectsToConnectToBrts = CommonFunctionality
 					.repartition(maxAmountReadersThroughDataObjectConnection, brts.size(), minDataObjectsPerDecision);
 
-			int index = 0;
+			int index = 0;	
+			
 			for (Task task : brts) {
 				int amountDataObjectsToConnect = subAmountDataObjectsToConnectToBrts.get(index);
 				index++;
@@ -152,8 +153,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 				if (allDataObjectsUniquePerGtw) {
 					dataObjectsToChoseFrom = this.addRandomUniqueDataObjectsForBrt(task, dataObjectsToChoseFrom,
 							amountDataObjectsToConnect);
-				} else {
-					this.addRandomDataObjectsForBrt(task, amountDataObjectsToConnect);
+				} else {										
+					LinkedList<DataObjectReference> added = this.addRandomDataObjectsForBrt(task, amountDataObjectsToConnect, dataObjectsToChoseFrom);
+					dataObjectsToChoseFrom.removeAll(added);					
 				}
 				this.addTuplesForXorSplits(task, probPublicDecision, amountParticipantsPerDecisionLowerBound,
 						amountParticipantsPerDecisionUpperBound, tupleOnlyOneElement);
@@ -796,32 +798,38 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 	}
 
-	private void addRandomDataObjectsForBrt(Task brtTask, int dataObjectsPerDecision) {
+	private LinkedList<DataObjectReference> addRandomDataObjectsForBrt(Task brtTask, int dataObjectsPerDecision, LinkedList<DataObjectReference>toConnect) {
 
+		LinkedList<DataObjectReference> added = new LinkedList<DataObjectReference>();
+		
 		if (taskIsBrtFollowedByXorSplit(brtTask)) {
 			BusinessRuleTask brt = (BusinessRuleTask) brtTask;
 
 			if (brt.getDataInputAssociations().isEmpty()) {
 				// randomly connect dataObjects till dataObjectsPerDecision is reached
 				int i = 0;
-				LinkedList<DataObjectReference> doRefs = new LinkedList<DataObjectReference>();
-				doRefs.addAll(dataObjects);
-				while (i < dataObjectsPerDecision && !doRefs.isEmpty()) {
-					int randomCount = ThreadLocalRandom.current().nextInt(0, doRefs.size());
+				while (i < dataObjectsPerDecision) {
+					if(toConnect.isEmpty()) {
+						toConnect.addAll(this.dataObjects);
+					}					
+					int randomCount = ThreadLocalRandom.current().nextInt(0, toConnect.size());
+					DataObjectReference randomRef = toConnect.get(randomCount);
 					DataInputAssociation dia = modelInstance.newInstance(DataInputAssociation.class);
 					Property p1 = modelInstance.newInstance(Property.class);
 					p1.setName("__targetRef_placeholder");
 					brt.addChildElement(p1);
 					dia.setTarget(p1);
 					brt.getDataInputAssociations().add(dia);
-					dia.getSources().add(doRefs.get(randomCount));
-					generateDIElementForReader(dia, getShape(doRefs.get(randomCount).getId()), getShape(brt.getId()));
-					doRefs.remove(doRefs.get(randomCount));
+					dia.getSources().add(randomRef);
+					generateDIElementForReader(dia, getShape(randomRef.getId()), getShape(brt.getId()));
+					toConnect.remove(randomRef);
 					i++;
+					added.add(randomRef);
 				}
 			}
 		}
 
+		return added;
 	}
 
 	private void addTuplesForXorSplits(Task brtTask, int probPublicDecision,

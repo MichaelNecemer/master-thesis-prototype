@@ -212,23 +212,19 @@ public class ResultsToCSVWriter {
 			double readers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
 					.getReadersForDataObjects(api.getModelInstance()).entrySet()) {
-				for (FlowNode f : entr.getValue()) {
-					readers++;
-				}
+				readers+=entr.getValue().size();
 			}
 
 			amountReaders = readers + "";
-			readersPerDataObject = (readers / sumDataObjects) + "";
+			readersPerDataObject = (readers / Double.parseDouble(amountDataObjects)) + "";
 
 			double writers = 0;
 			for (Entry<DataObjectReference, LinkedList<FlowNode>> entr : CommonFunctionality
 					.getWritersForDataObjects(api.getModelInstance()).entrySet()) {
-				for (FlowNode f : entr.getValue()) {
-					writers++;
-				}
+					writers+=entr.getValue().size();				
 			}
 			amountWriters = writers + "";
-			writersPerDataObject = (writers / sumDataObjects) + "";
+			writersPerDataObject = (writers / Double.parseDouble(amountDataObjects)) + "";
 
 		}
 

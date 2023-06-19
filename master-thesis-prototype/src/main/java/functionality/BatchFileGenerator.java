@@ -123,7 +123,7 @@ public class BatchFileGenerator {
 		String test6ToRun = "Test6ToRun";
 
 		// methodsToRun.add(test1_1ToRun);
-		// methodsToRun.add(test1_2ToRun);
+		methodsToRun.add(test1_2ToRun);
 		methodsToRun.add(createRandomProcesses);
 		methodsToRun.add(test2ToRun);
 		methodsToRun.add(test3ToRun);
@@ -1123,7 +1123,7 @@ public class BatchFileGenerator {
 
 		try {
 			if (runExhaustiveSearch) {
-				int randomInt = ThreadLocalRandom.current().nextInt(0, 101);
+				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 				if (randomInt <= percentageOfProcessesToRunExhaustiveOn) {
 					boolean heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.EXHAUSTIVE, 0,
 							exceptionPerAlgorithm, cheapestSolutionsMap, totalAmountSolutionsMap,
@@ -1584,7 +1584,6 @@ public class BatchFileGenerator {
 
 						for (int readerClass = 0; readerClass < percentageOfReadersClasses.size(); readerClass++) {
 							// for each model -> annotate it with small, medium, large amount of readers
-							Exception ex = null;
 
 							int amountReaderTasksToBeInsertedForPercentage = CommonFunctionality
 									.getAmountFromPercentage(amountTasks, percentageOfReadersClasses.get(readerClass));
@@ -1663,23 +1662,19 @@ public class BatchFileGenerator {
 										// TODO Auto-generated catch block
 										future.cancel(true);
 										e.printStackTrace();
-										ex = e;
 									} catch (ExecutionException e) {
 										// TODO Auto-generated catch block
 										System.err.println(e.getMessage());
 										future.cancel(true);
-										ex = e;
 									} catch (TimeoutException e) {
 										// TODO Auto-generated catch block
 										future.cancel(true);
 										e.printStackTrace();
-										ex = e;
 									}
 
 								} catch (Exception e) {
 									// TODO Auto-generated catch block
 									e.printStackTrace();
-									ex = e;
 								}
 
 							} else {
