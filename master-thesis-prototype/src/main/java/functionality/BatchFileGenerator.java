@@ -1277,25 +1277,7 @@ public class BatchFileGenerator {
 
 	}
 
-	public static void runAlgorithmsAndWriteResultsToCSV(LinkedList<File> files,
-			int percentageOfExtraLargeProcessesToRunExhaustiveOn, boolean runExhaustiveSearch,
-			boolean runIncrementalNaiveSearch, boolean runNaiveSearch, boolean runAdvancedNaiveSearch,
-			int boundForSearchWithBound, ResultsToCSVWriter writer, ExecutorService service, boolean testIfModelValid,
-			boolean calculateAmountOfPaths) {
-
-		if (!files.isEmpty()) {
-			for (File file : files) {
-				String pathToFile = file.getAbsolutePath();
-				API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
-				BatchFileGenerator.runAlgsAndWriteResults(api, percentageOfExtraLargeProcessesToRunExhaustiveOn,
-						runExhaustiveSearch, runNaiveSearch, runIncrementalNaiveSearch, runAdvancedNaiveSearch,
-						boundForSearchWithBound, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, service);
-			}
-		} else {
-			System.out.println("No Algorithms have been run successfully on annotated models");
-		}
-
-	}
+	
 
 	public static void performDataObjectTest(LinkedList<File> processes, LinkedList<Integer> fixedAmountReaders,
 			LinkedList<Integer> fixedAmountWriters, String pathToDestinationFolderForStoringModels,
@@ -1407,10 +1389,19 @@ public class BatchFileGenerator {
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator
-				.getAllModelsFromFolder(pathToDestinationFolderForStoringModels);
+				.getAllModelsFromFolder(pathToDestinationFolderForStoringModels);		
+
 		executor = Executors.newFixedThreadPool(amountThreads);
-		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, 100, true, true, true, true,
-				boundForGeneratingSolutions, writer, executor, true, true);
+	
+		for (File file : modelsToEvaluate) {
+			String pathToFile = file.getAbsolutePath();
+			API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
+			BatchFileGenerator
+					.runAlgsAndWriteResults(api, 100, true, true, true,
+							true, boundForGeneratingSolutions, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, executor);
+					
+		}	
+					
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 	}
@@ -1775,9 +1766,16 @@ public class BatchFileGenerator {
 				"test2_processType" + processType + "_results");
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(file);
-		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, percentageOfProcessesToRunExhaustiveOn,
-				true, true, true, true, upperBoundSolutionsForLocalMinWithBound, writer, service, testIfModelValid,
-				calculateAmountOfPaths);
+		
+		for (File modelToEvaluate : modelsToEvaluate) {
+			String pathToFile = modelToEvaluate.getAbsolutePath();
+			API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
+			BatchFileGenerator
+					.runAlgsAndWriteResults(api, percentageOfProcessesToRunExhaustiveOn, true, true, true,
+							true, upperBoundSolutionsForLocalMinWithBound, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, service);
+					
+		}	
+		
 		service.shutdownNow();
 		writer.writeRowsToCSVAndcloseWriter();
 
@@ -2202,8 +2200,17 @@ public class BatchFileGenerator {
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
-		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, 100, true, true, true, true,
-				boundSolutions, writer, executor, testIfModelValid, calculateAmountOfPaths);
+		
+		
+		for (File modelToEvaluate : modelsToEvaluate) {
+			String pathToFile = modelToEvaluate.getAbsolutePath();
+			API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
+			BatchFileGenerator
+					.runAlgsAndWriteResults(api, 100, true, true, true,
+							true, boundSolutions, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, executor);
+					
+		}	
+		
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 
@@ -2236,8 +2243,14 @@ public class BatchFileGenerator {
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
-		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, 100, true, true, true, true,
-				upperBoundSearchWithBound, writer, executor, testIfModelValid, calculateAmountOfPaths);
+		for (File modelToEvaluate : modelsToEvaluate) {
+			String pathToFile = modelToEvaluate.getAbsolutePath();
+			API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
+			BatchFileGenerator
+					.runAlgsAndWriteResults(api, 100, true, true, true,
+							true, upperBoundSearchWithBound, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, executor);					
+		}	
+		
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 
@@ -2270,8 +2283,15 @@ public class BatchFileGenerator {
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
-		BatchFileGenerator.runAlgorithmsAndWriteResultsToCSV(modelsToEvaluate, 100, true, true, true, true,
-				upperBoundSearchWithBound, writer, executor, testIfModelValid, calculateAmountOfPaths);
+		for (File modelToEvaluate : modelsToEvaluate) {
+			String pathToFile = modelToEvaluate.getAbsolutePath();
+			API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
+			BatchFileGenerator
+					.runAlgsAndWriteResults(api, 100, true, true, true,
+							true, upperBoundSearchWithBound, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, executor);
+					
+		}	
+		
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 
