@@ -366,7 +366,8 @@ public class BatchFileGenerator {
 			// Test 2 - Measure impact of additional actors on privity
 			// take x random models from small, medium and large processes
 			// add dataObjects with private sphere and 1 additional actor per decision
-			// add readers/writers combinations - generate new models (9 new models for each)
+			// add readers/writers combinations - generate new models (9 new models for
+			// each)
 			// increase the amount of additional actors needed for decisions till the
 			// private sphere-1 (because the actor of the brt itself is excluded)
 			// of that process is reached on all xors
@@ -446,14 +447,14 @@ public class BatchFileGenerator {
 						.fileWithDirectoryAssurance(pathToRootFolder, "Test3-ImpactOfDataObjects_SD").getAbsolutePath();
 
 				int modelsToTakePerDecision = 10;
-				
+
 				// In this case test the models with a fixed amount of readers/writers instead
 				// of percentage based on total tasks
 				// will be added on top of the readers/writers needed for unique data objects
 				LinkedList<Integer> amountReaders = new LinkedList<Integer>(Arrays.asList(5, 8, 10));
 				LinkedList<Integer> amountWriters = new LinkedList<Integer>(Arrays.asList(5, 8, 10));
 
-				boolean enoughModelsFoundOnEachIter = true;				
+				boolean enoughModelsFoundOnEachIter = true;
 				LinkedList<Integer> allDecisions = new LinkedList<Integer>();
 				// annotate models with max amount of unique dataObjects
 				int amountUniqueDataObjectsPerDecision = 3;
@@ -1277,8 +1278,6 @@ public class BatchFileGenerator {
 
 	}
 
-	
-
 	public static void performDataObjectTest(LinkedList<File> processes, LinkedList<Integer> fixedAmountReaders,
 			LinkedList<Integer> fixedAmountWriters, String pathToDestinationFolderForStoringModels,
 			int sumAmountUniqueDataObjects, int boundForGeneratingSolutions, int amountThreadPools,
@@ -1389,19 +1388,18 @@ public class BatchFileGenerator {
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator
-				.getAllModelsFromFolder(pathToDestinationFolderForStoringModels);		
+				.getAllModelsFromFolder(pathToDestinationFolderForStoringModels);
 
 		executor = Executors.newFixedThreadPool(amountThreads);
-	
+
 		for (File file : modelsToEvaluate) {
 			String pathToFile = file.getAbsolutePath();
 			API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
-			BatchFileGenerator
-					.runAlgsAndWriteResults(api, 100, true, true, true,
-							true, boundForGeneratingSolutions, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, executor);
-					
-		}	
-					
+			BatchFileGenerator.runAlgsAndWriteResults(api, 100, true, true, true, true, boundForGeneratingSolutions,
+					new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, executor);
+
+		}
+
 		writer.writeRowsToCSVAndcloseWriter();
 		executor.shutdownNow();
 	}
@@ -1766,19 +1764,21 @@ public class BatchFileGenerator {
 				"test2_processType" + processType + "_results");
 
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(file);
-		
-		for (File modelToEvaluate : modelsToEvaluate) {
-			String pathToFile = modelToEvaluate.getAbsolutePath();
-			API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
-			BatchFileGenerator
-					.runAlgsAndWriteResults(api, percentageOfProcessesToRunExhaustiveOn, true, true, true,
-							true, upperBoundSolutionsForLocalMinWithBound, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, service);
-					
-		}	
-		
-		service.shutdownNow();
-		writer.writeRowsToCSVAndcloseWriter();
+		try {
+			for (File modelToEvaluate : modelsToEvaluate) {
+				String pathToFile = modelToEvaluate.getAbsolutePath();
+				API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
+				BatchFileGenerator.runAlgsAndWriteResults(api, percentageOfProcessesToRunExhaustiveOn, true, true, true,
+						true, upperBoundSolutionsForLocalMinWithBound, new HashMap<Enums.AlgorithmToPerform, Integer>(),
+						writer, service);
 
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			service.shutdownNow();
+			writer.writeRowsToCSVAndcloseWriter();
+		}
 	}
 
 	public static void performBoundaryTest1_1(int amountProcessesPerIteration, int amountDecisionsToStart,
@@ -2200,20 +2200,22 @@ public class BatchFileGenerator {
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
-		
-		
-		for (File modelToEvaluate : modelsToEvaluate) {
-			String pathToFile = modelToEvaluate.getAbsolutePath();
-			API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
-			BatchFileGenerator
-					.runAlgsAndWriteResults(api, 100, true, true, true,
-							true, boundSolutions, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, executor);
-					
-		}	
-		
-		writer.writeRowsToCSVAndcloseWriter();
-		executor.shutdownNow();
 
+		try {
+
+			for (File modelToEvaluate : modelsToEvaluate) {
+				String pathToFile = modelToEvaluate.getAbsolutePath();
+				API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
+				BatchFileGenerator.runAlgsAndWriteResults(api, 100, true, true, true, true, boundSolutions,
+						new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, executor);
+
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			writer.writeRowsToCSVAndcloseWriter();
+			executor.shutdownNow();
+		}
 	}
 
 	public static void performTestWithMaxPossibleExcludeConstraints(LinkedList<File> models, boolean modelWithLanes,
@@ -2243,17 +2245,19 @@ public class BatchFileGenerator {
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
-		for (File modelToEvaluate : modelsToEvaluate) {
-			String pathToFile = modelToEvaluate.getAbsolutePath();
-			API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
-			BatchFileGenerator
-					.runAlgsAndWriteResults(api, 100, true, true, true,
-							true, upperBoundSearchWithBound, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, executor);					
-		}	
-		
-		writer.writeRowsToCSVAndcloseWriter();
-		executor.shutdownNow();
-
+		try {
+			for (File modelToEvaluate : modelsToEvaluate) {
+				String pathToFile = modelToEvaluate.getAbsolutePath();
+				API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
+				BatchFileGenerator.runAlgsAndWriteResults(api, 100, true, true, true, true, upperBoundSearchWithBound,
+						new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, executor);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			writer.writeRowsToCSVAndcloseWriter();
+			executor.shutdownNow();
+		}
 	}
 
 	public static void performTestWithExcludeConstraintsProbability(LinkedList<File> models, boolean modelWithLanes,
@@ -2283,18 +2287,20 @@ public class BatchFileGenerator {
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		LinkedList<File> modelsToEvaluate = BatchFileGenerator.getAllModelsFromFolder(directoryToStoreNewModels);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
-		for (File modelToEvaluate : modelsToEvaluate) {
-			String pathToFile = modelToEvaluate.getAbsolutePath();
-			API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
-			BatchFileGenerator
-					.runAlgsAndWriteResults(api, 100, true, true, true,
-							true, upperBoundSearchWithBound, new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, executor);
-					
-		}	
-		
-		writer.writeRowsToCSVAndcloseWriter();
-		executor.shutdownNow();
+		try {
+			for (File modelToEvaluate : modelsToEvaluate) {
+				String pathToFile = modelToEvaluate.getAbsolutePath();
+				API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
+				BatchFileGenerator.runAlgsAndWriteResults(api, 100, true, true, true, true, upperBoundSearchWithBound,
+						new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, executor);
 
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			writer.writeRowsToCSVAndcloseWriter();
+			executor.shutdownNow();
+		}
 	}
 
 	public static LinkedList<File> getFilesFromFolders(LinkedList<File> smallProcesses,
