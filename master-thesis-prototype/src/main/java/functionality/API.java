@@ -472,7 +472,7 @@ public class API {
 		int amountParticipantsToTakeFromRemaining = sumVerifiersOfGtw - mandatoryParticipants.size()
 				- participantsWithBestCost.size();
 
-		if (tieBrakerMap != null && amountParticipantsToTakeFromRemaining > 0) {
+		if (tieBrakerMap != null && !tieBrakerMap.isEmpty() && amountParticipantsToTakeFromRemaining > 0) {
 			// there are several participants remaining on a plateau (= same cost)
 			// sort the remaining participants by their cost in the tieBrakerMap
 			// if they are still on the same level - choose the participant, that has
@@ -3210,6 +3210,25 @@ public class API {
 					int addActorsToFind = amountAddActors - cheapestAddActors.size();
 
 					LinkedList<AdditionalActors> addActorsForBrt = new LinkedList<AdditionalActors>();
+					
+					
+					HashMap<BPMNParticipant, Double> toBeAssigned = new HashMap<BPMNParticipant, Double>();
+					for(BPMNBusinessRuleTask brt: this.businessRuleTasks) {
+						LinkedList<BPMNParticipant> participantsList = null;
+						
+						if(alreadyChosenAdditionalActors.get(brt)==null || alreadyChosenAdditionalActors.get(brt).isEmpty()) {
+							participantsList = this.getPotentialAddActorsListsForBrt(brt).get(0);
+						} else {
+							LinkedList<AdditionalActors> addActorsList = alreadyChosenAdditionalActors.get(brt);
+							participantsList = addActorsList.getFirst().getAdditionalActors();
+						}
+						
+						for(BPMNParticipant part: participantsList) {
+							double currAmount = toBeAssigned.getOrDefault(part,0.0);
+							double newAmount = currAmount+1;
+							toBeAssigned.put(part,newAmount);
+						}
+					}
 
 					TreeMap<Double, LinkedList<BPMNParticipant>> localBestCandidates = this
 							.getLocalCheapestPotentialAddActorsForBrt(true, currentBrt, pathsFromOriginToEndMap,
