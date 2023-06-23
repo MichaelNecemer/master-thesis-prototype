@@ -21,6 +21,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.Association;
@@ -358,9 +359,8 @@ public class API {
 			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
 			HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap = new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>();
 
-			if (!staticSpherePerDataObject.isEmpty()) {
-				// compute wd sphere for origins without additional actors
-
+			if (!staticSpherePerDataObject.isEmpty()) {				
+				
 				HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
 				HashMap<BPMNParticipant, Double> amountParticipantChosenAsAddActorsMap = new HashMap<BPMNParticipant, Double>();
 				allCheapestAddActorsLists = this.queryBrtsTopolgicalAdvancedNaiveSearch(this.startEvent, this.endEvent,
@@ -3140,7 +3140,7 @@ public class API {
 			HashMap<BPMNParticipant, Double> amountParticipantChosenAsAddActor,
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
 			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject,
-			LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists, int bound)
+			LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists,  int bound)
 			throws NullPointerException, InterruptedException, Exception {
 		// go DFS inside all branch till corresponding join is found
 		queue.add(startNode);
@@ -3213,66 +3213,23 @@ public class API {
 					int addActorsToFind = amountAddActors - cheapestAddActors.size();
 
 					LinkedList<AdditionalActors> addActorsForBrt = new LinkedList<AdditionalActors>();
-
-					HashSet<BPMNTask> clusterSet = new HashSet<BPMNTask>();
-					HashSet<BPMNTask> sharedOrigins = new HashSet<BPMNTask>();
-
-					// get the local cheapest potential add actors
-					// take into account the mandatory participants of other brts
-					TreeMap<Double, LinkedList<BPMNParticipant>> localCheapestPotentialAddActors = this
-							.getLocalCheapestPotentialAddActorsForBrt(true, currentBrt, pathsFromOriginToEndMap,
-									staticSpherePerDataObject, wdSpherePerDataObject, clusterSet, sharedOrigins,
-									potentialAddActorsLists, alreadyChosenAdditionalActors, true, false);
-
-					if (clusterSet.size() > 1) {
-						// there are other brts that share an origin with the currentBrt
-						// compute the spheres for the brts in that cluster only for the shared origins
-						TreeMap<BPMNParticipant, Double> tieBraker = new TreeMap<BPMNParticipant, Double>();
-
-						for (BPMNTask otherBrt : clusterSet) {
-
-							if (!otherBrt.equals(currentBrt)) {
-								TreeMap<Double, LinkedList<BPMNParticipant>> cheapestPotentialAddActorsForOtherBrt = this
-										.getLocalCheapestPotentialAddActorsForBrt(true, (BPMNBusinessRuleTask) otherBrt,
-												pathsFromOriginToEndMap, staticSpherePerDataObject,
-												wdSpherePerDataObject, clusterSet, sharedOrigins,
-												potentialAddActorsLists, alreadyChosenAdditionalActors, false, true);
-
-								for (Entry<Double, LinkedList<BPMNParticipant>> entry : cheapestPotentialAddActorsForOtherBrt
-										.entrySet()) {
-
-									for (BPMNParticipant participant : entry.getValue()) {
-										double currValue = tieBraker.getOrDefault(participant, 0.0);
-										double newValue = currValue + entry.getKey();
-										tieBraker.put(participant, newValue);
-									}
-								}
-							}
-
-						}
-						Map<Double, LinkedList<BPMNParticipant>> bestParticipantsMap = new TreeMap<Double, LinkedList<BPMNParticipant>>(
-								Collections.reverseOrder());
-						for (Entry<BPMNParticipant, Double> bestOptionsEntry : tieBraker.entrySet()) {
-							bestParticipantsMap.computeIfAbsent(bestOptionsEntry.getValue(),
-									k -> new LinkedList<BPMNParticipant>()).add(bestOptionsEntry.getKey());
-						}
-
-						// generate the additional actors for the current brt using the best options
-						addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
-								addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
-								currentBrt, localCheapestPotentialAddActors, bestParticipantsMap,
-								amountParticipantChosenAsAddActor, bound);
-
-					} else {
-						// generate the additional actors using the local cheapest combinations of the
-						// current brt
-						addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
-								addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
-								currentBrt, localCheapestPotentialAddActors, null, amountParticipantChosenAsAddActor,
-								bound);
-
+					
+					// generate the additional actors using the overall cheapest candidates of all brts
+					
+					HashMap<BPMNParticipant, Double> overallBestCandidates = this.generateSpheresMapForAllBrts(true,  pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject, alreadyChosenAdditionalActors);
+					// order the participants by the cheapest ones				
+					TreeMap<Double, LinkedList<BPMNParticipant>> overallBestCandidatesPerCost = new TreeMap<Double, LinkedList<BPMNParticipant>>(
+							Collections.reverseOrder());
+					for (Entry<BPMNParticipant, Double> costPerParticipant : overallBestCandidates.entrySet()) {
+						overallBestCandidatesPerCost.computeIfAbsent(costPerParticipant.getValue(), k -> new LinkedList<BPMNParticipant>())
+								.add(costPerParticipant.getKey());
 					}
-
+															
+					addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
+							addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
+							currentBrt, overallBestCandidatesPerCost, null, amountParticipantChosenAsAddActor,
+							bound);
+					
 					alreadyChosenAdditionalActors.putIfAbsent(currentBrt, addActorsForBrt);
 
 					LinkedList<LinkedList<AdditionalActors>> currLists = this.computeAllAddActorsLists(addActorsForBrt,
@@ -3496,9 +3453,7 @@ public class API {
 			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap,
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
 			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject,
-			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActorsPerBrt,
-			HashSet<BPMNTask> clusterSet, HashSet<BPMNTask> sharedOrigins, boolean addToClusterSetAndSharedOrigins,
-			boolean onlyTakeClusteredOrigins) throws Exception {
+			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActorsPerBrt) throws Exception {
 
 		HashMap<BPMNParticipant, Double> sphereSumOfParticipantForBrt = new HashMap<BPMNParticipant, Double>();
 
@@ -3506,15 +3461,6 @@ public class API {
 			BPMNDataObject dataO = originsPerBrt.getKey();
 			String requiredSphere = dataO.getDefaultSphere();
 			for (BPMNTask origin : originsPerBrt.getValue()) {
-				boolean computeSphere = true;
-				if (onlyTakeClusteredOrigins) {
-					if (sharedOrigins != null && !sharedOrigins.isEmpty()) {
-						if (!sharedOrigins.contains(origin)) {
-							computeSphere = false;
-						}
-					}
-				}
-				if (computeSphere) {
 					if (this.requiredSphereIsAtLeast(requiredSphere, this.privateSphereKey)) {
 						for (BPMNParticipant participant : this.privateSphere) {
 							this.increaseOccurenceOfParticipant(participant, sphereSumOfParticipantForBrt);
@@ -3602,18 +3548,6 @@ public class API {
 										}
 									}
 
-									if (addToClusterSetAndSharedOrigins) {
-										// add all reading brts to the cluster
-										// add the origin to the sharedOrigin
-										if (clusterSet.size() < wdBrts.size()) {
-											clusterSet.clear();
-											clusterSet.addAll(wdBrts);
-											if (sharedOrigins != null) {
-												sharedOrigins.add(origin);
-											}
-										}
-									}
-
 									for (BPMNParticipant participant : wdParticipants) {
 										this.increaseOccurenceOfParticipant(participant, sphereSumOfParticipantForBrt);
 									}
@@ -3636,7 +3570,6 @@ public class API {
 						}
 
 					}
-				}
 			}
 		}
 		// order the participant by the cheapest ones
@@ -3681,7 +3614,7 @@ public class API {
 		} else {
 			TreeMap<Double, LinkedList<BPMNParticipant>> cheapest = this.getCheapestPotentialAdditionalActorsForBrt(
 					incremental, currentBrt, pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject,
-					alreadyChosenAdditionalActorsPerBrt, null, null, false, false);
+					alreadyChosenAdditionalActorsPerBrt);
 
 			addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
 					addActorsToFind, potentialAddActors.get(1), potentialAddActors.get(0), currentBrt, cheapest, null,
@@ -3783,10 +3716,8 @@ public class API {
 			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap,
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
 			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject,
-			HashSet<BPMNTask> clusterSet, HashSet<BPMNTask> sharedOrigins,
 			LinkedList<LinkedList<BPMNParticipant>> potentialAddActorsLists,
-			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyFoundAdditionalActorsPerBrt,
-			boolean addToClusterAndSetSharedOrigins, boolean onlyTakeClusteredOrigins) throws Exception {
+			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyFoundAdditionalActorsPerBrt) throws Exception {
 
 		HashSet<BPMNParticipant> cheapestAddActors = new HashSet<BPMNParticipant>();
 		// add all mandatory participants
@@ -3797,8 +3728,7 @@ public class API {
 		// compute the local cheapest potential additional actors for the currentBrt
 		localCheapestPotentialAddActors = this.getCheapestPotentialAdditionalActorsForBrt(incremental, currentBrt,
 				pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject,
-				alreadyFoundAdditionalActorsPerBrt, clusterSet, sharedOrigins, addToClusterAndSetSharedOrigins,
-				onlyTakeClusteredOrigins);
+				alreadyFoundAdditionalActorsPerBrt);
 
 		return localCheapestPotentialAddActors;
 	}
@@ -3821,6 +3751,29 @@ public class API {
 		this.excludeParticipantConstraints = excludeParticipantConstraints;
 	}
 
+	
+	public HashMap<BPMNParticipant, Double> generateSpheresMapForAllBrts(boolean incremental,
+			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap,
+			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
+			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject,
+			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyFoundAdditionalActorsPerBrt) throws Exception {
+		
+		HashMap<BPMNParticipant, Double> overallBestCandidates = new HashMap<BPMNParticipant, Double>();
+		for(BPMNBusinessRuleTask brt: this.businessRuleTasks) {
+			LinkedList<LinkedList<BPMNParticipant>>potentialAddActorsLists = this.getPotentialAddActorsListsForBrt(brt);
+			TreeMap<Double, LinkedList<BPMNParticipant>> localCheapestCandidates = this.getLocalCheapestPotentialAddActorsForBrt(incremental, brt, pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject, potentialAddActorsLists, alreadyFoundAdditionalActorsPerBrt);
+			
+			for(Entry<Double, LinkedList<BPMNParticipant>>localCandidatesEntry: localCheapestCandidates.entrySet()) {
+				double value = localCandidatesEntry.getKey();
+				for(BPMNParticipant candidate: localCandidatesEntry.getValue()) {
+					double currentValue = overallBestCandidates.getOrDefault(candidate, 0.0);
+					double newValue = currentValue + value;
+					overallBestCandidates.put(candidate, newValue);
+				}
+			}					
+		}
+		return overallBestCandidates;
+	}
 	
 	public synchronized Future<LinkedList<PModelWithAdditionalActors>> executeCallable(ExecutorService executor, Enums.AlgorithmToPerform algToPerform, int bound) {
         Callable<LinkedList<PModelWithAdditionalActors>> callable = null;

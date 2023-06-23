@@ -16,9 +16,9 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel6_annotated1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorCnew.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
-		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel24_annotated27asRamW_substituteIter1.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel781_annotated1_lWlR_Weak-Dynamic_addActors2.bpmn";
-		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\brtsIn2branches1.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_sWsR_Static_addActors2.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel271_annotated1_sWmR_Weak-Dynamic_addActors3.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\assignment_gen.bpmn";
 		
 		LinkedList<Double> costForUpgradingSpheres = new LinkedList<>(Arrays.asList(1.0, 1.0, 1.0));
 
@@ -26,8 +26,9 @@ public class TestClass {
 			API api2 = new API(pathToFile, costForUpgradingSpheres, true, true);			
 		
 			
-			LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(1);
-		//	LinkedList<PModelWithAdditionalActors> pInstNaive = api2.incrementalNaiveSearch(1);
+			//LinkedList<PModelWithAdditionalActors> pInstNaive = api2.naiveSearch(1);
+			//LinkedList<PModelWithAdditionalActors> pInstNaive = api2.incrementalNaiveSearch(1);
+			LinkedList<PModelWithAdditionalActors> pInstNaive = api2.advancedNaive(1);
 			
 			for(PModelWithAdditionalActors pModel: pInstNaive) {
 				pModel.printMeasure();
@@ -43,14 +44,7 @@ public class TestClass {
 			pModel.printMeasure();
 			}
 			
-						
-			/*int bound = 1;
-			LinkedList<PModelWithAdditionalActors>pInstHeuristic = api2.advancedNaive(bound);
-			for(PModelWithAdditionalActors pModel: pInstHeuristic) {
-				pModel.printMeasure();
-			}
 			
-	*/
 			
 			// garbage collector will remove
 			//pInst = null;
@@ -58,10 +52,9 @@ public class TestClass {
 			//System.out.println("Cheapest heuristic: "+pInstHeuristic.size());
 			//System.out.println("Result: "+result);		
 			System.out.println("__________________");
-			//String naiveIsCheapest = CommonFunctionality.compareResultsOfAlgorithmsForDifferentAPIs(pInstNaive, pInstExhaustive, bound);
 			//System.out.println("naiveIsCheapest: "+naiveIsCheapest);
 			//System.out.println(pInstNaive.get(0).getSumMeasure());
-		//	System.out.println("costOfCheapestSolutionIsSame: "+CommonFunctionality.compareCostOfCheapestSolutionsOfAlgorithms(pInstNaive, pInstExhaustive));
+			System.out.println("costOfCheapestSolutionIsSame: "+CommonFunctionality.compareCostOfCheapestSolutionsOfAlgorithms(pInstNaive, pInstExhaustive));
 
 			
 		} catch (Exception e) {
