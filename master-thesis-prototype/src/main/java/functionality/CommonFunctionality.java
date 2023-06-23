@@ -1688,7 +1688,7 @@ public class CommonFunctionality {
 		for (int bound = 0; bound < upperBoundNewModels; bound++) {
 			PModelWithAdditionalActors pInst = pInstances.get(bound);
 			// make a deep copy of the modelInstance to prevent changing the model itself
-			BpmnModelInstance modelInstance = (BpmnModelInstance) CommonFunctionality.deepCopy(api.getModelInstance());
+			BpmnModelInstance modelInstance = (BpmnModelInstance) CommonFunctionality.deepCopy(api.getModelInstanceWithParallels());
 
 			for (AdditionalActors addActors : pInst.getAdditionalActorsList()) {
 				BPMNBusinessRuleTask bpmnBrt = addActors.getCurrBrt();
@@ -1874,8 +1874,7 @@ public class CommonFunctionality {
 			for (int bound = 0; bound < upperBoundNewModels; bound++) {
 				// make a deep copy of the modelInstance to prevent changing the model itself
 				BpmnModelInstance modelInstance = (BpmnModelInstance) CommonFunctionality
-						.deepCopy(api.getModelInstance());
-				Bpmn.validateModel(modelInstance);
+						.deepCopy(api.getModelInstanceWithParallels());
 
 				PModelWithAdditionalActors pInstance = pInstances.get(bound);
 				Iterator<AdditionalActors> addActorsIter = pInstance.getAdditionalActorsList().iterator();
