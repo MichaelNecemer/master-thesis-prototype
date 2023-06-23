@@ -17,8 +17,8 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorCnew.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel262_annotated1_sWsR_Static_addActors2.bpmn";
-		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel271_annotated1_sWmR_Weak-Dynamic_addActors3.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\assignment_gen.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel14_annotated1_sWmR_Static_addActors1.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\assignment_gen.bpmn";
 		
 		LinkedList<Double> costForUpgradingSpheres = new LinkedList<>(Arrays.asList(1.0, 1.0, 1.0));
 

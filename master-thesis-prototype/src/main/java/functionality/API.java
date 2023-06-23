@@ -3211,10 +3211,17 @@ public class API {
 
 					LinkedList<AdditionalActors> addActorsForBrt = new LinkedList<AdditionalActors>();
 
-					// generate the additional actors using the overall cheapest candidates of all
-					// brts
+					TreeMap<Double, LinkedList<BPMNParticipant>> localBestCandidates = this
+							.getLocalCheapestPotentialAddActorsForBrt(true, currentBrt, pathsFromOriginToEndMap,
+									staticSpherePerDataObject, wdSpherePerDataObject, potentialAddActorsLists,
+									alreadyChosenAdditionalActors);
 
-					HashMap<BPMNParticipant, Double> overallBestCandidates = this.generateSpheresMapForAllBrts(true,
+					// generate the additional actors using the overall cheapest candidates of all other
+					// brts
+					LinkedList<BPMNBusinessRuleTask>brtsToExclude = new LinkedList<BPMNBusinessRuleTask>();
+					brtsToExclude.add(currentBrt);
+
+					HashMap<BPMNParticipant, Double> overallBestCandidates = this.generateSpheresMapForAllBrts(brtsToExclude, true,
 							pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject,
 							alreadyChosenAdditionalActors);
 					// order the participants by the cheapest ones
@@ -3228,7 +3235,8 @@ public class API {
 
 					addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
 							addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0), currentBrt,
-							overallBestCandidatesPerCost, null, amountParticipantChosenAsAddActor, bound);
+							localBestCandidates, overallBestCandidatesPerCost, amountParticipantChosenAsAddActor,
+							bound);
 
 					alreadyChosenAdditionalActors.putIfAbsent(currentBrt, addActorsForBrt);
 
@@ -3753,8 +3761,8 @@ public class API {
 		this.excludeParticipantConstraints = excludeParticipantConstraints;
 	}
 
-	public HashMap<BPMNParticipant, Double> generateSpheresMapForAllBrts(boolean incremental,
-			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap,
+	public HashMap<BPMNParticipant, Double> generateSpheresMapForAllBrts(LinkedList<BPMNBusinessRuleTask> brtsToExclude,
+			boolean incremental, HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap,
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
 			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject,
 			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyFoundAdditionalActorsPerBrt)
@@ -3762,19 +3770,22 @@ public class API {
 
 		HashMap<BPMNParticipant, Double> overallBestCandidates = new HashMap<BPMNParticipant, Double>();
 		for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
-			LinkedList<LinkedList<BPMNParticipant>> potentialAddActorsLists = this
-					.getPotentialAddActorsListsForBrt(brt);
-			TreeMap<Double, LinkedList<BPMNParticipant>> localCheapestCandidates = this
-					.getLocalCheapestPotentialAddActorsForBrt(incremental, brt, pathsFromOriginToEndMap,
-							staticSpherePerDataObject, wdSpherePerDataObject, potentialAddActorsLists,
-							alreadyFoundAdditionalActorsPerBrt);
+			if (!brtsToExclude.contains(brt)) {
+				LinkedList<LinkedList<BPMNParticipant>> potentialAddActorsLists = this
+						.getPotentialAddActorsListsForBrt(brt);
+				TreeMap<Double, LinkedList<BPMNParticipant>> localCheapestCandidates = this
+						.getLocalCheapestPotentialAddActorsForBrt(incremental, brt, pathsFromOriginToEndMap,
+								staticSpherePerDataObject, wdSpherePerDataObject, potentialAddActorsLists,
+								alreadyFoundAdditionalActorsPerBrt);
 
-			for (Entry<Double, LinkedList<BPMNParticipant>> localCandidatesEntry : localCheapestCandidates.entrySet()) {
-				double value = localCandidatesEntry.getKey();
-				for (BPMNParticipant candidate : localCandidatesEntry.getValue()) {
-					double currentValue = overallBestCandidates.getOrDefault(candidate, 0.0);
-					double newValue = currentValue + value;
-					overallBestCandidates.put(candidate, newValue);
+				for (Entry<Double, LinkedList<BPMNParticipant>> localCandidatesEntry : localCheapestCandidates
+						.entrySet()) {
+					double value = localCandidatesEntry.getKey();
+					for (BPMNParticipant candidate : localCandidatesEntry.getValue()) {
+						double currentValue = overallBestCandidates.getOrDefault(candidate, 0.0);
+						double newValue = currentValue + value;
+						overallBestCandidates.put(candidate, newValue);
+					}
 				}
 			}
 		}
