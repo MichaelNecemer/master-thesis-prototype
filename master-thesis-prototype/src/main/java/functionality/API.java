@@ -3072,7 +3072,7 @@ public class API {
 
 					addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
 							addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0), currentBrt,
-							overallBestCandidatesPerCost, toBeAssignedPerCost, amountParticipantChosenAsAddActor,
+							toBeAssignedPerCost, overallBestCandidatesPerCost, amountParticipantChosenAsAddActor,
 							bound);
 
 					alreadyChosenAdditionalActors.putIfAbsent(currentBrt, addActorsForBrt);
@@ -3572,6 +3572,8 @@ public class API {
 
 		TreeMap<Double, LinkedList<BPMNParticipant>> localCheapestPotentialAddActors = new TreeMap<Double, LinkedList<BPMNParticipant>>();
 
+		// in contrast to other naive algorithms do not only compute local cheapest for connected data objects
+				
 		// compute the local cheapest potential additional actors for the currentBrt
 		localCheapestPotentialAddActors = this.getCheapestPotentialAdditionalActorsForBrt(incremental, currentBrt,
 				pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject,
