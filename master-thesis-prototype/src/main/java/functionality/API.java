@@ -3017,33 +3017,6 @@ public class API {
 
 					LinkedList<AdditionalActors> addActorsForBrt = new LinkedList<AdditionalActors>();
 
-					HashMap<BPMNParticipant, Double> toBeAssigned = new HashMap<BPMNParticipant, Double>();
-					for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
-						LinkedList<BPMNParticipant> participantsList = null;
-
-						if (alreadyChosenAdditionalActors.get(brt) == null
-								|| alreadyChosenAdditionalActors.get(brt).isEmpty()) {
-							participantsList = this.getPotentialAddActorsListsForBrt(brt).get(0);
-						} else {
-							LinkedList<AdditionalActors> addActorsList = alreadyChosenAdditionalActors.get(brt);
-							participantsList = addActorsList.getFirst().getAdditionalActors();
-						}
-
-						for (BPMNParticipant part : participantsList) {
-							double currAmount = toBeAssigned.getOrDefault(part, 0.0);
-							double newAmount = currAmount + 1;
-							toBeAssigned.put(part, newAmount);
-						}
-					}
-
-					TreeMap<Double, LinkedList<BPMNParticipant>> toBeAssignedPerCost = new TreeMap<Double, LinkedList<BPMNParticipant>>(
-							Collections.reverseOrder());
-					for (Entry<BPMNParticipant, Double> costPerParticipant : toBeAssigned.entrySet()) {
-						toBeAssignedPerCost
-								.computeIfAbsent(costPerParticipant.getValue(), k -> new LinkedList<BPMNParticipant>())
-								.add(costPerParticipant.getKey());
-					}
-
 					TreeMap<Double, LinkedList<BPMNParticipant>> localBestCandidates = this
 							.getLocalCheapestPotentialAddActorsForBrt(true, currentBrt, pathsFromOriginToEndMap,
 									staticSpherePerDataObject, wdSpherePerDataObject, potentialAddActorsLists,
@@ -3069,7 +3042,7 @@ public class API {
 
 					addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
 							addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0), currentBrt,
-							toBeAssignedPerCost, overallBestCandidatesPerCost, amountParticipantChosenAsAddActor,
+							localBestCandidates, overallBestCandidatesPerCost, amountParticipantChosenAsAddActor,
 							bound);
 
 					alreadyChosenAdditionalActors.putIfAbsent(currentBrt, addActorsForBrt);
