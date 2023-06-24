@@ -1480,7 +1480,6 @@ public class API {
 
 	}
 
-	
 	public boolean isParticipantInSDForOriginWithExcludedTasks(BPMNParticipant participant, BPMNDataObject dataO,
 			BPMNTask origin, BPMNBusinessRuleTask currPositionBrt, LinkedList<AdditionalActors> addActors,
 			LinkedList<BPMNBusinessRuleTask> brtsToExcludeAddActors,
@@ -1565,7 +1564,6 @@ public class API {
 
 		return participantIsSd;
 	}
-
 
 	public HashSet<BPMNParticipant> getSdActors(BPMNDataObject dataO, BPMNTask origin,
 			BPMNBusinessRuleTask currPositionBrt,
@@ -3018,26 +3016,26 @@ public class API {
 					int addActorsToFind = amountAddActors - cheapestAddActors.size();
 
 					LinkedList<AdditionalActors> addActorsForBrt = new LinkedList<AdditionalActors>();
-					
-					
+
 					HashMap<BPMNParticipant, Double> toBeAssigned = new HashMap<BPMNParticipant, Double>();
-					for(BPMNBusinessRuleTask brt: this.businessRuleTasks) {
+					for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
 						LinkedList<BPMNParticipant> participantsList = null;
-						
-						if(alreadyChosenAdditionalActors.get(brt)==null || alreadyChosenAdditionalActors.get(brt).isEmpty()) {
+
+						if (alreadyChosenAdditionalActors.get(brt) == null
+								|| alreadyChosenAdditionalActors.get(brt).isEmpty()) {
 							participantsList = this.getPotentialAddActorsListsForBrt(brt).get(0);
 						} else {
 							LinkedList<AdditionalActors> addActorsList = alreadyChosenAdditionalActors.get(brt);
 							participantsList = addActorsList.getFirst().getAdditionalActors();
 						}
-						
-						for(BPMNParticipant part: participantsList) {
-							double currAmount = toBeAssigned.getOrDefault(part,0.0);
-							double newAmount = currAmount+1;
-							toBeAssigned.put(part,newAmount);
+
+						for (BPMNParticipant part : participantsList) {
+							double currAmount = toBeAssigned.getOrDefault(part, 0.0);
+							double newAmount = currAmount + 1;
+							toBeAssigned.put(part, newAmount);
 						}
 					}
-					
+
 					TreeMap<Double, LinkedList<BPMNParticipant>> toBeAssignedPerCost = new TreeMap<Double, LinkedList<BPMNParticipant>>(
 							Collections.reverseOrder());
 					for (Entry<BPMNParticipant, Double> costPerParticipant : toBeAssigned.entrySet()) {
@@ -3046,21 +3044,20 @@ public class API {
 								.add(costPerParticipant.getKey());
 					}
 
-					/*
 					TreeMap<Double, LinkedList<BPMNParticipant>> localBestCandidates = this
 							.getLocalCheapestPotentialAddActorsForBrt(true, currentBrt, pathsFromOriginToEndMap,
 									staticSpherePerDataObject, wdSpherePerDataObject, potentialAddActorsLists,
 									alreadyChosenAdditionalActors);
-					*/
 
-					// generate the additional actors using the overall cheapest candidates of all other
+					// generate the additional actors using the overall cheapest candidates of all
+					// other
 					// brts
-					LinkedList<BPMNBusinessRuleTask>brtsToExclude = new LinkedList<BPMNBusinessRuleTask>();
-					//brtsToExclude.add(currentBrt);
+					LinkedList<BPMNBusinessRuleTask> brtsToExclude = new LinkedList<BPMNBusinessRuleTask>();
+					// brtsToExclude.add(currentBrt);
 
-					HashMap<BPMNParticipant, Double> overallBestCandidates = this.generateSpheresMapForAllBrts(brtsToExclude, true,
-							pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject,
-							alreadyChosenAdditionalActors);
+					HashMap<BPMNParticipant, Double> overallBestCandidates = this.generateSpheresMapForAllBrts(
+							brtsToExclude, true, pathsFromOriginToEndMap, staticSpherePerDataObject,
+							wdSpherePerDataObject, alreadyChosenAdditionalActors);
 					// order the participants by the cheapest ones
 					TreeMap<Double, LinkedList<BPMNParticipant>> overallBestCandidatesPerCost = new TreeMap<Double, LinkedList<BPMNParticipant>>(
 							Collections.reverseOrder());
@@ -3304,9 +3301,8 @@ public class API {
 		HashMap<BPMNParticipant, Double> sphereSumOfParticipantForBrt = new HashMap<BPMNParticipant, Double>();
 
 		for (Entry<BPMNDataObject, ArrayList<BPMNTask>> originsPerBrt : currentBrt.getLastWriterList().entrySet()) {
-			BPMNDataObject dataO = originsPerBrt.getKey();
-			String requiredSphere = dataO.getDefaultSphere();
-			for (BPMNTask origin : originsPerBrt.getValue()) {
+			for (BPMNDataObject dataO : currentBrt.getDataObjects()) {
+				String requiredSphere = dataO.getDefaultSphere();
 				if (this.requiredSphereIsAtLeast(requiredSphere, this.privateSphereKey)) {
 					for (BPMNParticipant participant : this.privateSphere) {
 						this.increaseOccurenceOfParticipant(participant, sphereSumOfParticipantForBrt);
@@ -3349,8 +3345,12 @@ public class API {
 					for (BPMNParticipant participant : staticSphereForDataObject) {
 						this.increaseOccurenceOfParticipant(participant, sphereSumOfParticipantForBrt);
 					}
+				}
 
-					if (this.requiredSphereIsAtLeast(requiredSphere, this.weakDynamicSphereKey)) {
+				if (this.requiredSphereIsAtLeast(requiredSphere, this.weakDynamicSphereKey)) {
+
+					for (BPMNElement writer : dataO.getWriters()) {
+						BPMNTask origin = (BPMNTask) writer;
 						LinkedList<LinkedList<HashSet<?>>> wdSphere = wdSpherePerDataObject.get(dataO);
 						for (LinkedList<HashSet<?>> wdEntry : wdSphere) {
 							if (Thread.currentThread().isInterrupted()) {
@@ -3414,9 +3414,9 @@ public class API {
 						}
 
 					}
-
 				}
 			}
+
 		}
 		// order the participant by the cheapest ones
 		TreeMap<Double, LinkedList<BPMNParticipant>> cheapest = new TreeMap<Double, LinkedList<BPMNParticipant>>(
@@ -3430,6 +3430,7 @@ public class API {
 
 	}
 
+	
 	public LinkedList<AdditionalActors> getCheapestAdditionalActorsForBrtNaive(boolean incremental,
 			BPMNBusinessRuleTask currentBrt,
 			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap,
@@ -3572,8 +3573,9 @@ public class API {
 
 		TreeMap<Double, LinkedList<BPMNParticipant>> localCheapestPotentialAddActors = new TreeMap<Double, LinkedList<BPMNParticipant>>();
 
-		// in contrast to other naive algorithms do not only compute local cheapest for connected data objects
-				
+		// in contrast to other naive algorithms do not only compute local cheapest for
+		// connected data objects
+
 		// compute the local cheapest potential additional actors for the currentBrt
 		localCheapestPotentialAddActors = this.getCheapestPotentialAdditionalActorsForBrt(incremental, currentBrt,
 				pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject,
