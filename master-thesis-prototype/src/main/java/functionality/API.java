@@ -3027,27 +3027,8 @@ public class API {
 
 					LinkedList<AdditionalActors> addActorsForBrt = new LinkedList<AdditionalActors>();
 
-					HashMap<BPMNParticipant, Double> toBeAssigned = new HashMap<BPMNParticipant, Double>();
-					for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
-						LinkedList<BPMNParticipant> participantsList = null;
-
-						if (alreadyChosenAdditionalActors.get(brt) == null
-								|| alreadyChosenAdditionalActors.get(brt).isEmpty()) {
-							participantsList = this.getPotentialAddActorsListsForBrt(brt).get(0);
-						} else {
-							LinkedList<AdditionalActors> addActorsList = alreadyChosenAdditionalActors.get(brt);
-							participantsList = addActorsList.getFirst().getAdditionalActors();
-						}
-
-						for (BPMNParticipant part : participantsList) {
-							double currAmount = toBeAssigned.getOrDefault(part, 0.0);
-							double newAmount = currAmount + 1;
-							toBeAssigned.put(part, newAmount);
-						}
-					}
 					
 					// generate participants that are in most static spheres 
-					TreeMap<Double, LinkedList<BPMNParticipant>> sortFillUp = new TreeMap<Double, LinkedList<BPMNParticipant>>();
 					HashMap<BPMNParticipant, Double> amountPartInStatic = new HashMap<BPMNParticipant,Double>();
 					for(BPMNDataObject dataO: this.dataObjects) {
 						HashSet<BPMNParticipant> staticSet = this.getParticipantsInStaticSphere(true, dataO, staticSpherePerDataObject, alreadyChosenAdditionalActors);
@@ -3058,14 +3039,8 @@ public class API {
 						}
 					}
 					
-
-					TreeMap<Double, LinkedList<BPMNParticipant>> toBeAssignedPerCost = new TreeMap<Double, LinkedList<BPMNParticipant>>(
-							Collections.reverseOrder());
-					for (Entry<BPMNParticipant, Double> costPerParticipant : toBeAssigned.entrySet()) {
-						toBeAssignedPerCost
-								.computeIfAbsent(costPerParticipant.getValue(), k -> new LinkedList<BPMNParticipant>())
-								.add(costPerParticipant.getKey());
-					}
+					TreeMap<Double, LinkedList<BPMNParticipant>> sortFillUp = this.computeMapReverseOrder(amountPartInStatic);
+					
 
 					HashMap<BPMNParticipant, Double> sphereSumOfParticipantForBrt = null;
 					boolean reqStrongDynamic = false;
@@ -3081,14 +3056,8 @@ public class API {
 					}
 
 					// order the participant by the cheapest ones
-					TreeMap<Double, LinkedList<BPMNParticipant>> localBestCandidates = new TreeMap<Double, LinkedList<BPMNParticipant>>(
-							Collections.reverseOrder());
-					for (Entry<BPMNParticipant, Double> costPerParticipant : sphereSumOfParticipantForBrt.entrySet()) {
-						localBestCandidates
-								.computeIfAbsent(costPerParticipant.getValue(), k -> new LinkedList<BPMNParticipant>())
-								.add(costPerParticipant.getKey());
-					}
-
+					TreeMap<Double, LinkedList<BPMNParticipant>> localBestCandidates = this.computeMapReverseOrder(sphereSumOfParticipantForBrt);
+				
 					// generate the additional actors using the overall cheapest candidates of all
 					// other brts
 					LinkedList<BPMNBusinessRuleTask> brtsToExclude = new LinkedList<BPMNBusinessRuleTask>();
@@ -3098,25 +3067,42 @@ public class API {
 							brtsToExclude, true, pathsFromOriginToEndMap, staticSpherePerDataObject,
 							wdSpherePerDataObject, alreadyChosenAdditionalActors);
 					// order the participants by the cheapest ones
-					TreeMap<Double, LinkedList<BPMNParticipant>> overallBestCandidatesPerCost = new TreeMap<Double, LinkedList<BPMNParticipant>>(
-							Collections.reverseOrder());
-					for (Entry<BPMNParticipant, Double> costPerParticipant : overallBestCandidates.entrySet()) {
-						overallBestCandidatesPerCost
-								.computeIfAbsent(costPerParticipant.getValue(), k -> new LinkedList<BPMNParticipant>())
-								.add(costPerParticipant.getKey());
-					}
+					TreeMap<Double, LinkedList<BPMNParticipant>> overallBestCandidatesPerCost = this.computeMapReverseOrder(overallBestCandidates);
+					
 
 					if (!reqStrongDynamic) {
 						// use the local best candidates
 						addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
 								addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
-								currentBrt, localBestCandidates, overallBestCandidatesPerCost, sortFillUp,
+								currentBrt, localBestCandidates, localBestCandidates, localBestCandidates,
 								amountParticipantChosenAsAddActor, bound);
 
 					} else {
+						
+						HashMap<BPMNParticipant, Double> toBeAssigned = new HashMap<BPMNParticipant, Double>();
+						for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
+							LinkedList<BPMNParticipant> participantsList = null;
+
+							if (alreadyChosenAdditionalActors.get(brt) == null
+									|| alreadyChosenAdditionalActors.get(brt).isEmpty()) {
+								participantsList = this.getPotentialAddActorsListsForBrt(brt).get(0);
+							} else {
+								LinkedList<AdditionalActors> addActorsList = alreadyChosenAdditionalActors.get(brt);
+								participantsList = addActorsList.getFirst().getAdditionalActors();
+							}
+
+							for (BPMNParticipant part : participantsList) {
+								double currAmount = toBeAssigned.getOrDefault(part, 0.0);
+								double newAmount = currAmount + 1;
+								toBeAssigned.put(part, newAmount);
+							}
+						}						
+						
+						TreeMap<Double, LinkedList<BPMNParticipant>> toBeAssignedPerCost = this.computeMapReverseOrder(toBeAssigned);
+											
 						addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
 								addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
-								currentBrt, toBeAssignedPerCost, overallBestCandidatesPerCost, sortFillUp,
+								currentBrt, localBestCandidates, localBestCandidates, localBestCandidates,
 								amountParticipantChosenAsAddActor, bound);
 					}
 
@@ -3831,4 +3817,20 @@ public class API {
 		this.modelInstanceWithParallels = modelInstanceWithParallels;
 	}
 
+	public <K,V> TreeMap<V,LinkedList<K>> computeMapReverseOrder(Map<K,V> inputMap){
+		  TreeMap<V, LinkedList<K>> reversedMap = new TreeMap<>(Collections.reverseOrder());
+	        
+	        for (Entry<K, V> entry : inputMap.entrySet()) {
+	            K key = entry.getKey();
+	            V value  = entry.getValue();
+	            LinkedList<K> keys = reversedMap.getOrDefault(value, new LinkedList<>());
+	             keys.add(key);
+	                reversedMap.put(value, keys);
+	            
+	        }
+	        
+	        return reversedMap;
+		
+	}
+	
 }

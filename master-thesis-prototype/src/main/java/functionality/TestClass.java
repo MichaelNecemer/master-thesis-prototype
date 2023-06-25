@@ -8,7 +8,6 @@ public class TestClass {
 	
 	public static void main(String[]args) {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2.bpmn";
-		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorB.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorC.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_1_without_annotation.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel13_annotated1_annotated22lWlR_Weak-Dynamic_verifiers2.bpmn";
@@ -17,6 +16,8 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel173_annotated1_sWlR_Strong-Dynamic_addActors2.bpmn";
 		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel82_annotated1_mWsR_Strong-Dynamic_addActors1.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\assignment_gen.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel164_annotated1_mWlR_Weak-Dynamic_addActors2.bpmn";
+
 		
 		LinkedList<Double> costForUpgradingSpheres = new LinkedList<>(Arrays.asList(1.0, 1.0, 1.0));
 
