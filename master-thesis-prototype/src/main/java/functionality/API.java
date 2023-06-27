@@ -500,7 +500,7 @@ public class API {
 				this.computeSDEntries(pModelWithAllAssignedAddActors, pathsFromOriginToEndMap,
 						pathFromOriginOverCurrBrtToEndMap, dependentMap);
 
-				//
+				
 				TreeMap<Double, LinkedList<BPMNParticipant>> dependentPerAmount = this
 						.computeMapDescendingOrder(dependentMap);
 
@@ -609,7 +609,14 @@ public class API {
 					if (addActorsToFind == 0) {
 						// all participants are mandatory
 						// remove the other participants connected to the brt in the pModel
-
+						for (AdditionalActors addAct : pModelWithAllAssignedAddActors.getAdditionalActorsList()) {
+							if (addAct.getCurrBrt().equals(currentBrt)) {
+								LinkedList<BPMNParticipant> currentAddActors = addAct.getAdditionalActors();
+								LinkedList<BPMNParticipant> mandatory = this
+										.getPotentialAddActorsListsForBrt(currentBrt).get(1);
+								currentAddActors.removeIf(k -> !mandatory.contains(k));
+							}
+						}
 					} else {
 						// selection process over participants that need to be applied when
 						// strong-dynamic data objects exist
@@ -632,20 +639,27 @@ public class API {
 										for (BPMNParticipant part : bestPerCostEntry.getValue()) {
 											double currentPartCost = bestPerCostEntry.getKey();
 											double currentPartDependent = dependentMap.getOrDefault(part, 0.0);
-											double sum = currentPartCost + currentPartDependent;
 											if (currentPartDependent == 0) {
 												currentPartDependent = 1;
 											}
-											double partition = currentPartCost / currentPartDependent;
-											int threshold = 0;
+											double costPartition = currentPartCost / currentPartDependent;
+											int threshold = 1;
 											double currentDepPartValue = depPartEntry.getKey();
 											double depPartCost = deltaCostPerParticipant.getOrDefault(depPart, 0.0);
 											if (depPartCost == 0) {
 												depPartCost = 1;
 											}
-											double partition2 = depPartCost / currentDepPartValue;
+											double depPartition = depPartCost / currentDepPartValue;
 
-											if (partition2 - threshold <= partition) {
+											if (depPartition - threshold <= costPartition) {
+												if (!addActorsToKeep.contains(depPart)&&!currentBrt.getParticipant().equals(depPart)) {
+													addActorsToKeep.add(depPart);
+													addActorsToFind--;
+													if (addActorsToFind == 0) {
+														break outerloop;
+													}
+												}
+											} else if(costPartition < depPartition) {
 												if (!addActorsToKeep.contains(part)&&!currentBrt.getParticipant().equals(part)) {
 													addActorsToKeep.add(part);
 													addActorsToFind--;
@@ -685,6 +699,8 @@ public class API {
 										.getPotentialAddActorsListsForBrt(currentBrt).get(1);
 
 								currentAddActors.removeIf(k -> !mandatory.contains(k) && !addActorsToKeep.contains(k));
+								
+														
 							}
 						}
 
@@ -2503,7 +2519,7 @@ public class API {
 					LinkedList<AdditionalActors> addActorsList = pModel.getAdditionalActorsList();
 					for (int addActorsIndex = 0; addActorsIndex < addActorsList.size(); addActorsIndex++) {
 						AdditionalActors addActors = addActorsList.get(addActorsIndex);
-						if (addActors.getCurrBrt().equals(currBrt)) {
+						if (addActors.getCurrBrt().equals(currBrt) && addActors.getCurrBrt().getDataObjects().contains(dataO)) {
 							// check if the participant is an additional actor
 							if (addActors.getAdditionalActors().contains(participant)) {
 								dependentBrts.add(currBrt);
