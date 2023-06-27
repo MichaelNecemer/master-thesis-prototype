@@ -126,16 +126,18 @@ public class BatchFileGenerator {
 		String test6ToRun = "Test6ToRun";
 
 		// methodsToRun.add(test1_1ToRun);
-		methodsToRun.add(test1_2ToRun);
-		methodsToRun.add(createRandomProcesses);
-		methodsToRun.add(test2ToRun);
-		methodsToRun.add(test3ToRun);
-		methodsToRun.add(test4_1ToRun);
-		methodsToRun.add(test4_2ToRun);
-		methodsToRun.add(test5ToRun);
+		/*
+		 * methodsToRun.add(test1_2ToRun); methodsToRun.add(createRandomProcesses);
+		 * methodsToRun.add(test2ToRun); methodsToRun.add(test3ToRun);
+		 * methodsToRun.add(test4_1ToRun); methodsToRun.add(test4_2ToRun);
+		 * methodsToRun.add(test5ToRun);
+		 */
 		methodsToRun.add(test6ToRun);
 
-		String pathToFolderForModelsForTest1_1 = "";
+		String pathToFolderForModelsForTest1_1_Static = "";
+		String pathToFolderForModelsForTest1_1_WD = "";
+		String pathToFolderForModelsForTest1_1_SD = "";
+
 		String pathToSmallProcessesFolderWithoutAnnotation = "";
 		String pathToMediumProcessesFolderWithoutAnnotation = "";
 		String pathToLargeProcessesFolderWithoutAnnotation = "";
@@ -149,8 +151,12 @@ public class BatchFileGenerator {
 		File rootFolderDirectory = new File(pathToRootFolder);
 		for (File subFile : rootFolderDirectory.listFiles(File::isDirectory)) {
 			String subFileName = subFile.getName();
-			if (subFileName.contentEquals("Test1_1-BoundaryTest1")) {
-				pathToFolderForModelsForTest1_1 = subFile.getAbsolutePath();
+			if (subFileName.contentEquals("Test1_1-BoundaryTest1_Static")) {
+				pathToFolderForModelsForTest1_1_Static = subFile.getAbsolutePath();
+			} else if (subFileName.contentEquals("Test1_1-BoundaryTest1_Weak-Dynamic")) {
+				pathToFolderForModelsForTest1_1_WD = subFile.getAbsolutePath();
+			} else if (subFileName.contentEquals("Test1_1-BoundaryTest1_Strong-Dynamic")) {
+				pathToFolderForModelsForTest1_1_SD = subFile.getAbsolutePath();
 			} else if (subFileName.contentEquals("ProcessesWithoutAnnotation")) {
 				for (File processesWithoutAnnotation : subFile.listFiles(File::isDirectory)) {
 					String processesWithoutAnnotationFolderName = processesWithoutAnnotation.getName();
@@ -207,23 +213,7 @@ public class BatchFileGenerator {
 			// set the percentage of processes that will have the xors always in sequence
 			int percentageProcessesWithXorsAlwaysInSeq = 100;
 
-			pathToFolderForModelsForTest1_1 = CommonFunctionality
-					.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1").getAbsolutePath();
-
-			LinkedList<String> sphere = new LinkedList<String>();
-			sphere.add("Strong-Dynamic");
-
-			int stopAfterDecisions = 4;
-
-			// the amount of possible combinations of additional actors for the process will
-			// be increased by
-			// binom(5,3) -> 10 additional combs per decision
-			// the actor of the brt itself can not be an additional actor to the brt and is
-			// therefore excluded
-			// e.g. with 0 decisions = 0, 1 decision = 10, 2 decisions = 100, ...
-			// since the cost of the models will have to be calculated for all the possible
-			// combinations
-			// this can be used to estimate the feasibility for the following experiments
+			int stopAfterDecisions = 50;
 
 			// tasksFactor is the number of additional tasks to be inserted per decision
 			int tasksFactor = 4;
@@ -233,14 +223,50 @@ public class BatchFileGenerator {
 			double percentageOfWriters = percentageOfWritersClasses.get(2);
 			double percentageOfReaders = percentageOfReadersClasses.get(2);
 
-			BatchFileGenerator.performBoundaryTest1_1(amountProcessesPerIteration, 1,
-					boundaryTest1_1_addActorsPerDecision, boundaryTest1_1_privateSphere, amountSolutionsToBeGenerated,
-					tasksToStartWith, tasksFactor, 0, 0, percentageOfWriters, percentageOfReaders,
-					minDataObjectsPerDecision, maxDataObjectsPerDecision, sphere, amountThreads, stopAfterDecisions,
-					pathToFolderForModelsForTest1_1, firstElementAfterStartIsTask, timeOutForProcessGeneratorInMin,
-					testIfModelValid, calculateAmountOfPaths, percentageProcessesWithXorsAlwaysInSeq);
+			for (String sphere : defaultSpheres) {
+				if (!sphere.contentEquals("Private")) {
 
+					String pathToFolderForModels = "";
+					if (sphere.contentEquals("Static")) {
+						pathToFolderForModelsForTest1_1_Static = CommonFunctionality
+								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1_" + sphere)
+								.getAbsolutePath();
+						pathToFolderForModels = pathToFolderForModelsForTest1_1_Static;
+					} else if (sphere.contentEquals("Weak-Dynamic")) {
+						pathToFolderForModelsForTest1_1_WD = CommonFunctionality
+								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1_" + sphere)
+								.getAbsolutePath();
+						pathToFolderForModels = pathToFolderForModelsForTest1_1_WD;
+					} else if (sphere.contentEquals("Strong-Dynamic")) {
+						pathToFolderForModelsForTest1_1_SD = CommonFunctionality
+								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1_" + sphere)
+								.getAbsolutePath();
+						pathToFolderForModels = pathToFolderForModelsForTest1_1_SD;
+					}
+
+					LinkedList<String> sphereList = new LinkedList<String>();
+					sphereList.add(sphere);
+
+					// the amount of possible combinations of additional actors for the process will
+					// be increased by
+					// binom(5,3) -> 10 additional combs per decision
+					// the actor of the brt itself can not be an additional actor to the brt and is
+					// therefore excluded
+					// e.g. with 0 decisions = 0, 1 decision = 10, 2 decisions = 100, ...
+					// since the cost of the models will have to be calculated for all the possible
+					// combinations
+					// this can be used to estimate the feasibility for the following experiments
+					BatchFileGenerator.performBoundaryTest1_1(amountProcessesPerIteration, 1,
+							boundaryTest1_1_addActorsPerDecision, boundaryTest1_1_privateSphere,
+							amountSolutionsToBeGenerated, tasksToStartWith, tasksFactor, 0, 0, percentageOfWriters,
+							percentageOfReaders, minDataObjectsPerDecision, maxDataObjectsPerDecision, sphereList,
+							amountThreads, stopAfterDecisions, pathToFolderForModels, firstElementAfterStartIsTask,
+							timeOutForProcessGeneratorInMin, testIfModelValid, calculateAmountOfPaths,
+							percentageProcessesWithXorsAlwaysInSeq);
+				}
+			}
 			System.out.println("BoundartyTest1_1 finished!");
+
 		}
 
 		if (methodsToRun.contains(test1_2ToRun)) {
@@ -251,36 +277,60 @@ public class BatchFileGenerator {
 			// start with the SphereLowerBound e.g. 3 -> x models where each task has
 			// one of the 3 participants connected
 			// end point -> x models where each task has a different participant connected
+			boolean testIfModelValid = false;
+			boolean calculateAmountPaths = false;
 
-			if (!pathToFolderForModelsForTest1_1.isEmpty()) {
+			int modelWithAmountDecisions = 12;
+			int newModelsPerIteration = 10;
 
-				String pathToFolderForModelsForTest1_2 = CommonFunctionality
-						.fileWithDirectoryAssurance(pathToRootFolder, "Test1_2-BoundaryTest2").getAbsolutePath();
+			// the private sphere lower bound for this test is influenced by the boundary
+			// test 1_1
+			// i.e. the numbers of additional actors we are looking for in 1_1
+			// it must be at least 1 bigger than the amount of additional actors
+			// else the models are not valid
+			int privateSphereLowerBound = boundaryTest1_1_addActorsPerDecision + 1;
 
-				boolean testIfModelValid = false;
-				boolean calculateAmountPaths = false;
+			for (String sphere : defaultSpheres) {
+				File directoryOfFiles = null;
+				String pathToFolderForModelsForTest1_2 = "";
 
-				// choose a model
-				File directoryOfFiles = new File(pathToFolderForModelsForTest1_1 + File.separatorChar
-						+ "BoundaryTest_decision-12" + File.separatorChar + "annotated");
+				if (!sphere.contentEquals("Private")) {
+
+					if (sphere.contentEquals("Static")) {
+						directoryOfFiles = new File(
+								pathToFolderForModelsForTest1_1_Static + File.separatorChar + "BoundaryTest_decision-"
+										+ modelWithAmountDecisions + File.separatorChar + "annotated");
+						pathToFolderForModelsForTest1_2 = CommonFunctionality
+								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_2-BoundaryTest2_" + sphere)
+								.getAbsolutePath();
+					} else if (sphere.contentEquals("Weak-Dynamic")) {
+						directoryOfFiles = new File(
+								pathToFolderForModelsForTest1_1_WD + File.separatorChar + "BoundaryTest_decision-"
+										+ modelWithAmountDecisions + File.separatorChar + "annotated");
+						pathToFolderForModelsForTest1_2 = CommonFunctionality
+								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_2-BoundaryTest2_" + sphere)
+								.getAbsolutePath();
+					} else if (sphere.contentEquals("Strong-Dynamic")) {
+						directoryOfFiles = new File(
+								pathToFolderForModelsForTest1_1_SD + File.separatorChar + "BoundaryTest_decision-"
+										+ modelWithAmountDecisions + File.separatorChar + "annotated");
+						pathToFolderForModelsForTest1_2 = CommonFunctionality
+								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_2-BoundaryTest2_" + sphere)
+								.getAbsolutePath();
+					}
+
+				}
+
 				List<File> listOfFiles = Arrays.asList(directoryOfFiles.listFiles());
 				File model = CommonFunctionality.getRandomItem(listOfFiles);
-				int newModelsPerIteration = 10;
-
-				// the private sphere lower bound for this test is influenced by the boundary
-				// test 1_1
-				// i.e. the numbers of additional actors we are looking for in 1_1
-				// it must be at least 1 bigger than the amount of additional actors
-				// else the models are not valid
-				int privateSphereLowerBound = boundaryTest1_1_addActorsPerDecision + 1;
 
 				BatchFileGenerator.performBoundaryTest1_2(model, privateSphereLowerBound, newModelsPerIteration,
 						amountSolutionsToBeGenerated, amountThreads, pathToFolderForModelsForTest1_2, testIfModelValid,
 						calculateAmountPaths);
-				System.out.println("BoundartyTest1_2 finished!");
-			} else {
-				System.out.println(test1_2ToRun + " not performed! Run Test1_1 first!");
+
 			}
+			System.out.println("BoundartyTest1_2 finished!");
+
 		}
 
 		if (methodsToRun.contains(createRandomProcesses)) {
@@ -692,33 +742,20 @@ public class BatchFileGenerator {
 		if (methodsToRun.contains(test6ToRun)) {
 			// Test 6 - "real world processes"
 			// may contain exclude and mandatory participant constraint
-			// may contain dynamic writers
 			// has wider ranges for variables
 
-			List<Integer> dataObjectBoundsRealWorld = Arrays.asList(1, 4);
-			// int dynamicWriterProb = 30;
-			int upperBoundParticipants = 6;
-			int lowerBoundTasks = 8;
-			int upperBoundTasks = 40;
-			int upperBoundXorGtws = 10;
-			int upperBoundParallelGtws = 6;
-			int amountProcesses = 20;
-			int minDataObjectsPerDecisionTest6 = dataObjectBoundsRealWorld.get(0);
-			int maxDataObjectsPerDecisionTest6 = dataObjectBoundsRealWorld.get(1);
-			int probabilityForGatewayToHaveExclConstraint = 30;
-			int lowerBoundAmountParticipantsToExclude = 0;
-			// upperBoundAmountParticipantsToExclude will be set inside the method
-			// accordingly
-			int upperBoundAmountParticipantsToExclude = -1;
-			boolean alwaysMaxExclConstrained = false;
-			int probabilityForGatewayToHaveMandConstraint = 30;
-			int lowerBoundAmountParticipantsToBeMandatory = 0;
-			// upperBoundAmountParticipantsToBeMandatory will be set inside the method
-			// accordingly
-			int upperBoundAmountParticipantsToBeMandatory = -1;
-			boolean alwaysMaxMandConstrained = false;
-			List<Integer> writersOfProcessInPercent = Arrays.asList(10, 20, 30);
-			List<Integer> readersOfProcessInPercent = Arrays.asList(10, 20, 30);
+			List<Integer> dataObjectsBounds = Arrays.asList(1, 8);
+			List<Integer> taskBounds = Arrays.asList(10, 80);
+			List<Integer> participantBounds = Arrays.asList(2, 10);
+			List<Integer> xorGtwsBounds = Arrays.asList(2, 5);
+			List<Integer> parallelGtwsBounds = Arrays.asList(0, 2);
+			List<Integer> probabilityForXorToHaveExclBounds = Arrays.asList(0, 99);
+			List<Integer> probabilityForXorToHaveMandBounds = Arrays.asList(0, 99);
+
+			int amountProcesses = 5;
+
+			List<Integer> writersOfProcessInPercent = Arrays.asList(10, 30, 60);
+			List<Integer> readersOfProcessInPercent = Arrays.asList(10, 30, 60);
 			int amountSolutionsToBeGenerated = 1;
 
 			String pathToRealWorldProcesses = CommonFunctionality
@@ -727,15 +764,11 @@ public class BatchFileGenerator {
 					.fileWithDirectoryAssurance(pathToRealWorldProcesses, "AnnotatedModels").getAbsolutePath();
 
 			BatchFileGenerator.performTestWithRealWorldProcesses(pathToRealWorldProcesses,
-					pathToAnnotatedProcessesFolder, dynamicWriterProb, upperBoundParticipants, lowerBoundTasks,
-					upperBoundTasks, upperBoundXorGtws, upperBoundParallelGtws, amountProcesses,
-					minDataObjectsPerDecisionTest6, maxDataObjectsPerDecisionTest6, dataObjectBoundsRealWorld,
-					writersOfProcessInPercent, readersOfProcessInPercent, probabilityForGatewayToHaveExclConstraint,
-					lowerBoundAmountParticipantsToExclude, upperBoundAmountParticipantsToExclude,
-					alwaysMaxExclConstrained, probabilityForGatewayToHaveMandConstraint,
-					lowerBoundAmountParticipantsToBeMandatory, upperBoundAmountParticipantsToBeMandatory,
-					alwaysMaxMandConstrained, amountSolutionsToBeGenerated, amountThreads,
-					timeOutForProcessGeneratorInMin);
+					pathToAnnotatedProcessesFolder, amountProcesses, 0, participantBounds, taskBounds, xorGtwsBounds,
+					parallelGtwsBounds, dataObjectsBounds, writersOfProcessInPercent, readersOfProcessInPercent,
+					probabilityForXorToHaveExclBounds, probabilityForXorToHaveMandBounds, 0,
+					amountSolutionsToBeGenerated);
+
 			System.out.println("Test 6 finished!");
 		}
 
@@ -744,33 +777,25 @@ public class BatchFileGenerator {
 	}
 
 	public static void performTestWithRealWorldProcesses(String pathWhereToCreateProcessesWithoutAnnotation,
-			String pathWhereToCreateAnnotatedProcesses, int dynamicWriterProb, int upperBoundParticipants,
-			int lowerBoundTasks, int upperBoundTasks, int upperBoundXorGtws, int upperBoundParallelGtws,
-			int amountProcesses, int minDataObjectsPerDecision, int maxDataObjectsPerDecision,
-			List<Integer> dataObjectBoundsRealWorld, List<Integer> writersOfProcessInPercent,
-			List<Integer> readersOfProcessInPercent, int probabilityForGatewayToHaveExclConstraint,
-			int lowerBoundAmountParticipantsToExclude, int upperBoundAmountParticipantsToExclude,
-			boolean alwaysMaxExclConstrained, int probabilityForGatewayToHaveMandConstraint,
-			int lowerBoundAmountParticipantsToBeMandatory, int upperBoundAmountParticipantsToBeMandatory,
-			boolean alwaysMaxMandConstrained, int boundForSolutionsToBeGenerated, int amountThreads,
-			int timeoutProcessGen) {
+			String pathWhereToCreateAnnotatedProcesses, int amountProcesses, int dynamicWriterProb,
+			List<Integer> participantBounds, List<Integer> taskBounds, List<Integer> xorGtwsBounds,
+			List<Integer> parallelGtwsBounds, List<Integer> dataObjectsBounds, List<Integer> writersOfProcessInPercent,
+			List<Integer> readersOfProcessInPercent, List<Integer> probabilityForGatewayToHaveExclConstraintBounds,
+			List<Integer> probabilityForGatewayToHaveMandConstraintBounds, int percentageOfXorsAsSeq,
+			int boundForSolutionsToBeGenerated) {
 
-		ExecutorService randomProcessGeneratorService = Executors.newFixedThreadPool(amountThreads);
-		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathWhereToCreateProcessesWithoutAnnotation, 2,
-				upperBoundParticipants, lowerBoundTasks, upperBoundTasks, 1, upperBoundXorGtws, 0,
-				upperBoundParallelGtws, amountProcesses, false, timeOutForProcessGeneratorInMin, percentageOfXorsAsSeq);
-		randomProcessGeneratorService.shutdownNow();
+		BatchFileGenerator.generateRandomProcessesWithinGivenRanges(pathWhereToCreateProcessesWithoutAnnotation,
+				participantBounds.get(0), participantBounds.get(1), taskBounds.get(0), taskBounds.get(1),
+				xorGtwsBounds.get(0), xorGtwsBounds.get(1), parallelGtwsBounds.get(0), parallelGtwsBounds.get(1),
+				amountProcesses, true, timeOutForProcessGeneratorInMin, percentageOfXorsAsSeq);
 
 		int publicDecisionProb = 0;
 
 		BatchFileGenerator.annotateModels(pathWhereToCreateProcessesWithoutAnnotation,
-				pathWhereToCreateAnnotatedProcesses, dataObjectBoundsRealWorld, defaultSpheres, dynamicWriterProb,
-				writersOfProcessInPercent, readersOfProcessInPercent, 2, upperBoundParticipants,
-				minDataObjectsPerDecision, maxDataObjectsPerDecision, publicDecisionProb,
-				probabilityForGatewayToHaveExclConstraint, lowerBoundAmountParticipantsToExclude,
-				lowerBoundAmountParticipantsToExclude, alwaysMaxExclConstrained,
-				probabilityForGatewayToHaveMandConstraint, lowerBoundAmountParticipantsToBeMandatory,
-				upperBoundAmountParticipantsToBeMandatory, alwaysMaxMandConstrained, testIfModelValid);
+				pathWhereToCreateAnnotatedProcesses, dataObjectsBounds, defaultSpheres, dynamicWriterProb,
+				writersOfProcessInPercent, readersOfProcessInPercent, dataObjectsBounds, publicDecisionProb,
+				probabilityForGatewayToHaveExclConstraintBounds, false, probabilityForGatewayToHaveMandConstraintBounds,
+				false, testIfModelValid);
 
 		ExecutorService service = Executors.newFixedThreadPool(amountThreads);
 		File csv = BatchFileGenerator.createNewCSVFile(pathWhereToCreateAnnotatedProcesses, "test6_results");
@@ -784,15 +809,12 @@ public class BatchFileGenerator {
 	}
 
 	public static void annotateModels(String pathToFolderWithFilesWithoutAnnotation,
-			String pathToFolderForStoringAnnotatedModelsFolder, List<Integer> dataObjectBoundsMixed,
+			String pathToFolderForStoringAnnotatedModelsFolder, List<Integer> dataObjectsBounds,
 			LinkedList<String> defaultSpheres, int dynamicWriterProb, List<Integer> writersOfProcessInPercent,
-			List<Integer> readersOfProcessInPercent, int amountParticipantsPerDecisionLowerBound,
-			int amountParticipantsPerDecisionUpperBound, int minDataObjectsPerDecision, int maxDataObjectsPerDecision,
-			int publicDecisionProb, int probabilityForGatewayToHaveExcludeConstraint,
-			int lowerBoundAmountParticipantsToExclude, int upperBoundAmountParticipantsToExclude,
-			boolean alwaysMaxExclConstrained, int probabilityForGatewayToHaveMandConstraint,
-			int lowerBoundAmountParticipantsToBeMandatory, int upperBoundAmountParticipantsToBeMandatory,
-			boolean alwaysMaxMandConstrained, boolean testIfModelValid) {
+			List<Integer> readersOfProcessInPercent, List<Integer> dataObjectsPerDecisionBounds, int publicDecisionProb,
+			List<Integer> probabilityForGatewayToHaveExcludeConstraintBounds, boolean alwaysMaxExclConstrained,
+			List<Integer> probabilityForGatewayToHaveMandConstraintBounds, boolean alwaysMaxMandConstrained,
+			boolean testIfModelValid) {
 		// iterate through all files in the directory and annotate them
 
 		File dir = new File(pathToFolderWithFilesWithoutAnnotation);
@@ -824,140 +846,156 @@ public class BatchFileGenerator {
 			System.out.println("No process models found in " + dir.getAbsolutePath());
 
 		}
-		int coreCount = Runtime.getRuntime().availableProcessors();
-		ExecutorService executor = Executors.newFixedThreadPool(coreCount);
-
-		LinkedList<Future<File>> futures = new LinkedList<Future<File>>();
+		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 
 		for (int i = 0; i < paths.size(); i++) {
 			String pathToFile = paths.get(i);
 			File currFile = new File(pathToFile);
-			BpmnModelInstance modelInstanceNotToChange = Bpmn.readModelFromFile(currFile);
 			BpmnModelInstance modelInstance = (BpmnModelInstance) CommonFunctionality
-					.deepCopy(modelInstanceNotToChange);
+					.deepCopy(Bpmn.readModelFromFile(currFile));
+
+			File f = null;
+			while (f == null) {
+
+				int amountDataObjects = ThreadLocalRandom.current().nextInt(dataObjectsBounds.get(0),
+						dataObjectsBounds.get(1) + 1);
 
 			int amountTasks = modelInstance.getModelElementsByType(Task.class).size();
 			int writersPercentage = CommonFunctionality.getRandomItem(writersOfProcessInPercent);
-			int readersPercentage = CommonFunctionality.getRandomItem(writersOfProcessInPercent);
-			int amountWritersOfProcess = CommonFunctionality.getAmountFromPercentage(amountTasks, writersPercentage);
-			int amountReadersOfProcess = CommonFunctionality.getAmountFromPercentage(amountTasks, readersPercentage);
+			int readersPercentage = CommonFunctionality.getRandomItem(readersOfProcessInPercent);
+			int amountReadersOfProcess = CommonFunctionality.getAmountFromPercentageWithMinimum(amountTasks, readersPercentage, amountDataObjects);
+			int amountWritersOfProcess = CommonFunctionality.getAmountFromPercentageWithMinimum(amountTasks, writersPercentage, amountDataObjects);
+
 			int privateSphere = CommonFunctionality.getPrivateSphere(modelInstance, false);
-			if (amountParticipantsPerDecisionUpperBound <= 0
-					|| amountParticipantsPerDecisionUpperBound > privateSphere) {
-				if (amountParticipantsPerDecisionLowerBound == privateSphere) {
-					amountParticipantsPerDecisionUpperBound = privateSphere;
-				} else if (amountParticipantsPerDecisionLowerBound < privateSphere) {
-					amountParticipantsPerDecisionUpperBound = ThreadLocalRandom.current()
-							.nextInt(amountParticipantsPerDecisionLowerBound, privateSphere + 1);
 
-				}
+			int amountParticipantsPerDecisionUpperBound = privateSphere - 1;
+			int amountParticipantsPerDecisionLowerBound = 1;
 
-			}
+			int probabilityForGatewayToHaveExcludeConstraint = ThreadLocalRandom.current().nextInt(
+					probabilityForGatewayToHaveExcludeConstraintBounds.get(0),
+					probabilityForGatewayToHaveExcludeConstraintBounds.get(1) + 1);
 
-			int amountDataObjectsToCreate = ThreadLocalRandom.current().nextInt(dataObjectBoundsMixed.get(0),
-					dataObjectBoundsMixed.get(1) + 1);
+			int probabilityForGatewayToHaveMandConstraint = ThreadLocalRandom.current().nextInt(
+					probabilityForGatewayToHaveMandConstraintBounds.get(0),
+					probabilityForGatewayToHaveMandConstraintBounds.get(1) + 1);
+
+			int maxAmountReadersThroughDataObjectConnection = amountReadersOfProcess;
+
 			ProcessModelAnnotater p = null;
 
-			try {
-				p = new ProcessModelAnnotater(pathToFile, pathToFolderForStoringAnnotatedModelsFolder, "_annotated",
-						testIfModelValid);
+			int minDataObjectsPerDecision = 1;
+			int maxDataObjectsPerDecision = amountDataObjects;
 
-				// add the methods to be called
-				LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
+			// will be set when model needs excl constraints
+			int lowerBoundAmountParticipantsToExclude = 0;
+			int upperBoundAmountParticipantsToExclude = 0;
 
-				String firstMethodToBeCalledName = "generateDataObjects";
-				Object[] argumentsForFirstMethod = new Object[2];
-				argumentsForFirstMethod[0] = amountDataObjectsToCreate;
-				argumentsForFirstMethod[1] = defaultSpheres;
-				methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName, argumentsForFirstMethod);
+		
+				try {
+					p = new ProcessModelAnnotater(pathToFile, pathToFolderForStoringAnnotatedModelsFolder, "_annotated",
+							testIfModelValid);
 
-				String secondMethodToBeCalledName = "connectDataObjectsToBrtsAndTuplesForXorSplits";
-				Object[] argumentsForSecondMethod = new Object[6];
-				argumentsForSecondMethod[0] = minDataObjectsPerDecision;
-				argumentsForSecondMethod[1] = maxDataObjectsPerDecision;
-				argumentsForSecondMethod[2] = amountParticipantsPerDecisionLowerBound;
-				argumentsForSecondMethod[3] = amountParticipantsPerDecisionUpperBound;
-				argumentsForSecondMethod[4] = publicDecisionProb;
-				argumentsForSecondMethod[5] = false;
-				methodsToBeCalledMap.putIfAbsent(secondMethodToBeCalledName, argumentsForSecondMethod);
+					// add the methods to be called
+					LinkedHashMap<String, Object[]> methodsToBeCalledMap = new LinkedHashMap<String, Object[]>();
 
-				String thirdMethodToBeCalledName = "addNamesForOutgoingFlowsOfXorSplits";
-				Object[] argumentsForThirdMethod = new Object[1];
-				argumentsForThirdMethod[0] = defaultNamesSeqFlowsXorSplits;
-				methodsToBeCalledMap.putIfAbsent(thirdMethodToBeCalledName, argumentsForThirdMethod);
+					String firstMethodToBeCalledName = "addNamesForOutgoingFlowsOfXorSplits";
+					Object[] argumentsForFirstMethod = new Object[1];
+					argumentsForFirstMethod[0] = defaultNamesSeqFlowsXorSplits;
+					methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName, argumentsForFirstMethod);
 
-				String fourthMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
-				Object[] argumentsForFourthMethod = new Object[4];
-				argumentsForFourthMethod[0] = amountWritersOfProcess;
-				argumentsForFourthMethod[1] = amountReadersOfProcess;
-				argumentsForFourthMethod[2] = dynamicWriterProb;
-				argumentsForFourthMethod[3] = defaultSpheres;
-				methodsToBeCalledMap.putIfAbsent(fourthMethodToBeCalledName, argumentsForFourthMethod);
+					
+					String secondMethodToBeCalledName = "generateDataObjects";
+					Object[] argumentsForSecondMethod = new Object[2];
+					argumentsForSecondMethod[0] = amountDataObjects;
+					argumentsForSecondMethod[1] = defaultSpheres;
+					methodsToBeCalledMap.putIfAbsent(secondMethodToBeCalledName, argumentsForSecondMethod);
 
-				if (probabilityForGatewayToHaveExcludeConstraint > 0) {
-					String fifthMethodToBeCalledName = "addExcludeParticipantConstraintsOnModel";
+					String thirdMethodToBeCalledName = "connectDataObjectsToBrtsAndTuplesForXorSplits";
+					Object[] argumentsForThirdMethod = new Object[8];
+					argumentsForThirdMethod[0] = minDataObjectsPerDecision;
+					argumentsForThirdMethod[1] = maxDataObjectsPerDecision;
+					argumentsForThirdMethod[2] = maxAmountReadersThroughDataObjectConnection;
+					argumentsForThirdMethod[3] = amountParticipantsPerDecisionLowerBound;
+					argumentsForThirdMethod[4] = amountParticipantsPerDecisionUpperBound;
+					argumentsForThirdMethod[5] = publicDecisionProb;
+					argumentsForThirdMethod[6] = false;
+					argumentsForThirdMethod[7] = true;
+					methodsToBeCalledMap.putIfAbsent(thirdMethodToBeCalledName, argumentsForThirdMethod);
 
-					// set upperBoundAmountParticipantsToExclude to be max privateSphereSize-1
-					if (upperBoundAmountParticipantsToExclude <= 0) {
+				
+					String fourthMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
+					Object[] argumentsForFourthMethod = new Object[4];
+					argumentsForFourthMethod[0] = amountWritersOfProcess;
+					argumentsForFourthMethod[1] = amountReadersOfProcess;
+					argumentsForFourthMethod[2] = dynamicWriterProb;
+					argumentsForFourthMethod[3] = defaultSpheres;
+					methodsToBeCalledMap.putIfAbsent(fourthMethodToBeCalledName, argumentsForFourthMethod);
+
+					if (probabilityForGatewayToHaveExcludeConstraint < 0) {
+						String fifthMethodToBeCalledName = "addExcludeParticipantConstraintsOnModel";
+						// set upperBoundAmountParticipantsToExclude to be max privateSphereSize-1
+
+						lowerBoundAmountParticipantsToExclude = 1;
 						upperBoundAmountParticipantsToExclude = ThreadLocalRandom.current()
 								.nextInt(lowerBoundAmountParticipantsToExclude, privateSphere);
+
+						Object[] argumentsForFifthMethod = new Object[4];
+						argumentsForFifthMethod[0] = probabilityForGatewayToHaveExcludeConstraint;
+						argumentsForFifthMethod[1] = lowerBoundAmountParticipantsToExclude;
+						argumentsForFifthMethod[2] = upperBoundAmountParticipantsToExclude;
+						argumentsForFifthMethod[3] = alwaysMaxExclConstrained;
+						methodsToBeCalledMap.putIfAbsent(fifthMethodToBeCalledName, argumentsForFifthMethod);
 					}
 
-					Object[] argumentsForFifthMethod = new Object[4];
-					argumentsForFifthMethod[0] = probabilityForGatewayToHaveExcludeConstraint;
-					argumentsForFifthMethod[1] = lowerBoundAmountParticipantsToExclude;
-					argumentsForFifthMethod[2] = upperBoundAmountParticipantsToExclude;
-					argumentsForFifthMethod[3] = alwaysMaxExclConstrained;
-					methodsToBeCalledMap.putIfAbsent(fifthMethodToBeCalledName, argumentsForFifthMethod);
-				}
+					if (probabilityForGatewayToHaveMandConstraint < 0) {
+						String sixthMethodToBeCalledName = "addMandatoryParticipantConstraintsOnModel";
 
-				if (probabilityForGatewayToHaveMandConstraint > 0) {
-					String sixthMethodToBeCalledName = "addMandatoryParticipantConstraintsOnModel";
-
-					// set upperBoundAmountParticipantsToExclude to be max privateSphereSize-1
-					if (upperBoundAmountParticipantsToBeMandatory <= 0) {
-						upperBoundAmountParticipantsToBeMandatory = ThreadLocalRandom.current()
+						int lowerBoundAmountParticipantsToBeMandatory = 1;
+						int upperBoundAmountParticipantsToBeMandatory = ThreadLocalRandom.current()
 								.nextInt(lowerBoundAmountParticipantsToBeMandatory, privateSphere);
+
+						// set upperBoundAmountParticipantsToExclude to be max privateSphereSize-1
+						if (upperBoundAmountParticipantsToBeMandatory <= 0) {
+							upperBoundAmountParticipantsToBeMandatory = ThreadLocalRandom.current()
+									.nextInt(lowerBoundAmountParticipantsToBeMandatory, privateSphere);
+						}
+
+						Object[] argumentsForSixthMethod = new Object[4];
+						argumentsForSixthMethod[0] = probabilityForGatewayToHaveMandConstraint;
+						argumentsForSixthMethod[1] = lowerBoundAmountParticipantsToBeMandatory;
+						argumentsForSixthMethod[2] = upperBoundAmountParticipantsToBeMandatory;
+						argumentsForSixthMethod[3] = alwaysMaxMandConstrained;
+						methodsToBeCalledMap.putIfAbsent(sixthMethodToBeCalledName, argumentsForSixthMethod);
+					}
+					// set the methods that will be run within the call method
+					p.setMethodsToRunWithinCall(methodsToBeCalledMap);
+
+					Future<File> future = executor.submit(p);
+					try {
+						f = future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
+						future.cancel(true);
+						CommonFunctionality
+								.removeDataObjectsWithoutConnectionsToDecisionsFromModel(p.getModelInstance());
+
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+						future.cancel(true);
+					} catch (ExecutionException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+						future.cancel(true);
+					} catch (TimeoutException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+						future.cancel(true);
 					}
 
-					Object[] argumentsForSixthMethod = new Object[4];
-					argumentsForSixthMethod[0] = probabilityForGatewayToHaveMandConstraint;
-					argumentsForSixthMethod[1] = lowerBoundAmountParticipantsToBeMandatory;
-					argumentsForSixthMethod[2] = upperBoundAmountParticipantsToBeMandatory;
-					argumentsForSixthMethod[3] = alwaysMaxMandConstrained;
-					methodsToBeCalledMap.putIfAbsent(sixthMethodToBeCalledName, argumentsForSixthMethod);
-				}
-				// set the methods that will be run within the call method
-				p.setMethodsToRunWithinCall(methodsToBeCalledMap);
-
-				Future<File> future = executor.submit(p);
-				futures.add(future);
-				try {
-					future.get(timeOutForProcessModelAnnotaterInMin, TimeUnit.MINUTES);
-					future.cancel(true);
-					CommonFunctionality.removeDataObjectsWithoutConnectionsToDecisionsFromModel(p.getModelInstance());
-
-				} catch (InterruptedException e) {
+				} catch (Exception e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-					future.cancel(true);
-					i--;
-				} catch (ExecutionException e) {
-					// TODO Auto-generated catch block
-					System.err.println(e.getMessage());
-					future.cancel(true);
-					i--;
-				} catch (TimeoutException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-					future.cancel(true);
+					// Model not valid
 				}
-
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				// Model not valid
-				i--;
 			}
 
 		}
@@ -1132,7 +1170,8 @@ public class BatchFileGenerator {
 			if (runExhaustiveSearch) {
 				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 				if (randomInt <= percentageOfProcessesToRunExhaustiveOn) {
-					// do not allow models with more than maxXorsToRunExhaustiveOn xors in order to avoid heap space exceptions
+					// do not allow models with more than maxXorsToRunExhaustiveOn xors in order to
+					// avoid heap space exceptions
 					if (CommonFunctionality
 							.getAmountExclusiveGtwSplits(api.getModelInstance()) <= maxXorsToRunExhaustiveOn) {
 						boolean heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.EXHAUSTIVE, 0,
