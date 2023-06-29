@@ -13,9 +13,11 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -3546,20 +3548,39 @@ public class CommonFunctionality {
 
 		return allCheapestModels;
 	}
+	
+	public static <K, V> TreeMap<V, LinkedList<K>> computeMapDescendingOrder(Map<K, V> inputMap) {
+		TreeMap<V, LinkedList<K>> reversedMap = new TreeMap<>(Collections.reverseOrder());
 
-	public static String getLoggingForModelsWithAdditionalActors(Enums.AlgorithmToPerform algorithm,
-			LinkedList<BPMNBusinessRuleTask> brts, LinkedList<PModelWithAdditionalActors> pModels) {
-		if (pModels == null) {
-			return "";
+		for (Entry<K, V> entry : inputMap.entrySet()) {
+			K key = entry.getKey();
+			V value = entry.getValue();
+			LinkedList<K> keys = reversedMap.getOrDefault(value, new LinkedList<>());
+			keys.add(key);
+			reversedMap.put(value, keys);
+
 		}
-		/*
-		 * for (int i = 1; i < pModels.size(); i++) { PModelWithAdditionalActors
-		 * currInst = pModels.get(i); for (AdditionalActors addActors :
-		 * currInst.getAdditionalActorsList()) { if
-		 * (!brts.contains(addActors.getCurrBrt())) { return
-		 * "Not every decision has been calculated with " + algorithm.name(); } } }
-		 */
-		return "";
+
+		return reversedMap;
+
 	}
+
+	public static <K, V> TreeMap<V, LinkedList<K>> computeMapAscendingOrder(Map<K, V> inputMap) {
+		TreeMap<V, LinkedList<K>> map = new TreeMap<>();
+
+		for (Entry<K, V> entry : inputMap.entrySet()) {
+			K key = entry.getKey();
+			V value = entry.getValue();
+			LinkedList<K> keys = map.getOrDefault(value, new LinkedList<>());
+			keys.add(key);
+			map.put(value, keys);
+
+		}
+
+		return map;
+
+	}
+
+
 
 }

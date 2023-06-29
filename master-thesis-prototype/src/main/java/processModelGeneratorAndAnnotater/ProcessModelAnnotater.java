@@ -1345,7 +1345,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 				if (probabilityForGatewayToHaveConstraint >= randomInt) {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
-					String decisionTakerName = brtBeforeGtw.getName();
 					LinkedList<String> participantsToChooseFrom = CommonFunctionality
 							.getPrivateSphereList(modelInstance, modelWithLanes);
 					int privateSphereSize = participantsToChooseFrom.size();
@@ -1354,6 +1353,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 							modelWithLanes);
 
 					participantsToChooseFrom.remove(participantName);
+					
+					HashSet<String>mandatory = this.getMandatoryParticipantsForBrt(gtw);
+					participantsToChooseFrom.removeAll(mandatory);
 
 					if (!participantsToChooseFrom.isEmpty()) {
 
@@ -1471,6 +1473,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 					String brtBeforeGtwParticipant = CommonFunctionality.getParticipantOfTask(modelInstance,
 							brtBeforeGtw, modelWithLanes);
 					participantsToChooseFrom.remove(brtBeforeGtwParticipant);
+					
+					HashSet<String> excluded = this.getExcludedParticipantsForBrt(gtw);
+					participantsToChooseFrom.removeAll(excluded);
 
 					if (!participantsToChooseFrom.isEmpty()) {
 
@@ -1581,6 +1586,44 @@ public class ProcessModelAnnotater implements Callable<File> {
 
 		}
 
+	}
+	
+	public HashSet<String> getExcludedParticipantsForBrt(ExclusiveGateway gtw){
+		HashSet<String>excluded = new HashSet<String>();
+		for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+			for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+				if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+					if (tx.getTextContent().startsWith("[ExcludedParticipant]")) {
+						String subStr = tx.getTextContent().substring(
+								tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
+
+						String[] data = subStr.split(",");
+						String participant = data[0];
+						excluded.add(participant);
+					}
+				}
+			}
+		}
+		return excluded;		
+	}
+	
+	public HashSet<String> getMandatoryParticipantsForBrt(ExclusiveGateway gtw){
+		HashSet<String>mandatory = new HashSet<String>();
+		for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
+			for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
+				if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
+					if (tx.getTextContent().startsWith("[MandatoryParticipant]")) {
+						String subStr = tx.getTextContent().substring(
+								tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
+
+						String[] data = subStr.split(",");
+						String participant = data[0];
+					 mandatory.add(participant);
+					}
+				}
+			}
+		}
+		return mandatory;		
 	}
 
 	public BpmnModelInstance getModelInstance() {

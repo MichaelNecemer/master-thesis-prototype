@@ -105,7 +105,7 @@ public class BatchFileGenerator {
 	// amountProcessesToCreatePerDecision should be a lot higher than
 	// amountProcesesToTakePerDecision, since not every model will be valid
 	static int amountProcessesToCreatePerDecision = 150;
-	static int amountProcessesToTakePerDecision = 15;
+	static int amountProcessesToTakePerDecision = 30;
 
 	// to avoid heap space exceptions in further tests
 	public static int maxXorsToRunExhaustiveOn = 5;
@@ -125,14 +125,15 @@ public class BatchFileGenerator {
 		String test5ToRun = "Test5ToRun";
 		String test6ToRun = "Test6ToRun";
 
-		// methodsToRun.add(test1_1ToRun);
-		/*
-		 * methodsToRun.add(test1_2ToRun); methodsToRun.add(createRandomProcesses);
-		 * methodsToRun.add(test2ToRun); methodsToRun.add(test3ToRun);
-		 * methodsToRun.add(test4_1ToRun); methodsToRun.add(test4_2ToRun);
-		 * methodsToRun.add(test5ToRun);
-		 */
-		methodsToRun.add(test6ToRun);
+		/*methodsToRun.add(test1_1ToRun);
+		methodsToRun.add(test1_2ToRun);
+		methodsToRun.add(createRandomProcesses);*/
+		methodsToRun.add(test2ToRun);
+		/*methodsToRun.add(test3ToRun);
+		methodsToRun.add(test4_1ToRun);
+		methodsToRun.add(test4_2ToRun);
+		methodsToRun.add(test5ToRun);
+		methodsToRun.add(test6ToRun);*/
 
 		String pathToFolderForModelsForTest1_1_Static = "";
 		String pathToFolderForModelsForTest1_1_WD = "";
@@ -626,11 +627,12 @@ public class BatchFileGenerator {
 						pathToFolderForMediumModelsForTest4_1, amountSolutionsToBeGenerated, "medium", amountThreads,
 						testIfModelValid, calculateAmountOfPaths);
 
+				/*
 				String pathToFolderForLargeModelsForTest4_1 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_1, "LargeModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithMaxPossibleExcludeConstraints(largeProcessesFromTradeOffTest, false,
 						pathToFolderForLargeModelsForTest4_1, amountSolutionsToBeGenerated, "large", amountThreads,
-						testIfModelValid, calculateAmountOfPaths);
+						testIfModelValid, calculateAmountOfPaths);*/
 
 				System.out.println("Test 4_1 finished!");
 			}
@@ -677,12 +679,12 @@ public class BatchFileGenerator {
 						amountSolutionsToBeGenerated, "medium", amountThreads, testIfModelValid,
 						calculateAmountOfPaths);
 
-				String pathToFolderForLargeModelsForTest4_2 = CommonFunctionality
+				/*String pathToFolderForLargeModelsForTest4_2 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest4_2, "LargeModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithExcludeConstraintsProbability(largeProcessesFromTradeOffTest, false,
 						probabilityForGatewayToHaveConstraint, pathToFolderForLargeModelsForTest4_2,
 						amountSolutionsToBeGenerated, "large", amountThreads, testIfModelValid, calculateAmountOfPaths);
-
+				*/
 				System.out.println("Test 4_2 finished!");
 			}
 		}
@@ -716,25 +718,23 @@ public class BatchFileGenerator {
 
 				String pathToFolderForSmallModelsForTest5 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "SmallModels").getAbsolutePath();
-
-				String pathToFolderForMediumModelsForTest5 = CommonFunctionality
-						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "MediumModels").getAbsolutePath();
-
-				String pathToFolderForLargeModelsForTest5 = CommonFunctionality
-						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "LargeModels").getAbsolutePath();
-
 				BatchFileGenerator.performTestWithMandatoryConstraints(smallProcessesFromTradeOffTest, false,
 						pathToFolderForSmallModelsForTest5, amountSolutionsToBeGenerated, "small", amountThreads,
 						testIfModelValid, calculateAmountOfPaths);
 
+				String pathToFolderForMediumModelsForTest5 = CommonFunctionality
+						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "MediumModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithMandatoryConstraints(mediumProcessesFromTradeOffTest, false,
 						pathToFolderForMediumModelsForTest5, amountSolutionsToBeGenerated, "medium", amountThreads,
 						testIfModelValid, calculateAmountOfPaths);
 
+				/*
+				String pathToFolderForLargeModelsForTest5 = CommonFunctionality
+						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "LargeModels").getAbsolutePath();
 				BatchFileGenerator.performTestWithMandatoryConstraints(largeProcessesFromTradeOffTest, false,
 						pathToFolderForLargeModelsForTest5, amountSolutionsToBeGenerated, "large", amountThreads,
 						testIfModelValid, calculateAmountOfPaths);
-
+				*/
 				System.out.println("Test 5 finished!");
 			}
 		}
@@ -743,6 +743,9 @@ public class BatchFileGenerator {
 			// Test 6 - "real world processes"
 			// may contain exclude and mandatory participant constraint
 			// has wider ranges for variables
+			
+
+			int amountProcesses = 7;
 
 			List<Integer> dataObjectsBounds = Arrays.asList(1, 8);
 			List<Integer> taskBounds = Arrays.asList(10, 80);
@@ -751,8 +754,6 @@ public class BatchFileGenerator {
 			List<Integer> parallelGtwsBounds = Arrays.asList(0, 2);
 			List<Integer> probabilityForXorToHaveExclBounds = Arrays.asList(0, 99);
 			List<Integer> probabilityForXorToHaveMandBounds = Arrays.asList(0, 99);
-
-			int amountProcesses = 5;
 
 			List<Integer> writersOfProcessInPercent = Arrays.asList(10, 30, 60);
 			List<Integer> readersOfProcessInPercent = Arrays.asList(10, 30, 60);
@@ -860,37 +861,38 @@ public class BatchFileGenerator {
 				int amountDataObjects = ThreadLocalRandom.current().nextInt(dataObjectsBounds.get(0),
 						dataObjectsBounds.get(1) + 1);
 
-			int amountTasks = modelInstance.getModelElementsByType(Task.class).size();
-			int writersPercentage = CommonFunctionality.getRandomItem(writersOfProcessInPercent);
-			int readersPercentage = CommonFunctionality.getRandomItem(readersOfProcessInPercent);
-			int amountReadersOfProcess = CommonFunctionality.getAmountFromPercentageWithMinimum(amountTasks, readersPercentage, amountDataObjects);
-			int amountWritersOfProcess = CommonFunctionality.getAmountFromPercentageWithMinimum(amountTasks, writersPercentage, amountDataObjects);
+				int amountTasks = modelInstance.getModelElementsByType(Task.class).size();
+				int writersPercentage = CommonFunctionality.getRandomItem(writersOfProcessInPercent);
+				int readersPercentage = CommonFunctionality.getRandomItem(readersOfProcessInPercent);
+				int amountReadersOfProcess = CommonFunctionality.getAmountFromPercentageWithMinimum(amountTasks,
+						readersPercentage, amountDataObjects);
+				int amountWritersOfProcess = CommonFunctionality.getAmountFromPercentageWithMinimum(amountTasks,
+						writersPercentage, amountDataObjects);
 
-			int privateSphere = CommonFunctionality.getPrivateSphere(modelInstance, false);
+				int privateSphere = CommonFunctionality.getPrivateSphere(modelInstance, false);
 
-			int amountParticipantsPerDecisionUpperBound = privateSphere - 1;
-			int amountParticipantsPerDecisionLowerBound = 1;
+				int amountParticipantsPerDecisionUpperBound = privateSphere - 1;
+				int amountParticipantsPerDecisionLowerBound = 1;
 
-			int probabilityForGatewayToHaveExcludeConstraint = ThreadLocalRandom.current().nextInt(
-					probabilityForGatewayToHaveExcludeConstraintBounds.get(0),
-					probabilityForGatewayToHaveExcludeConstraintBounds.get(1) + 1);
+				int probabilityForGatewayToHaveExcludeConstraint = ThreadLocalRandom.current().nextInt(
+						probabilityForGatewayToHaveExcludeConstraintBounds.get(0),
+						probabilityForGatewayToHaveExcludeConstraintBounds.get(1) + 1);
 
-			int probabilityForGatewayToHaveMandConstraint = ThreadLocalRandom.current().nextInt(
-					probabilityForGatewayToHaveMandConstraintBounds.get(0),
-					probabilityForGatewayToHaveMandConstraintBounds.get(1) + 1);
+				int probabilityForGatewayToHaveMandConstraint = ThreadLocalRandom.current().nextInt(
+						probabilityForGatewayToHaveMandConstraintBounds.get(0),
+						probabilityForGatewayToHaveMandConstraintBounds.get(1) + 1);
 
-			int maxAmountReadersThroughDataObjectConnection = amountReadersOfProcess;
+				int maxAmountReadersThroughDataObjectConnection = amountReadersOfProcess;
 
-			ProcessModelAnnotater p = null;
+				ProcessModelAnnotater p = null;
 
-			int minDataObjectsPerDecision = 1;
-			int maxDataObjectsPerDecision = amountDataObjects;
+				int minDataObjectsPerDecision = 1;
+				int maxDataObjectsPerDecision = amountDataObjects;
 
-			// will be set when model needs excl constraints
-			int lowerBoundAmountParticipantsToExclude = 0;
-			int upperBoundAmountParticipantsToExclude = 0;
+				// will be set when model needs excl constraints
+				int lowerBoundAmountParticipantsToExclude = 0;
+				int upperBoundAmountParticipantsToExclude = 0;
 
-		
 				try {
 					p = new ProcessModelAnnotater(pathToFile, pathToFolderForStoringAnnotatedModelsFolder, "_annotated",
 							testIfModelValid);
@@ -903,7 +905,6 @@ public class BatchFileGenerator {
 					argumentsForFirstMethod[0] = defaultNamesSeqFlowsXorSplits;
 					methodsToBeCalledMap.putIfAbsent(firstMethodToBeCalledName, argumentsForFirstMethod);
 
-					
 					String secondMethodToBeCalledName = "generateDataObjects";
 					Object[] argumentsForSecondMethod = new Object[2];
 					argumentsForSecondMethod[0] = amountDataObjects;
@@ -922,7 +923,6 @@ public class BatchFileGenerator {
 					argumentsForThirdMethod[7] = true;
 					methodsToBeCalledMap.putIfAbsent(thirdMethodToBeCalledName, argumentsForThirdMethod);
 
-				
 					String fourthMethodToBeCalledName = "annotateModelWithFixedAmountOfReadersAndWriters";
 					Object[] argumentsForFourthMethod = new Object[4];
 					argumentsForFourthMethod[0] = amountWritersOfProcess;
@@ -931,7 +931,7 @@ public class BatchFileGenerator {
 					argumentsForFourthMethod[3] = defaultSpheres;
 					methodsToBeCalledMap.putIfAbsent(fourthMethodToBeCalledName, argumentsForFourthMethod);
 
-					if (probabilityForGatewayToHaveExcludeConstraint < 0) {
+					if (probabilityForGatewayToHaveExcludeConstraint > 0) {
 						String fifthMethodToBeCalledName = "addExcludeParticipantConstraintsOnModel";
 						// set upperBoundAmountParticipantsToExclude to be max privateSphereSize-1
 
@@ -947,7 +947,7 @@ public class BatchFileGenerator {
 						methodsToBeCalledMap.putIfAbsent(fifthMethodToBeCalledName, argumentsForFifthMethod);
 					}
 
-					if (probabilityForGatewayToHaveMandConstraint < 0) {
+					if (probabilityForGatewayToHaveMandConstraint > 0) {
 						String sixthMethodToBeCalledName = "addMandatoryParticipantConstraintsOnModel";
 
 						int lowerBoundAmountParticipantsToBeMandatory = 1;
@@ -977,6 +977,9 @@ public class BatchFileGenerator {
 						CommonFunctionality
 								.removeDataObjectsWithoutConnectionsToDecisionsFromModel(p.getModelInstance());
 
+						
+						
+						
 					} catch (InterruptedException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
