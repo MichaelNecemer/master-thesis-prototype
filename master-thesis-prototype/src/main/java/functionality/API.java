@@ -3127,9 +3127,9 @@ public class API {
 
 					// get the local cheapest potential add actors
 					// take into account the mandatory participants of other brts		
-					TreeMap<Double, LinkedList<BPMNParticipant>> localCheapestPotentialAddActors = this.getCheapestPotentialAdditionalActorsForBrt(true, currentBrt,amountAddActors, pathsFromOriginToEndMap,
+					TreeMap<Double, LinkedList<BPMNParticipant>> localCheapestPotentialAddActors = this.getCheapestPotentialAdditionalActorsForBrt(true, currentBrt, pathsFromOriginToEndMap,
 									staticSpherePerDataObject, wdSpherePerDataObject, alreadyChosenAdditionalActors, clusterSet, sharedOrigins,
-									true, false, true);
+									true, false);
 
 				
 					if (clusterSet.size() > 1) {
@@ -3141,13 +3141,10 @@ public class API {
 
 							if (!otherBrt.equals(currentBrt)) {
 								
-								BPMNGateway otherGtw = (BPMNGateway) currentBrt.getSuccessors().iterator().next();
-								BPMNExclusiveGateway otherExcl = (BPMNExclusiveGateway) otherGtw;
-								int amountAddActorsOtherGtw  = otherExcl.getAmountAddActors();
 								TreeMap<Double, LinkedList<BPMNParticipant>> cheapestPotentialAddActorsForOtherBrt = 
-										this.getCheapestPotentialAdditionalActorsForBrt(true, (BPMNBusinessRuleTask)otherBrt, amountAddActorsOtherGtw, pathsFromOriginToEndMap,
+										this.getCheapestPotentialAdditionalActorsForBrt(true, (BPMNBusinessRuleTask)otherBrt, pathsFromOriginToEndMap,
 												staticSpherePerDataObject, wdSpherePerDataObject, alreadyChosenAdditionalActors, clusterSet, sharedOrigins,
-												false, true, true);
+												false, true);
 
 								for (Entry<Double, LinkedList<BPMNParticipant>> entry : cheapestPotentialAddActorsForOtherBrt
 										.entrySet()) {
@@ -3786,16 +3783,15 @@ public class API {
 	
 
 	public TreeMap<Double, LinkedList<BPMNParticipant>> getCheapestPotentialAdditionalActorsForBrt(boolean incremental,
-			BPMNBusinessRuleTask currentBrt, int reqAddActorsForBrt, 
+			BPMNBusinessRuleTask currentBrt, 
 			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap,
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
 			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject,
 			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActorsPerBrt,
 			HashSet<BPMNTask> clusterSet, HashSet<BPMNTask> sharedOrigins, boolean addToClusterSetAndSharedOrigins,
-			boolean onlyTakeClusteredOrigins, boolean preferStaticPartsOtherDataObjects) throws Exception {
+			boolean onlyTakeClusteredOrigins) throws Exception {
 
 		HashMap<BPMNParticipant, Double> sphereSumOfParticipantForBrt = new HashMap<BPMNParticipant, Double>();
-		HashSet<BPMNParticipant>staticSphereForAllDataObjects = new HashSet<BPMNParticipant>();
 		
 		for (Entry<BPMNDataObject, ArrayList<BPMNTask>> originsPerBrt : currentBrt.getLastWriterList().entrySet()) {
 			BPMNDataObject dataO = originsPerBrt.getKey();
@@ -3820,9 +3816,7 @@ public class API {
 
 					if (this.requiredSphereIsAtLeast(requiredSphere, this.staticSphereKey)) {
 						HashSet<BPMNParticipant> staticSphereForDataObject = new HashSet<BPMNParticipant>(
-								this.getParticipantsInStaticSphereForDataObject(dataO, staticSpherePerDataObject));
-						staticSphereForAllDataObjects.addAll(staticSphereForDataObject);
-						
+								this.getParticipantsInStaticSphereForDataObject(dataO, staticSpherePerDataObject));						
 						
 						HashSet<BPMNTask> readerBrts = this.getReaderBrtsFromStaticSphereForDataObject(dataO,
 								staticSpherePerDataObject);
@@ -3938,24 +3932,7 @@ public class API {
 				}
 			}
 		}
-		
-		if(preferStaticPartsOtherDataObjects) {
-			if(staticSphereForAllDataObjects.size() < reqAddActorsForBrt) {
-				// at least one participant will need to be chosen that is not static
-				// prefer participants that are static for other data objects
-				for(BPMNDataObject otherDataO: this.dataObjects) {
-					if(!currentBrt.getLastWriterList().containsKey(otherDataO)) {
-						HashSet<BPMNParticipant> staticSphereForOtherDataObject = new HashSet<BPMNParticipant>(
-								this.getParticipantsInStaticSphereForDataObject(otherDataO, staticSpherePerDataObject));
-						for (BPMNParticipant participant : staticSphereForOtherDataObject) {
-							this.increaseOccurenceOfParticipant(participant, sphereSumOfParticipantForBrt);
-						}
-					}
-				}
 				
-			}
-		}
-		
 		
 		// order the participant by the cheapest ones		
 		TreeMap<Double, LinkedList<BPMNParticipant>> cheapest = CommonFunctionality.computeMapDescendingOrder(sphereSumOfParticipantForBrt);
