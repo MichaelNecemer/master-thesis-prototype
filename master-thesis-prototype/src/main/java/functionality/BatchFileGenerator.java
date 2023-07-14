@@ -127,13 +127,13 @@ public class BatchFileGenerator {
 
 		/*methodsToRun.add(test1_1ToRun);
 		methodsToRun.add(test1_2ToRun);
-		methodsToRun.add(createRandomProcesses);*/
+		methodsToRun.add(createRandomProcesses);
 		methodsToRun.add(test2ToRun);
-		/*methodsToRun.add(test3ToRun);
+		methodsToRun.add(test3ToRun);
 		methodsToRun.add(test4_1ToRun);
 		methodsToRun.add(test4_2ToRun);
-		methodsToRun.add(test5ToRun);
-		methodsToRun.add(test6ToRun);*/
+		methodsToRun.add(test5ToRun);*/
+		methodsToRun.add(test6ToRun);
 
 		String pathToFolderForModelsForTest1_1_Static = "";
 		String pathToFolderForModelsForTest1_1_WD = "";
@@ -744,16 +744,16 @@ public class BatchFileGenerator {
 			// may contain exclude and mandatory participant constraint
 			// has wider ranges for variables
 			
-
-			int amountProcesses = 7;
+			int amountProcesses = 1000;
 
 			List<Integer> dataObjectsBounds = Arrays.asList(1, 8);
 			List<Integer> taskBounds = Arrays.asList(10, 80);
 			List<Integer> participantBounds = Arrays.asList(2, 10);
-			List<Integer> xorGtwsBounds = Arrays.asList(2, 5);
+			List<Integer> xorGtwsBounds = Arrays.asList(1, 4);
 			List<Integer> parallelGtwsBounds = Arrays.asList(0, 2);
 			List<Integer> probabilityForXorToHaveExclBounds = Arrays.asList(0, 99);
 			List<Integer> probabilityForXorToHaveMandBounds = Arrays.asList(0, 99);
+
 
 			List<Integer> writersOfProcessInPercent = Arrays.asList(10, 30, 60);
 			List<Integer> readersOfProcessInPercent = Arrays.asList(10, 30, 60);
@@ -934,10 +934,14 @@ public class BatchFileGenerator {
 					if (probabilityForGatewayToHaveExcludeConstraint > 0) {
 						String fifthMethodToBeCalledName = "addExcludeParticipantConstraintsOnModel";
 						// set upperBoundAmountParticipantsToExclude to be max privateSphereSize-1
+						// since the actor of the brt itself cannot be excluded
 
-						lowerBoundAmountParticipantsToExclude = 1;
+						int remainingToExlude = privateSphere-1;
+						if(remainingToExlude<=0) {
+							remainingToExlude = 1;
+						}
 						upperBoundAmountParticipantsToExclude = ThreadLocalRandom.current()
-								.nextInt(lowerBoundAmountParticipantsToExclude, privateSphere);
+								.nextInt(lowerBoundAmountParticipantsToExclude, remainingToExlude);
 
 						Object[] argumentsForFifthMethod = new Object[4];
 						argumentsForFifthMethod[0] = probabilityForGatewayToHaveExcludeConstraint;
@@ -950,14 +954,18 @@ public class BatchFileGenerator {
 					if (probabilityForGatewayToHaveMandConstraint > 0) {
 						String sixthMethodToBeCalledName = "addMandatoryParticipantConstraintsOnModel";
 
-						int lowerBoundAmountParticipantsToBeMandatory = 1;
+						int lowerBoundAmountParticipantsToBeMandatory = 0;
 						int upperBoundAmountParticipantsToBeMandatory = ThreadLocalRandom.current()
-								.nextInt(lowerBoundAmountParticipantsToBeMandatory, privateSphere);
+								.nextInt(lowerBoundAmountParticipantsToBeMandatory, privateSphere-1);
 
-						// set upperBoundAmountParticipantsToExclude to be max privateSphereSize-1
-						if (upperBoundAmountParticipantsToBeMandatory <= 0) {
+						// if there are already constraints on exclusion
+						if (upperBoundAmountParticipantsToExclude > 0) {
+							int remainingPossible = privateSphere-1-upperBoundAmountParticipantsToExclude;
+							if(remainingPossible<=0) {
+								remainingPossible = 1;
+							}
 							upperBoundAmountParticipantsToBeMandatory = ThreadLocalRandom.current()
-									.nextInt(lowerBoundAmountParticipantsToBeMandatory, privateSphere);
+									.nextInt(lowerBoundAmountParticipantsToBeMandatory, remainingPossible);
 						}
 
 						Object[] argumentsForSixthMethod = new Object[4];
