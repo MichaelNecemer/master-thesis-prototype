@@ -1582,8 +1582,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 		HashSet<String>excluded = new HashSet<String>();
 		for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 			for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
-				if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-					if (tx.getTextContent().startsWith("[ExcludedParticipant]")) {
+				if (assoc.getAttributeValue("sourceRef").equals(gtw.getId())
+						&& assoc.getAttributeValue("targetRef").equals(tx.getId())) {			
+					if (tx.getTextContent().contains("[ExcludeParticipantConstraint]")) {
 						String subStr = tx.getTextContent().substring(
 								tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
 
@@ -1601,8 +1602,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 		HashSet<String>mandatory = new HashSet<String>();
 		for (TextAnnotation tx : modelInstance.getModelElementsByType(TextAnnotation.class)) {
 			for (Association assoc : modelInstance.getModelElementsByType(Association.class)) {
-				if (assoc.getSource().equals(gtw) && assoc.getTarget().equals(tx)) {
-					if (tx.getTextContent().startsWith("[MandatoryParticipant]")) {
+				if (assoc.getAttributeValue("sourceRef").equals(gtw.getId())
+						&& assoc.getAttributeValue("targetRef").equals(tx.getId())) {								
+					if (tx.getTextContent().contains("[MandatoryParticipantConstraint]")) {
 						String subStr = tx.getTextContent().substring(
 								tx.getTextContent().indexOf('{') + 1, tx.getTextContent().indexOf('}'));
 
