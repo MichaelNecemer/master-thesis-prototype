@@ -1328,16 +1328,11 @@ public class ProcessModelAnnotater implements Callable<File> {
 	public void addExcludeParticipantConstraintsOnModel(int probabilityForGatewayToHaveConstraint,
 			int lowerBoundAmountParticipantsToExcludePerGtw, int upperBoundAmountParticipantsToExcludePerGtw,
 			boolean alwaysMaxConstrained) throws Exception {
-		// upperBoundAmountParticipantsToExclude is the difference between the amount of
-		// needed additional actors and the private Sphere minus the actor of the brt
-
+		
 		if (probabilityForGatewayToHaveConstraint <= 0) {
 			return;
 		}
-
-		if (lowerBoundAmountParticipantsToExcludePerGtw < 1) {
-			lowerBoundAmountParticipantsToExcludePerGtw = 1;
-		}
+		
 
 		for (ExclusiveGateway gtw : modelInstance.getModelElementsByType(ExclusiveGateway.class)) {
 			if (gtw.getOutgoing().size() == 2
@@ -1347,7 +1342,6 @@ public class ProcessModelAnnotater implements Callable<File> {
 					BusinessRuleTask brtBeforeGtw = (BusinessRuleTask) gtw.getIncoming().iterator().next().getSource();
 					LinkedList<String> participantsToChooseFrom = CommonFunctionality
 							.getPrivateSphereList(modelInstance, modelWithLanes);
-					int privateSphereSize = participantsToChooseFrom.size();
 
 					String participantName = CommonFunctionality.getParticipantOfTask(modelInstance, brtBeforeGtw,
 							modelWithLanes);
@@ -1371,10 +1365,9 @@ public class ProcessModelAnnotater implements Callable<File> {
 										int randomAmountConstraintsForGtw = 0;
 
 										if (alwaysMaxConstrained) {
-											randomAmountConstraintsForGtw = privateSphereSize - amountAddActorsNeeded
-													- 1;
+											randomAmountConstraintsForGtw = participantsToChooseFrom.size() - amountAddActorsNeeded;
 										} else {
-											int maxConstraint = privateSphereSize - amountAddActorsNeeded - 1;
+											int maxConstraint = participantsToChooseFrom.size() - amountAddActorsNeeded;
 
 											if (maxConstraint <= 0) {
 												// no constraints possible -> else model will not be valid
@@ -1496,13 +1489,10 @@ public class ProcessModelAnnotater implements Callable<File> {
 										if (alwaysMaxConstrained) {
 											randomAmountConstraintsForGtw = amountAddActorsNeeded;
 										} else {
-											if (upperBoundAmountParticipantsToBeMandatoryPerGtw < 0) {
+											if (upperBoundAmountParticipantsToBeMandatoryPerGtw < 0 || upperBoundAmountParticipantsToBeMandatoryPerGtw > amountAddActorsNeeded) {
 												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountAddActorsNeeded;
 											}
 
-											if (upperBoundAmountParticipantsToBeMandatoryPerGtw > amountAddActorsNeeded) {
-												upperBoundAmountParticipantsToBeMandatoryPerGtw = amountAddActorsNeeded;
-											}
 
 											if (lowerBoundAmountParticipantsToBeMandatoryPerGtw < upperBoundAmountParticipantsToBeMandatoryPerGtw) {
 												randomAmountConstraintsForGtw = ThreadLocalRandom.current().nextInt(

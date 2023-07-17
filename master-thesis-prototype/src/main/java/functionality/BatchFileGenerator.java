@@ -984,9 +984,6 @@ public class BatchFileGenerator {
 						future.cancel(true);
 						CommonFunctionality
 								.removeDataObjectsWithoutConnectionsToDecisionsFromModel(p.getModelInstance());
-
-						
-						
 						
 					} catch (InterruptedException e) {
 						// TODO Auto-generated catch block

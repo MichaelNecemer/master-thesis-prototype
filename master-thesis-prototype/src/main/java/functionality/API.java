@@ -1319,7 +1319,7 @@ public class API {
 										if (((MandatoryParticipantConstraint) constr).getMandatoryParticipant()
 												.equals(participant)) {
 											throw new Exception("Participant: " + partName
-													+ " can not be excluded and mandatory at the same time!");
+													+ " can not be excluded and mandatory at the same time for "+gtw.getName());
 										}
 									}
 								}
@@ -1373,7 +1373,7 @@ public class API {
 										if (((ExcludeParticipantConstraint) constr).getParticipantToExclude()
 												.equals(participant)) {
 											throw new Exception("Participant: " + partName
-													+ " can not be mandatory and excluded at the same time!");
+													+ " can not be mandatory and excluded at the same time for "+gtw.getName());
 										}
 									}
 								}
