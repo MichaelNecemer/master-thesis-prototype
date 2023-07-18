@@ -298,6 +298,11 @@ public class BatchFileGenerator {
 				if (!sphere.contentEquals("Private")) {
 
 					if (sphere.contentEquals("Static")) {
+						if(pathToFolderForModelsForTest1_1_Static.isEmpty()) {
+							pathToFolderForModelsForTest1_1_Static = CommonFunctionality
+									.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1_" + sphere)
+									.getAbsolutePath();
+						}						
 						directoryOfFiles = new File(
 								pathToFolderForModelsForTest1_1_Static + File.separatorChar + "BoundaryTest_decision-"
 										+ modelWithAmountDecisions + File.separatorChar + "annotated");
@@ -305,6 +310,11 @@ public class BatchFileGenerator {
 								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_2-BoundaryTest2_" + sphere)
 								.getAbsolutePath();
 					} else if (sphere.contentEquals("Weak-Dynamic")) {
+						if(pathToFolderForModelsForTest1_1_WD.isEmpty()) {
+						pathToFolderForModelsForTest1_1_WD = CommonFunctionality
+								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1_" + sphere)
+								.getAbsolutePath();
+						}
 						directoryOfFiles = new File(
 								pathToFolderForModelsForTest1_1_WD + File.separatorChar + "BoundaryTest_decision-"
 										+ modelWithAmountDecisions + File.separatorChar + "annotated");
@@ -312,6 +322,11 @@ public class BatchFileGenerator {
 								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_2-BoundaryTest2_" + sphere)
 								.getAbsolutePath();
 					} else if (sphere.contentEquals("Strong-Dynamic")) {
+						if(pathToFolderForModelsForTest1_1_SD.isEmpty()) {
+						pathToFolderForModelsForTest1_1_SD = CommonFunctionality
+								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1_" + sphere)
+								.getAbsolutePath();
+						}
 						directoryOfFiles = new File(
 								pathToFolderForModelsForTest1_1_SD + File.separatorChar + "BoundaryTest_decision-"
 										+ modelWithAmountDecisions + File.separatorChar + "annotated");
