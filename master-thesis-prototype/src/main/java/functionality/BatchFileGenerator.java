@@ -125,15 +125,15 @@ public class BatchFileGenerator {
 		String test5ToRun = "Test5ToRun";
 		String test6ToRun = "Test6ToRun";
 
-		/*methodsToRun.add(test1_1ToRun);
+		//methodsToRun.add(test1_1ToRun);
 		methodsToRun.add(test1_2ToRun);
-		methodsToRun.add(createRandomProcesses);
+		/*methodsToRun.add(createRandomProcesses);
 		methodsToRun.add(test2ToRun);
 		methodsToRun.add(test3ToRun);
 		methodsToRun.add(test4_1ToRun);
 		methodsToRun.add(test4_2ToRun);
-		methodsToRun.add(test5ToRun);*/
-		methodsToRun.add(test6ToRun);
+		methodsToRun.add(test5ToRun);
+		methodsToRun.add(test6ToRun);*/
 
 		String pathToFolderForModelsForTest1_1_Static = "";
 		String pathToFolderForModelsForTest1_1_WD = "";
@@ -281,7 +281,7 @@ public class BatchFileGenerator {
 			boolean testIfModelValid = false;
 			boolean calculateAmountPaths = false;
 
-			int modelWithAmountDecisions = 12;
+			int modelWithAmountDecisions = 8;
 			int newModelsPerIteration = 10;
 
 			// the private sphere lower bound for this test is influenced by the boundary
@@ -337,12 +337,14 @@ public class BatchFileGenerator {
 
 				}
 
+				if(directoryOfFiles!=null) {
 				List<File> listOfFiles = Arrays.asList(directoryOfFiles.listFiles());
 				File model = CommonFunctionality.getRandomItem(listOfFiles);
 
 				BatchFileGenerator.performBoundaryTest1_2(model, privateSphereLowerBound, newModelsPerIteration,
 						amountSolutionsToBeGenerated, amountThreads, pathToFolderForModelsForTest1_2, testIfModelValid,
 						calculateAmountPaths);
+				}
 
 			}
 			System.out.println("BoundartyTest1_2 finished!");
