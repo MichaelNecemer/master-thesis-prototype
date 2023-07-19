@@ -281,7 +281,7 @@ public class BatchFileGenerator {
 			boolean testIfModelValid = false;
 			boolean calculateAmountPaths = false;
 
-			int modelWithAmountDecisions = 8;
+			int modelWithAmountDecisions = 12;
 			int newModelsPerIteration = 10;
 
 			// the private sphere lower bound for this test is influenced by the boundary
@@ -2006,7 +2006,7 @@ public class BatchFileGenerator {
 				for (String pathToFile : pathForFiles) {
 					API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
 					HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
-							.runAlgsAndWriteResults(api, 100, maxXorsToRunExhaustiveOn, runExhaustiveSearch,
+							.runAlgsAndWriteResults(api, 100, Integer.MAX_VALUE, runExhaustiveSearch,
 									runNaiveSearch, runIncrementalNaiveSearch, runAdvancedNaiveSearch,
 									upperBoundSolutionsForLocalMinWithBound, timeOutOrHeapSpaceExceptionMap, writer,
 									executor);
@@ -2030,6 +2030,7 @@ public class BatchFileGenerator {
 
 					}
 					timeOutOrHeapSpaceExceptionMap = returnMap.get(false);
+					System.gc();
 				}
 
 				if (!pathForFiles.isEmpty()) {
@@ -2133,7 +2134,7 @@ public class BatchFileGenerator {
 					for (String pathToFile : pathForFiles) {
 						API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
 						HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
-								.runAlgsAndWriteResults(api, 100, maxXorsToRunExhaustiveOn, runExhaustive, runNaive,
+								.runAlgsAndWriteResults(api, 100, Integer.MAX_VALUE, runExhaustive, runNaive,
 										runIncrementalNaive, runAdvancedNaive, boundForAlgorithms, timeOutMap, writer,
 										executor);
 
@@ -2154,6 +2155,7 @@ public class BatchFileGenerator {
 									runAdvancedNaive = false;
 								}
 							}
+							System.gc();
 						}
 
 						timeOutMap = returnMap.get(false);
