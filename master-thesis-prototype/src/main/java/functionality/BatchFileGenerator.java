@@ -125,9 +125,9 @@ public class BatchFileGenerator {
 		String test5ToRun = "Test5ToRun";
 		String test6ToRun = "Test6ToRun";
 
-		//methodsToRun.add(test1_1ToRun);
-		methodsToRun.add(test1_2ToRun);
-		/*methodsToRun.add(createRandomProcesses);
+		methodsToRun.add(test1_1ToRun);
+		/*methodsToRun.add(test1_2ToRun);
+		methodsToRun.add(createRandomProcesses);
 		methodsToRun.add(test2ToRun);
 		methodsToRun.add(test3ToRun);
 		methodsToRun.add(test4_1ToRun);
@@ -214,7 +214,7 @@ public class BatchFileGenerator {
 			// set the percentage of processes that will have the xors always in sequence
 			int percentageProcessesWithXorsAlwaysInSeq = 100;
 
-			int stopAfterDecisions = 50;
+			int stopAfterDecisions = 10;
 
 			// tasksFactor is the number of additional tasks to be inserted per decision
 			int tasksFactor = 4;
@@ -233,12 +233,16 @@ public class BatchFileGenerator {
 								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1_" + sphere)
 								.getAbsolutePath();
 						pathToFolderForModels = pathToFolderForModelsForTest1_1_Static;
-					} else if (sphere.contentEquals("Weak-Dynamic")) {
+					} 
+					
+					if (sphere.contentEquals("Weak-Dynamic")) {
 						pathToFolderForModelsForTest1_1_WD = CommonFunctionality
 								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1_" + sphere)
 								.getAbsolutePath();
 						pathToFolderForModels = pathToFolderForModelsForTest1_1_WD;
-					} else if (sphere.contentEquals("Strong-Dynamic")) {
+					} 
+					
+					if (sphere.contentEquals("Strong-Dynamic")) {
 						pathToFolderForModelsForTest1_1_SD = CommonFunctionality
 								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1_" + sphere)
 								.getAbsolutePath();
@@ -248,6 +252,7 @@ public class BatchFileGenerator {
 					LinkedList<String> sphereList = new LinkedList<String>();
 					sphereList.add(sphere);
 
+					if(!pathToFolderForModels.isEmpty()) {					
 					// the amount of possible combinations of additional actors for the process will
 					// be increased by
 					// binom(5,3) -> 10 additional combs per decision
@@ -264,6 +269,7 @@ public class BatchFileGenerator {
 							amountThreads, stopAfterDecisions, pathToFolderForModels, firstElementAfterStartIsTask,
 							timeOutForProcessGeneratorInMin, testIfModelValid, calculateAmountOfPaths,
 							percentageProcessesWithXorsAlwaysInSeq);
+					}
 				}
 			}
 			System.out.println("BoundartyTest1_1 finished!");
@@ -309,7 +315,9 @@ public class BatchFileGenerator {
 						pathToFolderForModelsForTest1_2 = CommonFunctionality
 								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_2-BoundaryTest2_" + sphere)
 								.getAbsolutePath();
-					} else if (sphere.contentEquals("Weak-Dynamic")) {
+					} 
+					
+					if (sphere.contentEquals("Weak-Dynamic")) {
 						if(pathToFolderForModelsForTest1_1_WD.isEmpty()) {
 						pathToFolderForModelsForTest1_1_WD = CommonFunctionality
 								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1_" + sphere)
@@ -321,7 +329,9 @@ public class BatchFileGenerator {
 						pathToFolderForModelsForTest1_2 = CommonFunctionality
 								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_2-BoundaryTest2_" + sphere)
 								.getAbsolutePath();
-					} else if (sphere.contentEquals("Strong-Dynamic")) {
+					} 
+					
+					if (sphere.contentEquals("Strong-Dynamic")) {
 						if(pathToFolderForModelsForTest1_1_SD.isEmpty()) {
 						pathToFolderForModelsForTest1_1_SD = CommonFunctionality
 								.fileWithDirectoryAssurance(pathToRootFolder, "Test1_1-BoundaryTest1_" + sphere)
@@ -337,7 +347,7 @@ public class BatchFileGenerator {
 
 				}
 
-				if(directoryOfFiles!=null) {
+				if(directoryOfFiles!=null&&!pathToFolderForModelsForTest1_2.isEmpty()) {
 				List<File> listOfFiles = Arrays.asList(directoryOfFiles.listFiles());
 				File model = CommonFunctionality.getRandomItem(listOfFiles);
 
@@ -717,6 +727,8 @@ public class BatchFileGenerator {
 				System.out.println(test5ToRun + " not performed! Run test 2 first!");
 
 			} else {
+				int probabilityForGatewayToHaveConstraint = 30;
+
 				String pathToSmallProcessesWithAnnotation = pathToSmallProcessesForTest2WithAnnotation
 						+ File.separatorChar + "ModelsForEvaluation";
 				LinkedList<File> smallProcessesFromTradeOffTest = BatchFileGenerator
@@ -735,20 +747,20 @@ public class BatchFileGenerator {
 
 				String pathToFolderForSmallModelsForTest5 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "SmallModels").getAbsolutePath();
-				BatchFileGenerator.performTestWithMandatoryConstraints(smallProcessesFromTradeOffTest, false,
+				BatchFileGenerator.performTestWithMandatoryConstraints(smallProcessesFromTradeOffTest, false,probabilityForGatewayToHaveConstraint,
 						pathToFolderForSmallModelsForTest5, amountSolutionsToBeGenerated, "small", amountThreads,
 						testIfModelValid, calculateAmountOfPaths);
 
 				String pathToFolderForMediumModelsForTest5 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "MediumModels").getAbsolutePath();
-				BatchFileGenerator.performTestWithMandatoryConstraints(mediumProcessesFromTradeOffTest, false,
+				BatchFileGenerator.performTestWithMandatoryConstraints(mediumProcessesFromTradeOffTest, false,probabilityForGatewayToHaveConstraint,
 						pathToFolderForMediumModelsForTest5, amountSolutionsToBeGenerated, "medium", amountThreads,
 						testIfModelValid, calculateAmountOfPaths);
 
 				/*
 				String pathToFolderForLargeModelsForTest5 = CommonFunctionality
 						.fileWithDirectoryAssurance(pathToFolderForModelsForTest5, "LargeModels").getAbsolutePath();
-				BatchFileGenerator.performTestWithMandatoryConstraints(largeProcessesFromTradeOffTest, false,
+				BatchFileGenerator.performTestWithMandatoryConstraints(largeProcessesFromTradeOffTest, false,probabilityForGatewayToHaveConstraint,
 						pathToFolderForLargeModelsForTest5, amountSolutionsToBeGenerated, "large", amountThreads,
 						testIfModelValid, calculateAmountOfPaths);
 				*/
@@ -2251,12 +2263,10 @@ public class BatchFileGenerator {
 
 	}
 
-	public static void performTestWithMandatoryConstraints(LinkedList<File> models, boolean modelWithLanes,
+	public static void performTestWithMandatoryConstraints(LinkedList<File> models, boolean modelWithLanes, int probabilityForGatwayToHaveMandPartConst,
 			String directoryToStoreNewModels, int boundSolutions, String suffixCSV, int amountThreads,
 			boolean testIfModelValid, boolean calculateAmountOfPaths) {
 
-		// each brt will have mandatory participants
-		int probabilityForGatwayToHaveMandPartConst = 100;
 
 		for (File file : models) {
 			String fileName = file.getName();
