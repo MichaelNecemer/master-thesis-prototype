@@ -217,7 +217,7 @@ public class API {
 			// search already
 			Collections.shuffle(this.businessRuleTasks);
 			for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
-				LinkedList<AdditionalActors> addActorsForBrt = this.getCheapestAdditionalActorsForBrtNaive(false, brt,
+				LinkedList<AdditionalActors> addActorsForBrt = this.getCheapestAdditionalActorsForBrtHeuristic(false, brt,
 						pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject, null, bound);
 				alreadyChosenAdditionalActors.putIfAbsent(brt, addActorsForBrt);
 				LinkedList<LinkedList<AdditionalActors>> currLists = this.computeAllAddActorsLists(addActorsForBrt,
@@ -369,7 +369,7 @@ public class API {
 
 				HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
 				HashMap<BPMNParticipant, Double> amountParticipantChosenAsAddActorsMap = new HashMap<BPMNParticipant, Double>();
-				allCheapestAddActorsLists = this.queryBrtsTopolgicalAdvancedNaiveSearch(this.startEvent, this.endEvent,
+				allCheapestAddActorsLists = this.queryBrtsTopolgicalAdvancedHeuristicSearch(this.startEvent, this.endEvent,
 						new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), this.endEvent,
 						pathsFromOriginToEndMap, alreadyChosenAdditionalActors, amountParticipantChosenAsAddActorsMap,
 						staticSpherePerDataObject, wdSpherePerDataObject,
@@ -408,8 +408,9 @@ public class API {
 			timeList.set(1, (double) timeForCalculatingMeasure / NANOSEC_TO_SEC + "");
 
 			long executionTimeAdvancedNaive = endTimeAdvancedNaiveSearch - startTime;
+			timeList.set(2, (double) executionTimeAdvancedNaive / NANOSEC_TO_SEC + "");
 
-			System.out.println("Advanced naive search generated solutions: " + pModelAddActors.size());
+			System.out.println("Advanced heuristic search generated solutions: " + pModelAddActors.size());
 			if (!this.testIfAdditionalActorsValid(pModelAddActors.get(0))) {
 				throw new Exception("Not valid assigned additional actors!");
 			}
@@ -420,9 +421,9 @@ public class API {
 			throw ex;
 		} finally {
 			this.executionTimeMap.put(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC, timeList);
-			System.out.println("Advanced naive search combsGen time in sec: " + timeList.get(0));
-			System.out.println("Advanced naive search calcMeasure time in sec: " + timeList.get(1));
-			System.out.println("Advanced naive search execution time in sec: " + timeList.get(2));
+			System.out.println("Advanced heuristic search combsGen time in sec: " + timeList.get(0));
+			System.out.println("Advanced heuristic search calcMeasure time in sec: " + timeList.get(1));
+			System.out.println("Advanced heuristic search execution time in sec: " + timeList.get(2));
 		}
 
 	}
@@ -488,7 +489,7 @@ public class API {
 			LinkedList<BPMNParticipant> fillUp = new LinkedList<BPMNParticipant>();
 			for (Entry<Double, LinkedList<BPMNParticipant>> entry : tieBrakerMap.entrySet()) {
 				// preserve the order of the local cheapest list
-				// to get same results as incremental naive when the tieBrakerMap has the same
+				// to get same results as incremental heuristic when the tieBrakerMap has the same
 				// elements
 				// on the plateau
 				// the elements from the remainingWithBestCost are on a plateau
@@ -2960,7 +2961,7 @@ public class API {
 			if (element instanceof BPMNBusinessRuleTask) {
 				BPMNBusinessRuleTask currentBrt = (BPMNBusinessRuleTask) element;
 				if (this.businessRuleTasks.contains(currentBrt)) {
-					LinkedList<AdditionalActors> addActorsForBrt = this.getCheapestAdditionalActorsForBrtNaive(true,
+					LinkedList<AdditionalActors> addActorsForBrt = this.getCheapestAdditionalActorsForBrtHeuristic(true,
 							currentBrt, pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject,
 							alreadyChosenAdditionalActors, bound);
 					alreadyChosenAdditionalActors.putIfAbsent(currentBrt, addActorsForBrt);
@@ -3006,7 +3007,7 @@ public class API {
 	}
 	
 	
-	public LinkedList<LinkedList<AdditionalActors>> queryBrtsTopolgicalAdvancedNaiveSearch(BPMNElement startNode,
+	public LinkedList<LinkedList<AdditionalActors>> queryBrtsTopolgicalAdvancedHeuristicSearch(BPMNElement startNode,
 			BPMNElement endNode, LinkedList<BPMNElement> queue, LinkedList<BPMNElement> openSplits,
 			BPMNElement endPointOfSearch,
 			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap,
@@ -3044,7 +3045,7 @@ public class API {
 							BPMNGateway correspondingJoin = this.getCorrespondingGtw(lastOpenedSplit);
 							// need to add the lastOpenedSplit, since one path has gone dfs till the join
 							// already
-							queryBrtsTopolgicalAdvancedNaiveSearch(element.getSuccessors().iterator().next(),
+							queryBrtsTopolgicalAdvancedHeuristicSearch(element.getSuccessors().iterator().next(),
 									correspondingJoin, queue, openSplits, endPointOfSearch, pathsFromOriginToEndMap,
 									alreadyChosenAdditionalActors, amountParticipantChosenAsAddActor,
 									staticSpherePerDataObject, wdSpherePerDataObject, allCheapestAddActorsLists, bound);
@@ -3053,7 +3054,7 @@ public class API {
 							// go from the successor of the element to endPointOfSearch since the
 							// currentElement has
 							// already been added to the path
-							queryBrtsTopolgicalAdvancedNaiveSearch(element.getSuccessors().iterator().next(),
+							queryBrtsTopolgicalAdvancedHeuristicSearch(element.getSuccessors().iterator().next(),
 									endPointOfSearch, queue, openSplits, endPointOfSearch, pathsFromOriginToEndMap,
 									alreadyChosenAdditionalActors, amountParticipantChosenAsAddActor,
 									staticSpherePerDataObject, wdSpherePerDataObject, allCheapestAddActorsLists, bound);
@@ -3171,7 +3172,7 @@ public class API {
 					} catch (Exception ex) {
 						throw ex;
 					}
-					queryBrtsTopolgicalAdvancedNaiveSearch(successor, correspondingJoinGtw, queue, openSplits,
+					queryBrtsTopolgicalAdvancedHeuristicSearch(successor, correspondingJoinGtw, queue, openSplits,
 							endPointOfSearch, pathsFromOriginToEndMap, alreadyChosenAdditionalActors,
 							amountParticipantChosenAsAddActor, staticSpherePerDataObject, wdSpherePerDataObject,
 							allCheapestAddActorsLists, bound);
@@ -3509,7 +3510,7 @@ public class API {
 
 	}
 
-	public LinkedList<AdditionalActors> getCheapestAdditionalActorsForBrtNaive(boolean incremental,
+	public LinkedList<AdditionalActors> getCheapestAdditionalActorsForBrtHeuristic(boolean incremental,
 			BPMNBusinessRuleTask currentBrt,
 			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap,
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
@@ -3967,7 +3968,7 @@ public class API {
 			LinkedList<BPMNParticipant> remainingSortedByTieBrakerWithFillUp = new LinkedList<BPMNParticipant>();
 			for (Entry<Double, LinkedList<BPMNParticipant>> entry : tieBrakerMap.entrySet()) {
 				// preserve the order of the local cheapest list
-				// to get same results as incremental naive when the tieBrakerMap has the same
+				// to get same results as incremental heuristic when the tieBrakerMap has the same
 				// elements
 				// on the plateau
 				// the elements from the remainingWithBestCost are on a plateau
