@@ -51,9 +51,9 @@ public class GUI {
 	static API api = null;
 	static BPMNExclusiveGateway bpmnEx = null;
 	static JCheckBox jrbExhaustiveSearch;
-	static JCheckBox jrbNaiveSearch;
-	static JCheckBox jrbIncrementalNaiveSearch;
-	static JCheckBox jrbAdvancedNaiveSearch;
+	static JCheckBox jrbBaseHeuristicSearch;
+	static JCheckBox jrbIncrementalHeuristicSearch;
+	static JCheckBox jrbAdvancedHeuristicSearch;
 	static JLabel openingModelsLabel;
 	static JLabel saveModelsLabel;
 	static JLabel boundLabel;
@@ -431,32 +431,11 @@ public class GUI {
 							// create buttons for choosing the algorithm to perform
 							leftPanel.add(new JLabel("Algorithms: "));
 							jrbExhaustiveSearch = new JCheckBox("Exhaustive Search", false);
-							jrbNaiveSearch = new JCheckBox("Naive Search", false);
-							jrbIncrementalNaiveSearch = new JCheckBox("Incremental Naive Search", false);
-							jrbAdvancedNaiveSearch = new JCheckBox("Advanced Naive Search", true);
+							jrbBaseHeuristicSearch = new JCheckBox("Base Heuristic Search", false);
+							jrbIncrementalHeuristicSearch = new JCheckBox("Incremental Heuristic Search", false);
+							jrbAdvancedHeuristicSearch = new JCheckBox("Advanced Heuristic Search", true);
 
-							jrbNaiveSearch.addItemListener(new ItemListener() {
-
-								@Override
-								public void itemStateChanged(ItemEvent e) {
-									// TODO Auto-generated method stub
-									if (e.getStateChange() == ItemEvent.SELECTED) {
-										boundLabel.setVisible(true);
-										jFormattedTextField1.setVisible(true);
-										jFormattedTextField1.setEnabled(true);
-										frame.pack();
-									} else if (e.getStateChange() == ItemEvent.DESELECTED) {
-										boundLabel.setVisible(false);
-										jFormattedTextField1.setEnabled(false);
-										jFormattedTextField1.setVisible(false);
-										frame.pack();
-									}
-
-								}
-
-							});
-
-							jrbIncrementalNaiveSearch.addItemListener(new ItemListener() {
+							jrbBaseHeuristicSearch.addItemListener(new ItemListener() {
 
 								@Override
 								public void itemStateChanged(ItemEvent e) {
@@ -477,7 +456,28 @@ public class GUI {
 
 							});
 
-							jrbAdvancedNaiveSearch.addItemListener(new ItemListener() {
+							jrbIncrementalHeuristicSearch.addItemListener(new ItemListener() {
+
+								@Override
+								public void itemStateChanged(ItemEvent e) {
+									// TODO Auto-generated method stub
+									if (e.getStateChange() == ItemEvent.SELECTED) {
+										boundLabel.setVisible(true);
+										jFormattedTextField1.setVisible(true);
+										jFormattedTextField1.setEnabled(true);
+										frame.pack();
+									} else if (e.getStateChange() == ItemEvent.DESELECTED) {
+										boundLabel.setVisible(false);
+										jFormattedTextField1.setEnabled(false);
+										jFormattedTextField1.setVisible(false);
+										frame.pack();
+									}
+
+								}
+
+							});
+
+							jrbAdvancedHeuristicSearch.addItemListener(new ItemListener() {
 
 								@Override
 								public void itemStateChanged(ItemEvent e) {
@@ -524,14 +524,14 @@ public class GUI {
 
 							ButtonGroup jCheckBoxGroup = new ButtonGroup();
 							jCheckBoxGroup.add(jrbExhaustiveSearch);
-							jCheckBoxGroup.add(jrbNaiveSearch);
-							jCheckBoxGroup.add(jrbIncrementalNaiveSearch);
-							jCheckBoxGroup.add(jrbAdvancedNaiveSearch);
+							jCheckBoxGroup.add(jrbBaseHeuristicSearch);
+							jCheckBoxGroup.add(jrbIncrementalHeuristicSearch);
+							jCheckBoxGroup.add(jrbAdvancedHeuristicSearch);
 
 							leftPanel.add(jrbExhaustiveSearch);
-							leftPanel.add(jrbNaiveSearch);
-							leftPanel.add(jrbIncrementalNaiveSearch);
-							leftPanel.add(jrbAdvancedNaiveSearch);
+							leftPanel.add(jrbBaseHeuristicSearch);
+							leftPanel.add(jrbIncrementalHeuristicSearch);
+							leftPanel.add(jrbAdvancedHeuristicSearch);
 							boundLabel = new JLabel("Enter bound (0... unbounded): ");
 							leftPanel.add(boundLabel);
 							boundLabel.setVisible(true);
@@ -666,16 +666,16 @@ public class GUI {
 									int bound = 0;
 									if (jrbExhaustiveSearch.isSelected()) {
 										selectedAlgorithm = Enums.AlgorithmToPerform.EXHAUSTIVE;
-									} else if (jrbNaiveSearch.isSelected()) {
-										selectedAlgorithm = Enums.AlgorithmToPerform.NAIVE;
+									} else if (jrbBaseHeuristicSearch.isSelected()) {
+										selectedAlgorithm = Enums.AlgorithmToPerform.BASEHEURISTIC;
 										// read the bound value
 										bound = Integer.parseInt(jFormattedTextField1.getText());
-									} else if (jrbIncrementalNaiveSearch.isSelected()) {
-										selectedAlgorithm = Enums.AlgorithmToPerform.INCREMENTALNAIVE;
+									} else if (jrbIncrementalHeuristicSearch.isSelected()) {
+										selectedAlgorithm = Enums.AlgorithmToPerform.INCREMENTALHEURISTIC;
 										// read the bound value
 										bound = Integer.parseInt(jFormattedTextField1.getText());
-									} else if (jrbAdvancedNaiveSearch.isSelected()) {
-										selectedAlgorithm = Enums.AlgorithmToPerform.ADVANCEDNAIVE;
+									} else if (jrbAdvancedHeuristicSearch.isSelected()) {
+										selectedAlgorithm = Enums.AlgorithmToPerform.ADVANCEDHEURISTIC;
 										// read the bound value
 										bound = Integer.parseInt(jFormattedTextField1.getText());
 									} else {

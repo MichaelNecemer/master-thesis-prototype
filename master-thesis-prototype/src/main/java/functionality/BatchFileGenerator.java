@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -53,7 +54,7 @@ public class BatchFileGenerator {
 	// nested
 	static int percentageOfXorsAsSeq = 0;
 
-	// amount of solutions to be generated with naive approaches
+	// amount of solutions to be generated with heuristic approaches
 	static int amountSolutionsToBeGenerated = 1;
 
 	static int amountThreads = 1;
@@ -1184,8 +1185,8 @@ public class BatchFileGenerator {
 
 	public static synchronized HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> runAlgsAndWriteResults(
 			API api, int percentageOfProcessesToRunExhaustiveOn, int maxXorsToRunExhaustiveOn,
-			boolean runExhaustiveSearch, boolean runNaiveSearch, boolean runIncrementalNaiveSearch,
-			boolean runAdvancedNaiveSearch, int amountSolutionsToGeneratedWithNaive,
+			boolean runExhaustiveSearch, boolean runBaseHeuristicSearch, boolean runIncrementalHeuristicSearch,
+			boolean runAdvancedHeuristicSearch, int amountSolutionsToGeneratedWithHeuristic,
 			HashMap<Enums.AlgorithmToPerform, Integer> timeOutOrHeapSpaceExceptionMap, ResultsToCSVWriter writer,
 			ExecutorService service) {
 
@@ -1203,64 +1204,90 @@ public class BatchFileGenerator {
 		returnMap.put(true, new HashMap<Enums.AlgorithmToPerform, Integer>());
 		returnMap.put(false, new HashMap<Enums.AlgorithmToPerform, Integer>());
 
-		try {
-			if (runExhaustiveSearch) {
-				int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
-				if (randomInt <= percentageOfProcessesToRunExhaustiveOn) {
-					// do not allow models with more than maxXorsToRunExhaustiveOn xors in order to
-					// avoid heap space exceptions
-					if (CommonFunctionality
-							.getAmountExclusiveGtwSplits(api.getModelInstance()) <= maxXorsToRunExhaustiveOn) {
-						boolean heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.EXHAUSTIVE, 0,
-								exceptionPerAlgorithm, cheapestSolutionsMap, totalAmountSolutionsMap,
-								cheapestSolutionCostMap, loggingMap, timeOutOrHeapSpaceExceptionMap, service);
-						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) != null) {
-							int res = timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE);
-							returnMap.get(heapSpaceError).put(Enums.AlgorithmToPerform.EXHAUSTIVE, res);
+		// to avoid warm up problems execute the algorithms in random order
+		List<Enums.AlgorithmToPerform> methodList = new LinkedList<>();
+		if(runExhaustiveSearch) {
+			methodList.add(AlgorithmToPerform.EXHAUSTIVE);
+		}
+		if(runBaseHeuristicSearch) {
+			methodList.add(AlgorithmToPerform.BASEHEURISTIC);
+
+		}
+		if(runIncrementalHeuristicSearch) {
+			methodList.add(AlgorithmToPerform.INCREMENTALHEURISTIC);
+
+		}
+		if(runAdvancedHeuristicSearch) {
+			methodList.add(AlgorithmToPerform.ADVANCEDHEURISTIC);
+		}
+		
+		Collections.shuffle(methodList);
+		
+		
+		for(Enums.AlgorithmToPerform algToPerform: methodList) {
+			try {
+				if (algToPerform.equals(AlgorithmToPerform.EXHAUSTIVE)) {
+					int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
+					if (randomInt <= percentageOfProcessesToRunExhaustiveOn) {
+						// do not allow models with more than maxXorsToRunExhaustiveOn xors in order to
+						// avoid heap space exceptions
+						if (CommonFunctionality
+								.getAmountExclusiveGtwSplits(api.getModelInstance()) <= maxXorsToRunExhaustiveOn) {
+							boolean heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.EXHAUSTIVE, 0,
+									exceptionPerAlgorithm, cheapestSolutionsMap, totalAmountSolutionsMap,
+									cheapestSolutionCostMap, loggingMap, timeOutOrHeapSpaceExceptionMap, service);
+							if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE) != null) {
+								int res = timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE);
+								returnMap.get(heapSpaceError).put(Enums.AlgorithmToPerform.EXHAUSTIVE, res);
+							}
 						}
 					}
 				}
-			}
 
-			if (runNaiveSearch) {
-				boolean heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.NAIVE,
-						amountSolutionsToGeneratedWithNaive, exceptionPerAlgorithm, cheapestSolutionsMap,
-						totalAmountSolutionsMap, cheapestSolutionCostMap, loggingMap, timeOutOrHeapSpaceExceptionMap,
-						service);
-				if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.NAIVE) != null) {
-					int res = timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.NAIVE);
-					returnMap.get(heapSpaceError).put(Enums.AlgorithmToPerform.NAIVE, res);
+				if (algToPerform.equals(AlgorithmToPerform.BASEHEURISTIC)) {
+					boolean heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.BASEHEURISTIC,
+							amountSolutionsToGeneratedWithHeuristic, exceptionPerAlgorithm, cheapestSolutionsMap,
+							totalAmountSolutionsMap, cheapestSolutionCostMap, loggingMap, timeOutOrHeapSpaceExceptionMap,
+							service);
+					if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.BASEHEURISTIC) != null) {
+						int res = timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.BASEHEURISTIC);
+						returnMap.get(heapSpaceError).put(Enums.AlgorithmToPerform.BASEHEURISTIC, res);
+					}
 				}
-			}
 
-			if (runIncrementalNaiveSearch) {
-				boolean heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.INCREMENTALNAIVE,
-						amountSolutionsToGeneratedWithNaive, exceptionPerAlgorithm, cheapestSolutionsMap,
-						totalAmountSolutionsMap, cheapestSolutionCostMap, loggingMap, timeOutOrHeapSpaceExceptionMap,
-						service);
-				if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) != null) {
-					int res = timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE);
-					returnMap.get(heapSpaceError).put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, res);
+				if (algToPerform.equals(AlgorithmToPerform.INCREMENTALHEURISTIC)) {
+					boolean heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.INCREMENTALHEURISTIC,
+							amountSolutionsToGeneratedWithHeuristic, exceptionPerAlgorithm, cheapestSolutionsMap,
+							totalAmountSolutionsMap, cheapestSolutionCostMap, loggingMap, timeOutOrHeapSpaceExceptionMap,
+							service);
+					if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC) != null) {
+						int res = timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC);
+						returnMap.get(heapSpaceError).put(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC, res);
+					}
 				}
-			}
 
-			if (runAdvancedNaiveSearch) {
-				boolean heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.ADVANCEDNAIVE,
-						amountSolutionsToGeneratedWithNaive, exceptionPerAlgorithm, cheapestSolutionsMap,
-						totalAmountSolutionsMap, cheapestSolutionCostMap, loggingMap, timeOutOrHeapSpaceExceptionMap,
-						service);
-				if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.ADVANCEDNAIVE) != null) {
-					int res = timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.ADVANCEDNAIVE);
-					returnMap.get(heapSpaceError).put(Enums.AlgorithmToPerform.ADVANCEDNAIVE, res);
+				if (algToPerform.equals(AlgorithmToPerform.ADVANCEDHEURISTIC)) {
+					boolean heapSpaceError = runAlgorithm(api, Enums.AlgorithmToPerform.ADVANCEDHEURISTIC,
+							amountSolutionsToGeneratedWithHeuristic, exceptionPerAlgorithm, cheapestSolutionsMap,
+							totalAmountSolutionsMap, cheapestSolutionCostMap, loggingMap, timeOutOrHeapSpaceExceptionMap,
+							service);
+					if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC) != null) {
+						int res = timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC);
+						returnMap.get(heapSpaceError).put(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC, res);
+					}
 				}
-			}
 
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			writer.writeResultsOfAlgorithmsToCSVFile(api, cheapestSolutionCostMap, totalAmountSolutionsMap,
-					cheapestSolutionsMap, loggingMap, exceptionPerAlgorithm);
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				writer.writeResultsOfAlgorithmsToCSVFile(api, cheapestSolutionCostMap, totalAmountSolutionsMap,
+						cheapestSolutionsMap, loggingMap, exceptionPerAlgorithm);
+			}
+			
 		}
+		
+		
+		
 		return returnMap;
 	}
 
@@ -1341,22 +1368,23 @@ public class BatchFileGenerator {
 			loggingMap.putIfAbsent(algToPerform, logging);
 		}
 
+		System.gc();
 		return heapSpaceError;
 
 	}
 
 	public static void runAlgorithmsAndWriteResultsToCSV(String pathToFolderWithAnnotatedModels,
 			int percentageOfExtraLargeProcessesToRunExhaustiveOn, int maxXorsToRunExhaustiveOn,
-			boolean runExhaustiveSearch, boolean runIncrementalNaiveSearch, boolean runNaiveSearch,
-			boolean runAdvancedNaiveSearch, int boundForSearchWithBound, ResultsToCSVWriter writer,
+			boolean runExhaustiveSearch, boolean runBaseHeuristicSearch, boolean runIncrementalHeuristicSearch,
+			boolean runAdvancedHeuristicSearch, int boundForSearchWithBound, ResultsToCSVWriter writer,
 			ExecutorService service, boolean testIfModelValid, boolean calculateAmountOfPaths) {
 		LinkedList<String> pathsForFiles = pathsForFiles(pathToFolderWithAnnotatedModels);
 		if (!pathsForFiles.isEmpty()) {
 			for (String pathToFile : pathsForFiles) {
 				API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
 				BatchFileGenerator.runAlgsAndWriteResults(api, percentageOfExtraLargeProcessesToRunExhaustiveOn,
-						maxXorsToRunExhaustiveOn, runExhaustiveSearch, runNaiveSearch, runIncrementalNaiveSearch,
-						runAdvancedNaiveSearch, boundForSearchWithBound,
+						maxXorsToRunExhaustiveOn, runExhaustiveSearch, runBaseHeuristicSearch, runIncrementalHeuristicSearch,
+						runAdvancedHeuristicSearch, boundForSearchWithBound,
 						new HashMap<Enums.AlgorithmToPerform, Integer>(), writer, service);
 			}
 		} else {
@@ -1887,9 +1915,9 @@ public class BatchFileGenerator {
 
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreads);
 		boolean runExhaustiveSearch = true;
-		boolean runNaiveSearch = true;
-		boolean runIncrementalNaiveSearch = true;
-		boolean runAdvancedNaiveSearch = true;
+		boolean runBaseHeuristicSearch = true;
+		boolean runIncrementalHeuristicSearch = true;
+		boolean runAdvancedHeuristicSearch = true;
 		boolean finishTest = false;
 		try {
 			int i = amountDecisionsToStart;
@@ -1899,9 +1927,9 @@ public class BatchFileGenerator {
 				}
 				timeOutOrHeapSpaceExceptionMap.clear();
 				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
-				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.NAIVE, 0);
-				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, 0);
-				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.ADVANCEDNAIVE, 0);
+				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.BASEHEURISTIC, 0);
+				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC, 0);
+				timeOutOrHeapSpaceExceptionMap.put(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC, 0);
 
 				int amountDataObjectsToCreate = amountDecisionsToStart;
 				System.out.println("Generate models with " + amountDecisionsToStart + " decisions!");
@@ -2019,7 +2047,7 @@ public class BatchFileGenerator {
 					API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
 					HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
 							.runAlgsAndWriteResults(api, 100, Integer.MAX_VALUE, runExhaustiveSearch,
-									runNaiveSearch, runIncrementalNaiveSearch, runAdvancedNaiveSearch,
+									runBaseHeuristicSearch, runIncrementalHeuristicSearch, runAdvancedHeuristicSearch,
 									upperBoundSolutionsForLocalMinWithBound, timeOutOrHeapSpaceExceptionMap, writer,
 									executor);
 					if (returnMap.get(true) != null) {
@@ -2029,14 +2057,14 @@ public class BatchFileGenerator {
 							if (entr.getKey().equals(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
 								runExhaustiveSearch = false;
 							}
-							if (entr.getKey().equals(Enums.AlgorithmToPerform.NAIVE)) {
-								runNaiveSearch = false;
+							if (entr.getKey().equals(Enums.AlgorithmToPerform.BASEHEURISTIC)) {
+								runBaseHeuristicSearch = false;
 							}
-							if (entr.getKey().equals(Enums.AlgorithmToPerform.INCREMENTALNAIVE)) {
-								runIncrementalNaiveSearch = false;
+							if (entr.getKey().equals(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC)) {
+								runIncrementalHeuristicSearch = false;
 							}
-							if (entr.getKey().equals(Enums.AlgorithmToPerform.ADVANCEDNAIVE)) {
-								runAdvancedNaiveSearch = false;
+							if (entr.getKey().equals(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC)) {
+								runAdvancedHeuristicSearch = false;
 							}
 						}
 
@@ -2053,23 +2081,23 @@ public class BatchFileGenerator {
 						}
 					}
 
-					if (timeOutOrHeapSpaceExceptionMap.containsKey(Enums.AlgorithmToPerform.NAIVE)) {
-						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.NAIVE) == pathForFiles.size()) {
-							runNaiveSearch = false;
+					if (timeOutOrHeapSpaceExceptionMap.containsKey(Enums.AlgorithmToPerform.BASEHEURISTIC)) {
+						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.BASEHEURISTIC) == pathForFiles.size()) {
+							runBaseHeuristicSearch = false;
 						}
 					}
 
-					if (timeOutOrHeapSpaceExceptionMap.containsKey(Enums.AlgorithmToPerform.INCREMENTALNAIVE)) {
+					if (timeOutOrHeapSpaceExceptionMap.containsKey(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC)) {
 						if (timeOutOrHeapSpaceExceptionMap
-								.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == pathForFiles.size()) {
-							runIncrementalNaiveSearch = false;
+								.get(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC) == pathForFiles.size()) {
+							runIncrementalHeuristicSearch = false;
 						}
 					}
 
-					if (timeOutOrHeapSpaceExceptionMap.containsKey(Enums.AlgorithmToPerform.ADVANCEDNAIVE)) {
-						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.ADVANCEDNAIVE) == pathForFiles
+					if (timeOutOrHeapSpaceExceptionMap.containsKey(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC)) {
+						if (timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC) == pathForFiles
 								.size()) {
-							runAdvancedNaiveSearch = false;
+							runAdvancedHeuristicSearch = false;
 						}
 					}
 				} else {
@@ -2078,16 +2106,16 @@ public class BatchFileGenerator {
 
 				System.out.println("Iteration" + amountDecisionsToStart + " end - timeOutsExhaustiveSearch: "
 						+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.EXHAUSTIVE)
-						+ ", timeOutsNaiveSearch: " + timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.NAIVE)
-						+ ", timeOutsAdvancedNaiveSearch: "
-						+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.ADVANCEDNAIVE)
-						+ ", timeOutsIncrementalNaiveSearch: "
-						+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE));
+						+ ", timeOutsBaseHeuristicSearch: " + timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.BASEHEURISTIC)
+						+ ", timeOutsIncrementalHeuristicSearch: "
+						+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC)
+						+ ", timeOutsAdvancedHeuristicSearch: "
+						+ timeOutOrHeapSpaceExceptionMap.get(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC));
 
 				amountDecisionsToStart++;
 
-				if (runExhaustiveSearch == false && runAdvancedNaiveSearch == false && runNaiveSearch == false
-						&& runIncrementalNaiveSearch == false) {
+				if (runExhaustiveSearch == false && runAdvancedHeuristicSearch == false && runBaseHeuristicSearch == false
+						&& runIncrementalHeuristicSearch == false) {
 					finishTest = true;
 				}
 
@@ -2117,9 +2145,9 @@ public class BatchFileGenerator {
 		ResultsToCSVWriter writer = new ResultsToCSVWriter(csvFile);
 		ExecutorService executor = Executors.newFixedThreadPool(amountThreadPools);
 		boolean runExhaustive = true;
-		boolean runNaive = true;
-		boolean runIncrementalNaive = true;
-		boolean runAdvancedNaive = true;
+		boolean runBaseHeuristic = true;
+		boolean runIncrementalHeuristic = true;
+		boolean runAdvancedHeuristic = true;
 		boolean finish = false;
 
 		try {
@@ -2139,15 +2167,15 @@ public class BatchFileGenerator {
 					// perform all algorithms and count the timeouts
 					HashMap<Enums.AlgorithmToPerform, Integer> timeOutMap = new HashMap<Enums.AlgorithmToPerform, Integer>();
 					timeOutMap.put(Enums.AlgorithmToPerform.EXHAUSTIVE, 0);
-					timeOutMap.put(Enums.AlgorithmToPerform.NAIVE, 0);
-					timeOutMap.put(Enums.AlgorithmToPerform.INCREMENTALNAIVE, 0);
-					timeOutMap.put(Enums.AlgorithmToPerform.ADVANCEDNAIVE, 0);
+					timeOutMap.put(Enums.AlgorithmToPerform.BASEHEURISTIC, 0);
+					timeOutMap.put(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC, 0);
+					timeOutMap.put(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC, 0);
 
 					for (String pathToFile : pathForFiles) {
 						API api = mapFileToAPI(pathToFile, writer, testIfModelValid, calculateAmountOfPaths);
 						HashMap<Boolean, HashMap<Enums.AlgorithmToPerform, Integer>> returnMap = BatchFileGenerator
-								.runAlgsAndWriteResults(api, 100, Integer.MAX_VALUE, runExhaustive, runNaive,
-										runIncrementalNaive, runAdvancedNaive, boundForAlgorithms, timeOutMap, writer,
+								.runAlgsAndWriteResults(api, 100, Integer.MAX_VALUE, runExhaustive, runBaseHeuristic,
+										runIncrementalHeuristic, runAdvancedHeuristic, boundForAlgorithms, timeOutMap, writer,
 										executor);
 
 						if (returnMap.get(true) != null) {
@@ -2157,14 +2185,14 @@ public class BatchFileGenerator {
 								if (entr.getKey().equals(Enums.AlgorithmToPerform.EXHAUSTIVE)) {
 									runExhaustive = false;
 								}
-								if (entr.getKey().equals(Enums.AlgorithmToPerform.NAIVE)) {
-									runNaive = false;
+								if (entr.getKey().equals(Enums.AlgorithmToPerform.BASEHEURISTIC)) {
+									runBaseHeuristic = false;
 								}
-								if (entr.getKey().equals(Enums.AlgorithmToPerform.INCREMENTALNAIVE)) {
-									runIncrementalNaive = false;
+								if (entr.getKey().equals(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC)) {
+									runIncrementalHeuristic = false;
 								}
-								if (entr.getKey().equals(Enums.AlgorithmToPerform.ADVANCEDNAIVE)) {
-									runAdvancedNaive = false;
+								if (entr.getKey().equals(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC)) {
+									runAdvancedHeuristic = false;
 								}
 							}
 							System.gc();
@@ -2178,25 +2206,25 @@ public class BatchFileGenerator {
 							}
 						}
 
-						if (timeOutMap.containsKey(Enums.AlgorithmToPerform.NAIVE)) {
-							if (timeOutMap.get(Enums.AlgorithmToPerform.NAIVE) == pathForFiles.size()) {
-								runNaive = false;
+						if (timeOutMap.containsKey(Enums.AlgorithmToPerform.BASEHEURISTIC)) {
+							if (timeOutMap.get(Enums.AlgorithmToPerform.BASEHEURISTIC) == pathForFiles.size()) {
+								runBaseHeuristic = false;
 							}
 						}
 
-						if (timeOutMap.containsKey(Enums.AlgorithmToPerform.INCREMENTALNAIVE)) {
-							if (timeOutMap.get(Enums.AlgorithmToPerform.INCREMENTALNAIVE) == pathForFiles.size()) {
-								runIncrementalNaive = false;
+						if (timeOutMap.containsKey(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC)) {
+							if (timeOutMap.get(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC) == pathForFiles.size()) {
+								runIncrementalHeuristic = false;
 							}
 						}
 
-						if (timeOutMap.containsKey(Enums.AlgorithmToPerform.ADVANCEDNAIVE)) {
-							if (timeOutMap.get(Enums.AlgorithmToPerform.ADVANCEDNAIVE) == pathForFiles.size()) {
-								runAdvancedNaive = false;
+						if (timeOutMap.containsKey(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC)) {
+							if (timeOutMap.get(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC) == pathForFiles.size()) {
+								runAdvancedHeuristic = false;
 							}
 						}
 
-						if (!runExhaustive && !runAdvancedNaive && !runNaive && !runIncrementalNaive) {
+						if (!runExhaustive && !runAdvancedHeuristic && !runBaseHeuristic && !runIncrementalHeuristic) {
 							finish = true;
 						}
 					}
