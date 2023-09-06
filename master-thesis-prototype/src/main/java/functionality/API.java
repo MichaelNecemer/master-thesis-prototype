@@ -213,7 +213,7 @@ public class API {
 
 			// query brts in any order
 			// do not consider already generated additional actors
-			// shuffle brts first, else they may be in same order as incremental naive
+			// shuffle brts first, else they may be in same order as incremental heuristic
 			// search already
 			Collections.shuffle(this.businessRuleTasks);
 			for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
@@ -241,15 +241,15 @@ public class API {
 			this.calculateMeasure(pModels, staticSpherePerDataObject, wdSpherePerDataObject, pathsFromOriginToEndMap,
 					new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
 
-			long endTimeNaiveSearch = System.nanoTime();
+			long endTimeBaseHeuristicSearch = System.nanoTime();
 
-			long timeForCalculatingMeasure = endTimeNaiveSearch - endTimeGeneratingCombs;
+			long timeForCalculatingMeasure = endTimeBaseHeuristicSearch - endTimeGeneratingCombs;
 			timeList.set(1, (double) timeForCalculatingMeasure / NANOSEC_TO_SEC + "");
 
-			long executionTimeNaive = endTimeNaiveSearch - startTime;
-			timeList.set(2, (double) executionTimeNaive / NANOSEC_TO_SEC + "");
+			long executionTimeBaseHeuristic = endTimeBaseHeuristicSearch - startTime;
+			timeList.set(2, (double) executionTimeBaseHeuristic / NANOSEC_TO_SEC + "");
 
-			System.out.println("Naive search generated solutions: " + pModels.size());
+			System.out.println("Heuristic base search generated solutions: " + pModels.size());
 
 			if (!this.testIfAdditionalActorsValid(pModels.get(0))) {
 				throw new Exception("Not valid assigned additional actors!");
@@ -261,9 +261,9 @@ public class API {
 			throw ex;
 		} finally {
 			this.executionTimeMap.put(Enums.AlgorithmToPerform.BASEHEURISTIC, timeList);
-			System.out.println("Naive search combsGen time in sec: " + timeList.get(0));
-			System.out.println("Naive search calcMeasure time in sec: " + timeList.get(1));
-			System.out.println("Naive search execution time in sec: " + timeList.get(2));
+			System.out.println("Heuristic base search combsGen time in sec: " + timeList.get(0));
+			System.out.println("Heuristic base search calcMeasure time in sec: " + timeList.get(1));
+			System.out.println("Heuristic base search execution time in sec: " + timeList.get(2));
 		}
 
 	}
@@ -312,15 +312,15 @@ public class API {
 			this.calculateMeasure(pModels, staticSpherePerDataObject, wdSpherePerDataObject, pathsFromOriginToEndMap,
 					new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>());
 
-			long endTimeIncrementalNaiveSearch = System.nanoTime();
+			long endTimeIncrementalHeuristicSearch = System.nanoTime();
 
-			long timeForCalculatingMeasure = endTimeIncrementalNaiveSearch - endTimeGeneratingCombs;
+			long timeForCalculatingMeasure = endTimeIncrementalHeuristicSearch - endTimeGeneratingCombs;
 			timeList.set(1, (double) timeForCalculatingMeasure / NANOSEC_TO_SEC + "");
 
-			long executionTimeIncrementalNaive = endTimeIncrementalNaiveSearch - startTime;
-			timeList.set(2, (double) executionTimeIncrementalNaive / NANOSEC_TO_SEC + "");
+			long executionTimeIncrementalHeuristic = endTimeIncrementalHeuristicSearch - startTime;
+			timeList.set(2, (double) executionTimeIncrementalHeuristic / NANOSEC_TO_SEC + "");
 
-			System.out.println("Incremental naive search generated solutions: " + pModels.size());
+			System.out.println("Incremental heuristic search generated solutions: " + pModels.size());
 
 			if (!this.testIfAdditionalActorsValid(pModels.get(0))) {
 				throw new Exception("Not valid assigned additional actors!");
@@ -332,9 +332,9 @@ public class API {
 			throw ex;
 		} finally {
 			this.executionTimeMap.put(Enums.AlgorithmToPerform.INCREMENTALHEURISTIC, timeList);
-			System.out.println("Incremental naive search combsGen time in sec: " + timeList.get(0));
-			System.out.println("Incremental naive search calcMeasure time in sec: " + timeList.get(1));
-			System.out.println("Incremental naive search execution time in sec: " + timeList.get(2));
+			System.out.println("Incremental heuristic search combsGen time in sec: " + timeList.get(0));
+			System.out.println("Incremental heuristic search calcMeasure time in sec: " + timeList.get(1));
+			System.out.println("Incremental heuristic search execution time in sec: " + timeList.get(2));
 		}
 
 	}
@@ -386,7 +386,7 @@ public class API {
 				timeList.set(0, (double) timeForGeneratingCombs / NANOSEC_TO_SEC + "");
 
 				// calculate the cost measure for the all additional actors combinations found
-				// with the advanced naive search
+				// with the advanced heuristic search
 				this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
 						pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
 
@@ -402,13 +402,13 @@ public class API {
 						pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
 			}
 
-			long endTimeAdvancedNaiveSearch = System.nanoTime();
+			long endTimeAdvancedHeuristicSearch = System.nanoTime();
 
-			long timeForCalculatingMeasure = endTimeAdvancedNaiveSearch - endTimeGeneratingCombs;
+			long timeForCalculatingMeasure = endTimeAdvancedHeuristicSearch - endTimeGeneratingCombs;
 			timeList.set(1, (double) timeForCalculatingMeasure / NANOSEC_TO_SEC + "");
 
-			long executionTimeAdvancedNaive = endTimeAdvancedNaiveSearch - startTime;
-			timeList.set(2, (double) executionTimeAdvancedNaive / NANOSEC_TO_SEC + "");
+			long executionTimeAdvancedHeuristic = endTimeAdvancedHeuristicSearch - startTime;
+			timeList.set(2, (double) executionTimeAdvancedHeuristic / NANOSEC_TO_SEC + "");
 
 			System.out.println("Advanced heuristic search generated solutions: " + pModelAddActors.size());
 			if (!this.testIfAdditionalActorsValid(pModelAddActors.get(0))) {
