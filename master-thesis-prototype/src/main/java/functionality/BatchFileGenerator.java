@@ -1215,7 +1215,6 @@ public class BatchFileGenerator {
 		}
 		if(runIncrementalHeuristicSearch) {
 			methodList.add(AlgorithmToPerform.INCREMENTALHEURISTIC);
-
 		}
 		if(runAdvancedHeuristicSearch) {
 			methodList.add(AlgorithmToPerform.ADVANCEDHEURISTIC);
@@ -1223,9 +1222,8 @@ public class BatchFileGenerator {
 		
 		Collections.shuffle(methodList);
 		
-		
+		try {
 		for(Enums.AlgorithmToPerform algToPerform: methodList) {
-			try {
 				if (algToPerform.equals(AlgorithmToPerform.EXHAUSTIVE)) {
 					int randomInt = ThreadLocalRandom.current().nextInt(1, 101);
 					if (randomInt <= percentageOfProcessesToRunExhaustiveOn) {
@@ -1277,17 +1275,15 @@ public class BatchFileGenerator {
 					}
 				}
 
-			} catch (Exception e) {
-				e.printStackTrace();
-			} finally {
-				writer.writeResultsOfAlgorithmsToCSVFile(api, cheapestSolutionCostMap, totalAmountSolutionsMap,
-						cheapestSolutionsMap, loggingMap, exceptionPerAlgorithm);
-			}
-			
+			} 
 		}
-		
-		
-		
+		catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			writer.writeResultsOfAlgorithmsToCSVFile(api, cheapestSolutionCostMap, totalAmountSolutionsMap,
+					cheapestSolutionsMap, loggingMap, exceptionPerAlgorithm);
+		}
+					
 		return returnMap;
 	}
 
