@@ -356,8 +356,6 @@ public class API {
 			LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
 			LinkedList<PModelWithAdditionalActors> pModelAddActors = new LinkedList<PModelWithAdditionalActors>();
 
-			long endTimeGeneratingCombs = 0;
-
 			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject = this.computeWdSphere();
 
 			// the following maps will contain paths from origins ongoing to avoid
@@ -365,42 +363,28 @@ public class API {
 			HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>> pathsFromOriginToEndMap = new HashMap<BPMNTask, LinkedList<LinkedList<BPMNElement>>>();
 			HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>> pathFromOriginOverCurrBrtToEndMap = new HashMap<BPMNTask, HashMap<BPMNBusinessRuleTask, LinkedList<LinkedList<BPMNElement>>>>();
 
-			if (!staticSpherePerDataObject.isEmpty()) {
+			HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
+			HashMap<BPMNParticipant, Double> amountParticipantChosenAsAddActorsMap = new HashMap<BPMNParticipant, Double>();
+			allCheapestAddActorsLists = this.queryBrtsTopolgicalAdvancedHeuristicSearch(this.startEvent, this.endEvent,
+					new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), this.endEvent,
+					pathsFromOriginToEndMap, alreadyChosenAdditionalActors, amountParticipantChosenAsAddActorsMap,
+					staticSpherePerDataObject, wdSpherePerDataObject, new LinkedList<LinkedList<AdditionalActors>>(),
+					bound);
 
-				HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAdditionalActors = new HashMap<BPMNBusinessRuleTask, LinkedList<AdditionalActors>>();
-				HashMap<BPMNParticipant, Double> amountParticipantChosenAsAddActorsMap = new HashMap<BPMNParticipant, Double>();
-				allCheapestAddActorsLists = this.queryBrtsTopolgicalAdvancedHeuristicSearch(this.startEvent,
-						this.endEvent, new LinkedList<BPMNElement>(), new LinkedList<BPMNElement>(), this.endEvent,
-						pathsFromOriginToEndMap, alreadyChosenAdditionalActors, amountParticipantChosenAsAddActorsMap,
-						staticSpherePerDataObject, wdSpherePerDataObject,
-						new LinkedList<LinkedList<AdditionalActors>>(), bound);
-
-				for (LinkedList<AdditionalActors> additionalActorsList : allCheapestAddActorsLists) {
-					PModelWithAdditionalActors newModel = new PModelWithAdditionalActors(additionalActorsList,
-							this.weightingParameters);
-					pModelAddActors.add(newModel);
-				}
-
-				endTimeGeneratingCombs = System.nanoTime();
-				long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
-				timeList.set(0, (double) timeForGeneratingCombs / NANOSEC_TO_SEC + "");
-
-				// calculate the cost measure for the all additional actors combinations found
-				// with the advanced heuristic search
-				this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
-						pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
-
-			} else {
-				// any combination satisfying the constraints is a cheapest one
-				// the measure is only calculated for evaluating the execution time
-				pModelAddActors = this.generatePossibleCombinationsOfAdditionalActorsWithBound(bound);
-				endTimeGeneratingCombs = System.nanoTime();
-				long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
-				timeList.set(0, (double) timeForGeneratingCombs / NANOSEC_TO_SEC + "");
-
-				this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
-						pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
+			for (LinkedList<AdditionalActors> additionalActorsList : allCheapestAddActorsLists) {
+				PModelWithAdditionalActors newModel = new PModelWithAdditionalActors(additionalActorsList,
+						this.weightingParameters);
+				pModelAddActors.add(newModel);
 			}
+
+			long endTimeGeneratingCombs = System.nanoTime();
+			long timeForGeneratingCombs = endTimeGeneratingCombs - startTime;
+			timeList.set(0, (double) timeForGeneratingCombs / NANOSEC_TO_SEC + "");
+
+			// calculate the cost measure for the all additional actors combinations found
+			// with the advanced heuristic search
+			this.calculateMeasure(pModelAddActors, staticSpherePerDataObject, wdSpherePerDataObject,
+					pathsFromOriginToEndMap, pathFromOriginOverCurrBrtToEndMap);
 
 			long endTimeAdvancedHeuristicSearch = System.nanoTime();
 
@@ -417,7 +401,9 @@ public class API {
 
 			return pModelAddActors;
 
-		} catch (Exception ex) {
+		} catch (
+
+		Exception ex) {
 			throw ex;
 		} finally {
 			this.executionTimeMap.put(Enums.AlgorithmToPerform.ADVANCEDHEURISTIC, timeList);
@@ -3986,7 +3972,8 @@ public class API {
 
 		for (BPMNBusinessRuleTask brt : this.businessRuleTasks) {
 			if (!brt.equals(currBrt)) {
-				innerloop: for (Entry<BPMNDataObject, ArrayList<BPMNTask>> originsEntry : brt.getLastWriterList().entrySet()) {
+				innerloop: for (Entry<BPMNDataObject, ArrayList<BPMNTask>> originsEntry : brt.getLastWriterList()
+						.entrySet()) {
 
 					for (Entry<BPMNDataObject, ArrayList<BPMNTask>> originsEntryOfCurrBrt : currBrt.getLastWriterList()
 							.entrySet()) {
