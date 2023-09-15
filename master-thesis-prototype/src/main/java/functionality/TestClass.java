@@ -9,6 +9,8 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel82_annotated1_mWsR_Strong-Dynamic_addActors1.bpmn";
 		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\assignment_gen.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\testStatic.bpmn";
+
 
 		LinkedList<Double> costForUpgradingSpheres = new LinkedList<>(Arrays.asList(1.0, 1.0, 1.0));
 
@@ -32,13 +34,12 @@ public class TestClass {
 			}
 
 			*/
-			/*LinkedList<PModelWithAdditionalActors> pInstIncrementalHeuristic = api2.incrementalHeuristicSearch(1);
+			LinkedList<PModelWithAdditionalActors> pInstIncrementalHeuristic = api2.incrementalHeuristicSearch(1);
 
 			for (PModelWithAdditionalActors pModel : pInstIncrementalHeuristic) {
 				pModel.printMeasure();
-			}*/
-
-			LinkedList<PModelWithAdditionalActors> pInstAdvancedHeuristic = api2.advancedHeuristicSearch(1);
+			}
+			/*LinkedList<PModelWithAdditionalActors> pInstAdvancedHeuristic = api2.advancedHeuristicSearch(1);
 
 			for (PModelWithAdditionalActors pModel : pInstAdvancedHeuristic) {
 				pModel.printMeasure();
@@ -61,9 +62,9 @@ public class TestClass {
 			System.out.println("__________________");
 			//System.out.println("naiveIsCheapest: "+naiveIsCheapest);
 			//System.out.println(pInstNaive.get(0).getSumMeasure());
-			System.out.println("costOfCheapestSolutionIsSame: " + CommonFunctionality
+			/*System.out.println("costOfCheapestSolutionIsSame: " + CommonFunctionality
 					.compareCostOfCheapestSolutionsOfAlgorithms(pInstAdvancedHeuristic, cheapestExhaustive));
-			
+			*/
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
