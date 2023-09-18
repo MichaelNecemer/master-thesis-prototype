@@ -3848,6 +3848,19 @@ public class API {
 						}
 					}
 				}
+				
+				// if combinedList still has not all participants, add the remaining
+				if(combinedList.size() < remainingWithBestCost.size()) {
+					
+					for(BPMNParticipant p: remainingWithBestCost) {
+						if (!combinedList.contains(p) && !participantsWithBestCost.contains(p)
+								&& !brt.getParticipant().equals(p)) {
+							combinedList.add(p);
+						}
+					}
+					
+				}
+				
 			}
 
 			remainingWithBestCost = combinedList;

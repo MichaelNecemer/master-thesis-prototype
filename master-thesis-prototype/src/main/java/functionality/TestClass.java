@@ -11,7 +11,7 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\assignment_gen.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv2.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv3.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\test.bpmn";
 
 
 		LinkedList<Double> costForUpgradingSpheres = new LinkedList<>(Arrays.asList(1.0, 1.0, 1.0));
