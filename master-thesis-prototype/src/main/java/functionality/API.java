@@ -354,9 +354,7 @@ public class API {
 					.computeStaticSpherePerDataObject();
 
 			// compute the static sphere tiebreaker map 
-			/*TreeMap<Double, LinkedList<BPMNParticipant>> staticSphereTiebreakerMap = this
-					.computeStaticSphereTiebreakerMap();
-			*/
+	
 			HashMap<BPMNDataObject, HashMap<BPMNParticipant, Double>> staticSphereTiebreakerMap = this
 					.computeStaticSphereTiebreakerHashMap();
 
