@@ -353,8 +353,7 @@ public class API {
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject = this
 					.computeStaticSpherePerDataObject();
 
-			// compute the static sphere tiebreaker map 
-	
+			// compute the static sphere tiebreaker map 	
 			HashMap<BPMNDataObject, HashMap<BPMNParticipant, Double>> staticSphereTiebreakerMap = this
 					.computeStaticSphereTiebreakerHashMap();
 
