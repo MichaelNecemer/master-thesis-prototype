@@ -354,8 +354,11 @@ public class API {
 					.computeStaticSpherePerDataObject();
 
 			// compute the static sphere tiebreaker map 
-			TreeMap<Double, LinkedList<BPMNParticipant>> staticSphereTiebreakerMap = this
+			/*TreeMap<Double, LinkedList<BPMNParticipant>> staticSphereTiebreakerMap = this
 					.computeStaticSphereTiebreakerMap();
+			*/
+			HashMap<BPMNDataObject, HashMap<BPMNParticipant, Double>> staticSphereTiebreakerMap = this
+					.computeStaticSphereTiebreakerHashMap();
 
 			LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists = new LinkedList<LinkedList<AdditionalActors>>();
 			LinkedList<PModelWithAdditionalActors> pModelAddActors = new LinkedList<PModelWithAdditionalActors>();
@@ -2828,7 +2831,7 @@ public class API {
 			HashMap<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject,
 			HashMap<BPMNDataObject, LinkedList<LinkedList<HashSet<?>>>> wdSpherePerDataObject,
 			LinkedList<LinkedList<AdditionalActors>> allCheapestAddActorsLists,
-			TreeMap<Double, LinkedList<BPMNParticipant>> staticSphereTiebreakerMap, int bound)
+			HashMap<BPMNDataObject, HashMap<BPMNParticipant, Double>> staticSphereTiebreakerMap, int bound)
 			throws NullPointerException, InterruptedException, Exception {
 		// go DFS inside all branch till corresponding join is found
 		queue.add(startNode);
@@ -2914,7 +2917,7 @@ public class API {
 					if (clusterSet.size() >= 1) {
 						// there are other brts that share an origin with the currentBrt
 						// compute the spheres for the brts in that cluster only for the shared origins
-						TreeMap<BPMNParticipant, Double> bestCandidatesForCluster = new TreeMap<BPMNParticipant, Double>();
+						HashMap<BPMNParticipant, Double> bestCandidatesForCluster = new HashMap<BPMNParticipant, Double>();
 
 						for (BPMNTask otherBrt : clusterSet) {
 
@@ -2941,10 +2944,12 @@ public class API {
 						TreeMap<Double, LinkedList<BPMNParticipant>> bestParticipantsMap = CommonFunctionality
 								.computeMapDescendingOrder(bestCandidatesForCluster);
 
+						// best participants with tiebreaker rules for brt
+
 						// generate the additional actors for the current brt using the best options
 						addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
 								addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
-								currentBrt, localCheapestPotentialAddActors, bestParticipantsMap,
+								currentBrt, localCheapestPotentialAddActors, bestCandidatesForCluster,
 								staticSphereTiebreakerMap, bound);
 
 					} else {
@@ -2952,7 +2957,7 @@ public class API {
 						// current brt
 						addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
 								addActorsToFind, potentialAddActorsLists.get(1), potentialAddActorsLists.get(0),
-								currentBrt, localCheapestPotentialAddActors, staticSphereTiebreakerMap, null, bound);
+								currentBrt, localCheapestPotentialAddActors, null, staticSphereTiebreakerMap, bound);
 
 					}
 
@@ -3355,7 +3360,7 @@ public class API {
 					incremental, currentBrt, pathsFromOriginToEndMap, staticSpherePerDataObject, wdSpherePerDataObject,
 					alreadyChosenAdditionalActorsPerBrt);
 
-			addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(exclGtw,
+			addActorsForBrt = this.generatePossibleCombinationsOfAdditionalActorsWithBoundForBrtOld(exclGtw,
 					addActorsToFind, potentialAddActors.get(1), potentialAddActors.get(0), currentBrt, cheapest, null,
 					null, bound);
 		}
@@ -3560,7 +3565,7 @@ public class API {
 		this.modelInstanceWithParallels = modelInstanceWithParallels;
 	}
 
-	public LinkedList<AdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(
+	public LinkedList<AdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBoundForBrtOld(
 			BPMNExclusiveGateway gtw, int verifiersToFind, LinkedList<BPMNParticipant> mandatoryParticipants,
 			LinkedList<BPMNParticipant> possibleParticipantsAsAddActors, BPMNBusinessRuleTask brt,
 			Map<Double, LinkedList<BPMNParticipant>> bestParticipantsMap,
@@ -3637,18 +3642,17 @@ public class API {
 
 			}
 
-			
 			if (tiebreakerMap2 != null) {
 				// check which remaining elements have not changed their places due to tiebreaking
 				LinkedList<BPMNParticipant> list = new LinkedList<BPMNParticipant>();
-				for(int i = 0; i < remainingWithBestCost.size(); i++) {
+				for (int i = 0; i < remainingWithBestCost.size(); i++) {
 					BPMNParticipant remainingPart = remainingWithBestCost.get(i);
 					if (remainingSortedByTiebreaker1.get(i).equals(remainingPart)) {
 						// still on same place after applying tiebreaker rules
 						list.add(remainingPart);
 					}
-				}				
-				
+				}
+
 				//sort the elements that have not changed their place
 				LinkedList<BPMNParticipant> listAfterSort = new LinkedList<BPMNParticipant>();
 				for (Entry<Double, LinkedList<BPMNParticipant>> entry : tiebreakerMap2.entrySet()) {
@@ -3673,18 +3677,15 @@ public class API {
 					}
 
 				}
-				
+
 				remainingSortedByTiebreaker1WithFillUp.addAll(listAfterSort);
 				remainingSortedByTiebreaker1WithFillUp.addAll(notFoundSorted);
 
-				
-				
 			} else {
 				remainingSortedByTiebreaker1WithFillUp.addAll(remainingSortedByTiebreaker1);
 				remainingSortedByTiebreaker1WithFillUp.addAll(notFoundInTiebreaker1);
 
 			}
-
 
 			if (remainingSortedByTiebreaker1.size() >= amountParticipantsToTakeFromRemaining) {
 				remainingWithBestCost = remainingSortedByTiebreaker1;
@@ -3695,6 +3696,196 @@ public class API {
 			}
 
 		}
+
+		if (!remainingWithBestCost.isEmpty() && amountParticipantsToTakeFromRemaining > 0) {
+			lists = Combination.getPermutationsWithBound(remainingWithBestCost, amountParticipantsToTakeFromRemaining,
+					bound);
+		}
+
+		if (lists.isEmpty()) {
+			LinkedList<BPMNParticipant> listToAdd = new LinkedList<BPMNParticipant>();
+			listToAdd.addAll(mandatoryParticipants);
+			listToAdd.addAll(participantsWithBestCost);
+			if (listToAdd.size() < sumVerifiersOfGtw) {
+				throw new NotEnoughAddActorsException(sumVerifiersOfGtw + " verifiers needed for " + gtw.getId()
+						+ " but only " + listToAdd.size() + " found!");
+			}
+			AdditionalActors addActors = new AdditionalActors(brt, listToAdd);
+			addActorsCombinationsForBrt.add(addActors);
+
+		} else {
+			// iterate through all combinations
+			for (int i = 0; i < lists.size(); i++) {
+				LinkedList<BPMNParticipant> currList = lists.get(i);
+				currList.addAll(0, participantsWithBestCost);
+				currList.addAll(0, mandatoryParticipants);
+				if (currList.size() < sumVerifiersOfGtw) {
+					throw new NotEnoughAddActorsException(sumVerifiersOfGtw + " verifiers needed for " + gtw.getId()
+							+ " but only " + currList.size() + " found!");
+				}
+				AdditionalActors addActors = new AdditionalActors(brt, currList);
+				addActorsCombinationsForBrt.add(addActors);
+
+			}
+
+		}
+		if (addActorsCombinationsForBrt.isEmpty()) {
+			throw new NotEnoughAddActorsException("No possible combination of verifiers for " + brt.getId());
+		}
+
+		return addActorsCombinationsForBrt;
+
+	}
+
+	public LinkedList<AdditionalActors> generatePossibleCombinationsOfAdditionalActorsWithBoundForBrt(
+			BPMNExclusiveGateway gtw, int verifiersToFind, LinkedList<BPMNParticipant> mandatoryParticipants,
+			LinkedList<BPMNParticipant> possibleParticipantsAsAddActors, BPMNBusinessRuleTask brt,
+			Map<Double, LinkedList<BPMNParticipant>> bestParticipantsMap,
+			HashMap<BPMNParticipant, Double> tiebreakerMap1,
+			HashMap<BPMNDataObject, HashMap<BPMNParticipant, Double>> staticSphereTiebreakerMap, int bound)
+			throws InterruptedException, NotEnoughAddActorsException {
+
+		LinkedList<AdditionalActors> addActorsCombinationsForBrt = new LinkedList<AdditionalActors>();
+		LinkedList<BPMNParticipant> participantsWithBestCost = new LinkedList<BPMNParticipant>();
+		LinkedList<BPMNParticipant> remainingWithBestCost = new LinkedList<BPMNParticipant>();
+		int sumVerifiersOfGtw = gtw.getAmountAddActors();
+
+		if (verifiersToFind > 0) {
+			for (Entry<Double, LinkedList<BPMNParticipant>> entry : bestParticipantsMap.entrySet()) {
+				// take all participants of the current cost that are not excluded and not the
+				// actor of the brt
+				LinkedList<BPMNParticipant> participantsWithCurrentCost = new LinkedList<BPMNParticipant>();
+				for (BPMNParticipant participant : entry.getValue()) {
+					if (possibleParticipantsAsAddActors.contains(participant)
+							&& !mandatoryParticipants.contains(participant)) {
+						participantsWithCurrentCost.add(participant);
+					}
+				}
+
+				// check if there are still verifiers needed
+				verifiersToFind = verifiersToFind - participantsWithCurrentCost.size();
+
+				if (verifiersToFind > 0) {
+					// there are less participants on the current cost level than needed
+					// take all of them
+					participantsWithBestCost.addAll(participantsWithCurrentCost);
+				} else if (verifiersToFind == 0) {
+					// there are exactly as many participants on the current cost level as needed
+					// take all of them and stop iterating
+					participantsWithBestCost.addAll(participantsWithCurrentCost);
+					break;
+				} else {
+					// there are more participants on the current cost level than needed
+					// stop iterating
+					remainingWithBestCost.addAll(participantsWithCurrentCost);
+					break;
+				}
+
+			}
+		}
+
+		LinkedList<LinkedList<BPMNParticipant>> lists = new LinkedList<LinkedList<BPMNParticipant>>();
+		int amountParticipantsToTakeFromRemaining = sumVerifiersOfGtw - mandatoryParticipants.size()
+				- participantsWithBestCost.size();
+
+		TreeMap<Double, LinkedList<BPMNParticipant>> combinedTiebreakerMap = new TreeMap<Double, LinkedList<BPMNParticipant>>();
+		TreeMap<Double, LinkedList<BPMNParticipant>> combinedTiebreakerMapForBrt = new TreeMap<Double, LinkedList<BPMNParticipant>>();
+
+		if (tiebreakerMap1 != null || staticSphereTiebreakerMap != null) {
+			// compute combined tiebreakerMap
+
+			HashMap<BPMNParticipant, Double> combinedMap = new HashMap<BPMNParticipant, Double>();
+			HashMap<BPMNParticipant, Double> combinedMapForBrt = new HashMap<BPMNParticipant, Double>();
+
+			if (tiebreakerMap1 != null) {
+				for (Entry<BPMNParticipant, Double> map1Entry : tiebreakerMap1.entrySet()) {
+					double amount = map1Entry.getValue();
+					double currAmount = combinedMap.getOrDefault(map1Entry.getKey(), 0.0);
+					double nextAmount = currAmount + amount;
+					combinedMap.put(map1Entry.getKey(), nextAmount);
+				}
+			}
+
+			if (staticSphereTiebreakerMap != null) {
+				for (Entry<BPMNDataObject, HashMap<BPMNParticipant, Double>> staticSphereMapEntry : staticSphereTiebreakerMap
+						.entrySet()) {
+					BPMNDataObject dataO = staticSphereMapEntry.getKey();
+					for (Entry<BPMNParticipant, Double> innerMapEntry : staticSphereMapEntry.getValue().entrySet()) {
+						double amount = innerMapEntry.getValue();
+						double currAmount = combinedMap.getOrDefault(innerMapEntry.getKey(), 0.0);
+						double nextAmount = currAmount + amount;
+						combinedMap.put(innerMapEntry.getKey(), nextAmount);
+
+						if (brt.getDataObjects().contains(dataO)) {
+							combinedMapForBrt.put(innerMapEntry.getKey(), nextAmount);
+						}
+					}
+				}
+			}
+			
+			combinedTiebreakerMap = CommonFunctionality.computeMapDescendingOrder(combinedMap);
+			combinedTiebreakerMapForBrt = CommonFunctionality.computeMapDescendingOrder(combinedMapForBrt);
+
+		}
+
+		if (!combinedTiebreakerMapForBrt.isEmpty()) {
+
+			LinkedList<BPMNParticipant> combinedList = new LinkedList<BPMNParticipant>();
+			for (LinkedList<BPMNParticipant> pList : combinedTiebreakerMapForBrt.values()) {
+				// participant who are in static sphere of data objects connected to brt will be preferred				
+				for (BPMNParticipant p : pList) {
+					if (!participantsWithBestCost.contains(p) && !brt.getParticipant().equals(p)) {
+						combinedList.add(p);
+					}
+				}
+			}
+
+			if (combinedList.size() < remainingWithBestCost.size()) {
+
+				for (LinkedList<BPMNParticipant> pList : combinedTiebreakerMap.values()) {
+					for (BPMNParticipant p : pList) {
+
+						if (!combinedList.contains(p) && !participantsWithBestCost.contains(p)
+								&& !brt.getParticipant().equals(p)) {
+							combinedList.add(p);
+						}
+					}
+				}
+			}
+
+			remainingWithBestCost = combinedList;
+		}
+
+		//		if (!combinedTiebreakerMap.isEmpty() && amountParticipantsToTakeFromRemaining > 0) {
+		//			// there are several participants remaining on a plateau (= same cost)
+		//			// sort the remaining participants by their cost in the combinedTiebreakerMap
+		//			LinkedList<BPMNParticipant>sortedRemainingWithBestCost = new LinkedList<BPMNParticipant>();
+		//			LinkedList<BPMNParticipant> notFound = new LinkedList<BPMNParticipant>();
+		//			notFound.addAll(remainingWithBestCost);
+		//				// preserve the order of the local cheapest list
+		//				// to get same results as incremental heuristic when the tieBrakerMap has the same
+		//				// elements
+		//				// on the plateau
+		//				// the elements from the remainingWithBestCost are on a plateau
+		//				// the same elements may be on different levels in the tie breaker map!
+		//
+		//			for (BPMNParticipant remainingPart : remainingWithBestCost) {
+		//					for (Entry<Double, LinkedList<BPMNParticipant>> entry : combinedTiebreakerMap.entrySet()) {
+		//
+		//					if (entry.getValue().contains(remainingPart)) {
+		//						sortedRemainingWithBestCost.add(remainingPart);
+		//						notFound.remove(remainingPart);						
+		//					} 
+		//				}
+		//
+		//			}
+		//			
+		//			if(!notFound.isEmpty()) {
+		//				sortedRemainingWithBestCost.addAll(notFound);
+		//			}
+		//			
+		//			remainingWithBestCost = sortedRemainingWithBestCost;
+		//		}
 
 		if (!remainingWithBestCost.isEmpty() && amountParticipantsToTakeFromRemaining > 0) {
 			lists = Combination.getPermutationsWithBound(remainingWithBestCost, amountParticipantsToTakeFromRemaining,
@@ -3748,7 +3939,6 @@ public class API {
 		HashSet<BPMNParticipant> staticSphereWithAdditionalActors = new HashSet<BPMNParticipant>();
 		// add all actors of static sphere
 		staticSphereWithAdditionalActors.addAll(currStaticEntry.getStaticSphere());
-		
 
 		for (AdditionalActors additionalActors : pModelWithAdditionalActors.getAdditionalActorsList()) {
 			if (Thread.currentThread().isInterrupted()) {
@@ -3835,24 +4025,62 @@ public class API {
 		return clusterSet;
 	}
 
-	public TreeMap<Double, LinkedList<BPMNParticipant>> computeStaticSphereTiebreakerMap() {
-		HashMap<BPMNParticipant, Double> occurrences = new HashMap<BPMNParticipant, Double>();
+	//	public HashMap<BPMNDataObject, HashMap<BPMNParticipant, Double>> computeStaticSphereTiebreakerHashMap() {
+	//		HashMap<BPMNDataObject, HashMap<BPMNParticipant, Double>> mapToReturn = new HashMap<BPMNDataObject, HashMap<BPMNParticipant, Double>>();
+	//		for (BPMNDataObject dataO : this.dataObjects) {
+	//			HashMap<BPMNParticipant, Double> occurrencesMapForDataO = new HashMap<BPMNParticipant, Double>();
+	//			for (BPMNElement el : dataO.getStaticSphereElements()) {
+	//				if (el instanceof BPMNTask) {
+	//					BPMNTask task = (BPMNTask) el;
+	//					BPMNParticipant part = task.getParticipant();
+	//					double curr = occurrencesMapForDataO.getOrDefault(part, 0.0);
+	//					double next = ++curr;
+	//					occurrencesMapForDataO.put(part, next);
+	//				}
+	//
+	//			}
+	//			mapToReturn.putIfAbsent(dataO, occurrencesMapForDataO);
+	//			
+	//		}
+	//
+	//		return mapToReturn;
+	//
+	//	}
 
+	public HashMap<BPMNDataObject, HashMap<BPMNParticipant, Double>> computeStaticSphereTiebreakerHashMap() {
+		HashMap<BPMNDataObject, HashMap<BPMNParticipant, Double>> mapToReturn = new HashMap<BPMNDataObject, HashMap<BPMNParticipant, Double>>();
 		for (BPMNDataObject dataO : this.dataObjects) {
-			for (BPMNElement el : dataO.getStaticSphereElements()) {
-				if (el instanceof BPMNTask) {
-					BPMNTask task = (BPMNTask) el;
-					BPMNParticipant part = task.getParticipant();
-					double curr = occurrences.getOrDefault(part, 0.0);
-					double next = ++curr;
-					occurrences.put(part, next);
-				}
+			HashMap<BPMNParticipant, Double> occurrencesMapForDataO = new HashMap<BPMNParticipant, Double>();
+			for (BPMNParticipant part : dataO.getStaticSphere()) {
+
+				double curr = occurrencesMapForDataO.getOrDefault(part, 0.0);
+				double next = ++curr;
+				occurrencesMapForDataO.put(part, next);
 
 			}
+			mapToReturn.putIfAbsent(dataO, occurrencesMapForDataO);
+
 		}
 
-		return CommonFunctionality.computeMapDescendingOrder(occurrences);
+		return mapToReturn;
 
 	}
+
+	//	public TreeMap<Double, LinkedList<BPMNParticipant>> computeStaticSphereTiebreakerMap() {
+	//		HashMap<BPMNParticipant, Double> occurrences = new HashMap<BPMNParticipant, Double>();
+	//		
+	//		
+	//		
+	//		for (BPMNDataObject dataO : this.dataObjects) {
+	//			for (BPMNParticipant part : dataO.getStaticSphere()) {
+	//					double curr = occurrences.getOrDefault(part, 0.0);
+	//					double next = ++curr;
+	//					occurrences.put(part, next);
+	//			}
+	//		}
+	//
+	//		return CommonFunctionality.computeMapDescendingOrder(occurrences);
+	//
+	//	}
 
 }
