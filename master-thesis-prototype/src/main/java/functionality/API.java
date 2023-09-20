@@ -3693,6 +3693,7 @@ public class API {
 			}
 		}
 
+		
 		LinkedList<LinkedList<BPMNParticipant>> lists = new LinkedList<LinkedList<BPMNParticipant>>();
 		int amountParticipantsToTakeFromRemaining = sumVerifiersOfGtw - mandatoryParticipants.size()
 				- participantsWithBestCost.size();
@@ -3751,7 +3752,7 @@ public class API {
 			for (LinkedList<BPMNParticipant> pList : combinedTiebreakerMapForBrt.values()) {
 				// participant who are in static sphere of data objects connected to brt will be preferred				
 				for (BPMNParticipant p : pList) {
-					if (!participantsWithBestCost.contains(p) && !brt.getParticipant().equals(p)) {
+					if (possibleParticipantsAsAddActors.contains(p) && !participantsWithBestCost.contains(p) && !brt.getParticipant().equals(p)) {
 						combinedList.add(p);
 					}
 				}
@@ -3762,7 +3763,7 @@ public class API {
 				for (LinkedList<BPMNParticipant> pList : combinedTiebreakerMap.values()) {
 					for (BPMNParticipant p : pList) {
 
-						if (!combinedList.contains(p) && !participantsWithBestCost.contains(p)
+						if (possibleParticipantsAsAddActors.contains(p) && !combinedList.contains(p) && !participantsWithBestCost.contains(p)
 								&& !brt.getParticipant().equals(p)) {
 							combinedList.add(p);
 						}

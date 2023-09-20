@@ -8,10 +8,12 @@ public class TestClass {
 	public static void main(String[] args) {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\randomProcessModel82_annotated1_mWsR_Strong-Dynamic_addActors1.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\assignment_gen.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\assignment_gen.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv2.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv4.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv5.bpmn";
+
 
 
 		LinkedList<Double> costForUpgradingSpheres = new LinkedList<>(Arrays.asList(1.0, 1.0, 1.0));
