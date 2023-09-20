@@ -3730,7 +3730,7 @@ public class API {
 						}
 						
 						for(BPMNBusinessRuleTask clusteredBrt: cluster) {
-							if(clusteredBrt.getDataObjects().contains(dataO)) {
+							if(clusteredBrt.getDataObjects().contains(dataO) && dataO.getDefaultSphere().contentEquals(this.staticSphereKey)) {
 								combinedMapForBrt.put(innerMapEntry.getKey(), nextAmount);
 							}
 						}
