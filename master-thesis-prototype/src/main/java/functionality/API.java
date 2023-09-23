@@ -3777,7 +3777,6 @@ public class API {
 			if (!withHeuristicForTiebreaking) {
 				// if there are no heuristics for tiebreaking - select randomly
 				Collections.shuffle(remainingWithBestCost);
-
 			}
 			lists = Combination.getPermutationsWithBound(remainingWithBestCost, amountParticipantsToTakeFromRemaining,
 					bound);
@@ -3867,12 +3866,9 @@ public class API {
 		
 		LinkedList<TreeMap<Double, LinkedList<BPMNParticipant>>> tiebreakerInOrderList = new LinkedList<TreeMap<Double, LinkedList<BPMNParticipant>>>();
 		tiebreakerInOrderList.add(bestParticipantsMap);
-		
-		// no other business-rule-task has a data object from the current brt connected
-		if(bestParticipantsInClusterMap==null) {
-			// no clustered brts
-			tiebreakerInOrderList.add(otherBrtsStaticSphereMap);
-		} 		
+		if(bestParticipantsInClusterMap!=null) {
+			tiebreakerInOrderList.add(bestParticipantsInClusterMap);
+		}
 		tiebreakerInOrderList.add(otherBrtsStaticSphereMap);
 		tiebreakerInOrderList.add(partChosenSorted);
 

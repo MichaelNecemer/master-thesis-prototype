@@ -7,11 +7,11 @@ public class TestClass {
 
 	public static void main(String[] args) {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\diagram_fig2_addActorBuC.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\assignment_gen.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\assignment_gen.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv2.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv4.bpmn";
-		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv5.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv5.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv6.bpmn";
 
 
