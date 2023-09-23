@@ -3831,10 +3831,6 @@ public class API {
 		LinkedList<LinkedList<BPMNParticipant>> lists = new LinkedList<LinkedList<BPMNParticipant>>();
 		LinkedList<BPMNParticipant> participantsWithBestCost = new LinkedList<BPMNParticipant>();
 
-		TreeMap<Double, LinkedList<BPMNParticipant>> firstMapToDrawFrom = null;
-		TreeMap<Double, LinkedList<BPMNParticipant>> secondMapToDrawFrom = null;
-		TreeMap<Double, LinkedList<BPMNParticipant>> thirdMapToDrawFrom = null;
-		
 		// staticSphereTiebreakerMap is used for other data objects than the current ones of the brt
 		HashMap<BPMNParticipant, Double> combined = new HashMap<BPMNParticipant, Double>();
 		for(BPMNDataObject otherDataO: this.dataObjects) {
@@ -3852,122 +3848,61 @@ public class API {
 		
 		TreeMap<Double, LinkedList<BPMNParticipant>> otherBrtsStaticSphereMap = CommonFunctionality.computeMapDescendingOrder(combined);
 
-				
+		
+		HashMap<BPMNParticipant, Double> partChosenCombinedMap = new HashMap<BPMNParticipant, Double>();
+		for (Entry<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAddActorsEntry : alreadyChosenAdditionalActors
+				.entrySet()) {
+			for (AdditionalActors addActors : alreadyChosenAddActorsEntry.getValue()) {
+				for (BPMNParticipant p : addActors.getAdditionalActors()) {
+					double currValue = partChosenCombinedMap.getOrDefault(p, 0.0);
+					double nextValue = ++currValue;
+					partChosenCombinedMap.put(p, nextValue);
+				}
+			}
+		}
+
+		TreeMap<Double, LinkedList<BPMNParticipant>> partChosenSorted = CommonFunctionality
+				.computeMapDescendingOrder(partChosenCombinedMap);
+
+		
+		LinkedList<TreeMap<Double, LinkedList<BPMNParticipant>>> tiebreakerInOrderList = new LinkedList<TreeMap<Double, LinkedList<BPMNParticipant>>>();
+		tiebreakerInOrderList.add(bestParticipantsMap);
+		
 		// no other business-rule-task has a data object from the current brt connected
-		firstMapToDrawFrom = bestParticipantsMap;
 		if(bestParticipantsInClusterMap==null) {
 			// no clustered brts
-			secondMapToDrawFrom = otherBrtsStaticSphereMap;
-		} else {
-			secondMapToDrawFrom = bestParticipantsInClusterMap;
-		}
-		thirdMapToDrawFrom = otherBrtsStaticSphereMap;
-		
+			tiebreakerInOrderList.add(otherBrtsStaticSphereMap);
+		} 		
+		tiebreakerInOrderList.add(otherBrtsStaticSphereMap);
+		tiebreakerInOrderList.add(partChosenSorted);
 
 		int sumVerifiersOfGtw = gtw.getAmountAddActors();
 		int amountToTake = sumVerifiersOfGtw - mandatoryParticipants.size() - participantsWithBestCost.size();
-
-		LinkedList<LinkedList<BPMNParticipant>> bestFromFirstMap = this.drawFromMapUntilPlateauFound(amountToTake,
-				participantsWithBestCost, possibleParticipantsAsAddActors, mandatoryParticipants, firstMapToDrawFrom);
-
-		LinkedList<BPMNParticipant> bestParticipantsFirstMap = bestFromFirstMap.get(0);
-		participantsWithBestCost.addAll(bestParticipantsFirstMap);
-
-		LinkedList<BPMNParticipant> participantsFromFirstMapOnPlateauToResolve = bestFromFirstMap.get(1);
-		// resolve the plateau with the help of the second map
-		amountToTake = sumVerifiersOfGtw - mandatoryParticipants.size() - participantsWithBestCost.size();
-
-		// select participants with help of candidates in second tiebreaker map
-		LinkedList<LinkedList<BPMNParticipant>> bestFromSecondMap = this.drawFromMapUntilPlateauFound(amountToTake,
-				participantsWithBestCost, possibleParticipantsAsAddActors, mandatoryParticipants, secondMapToDrawFrom);
-
-		LinkedList<BPMNParticipant> bestParticipantsFromSecondMap = bestFromSecondMap.get(0);
 		
-		if (!participantsFromFirstMapOnPlateauToResolve.isEmpty()) {
-			// try rearranging elements on plateau
-			LinkedList<BPMNParticipant> sortedPlateauAfterSecondMap = new LinkedList<BPMNParticipant>();
-			for (BPMNParticipant part : participantsFromFirstMapOnPlateauToResolve) {
-				if (bestParticipantsFromSecondMap.contains(part)) {
-					sortedPlateauAfterSecondMap.add(part);
-				} 
-			}
-			participantsWithBestCost.addAll(sortedPlateauAfterSecondMap);
-			
-			// remove the found elements from the plateau
-			participantsFromFirstMapOnPlateauToResolve.removeAll(sortedPlateauAfterSecondMap);
+		LinkedList<LinkedList<BPMNParticipant>> bestCandidates = this.drawFromMapUntilPlateauFound(amountToTake,
+				participantsWithBestCost, possibleParticipantsAsAddActors, mandatoryParticipants, tiebreakerInOrderList.get(0));
+
+		LinkedList<BPMNParticipant> bestParticipantsFromMap = bestCandidates.get(0);
+		LinkedList<BPMNParticipant> remainingOnPlateau = bestCandidates.get(1);
+		
+		participantsWithBestCost.addAll(bestParticipantsFromMap);
+		amountToTake =  sumVerifiersOfGtw - mandatoryParticipants.size() - participantsWithBestCost.size();
+		
+		// start with first tiebreaker map
+		int index = 1;
+		while(!remainingOnPlateau.isEmpty() && amountToTake >= 1 && index < tiebreakerInOrderList.size()) {			
+			LinkedList<BPMNParticipant>selected = this.sortWithTiebreakerRules(amountToTake, gtw, mandatoryParticipants, possibleParticipantsAsAddActors, brt, participantsWithBestCost, remainingOnPlateau, tiebreakerInOrderList.get(index));
+			participantsWithBestCost.addAll(selected);
+			remainingOnPlateau.removeAll(selected);
+			index++;	
+			amountToTake -= selected.size();
 		}
+		
+		remainingOnPlateau.retainAll(possibleParticipantsAsAddActors);
+		
+		lists = Combination.getPermutationsWithBound(remainingOnPlateau, amountToTake, bound);
+		
 
-		// add the sorted ones
-		amountToTake = sumVerifiersOfGtw - mandatoryParticipants.size() - participantsWithBestCost.size();
-
-		if (amountToTake >= 1) {
-			// there are still participants needed
-			// e.g. participants where not part of the second map
-			// rearrange elements in the partOnPlateauNotFoundInSecondMap 
-			// these are the remaining elements on the plateau that have not been found in second tiebreaker map
-
-			LinkedList<LinkedList<BPMNParticipant>> bestFromThirdMap = this.drawFromMapUntilPlateauFound(amountToTake,
-					participantsWithBestCost, possibleParticipantsAsAddActors, mandatoryParticipants,
-					thirdMapToDrawFrom);
-			LinkedList<BPMNParticipant> bestParticipantsFromThirdMap = bestFromThirdMap.get(0);
-
-			if (!participantsFromFirstMapOnPlateauToResolve.isEmpty()) {
-				LinkedList<BPMNParticipant> sorted = new LinkedList<BPMNParticipant>();
-				for (BPMNParticipant part : participantsFromFirstMapOnPlateauToResolve) {
-					if (bestParticipantsFromThirdMap.contains(part)) {
-						sorted.add(part);
-					} 
-				}
-				// add the sorted ones
-				participantsWithBestCost.addAll(sorted);
-				
-				// remove the found elements from the plateau
-				participantsFromFirstMapOnPlateauToResolve.removeAll(sorted);
-			}
-
-			amountToTake = sumVerifiersOfGtw - mandatoryParticipants.size() - participantsWithBestCost.size();
-
-			if (amountToTake >= 1) {
-				// still elements left
-				// prefer participants that have already been chosen as additional actors more often		
-
-				HashMap<BPMNParticipant, Double> partChosenCombinedMap = new HashMap<BPMNParticipant, Double>();
-				for (Entry<BPMNBusinessRuleTask, LinkedList<AdditionalActors>> alreadyChosenAddActorsEntry : alreadyChosenAdditionalActors
-						.entrySet()) {
-					for (AdditionalActors addActors : alreadyChosenAddActorsEntry.getValue()) {
-						for (BPMNParticipant p : addActors.getAdditionalActors()) {
-							double currValue = partChosenCombinedMap.getOrDefault(p, 0.0);
-							double nextValue = ++currValue;
-							partChosenCombinedMap.put(p, nextValue);
-						}
-					}
-				}
-
-				TreeMap<Double, LinkedList<BPMNParticipant>> partChosenSorted = CommonFunctionality
-						.computeMapDescendingOrder(partChosenCombinedMap);
-
-				LinkedList<BPMNParticipant> remainingSorted = new LinkedList<BPMNParticipant>();
-				for (Entry<Double, LinkedList<BPMNParticipant>> addActorsEntry : partChosenSorted.entrySet()) {
-						for (BPMNParticipant p : participantsFromFirstMapOnPlateauToResolve) {
-							if (addActorsEntry.getValue().contains(p)) {
-								if (!participantsWithBestCost.contains(p) && !brt.getParticipant().equals(p)
-										&& possibleParticipantsAsAddActors.contains(p)) {
-									remainingSorted.add(p);
-								}
-							}
-						
-					}
-
-				}
-
-				for (int i = 0; i < remainingSorted.size() && amountToTake > 0; i++) {
-					participantsWithBestCost.add(remainingSorted.get(i));
-					amountToTake--;
-				}
-
-			}
-
-		}
 
 		if (lists.isEmpty()) {
 			LinkedList<BPMNParticipant> listToAdd = new LinkedList<BPMNParticipant>();
@@ -4004,6 +3939,40 @@ public class API {
 
 	}
 
+	public LinkedList<BPMNParticipant> sortWithTiebreakerRules(int amountToTake, BPMNExclusiveGateway gtw, LinkedList<BPMNParticipant> mandatoryParticipants,
+			LinkedList<BPMNParticipant> possibleParticipantsAsAddActors, BPMNBusinessRuleTask brt, LinkedList<BPMNParticipant>alreadySelected,LinkedList<BPMNParticipant>participantsOnPlateauToSort,
+			TreeMap<Double, LinkedList<BPMNParticipant>> inputMap) {
+		
+		LinkedList<BPMNParticipant> selected = new LinkedList<BPMNParticipant>();
+		
+		LinkedList<LinkedList<BPMNParticipant>> bestCandidates = this.drawFromMapUntilPlateauFound(amountToTake,
+				alreadySelected, possibleParticipantsAsAddActors, mandatoryParticipants, inputMap);
+
+		LinkedList<BPMNParticipant> bestParticipantsFromMap = bestCandidates.get(0);
+		
+		if (participantsOnPlateauToSort!=null && !participantsOnPlateauToSort.isEmpty()) {
+			LinkedList<BPMNParticipant> sorted = new LinkedList<BPMNParticipant>();
+			for (BPMNParticipant part : participantsOnPlateauToSort) {
+				if (bestParticipantsFromMap.contains(part)) {
+					sorted.add(part);
+				} 
+			}
+			// add the sorted ones
+			selected.addAll(sorted);
+			
+		} else {			
+			// no plateau
+			// just add to the selected
+			selected.addAll(bestParticipantsFromMap);		
+		}
+
+		
+		return selected;
+		
+	}
+	
+	
+	
 	private Static_SphereEntry generateStaticSphereEntry(PModelWithAdditionalActors pModelWithAdditionalActors,
 			BPMNDataObject dataO, Entry<BPMNDataObject, LinkedList<HashSet<?>>> staticSpherePerDataObject)
 			throws InterruptedException {
