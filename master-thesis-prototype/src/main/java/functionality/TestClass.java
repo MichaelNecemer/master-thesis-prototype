@@ -11,8 +11,10 @@ public class TestClass {
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv2.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv4.bpmn";
-		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv5.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv5.bpmn";
 		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv6.bpmn";
+		//String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv7.bpmn";
+		String pathToFile = "C:\\Users\\Micha\\OneDrive\\Desktop\\adv8.bpmn";
 
 
 

@@ -2912,10 +2912,6 @@ public class API {
 					LinkedList<LinkedList<BPMNParticipant>> potentialAddActorsLists = this
 							.getPotentialAddActorsListsForBrt(currentBrt);
 
-					HashSet<BPMNParticipant> cheapestAddActors = new HashSet<BPMNParticipant>();
-					// add all mandatory participants
-					cheapestAddActors.addAll(potentialAddActorsLists.get(1));
-
 					LinkedList<AdditionalActors> addActorsForBrt = new LinkedList<AdditionalActors>();
 
 					// get the local cheapest potential add actors
@@ -2941,12 +2937,26 @@ public class API {
 											staticSpherePerDataObject, wdSpherePerDataObject,
 											alreadyChosenAdditionalActors);
 
+							BPMNExclusiveGateway otherGtw = (BPMNExclusiveGateway) otherBrt.getSuccessors().iterator().next();
+							LinkedList<BPMNParticipant> excludedForOtherGtw = new LinkedList<BPMNParticipant>();
+							// if participants are excluded do not count them as they cannot be additional actors for the other brt
+							for(Constraint constR: otherGtw.getConstraints()) {
+								if(constR instanceof ExcludeParticipantConstraint) {
+									ExcludeParticipantConstraint exclConst = (ExcludeParticipantConstraint)constR;
+									excludedForOtherGtw.add(exclConst.getParticipantToExclude());
+								}
+							}
+							
+							
 							for (Entry<BPMNParticipant, Double> entry : costPerParticipantForOtherBrt.entrySet()) {
-								BPMNParticipant currPart = entry.getKey();
-								double cost = entry.getValue();
-								double currCostForPart = participantsInClusterMap.getOrDefault(currPart, 0.0);
-								double nextCostForPart = currCostForPart+cost;
-								participantsInClusterMap.put(currPart, nextCostForPart);
+								BPMNParticipant currPart = entry.getKey();								
+								if(!excludedForOtherGtw.contains(currPart)) {									
+									double cost = entry.getValue();
+									double currCostForPart = participantsInClusterMap.getOrDefault(currPart, 0.0);
+									double nextCostForPart = currCostForPart+cost;
+									participantsInClusterMap.put(currPart, nextCostForPart);
+								}
+							
 							}
 
 						}
@@ -3777,6 +3787,7 @@ public class API {
 			if (!withHeuristicForTiebreaking) {
 				// if there are no heuristics for tiebreaking - select randomly
 				Collections.shuffle(remainingWithBestCost);
+
 			}
 			lists = Combination.getPermutationsWithBound(remainingWithBestCost, amountParticipantsToTakeFromRemaining,
 					bound);
@@ -3866,6 +3877,7 @@ public class API {
 		
 		LinkedList<TreeMap<Double, LinkedList<BPMNParticipant>>> tiebreakerInOrderList = new LinkedList<TreeMap<Double, LinkedList<BPMNParticipant>>>();
 		tiebreakerInOrderList.add(bestParticipantsMap);
+		
 		if(bestParticipantsInClusterMap!=null) {
 			tiebreakerInOrderList.add(bestParticipantsInClusterMap);
 		}
@@ -3895,6 +3907,7 @@ public class API {
 		}
 		
 		remainingOnPlateau.retainAll(possibleParticipantsAsAddActors);
+		
 		
 		lists = Combination.getPermutationsWithBound(remainingOnPlateau, amountToTake, bound);
 		
@@ -4035,6 +4048,7 @@ public class API {
 		return true;
 
 	}
+	
 
 	public HashSet<BPMNBusinessRuleTask> computeCluster(BPMNBusinessRuleTask currBrt) {
 		HashSet<BPMNBusinessRuleTask> clusterSet = new HashSet<BPMNBusinessRuleTask>();

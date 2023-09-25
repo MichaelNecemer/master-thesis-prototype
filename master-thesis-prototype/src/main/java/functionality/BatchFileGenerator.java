@@ -129,12 +129,12 @@ public class BatchFileGenerator {
 		//methodsToRun.add(test1_1ToRun);
 		//methodsToRun.add(test1_2ToRun);
 		//methodsToRun.add(createRandomProcesses);
-		methodsToRun.add(test2ToRun);
+		//methodsToRun.add(test2ToRun);
 		/*methodsToRun.add(test3ToRun);
 		methodsToRun.add(test4_1ToRun);
 		methodsToRun.add(test4_2ToRun);
 		methodsToRun.add(test5ToRun);
-		methodsToRun.add(test6ToRun);*/
+		*/methodsToRun.add(test6ToRun);
 
 		String pathToFolderForModelsForTest1_1_Static = "";
 		String pathToFolderForModelsForTest1_1_WD = "";
@@ -774,7 +774,7 @@ public class BatchFileGenerator {
 			// may contain exclude and mandatory participant constraint
 			// has wider ranges for variables
 			
-			int amountProcesses = 1000;
+			int amountProcesses = 100;
 
 			List<Integer> dataObjectsBounds = Arrays.asList(1, 8);
 			List<Integer> taskBounds = Arrays.asList(10, 80);
@@ -785,8 +785,8 @@ public class BatchFileGenerator {
 			List<Integer> probabilityForXorToHaveMandBounds = Arrays.asList(0, 99);
 
 
-			List<Integer> writersOfProcessInPercent = Arrays.asList(10, 30, 60);
-			List<Integer> readersOfProcessInPercent = Arrays.asList(10, 30, 60);
+			List<Integer> writersOfProcessInPercent = Arrays.asList(10, 20, 30);
+			List<Integer> readersOfProcessInPercent = Arrays.asList(10, 20, 30);
 			int amountSolutionsToBeGenerated = 1;
 
 			String pathToRealWorldProcesses = CommonFunctionality
